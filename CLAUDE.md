@@ -57,8 +57,12 @@
 
 ## 里程碑
 
-见 `ARCHITECTURE.md` §11。M0–M1 主要是搬代码,M2(冻结事务)与 M3(支持矩阵 + panel)
-是真正新写的。**建议从 M2 开始** —— 它是唯一有实测证据能挡住真实故障的部分。
+见 `ARCHITECTURE.md` §11。**M0–M4 已全部落地**(2026-08-02):
+M2 冻结事务最先交付(唯一有实测证据能挡住真实故障的部分),随后 M0/M1 搬运、
+M3 矩阵 + panel、M4 裁决 + bundle。`python3 -m invoiceloop run --out runs/demo --crops`
+出完整 demo;`python3 -m pytest tests/` 95 条全绿,其中
+`test_binding_regression.py` 逐行复现第六轮错位事故的 454 行冻结判定,
+`test_port_fidelity.py` 与 dws-derisk 原始实现逐点对拍。
 
 ## 提交习惯
 

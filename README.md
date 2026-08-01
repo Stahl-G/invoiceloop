@@ -26,7 +26,25 @@ BriefLoop 架构参考 v0.6.1 §3.6 支持充分性栈。该栈在 BriefLoop 中
 
 ## 状态
 
-设计阶段。见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+M0–M4 全部落地。见 [ARCHITECTURE.md](ARCHITECTURE.md)(设计契约)与
+[GOAL.md](GOAL.md)(冲突时优化什么)。
+
+```bash
+# 全流程:extract → freeze → gates → matrix → panel(零 API,只读存盘证据)
+python3 -m invoiceloop run --out runs/demo --crops
+
+# 人工裁决(append-only,不改冻结输入)与交付(含逐文件 sha256 清单)
+python3 -m invoiceloop adjudicate --run runs/demo --doc <doc_id> --field total_gross \
+  --claim-id FC-0042 --decision accept --rationale "证据齐" \
+  --adjudicator <名字> --decided-at 2026-08-02T10:00:00
+python3 -m invoiceloop bundle --run runs/demo
+
+# 测试:第六轮错位事故 454 行回归 + 对拍 dws-derisk 原始实现的保真度 + e2e 确定性
+python3 -m pytest tests/
+```
+
+打开 `runs/demo/support_panel.html` —— 静态、离线、无需服务。
+复核队列按支持强度升序:队首就是系统明确表示自己不知道的地方。
 
 校准语料与六轮实验证据:`~/Developer/dws-derisk/`(`REPORT.md` / `THRESHOLDS.md`)。
 本仓库引用的每个数字都可从该仓库零 API 重算。
