@@ -37,6 +37,17 @@
 
 **注意** `round3.py` 在 dws-derisk 里是从 git 历史恢复的(`git show ddf9205:round3.py`)。
 
+### 两条搬运陷阱(M2 已踩过,均已验证)
+
+- **`score.normalise` 做不了 token 匹配。** 它是 kind-dependent 的,
+  AMOUNT 分支把值塌成单值(`'$8,500.00'` → `'8500.00'`),CODE 分支整串剥
+  (→ `'850000'`),两者都产不出 token 序列。要 token 就自己按
+  `[a-z0-9]+` 切,**两侧用同一个函数**。
+- **`citation_holds` 不是 token 匹配。** 它是 `want in have` 的子串包含。
+  "去掉区域过滤即可"复现不了绑定判定 —— 实测 11/454 行判定不符。
+
+复用前先读实现,不要照搬交接说明里的一句话描述(包括我写的)。
+
 ## 数据
 
 - 校准语料:`~/Developer/dws-derisk/data/docile/`(5,680 份 PDF + 标注 + 词级 OCR)
