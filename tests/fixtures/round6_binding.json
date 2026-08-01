@@ -1,0 +1,2752 @@
+{
+ "rule": "document-level OCR token match >= 0.8",
+ "source": "dws-derisk round 6, vision/answers6.{A,B,C}.tsv, commit 173cbf9",
+ "note": "每个读图模型的真实作答;expect_rejected 是文档级绑定规则应拒绝的行数",
+ "readers": {
+  "Kimi K3": {
+   "model": "Kimi K3",
+   "answered": 140,
+   "expect_rejected": 14,
+   "rows": [
+    {
+     "doc": "046e0c4924044de09f6d9e7b",
+     "field": "buyer_name",
+     "value": "SHIYA IFA",
+     "expect_admitted": true
+    },
+    {
+     "doc": "046e0c4924044de09f6d9e7b",
+     "field": "seller_name",
+     "value": "Cumulus-Muskegon - WVIB-FM",
+     "expect_admitted": true
+    },
+    {
+     "doc": "047651e509ba4173b4403492",
+     "field": "amount_due",
+     "value": "$8,500.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "047651e509ba4173b4403492",
+     "field": "seller_name",
+     "value": "KTTV",
+     "expect_admitted": true
+    },
+    {
+     "doc": "047651e509ba4173b4403492",
+     "field": "total_gross",
+     "value": "$10,000.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0486b9113afc4ee2b4783d91",
+     "field": "buyer_name",
+     "value": "Friends of Ben McAdams-20",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049006c19fad484cbfce7ffe",
+     "field": "due_date",
+     "value": "APR17/00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049006c19fad484cbfce7ffe",
+     "field": "invoice_number",
+     "value": "MG04-007513",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049006c19fad484cbfce7ffe",
+     "field": "total_net",
+     "value": "182,887.70",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049aa72bba734a3ab34c04c2",
+     "field": "seller_name",
+     "value": "KOHO-FM,KZAL-FM",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049ae2c3f29945b481c22617",
+     "field": "amount_due",
+     "value": "$242.25",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049ae2c3f29945b481c22617",
+     "field": "buyer_name",
+     "value": "TARGETED PLATFORM MEDIA",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049ae2c3f29945b481c22617",
+     "field": "total_gross",
+     "value": "$285.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049ae2c3f29945b481c22617",
+     "field": "total_net",
+     "value": "$242.25",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049c373c8e494b2eab3a2efa",
+     "field": "amount_due",
+     "value": "0.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049c373c8e494b2eab3a2efa",
+     "field": "issue_date",
+     "value": "10/31/2018",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04c1af19678f40a9b72729c7",
+     "field": "amount_due",
+     "value": "11,294.53",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04c1af19678f40a9b72729c7",
+     "field": "buyer_name",
+     "value": "LORILLARD TOBACCO CO",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04c1af19678f40a9b72729c7",
+     "field": "due_date",
+     "value": "AUG22/02",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04c1af19678f40a9b72729c7",
+     "field": "total_net",
+     "value": "11,111.20",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04c7b8068c3f47d581cae70a",
+     "field": "buyer_name",
+     "value": "LORILLARD TOBACCO COMPANY",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04c8eae2485142aca9677163",
+     "field": "buyer_name",
+     "value": "STEWART MEDIA GROUP",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04c8eae2485142aca9677163",
+     "field": "seller_name",
+     "value": "WLKS- FM",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04c8eae2485142aca9677163",
+     "field": "total_net",
+     "value": "$385.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04d531ca811f448a91c6ff4e",
+     "field": "seller_name",
+     "value": "MDS Pharma Services",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04e8f8701242428b96aed535",
+     "field": "seller_name",
+     "value": "CADDO BROADCASTING COMPANY",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04e8f8701242428b96aed535",
+     "field": "total_net",
+     "value": "$ 391.50",
+     "expect_admitted": true
+    },
+    {
+     "doc": "051155407f5142569d18b37b",
+     "field": "invoice_number",
+     "value": "1046461",
+     "expect_admitted": true
+    },
+    {
+     "doc": "051155407f5142569d18b37b",
+     "field": "seller_vat_id",
+     "value": "36-1453176",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0516feb42d844ffba7b68494",
+     "field": "buyer_name",
+     "value": "Philip Morris U.S.A.",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0516feb42d844ffba7b68494",
+     "field": "seller_vat_id",
+     "value": "94-6036494W",
+     "expect_admitted": true
+    },
+    {
+     "doc": "051e4a894bb342e9b243ff69",
+     "field": "buyer_name",
+     "value": "Philip Morris USA",
+     "expect_admitted": true
+    },
+    {
+     "doc": "051e4a894bb342e9b243ff69",
+     "field": "invoice_number",
+     "value": "2",
+     "expect_admitted": true
+    },
+    {
+     "doc": "051e4a894bb342e9b243ff69",
+     "field": "seller_name",
+     "value": "Thomas Jefferson University",
+     "expect_admitted": true
+    },
+    {
+     "doc": "054e57bddc234d1d9c5b0380",
+     "field": "amount_due",
+     "value": "22,500.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "054e57bddc234d1d9c5b0380",
+     "field": "buyer_name",
+     "value": "R.J. Reynolds",
+     "expect_admitted": true
+    },
+    {
+     "doc": "054e57bddc234d1d9c5b0380",
+     "field": "issue_date",
+     "value": "02/24/99",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0573f22568ea44b596d94d63",
+     "field": "amount_due",
+     "value": "$382.50",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05964c88eedc4729a601c24e",
+     "field": "buyer_name",
+     "value": "Weber Shandwick - ButtOutNow",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05964c88eedc4729a601c24e",
+     "field": "invoice_number",
+     "value": "366",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05993f7600bf451f8a36e49b",
+     "field": "amount_due",
+     "value": "$940.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05993f7600bf451f8a36e49b",
+     "field": "buyer_name",
+     "value": "Weber Shandwick - ButtOutNow",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05993f7600bf451f8a36e49b",
+     "field": "invoice_number",
+     "value": "347",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05a4ab115b77425a9f79f572",
+     "field": "amount_due",
+     "value": "1,499.59",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05a4ab115b77425a9f79f572",
+     "field": "due_date",
+     "value": "05/29/01",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05a4ab115b77425a9f79f572",
+     "field": "invoice_number",
+     "value": "99999999",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05a4ab115b77425a9f79f572",
+     "field": "seller_name",
+     "value": "PHILIP MORRIS",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05a4ab115b77425a9f79f572",
+     "field": "total_gross",
+     "value": "1,556.40",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05a4ab115b77425a9f79f572",
+     "field": "total_net",
+     "value": "1,499.59",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05d16be7f93b48ed8f374701",
+     "field": "buyer_name",
+     "value": "Media Financial Services",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05d16be7f93b48ed8f374701",
+     "field": "seller_name",
+     "value": "WXME-AM",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05d4fdbe707348de80e1e764",
+     "field": "buyer_name",
+     "value": "PHILIP MORRIS USA(MEDIA)",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05d4fdbe707348de80e1e764",
+     "field": "seller_name",
+     "value": "E. Morris Communications, Inc.",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05ebd9e7cf16493bbb4edec5",
+     "field": "amount_due",
+     "value": "4,692.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05ebd9e7cf16493bbb4edec5",
+     "field": "buyer_name",
+     "value": "RJR TOBACCO COMPANY",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05ebd9e7cf16493bbb4edec5",
+     "field": "invoice_number",
+     "value": "20-0161",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05ebd9e7cf16493bbb4edec5",
+     "field": "issue_date",
+     "value": "3/31/00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05ec7dea25cc40d29f99b699",
+     "field": "amount_due",
+     "value": "$500.65",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05ec7dea25cc40d29f99b699",
+     "field": "buyer_name",
+     "value": "LINLEY GRANDE",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05ec7dea25cc40d29f99b699",
+     "field": "total_gross",
+     "value": "$589.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05f54086450b4503bd0de7ce",
+     "field": "amount_due",
+     "value": "$ 52,550.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05f54086450b4503bd0de7ce",
+     "field": "buyer_name",
+     "value": "Philip Morris",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05f54086450b4503bd0de7ce",
+     "field": "seller_name",
+     "value": "CALIFORNIA INSTITUTE OF TECHNOLOGY",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06003408e6064f7aad9798fc",
+     "field": "amount_due",
+     "value": "0.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06042be876f64270a9f330b6",
+     "field": "amount_due",
+     "value": "14,550.50",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06042be876f64270a9f330b6",
+     "field": "buyer_name",
+     "value": "GCI",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06042be876f64270a9f330b6",
+     "field": "invoice_number",
+     "value": "21979",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06042be876f64270a9f330b6",
+     "field": "seller_name",
+     "value": "THE BLUE ROCK EDITING COMPANY",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06057bde200c472198287570",
+     "field": "buyer_name",
+     "value": "LEO BURNETT USA",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06057bde200c472198287570",
+     "field": "seller_name",
+     "value": "ELLER MEDIA COMPANY",
+     "expect_admitted": false
+    },
+    {
+     "doc": "060b4258a8eb4a7bb50c54b5",
+     "field": "issue_date",
+     "value": "09/23/20",
+     "expect_admitted": true
+    },
+    {
+     "doc": "060b4258a8eb4a7bb50c54b5",
+     "field": "total_gross",
+     "value": "3612.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "061bb0dc31ad4a0e8bc10219",
+     "field": "amount_due",
+     "value": "6685.4",
+     "expect_admitted": true
+    },
+    {
+     "doc": "061bb0dc31ad4a0e8bc10219",
+     "field": "issue_date",
+     "value": "1 19 00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "061bb0dc31ad4a0e8bc10219",
+     "field": "seller_name",
+     "value": "BROWN & WILLIAMSON TOBACCO CORP.",
+     "expect_admitted": false
+    },
+    {
+     "doc": "062044dabaa24e27af3f733a",
+     "field": "seller_name",
+     "value": "WROM",
+     "expect_admitted": true
+    },
+    {
+     "doc": "062d94841d1649a5b5a4e720",
+     "field": "due_date",
+     "value": "August 1, 1999",
+     "expect_admitted": true
+    },
+    {
+     "doc": "062d94841d1649a5b5a4e720",
+     "field": "issue_date",
+     "value": "May 26, 1999",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06317b08a4184b2aa7365c10",
+     "field": "amount_due",
+     "value": "1,683.51",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0639e1ea5b114070803df68a",
+     "field": "total_vat",
+     "value": "$0.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "067e58970ab14323b428bcab",
+     "field": "buyer_name",
+     "value": "HUNGARIAN ACADEMY OF SCIENCE",
+     "expect_admitted": true
+    },
+    {
+     "doc": "067e58970ab14323b428bcab",
+     "field": "invoice_number",
+     "value": "43961",
+     "expect_admitted": true
+    },
+    {
+     "doc": "067e58970ab14323b428bcab",
+     "field": "issue_date",
+     "value": "08/02/01",
+     "expect_admitted": true
+    },
+    {
+     "doc": "067e58970ab14323b428bcab",
+     "field": "seller_vat_id",
+     "value": "94-2945544",
+     "expect_admitted": true
+    },
+    {
+     "doc": "067e58970ab14323b428bcab",
+     "field": "total_vat",
+     "value": "0.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "067e90fb90374c1ca55313f5",
+     "field": "amount_due",
+     "value": "403.20",
+     "expect_admitted": true
+    },
+    {
+     "doc": "068d0838434b4e5597a70cce",
+     "field": "buyer_name",
+     "value": "William McEntee",
+     "expect_admitted": true
+    },
+    {
+     "doc": "068d0838434b4e5597a70cce",
+     "field": "issue_date",
+     "value": "August 7, 2020",
+     "expect_admitted": true
+    },
+    {
+     "doc": "068d0838434b4e5597a70cce",
+     "field": "seller_name",
+     "value": "donations@vfcm.org",
+     "expect_admitted": true
+    },
+    {
+     "doc": "068d0838434b4e5597a70cce",
+     "field": "total_gross",
+     "value": "$410.72 USD",
+     "expect_admitted": true
+    },
+    {
+     "doc": "068d0838434b4e5597a70cce",
+     "field": "total_net",
+     "value": "$398.51 USD",
+     "expect_admitted": true
+    },
+    {
+     "doc": "068d0838434b4e5597a70cce",
+     "field": "total_vat",
+     "value": "$0.00 USD",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06945dcd737849b0b59544fb",
+     "field": "buyer_name",
+     "value": "LORILLARD TOBACCO COMPANY",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06945dcd737849b0b59544fb",
+     "field": "seller_name",
+     "value": "Direct Network, Inc.",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0698aee6191c452b951af737",
+     "field": "amount_due",
+     "value": "83.81",
+     "expect_admitted": false
+    },
+    {
+     "doc": "0698aee6191c452b951af737",
+     "field": "buyer_name",
+     "value": "GUILMENOT CONSULTING INC./GCI",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0698aee6191c452b951af737",
+     "field": "seller_vat_id",
+     "value": "3889971",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0698aee6191c452b951af737",
+     "field": "total_vat",
+     "value": "6.56",
+     "expect_admitted": true
+    },
+    {
+     "doc": "069922e0f9ae4c60af6bc7e5",
+     "field": "buyer_name",
+     "value": "R. J. Reynolds Tobacco Company",
+     "expect_admitted": true
+    },
+    {
+     "doc": "069dbb3056594b459a39adb4",
+     "field": "seller_name",
+     "value": "CADDO BROADCASTING COMPANY",
+     "expect_admitted": true
+    },
+    {
+     "doc": "069dbb3056594b459a39adb4",
+     "field": "total_net",
+     "value": "$ 1453.36",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06a6fbe04d3d40a2956378ab",
+     "field": "amount_due",
+     "value": "$8,294.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06a6fbe04d3d40a2956378ab",
+     "field": "buyer_name",
+     "value": "Citibank, N.A.",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06a6fbe04d3d40a2956378ab",
+     "field": "seller_name",
+     "value": "ROBERTS & HOLLAND LLP",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06a6fbe04d3d40a2956378ab",
+     "field": "seller_vat_id",
+     "value": "13-1833408",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06a94234728b4a04b7e14bb2",
+     "field": "buyer_name",
+     "value": "RACHAEL JONES",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06bcdb2b22e94c839c822849",
+     "field": "amount_due",
+     "value": "$876.39",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06bcdb2b22e94c839c822849",
+     "field": "issue_date",
+     "value": "December 3, 1999",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06bcdb2b22e94c839c822849",
+     "field": "seller_name",
+     "value": "DAVIS POLK & WARDWELL",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06bcdb2b22e94c839c822849",
+     "field": "seller_vat_id",
+     "value": "135023295",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06c69b729aa94182867d5a5a",
+     "field": "buyer_name",
+     "value": "PHILIP MORRIS U.S.A.",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06c69b729aa94182867d5a5a",
+     "field": "seller_name",
+     "value": "IIT Research Institute",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06c76cf7636f44f69320c117",
+     "field": "buyer_name",
+     "value": "Weber Shandwick - 2Take10",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06c76cf7636f44f69320c117",
+     "field": "invoice_number",
+     "value": "343",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06c76cf7636f44f69320c117",
+     "field": "issue_date",
+     "value": "5/15/02",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06eb6e1f400647ce96fff1b9",
+     "field": "amount_due",
+     "value": "10045.62",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06eb6e1f400647ce96fff1b9",
+     "field": "buyer_name",
+     "value": "MADDEN SERVICES INC",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06eb6e1f400647ce96fff1b9",
+     "field": "issue_date",
+     "value": "05/25/99",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06eb6e1f400647ce96fff1b9",
+     "field": "seller_name",
+     "value": "DISPLAY TECHNOLOGIES LLC",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06ed70d6aadb481696b2636f",
+     "field": "invoice_number",
+     "value": "721989",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06ed70d6aadb481696b2636f",
+     "field": "total_gross",
+     "value": "2,750.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06ed70d6aadb481696b2636f",
+     "field": "total_net",
+     "value": "2,291.66",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0702dd1bf01840b68230b252",
+     "field": "buyer_name",
+     "value": "Converging",
+     "expect_admitted": true
+    },
+    {
+     "doc": "07164182d4104ad9b73a7188",
+     "field": "seller_name",
+     "value": "KDUX-FM",
+     "expect_admitted": true
+    },
+    {
+     "doc": "07214b89d1bd407b829a7847",
+     "field": "seller_name",
+     "value": "CADDO BROADCASTING COMPANY",
+     "expect_admitted": true
+    },
+    {
+     "doc": "072d66f581f344bfbf3bc8ef",
+     "field": "buyer_name",
+     "value": "Philip Morris, USA",
+     "expect_admitted": true
+    },
+    {
+     "doc": "072d66f581f344bfbf3bc8ef",
+     "field": "invoice_number",
+     "value": "1",
+     "expect_admitted": true
+    },
+    {
+     "doc": "072d66f581f344bfbf3bc8ef",
+     "field": "issue_date",
+     "value": "January 21, 2002",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0746d3a85e0545b98b343196",
+     "field": "amount_due",
+     "value": "$2,002.15",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0746d3a85e0545b98b343196",
+     "field": "seller_name",
+     "value": "Radio Campesina KNAI 860 AM/101.9FM",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0746d3a85e0545b98b343196",
+     "field": "total_gross",
+     "value": "$2,343.75",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0746d3a85e0545b98b343196",
+     "field": "total_net",
+     "value": "$1,992.19",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0746d3a85e0545b98b343196",
+     "field": "total_vat",
+     "value": "$9.96",
+     "expect_admitted": true
+    },
+    {
+     "doc": "074b8104cd7548919d36fc37",
+     "field": "buyer_name",
+     "value": "Lorillard Tobacco Company",
+     "expect_admitted": true
+    },
+    {
+     "doc": "074b8104cd7548919d36fc37",
+     "field": "invoice_number",
+     "value": "062219",
+     "expect_admitted": true
+    },
+    {
+     "doc": "074b8104cd7548919d36fc37",
+     "field": "issue_date",
+     "value": "November 30, 1999",
+     "expect_admitted": true
+    },
+    {
+     "doc": "074b8104cd7548919d36fc37",
+     "field": "seller_name",
+     "value": "epsilon",
+     "expect_admitted": true
+    },
+    {
+     "doc": "074b8104cd7548919d36fc37",
+     "field": "total_vat",
+     "value": "$0.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "074ca3c6fdeb4ccc8dad3d02",
+     "field": "amount_due",
+     "value": "$341.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "074ca3c6fdeb4ccc8dad3d02",
+     "field": "issue_date",
+     "value": "10/31/2020",
+     "expect_admitted": true
+    }
+   ]
+  },
+  "Opus 5": {
+   "model": "Opus 5",
+   "answered": 146,
+   "expect_rejected": 9,
+   "rows": [
+    {
+     "doc": "046e0c4924044de09f6d9e7b",
+     "field": "buyer_name",
+     "value": "SHIYA IFA",
+     "expect_admitted": true
+    },
+    {
+     "doc": "046e0c4924044de09f6d9e7b",
+     "field": "seller_name",
+     "value": "Cumulus-Muskegon - WVIB-FM",
+     "expect_admitted": true
+    },
+    {
+     "doc": "047651e509ba4173b4403492",
+     "field": "amount_due",
+     "value": "$8,500.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "047651e509ba4173b4403492",
+     "field": "seller_name",
+     "value": "KTTV",
+     "expect_admitted": true
+    },
+    {
+     "doc": "047651e509ba4173b4403492",
+     "field": "total_gross",
+     "value": "$10,000.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0486b9113afc4ee2b4783d91",
+     "field": "buyer_name",
+     "value": "Friends of Ben McAdams-20",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049006c19fad484cbfce7ffe",
+     "field": "due_date",
+     "value": "APR17/00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049006c19fad484cbfce7ffe",
+     "field": "invoice_number",
+     "value": "MG04-007513",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049006c19fad484cbfce7ffe",
+     "field": "total_net",
+     "value": "182,887.70",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049aa72bba734a3ab34c04c2",
+     "field": "seller_name",
+     "value": "KOHO-FM,KZAL-FM",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049ae2c3f29945b481c22617",
+     "field": "amount_due",
+     "value": "$242.25",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049ae2c3f29945b481c22617",
+     "field": "buyer_name",
+     "value": "TARGETED PLATFORM MEDIA",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049ae2c3f29945b481c22617",
+     "field": "total_gross",
+     "value": "$285.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049ae2c3f29945b481c22617",
+     "field": "total_net",
+     "value": "$242.25",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049c373c8e494b2eab3a2efa",
+     "field": "amount_due",
+     "value": "0.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049c373c8e494b2eab3a2efa",
+     "field": "issue_date",
+     "value": "10/31/2018",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049c373c8e494b2eab3a2efa",
+     "field": "total_gross",
+     "value": "400.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04c1af19678f40a9b72729c7",
+     "field": "amount_due",
+     "value": "11,294.53",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04c1af19678f40a9b72729c7",
+     "field": "buyer_name",
+     "value": "LORILLARD TOBACCO CO",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04c1af19678f40a9b72729c7",
+     "field": "due_date",
+     "value": "AUG22/02",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04c1af19678f40a9b72729c7",
+     "field": "total_net",
+     "value": "11,111.20",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04c7b8068c3f47d581cae70a",
+     "field": "buyer_name",
+     "value": "LORILLARD TOBACCO COMPANY",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04c8eae2485142aca9677163",
+     "field": "buyer_name",
+     "value": "STEWART MEDIA GROUP",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04c8eae2485142aca9677163",
+     "field": "seller_name",
+     "value": "WLKS- FM",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04c8eae2485142aca9677163",
+     "field": "total_net",
+     "value": "$385.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04d531ca811f448a91c6ff4e",
+     "field": "seller_name",
+     "value": "MDS Pharma Services",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04e8f8701242428b96aed535",
+     "field": "amount_due",
+     "value": "391.50",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04e8f8701242428b96aed535",
+     "field": "seller_name",
+     "value": "KVRE-FM 92.9",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04e8f8701242428b96aed535",
+     "field": "total_net",
+     "value": "391.50",
+     "expect_admitted": true
+    },
+    {
+     "doc": "051155407f5142569d18b37b",
+     "field": "invoice_number",
+     "value": "1046461",
+     "expect_admitted": true
+    },
+    {
+     "doc": "051155407f5142569d18b37b",
+     "field": "seller_vat_id",
+     "value": "36-1453176",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0516feb42d844ffba7b68494",
+     "field": "buyer_name",
+     "value": "Dr. Bruce D. Davies",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0516feb42d844ffba7b68494",
+     "field": "seller_vat_id",
+     "value": "94-6036494W",
+     "expect_admitted": true
+    },
+    {
+     "doc": "051e4a894bb342e9b243ff69",
+     "field": "buyer_name",
+     "value": "Philip Morris USA",
+     "expect_admitted": true
+    },
+    {
+     "doc": "051e4a894bb342e9b243ff69",
+     "field": "invoice_number",
+     "value": "2",
+     "expect_admitted": true
+    },
+    {
+     "doc": "051e4a894bb342e9b243ff69",
+     "field": "seller_name",
+     "value": "Thomas Jefferson University",
+     "expect_admitted": true
+    },
+    {
+     "doc": "054e57bddc234d1d9c5b0380",
+     "field": "amount_due",
+     "value": "22,500.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "054e57bddc234d1d9c5b0380",
+     "field": "buyer_name",
+     "value": "R.J. Reynolds",
+     "expect_admitted": true
+    },
+    {
+     "doc": "054e57bddc234d1d9c5b0380",
+     "field": "due_date",
+     "value": "1/18/99",
+     "expect_admitted": true
+    },
+    {
+     "doc": "054e57bddc234d1d9c5b0380",
+     "field": "invoice_number",
+     "value": "9903153-IN",
+     "expect_admitted": true
+    },
+    {
+     "doc": "054e57bddc234d1d9c5b0380",
+     "field": "issue_date",
+     "value": "02/24/99",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0573f22568ea44b596d94d63",
+     "field": "amount_due",
+     "value": "$382.50",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05964c88eedc4729a601c24e",
+     "field": "buyer_name",
+     "value": "Jason Niosi",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05964c88eedc4729a601c24e",
+     "field": "invoice_number",
+     "value": "366",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05993f7600bf451f8a36e49b",
+     "field": "amount_due",
+     "value": "$940.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05993f7600bf451f8a36e49b",
+     "field": "buyer_name",
+     "value": "Jason Niosi",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05993f7600bf451f8a36e49b",
+     "field": "invoice_number",
+     "value": "347",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05a4ab115b77425a9f79f572",
+     "field": "amount_due",
+     "value": "1,499.59",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05a4ab115b77425a9f79f572",
+     "field": "due_date",
+     "value": "05/29/01",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05a4ab115b77425a9f79f572",
+     "field": "invoice_number",
+     "value": "99999999",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05a4ab115b77425a9f79f572",
+     "field": "seller_name",
+     "value": "PHILIP MORRIS INCORPORATED",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05a4ab115b77425a9f79f572",
+     "field": "total_gross",
+     "value": "1,556.40",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05a4ab115b77425a9f79f572",
+     "field": "total_net",
+     "value": "1,499.59",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05d16be7f93b48ed8f374701",
+     "field": "buyer_name",
+     "value": "Media Financial Services",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05d16be7f93b48ed8f374701",
+     "field": "seller_name",
+     "value": "WXME-AM",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05d4fdbe707348de80e1e764",
+     "field": "buyer_name",
+     "value": "PHILIP MORRIS USA(MEDIA)",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05d4fdbe707348de80e1e764",
+     "field": "seller_name",
+     "value": "E. Morris Communications, Inc.",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05ebd9e7cf16493bbb4edec5",
+     "field": "amount_due",
+     "value": "4,692.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05ebd9e7cf16493bbb4edec5",
+     "field": "buyer_name",
+     "value": "RJR TOBACCO COMPANY",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05ebd9e7cf16493bbb4edec5",
+     "field": "invoice_number",
+     "value": "20-0161",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05ebd9e7cf16493bbb4edec5",
+     "field": "issue_date",
+     "value": "3/31/00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05ec7dea25cc40d29f99b699",
+     "field": "amount_due",
+     "value": "$500.65",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05ec7dea25cc40d29f99b699",
+     "field": "buyer_name",
+     "value": "MEDIA FINANCIAL SERVICES",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05ec7dea25cc40d29f99b699",
+     "field": "total_gross",
+     "value": "$589.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05f54086450b4503bd0de7ce",
+     "field": "amount_due",
+     "value": "52,550.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05f54086450b4503bd0de7ce",
+     "field": "buyer_name",
+     "value": "Philip Morris",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05f54086450b4503bd0de7ce",
+     "field": "seller_name",
+     "value": "CALIFORNIA INSTITUTE OF TECHNOLOGY",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06003408e6064f7aad9798fc",
+     "field": "amount_due",
+     "value": "0.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06003408e6064f7aad9798fc",
+     "field": "total_net",
+     "value": "0.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06042be876f64270a9f330b6",
+     "field": "amount_due",
+     "value": "1,458.27",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06042be876f64270a9f330b6",
+     "field": "buyer_name",
+     "value": "LEO BURNETT USA",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06042be876f64270a9f330b6",
+     "field": "invoice_number",
+     "value": "046-9004800",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06042be876f64270a9f330b6",
+     "field": "seller_name",
+     "value": "ELLER MEDIA COMPANY",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06057bde200c472198287570",
+     "field": "buyer_name",
+     "value": "GCI",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06057bde200c472198287570",
+     "field": "seller_name",
+     "value": "THE BLUE ROCK EDITING COMPANY",
+     "expect_admitted": true
+    },
+    {
+     "doc": "060b4258a8eb4a7bb50c54b5",
+     "field": "issue_date",
+     "value": "09/23/20",
+     "expect_admitted": true
+    },
+    {
+     "doc": "060b4258a8eb4a7bb50c54b5",
+     "field": "total_gross",
+     "value": "3612.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "061bb0dc31ad4a0e8bc10219",
+     "field": "amount_due",
+     "value": "6685.4",
+     "expect_admitted": true
+    },
+    {
+     "doc": "061bb0dc31ad4a0e8bc10219",
+     "field": "issue_date",
+     "value": "1 19 00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "061bb0dc31ad4a0e8bc10219",
+     "field": "seller_name",
+     "value": "BROWN & WILLIAMSON TOBACCO CORP.",
+     "expect_admitted": false
+    },
+    {
+     "doc": "062044dabaa24e27af3f733a",
+     "field": "seller_name",
+     "value": "WROM",
+     "expect_admitted": true
+    },
+    {
+     "doc": "062d94841d1649a5b5a4e720",
+     "field": "due_date",
+     "value": "August 1, 1999",
+     "expect_admitted": true
+    },
+    {
+     "doc": "062d94841d1649a5b5a4e720",
+     "field": "issue_date",
+     "value": "May 26, 1999",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06317b08a4184b2aa7365c10",
+     "field": "amount_due",
+     "value": "1,683.51",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06317b08a4184b2aa7365c10",
+     "field": "buyer_name",
+     "value": "Brown & Williamson Tobacco Corp.",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0639e1ea5b114070803df68a",
+     "field": "issue_date",
+     "value": "9/29/2020 3:10:01 PM EDT",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0639e1ea5b114070803df68a",
+     "field": "total_vat",
+     "value": "$0.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "067e58970ab14323b428bcab",
+     "field": "buyer_name",
+     "value": "HUNGARIAN ACADEMY OF SCIENCE",
+     "expect_admitted": true
+    },
+    {
+     "doc": "067e58970ab14323b428bcab",
+     "field": "invoice_number",
+     "value": "43961",
+     "expect_admitted": true
+    },
+    {
+     "doc": "067e58970ab14323b428bcab",
+     "field": "issue_date",
+     "value": "08/02/01",
+     "expect_admitted": true
+    },
+    {
+     "doc": "067e58970ab14323b428bcab",
+     "field": "seller_vat_id",
+     "value": "94-2945544",
+     "expect_admitted": true
+    },
+    {
+     "doc": "067e58970ab14323b428bcab",
+     "field": "total_vat",
+     "value": "0.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "067e90fb90374c1ca55313f5",
+     "field": "amount_due",
+     "value": "403.20",
+     "expect_admitted": true
+    },
+    {
+     "doc": "067e90fb90374c1ca55313f5",
+     "field": "total_net",
+     "value": "403.20",
+     "expect_admitted": true
+    },
+    {
+     "doc": "068d0838434b4e5597a70cce",
+     "field": "issue_date",
+     "value": "August 7, 2020 at 11:33:01 AM PDT",
+     "expect_admitted": true
+    },
+    {
+     "doc": "068d0838434b4e5597a70cce",
+     "field": "total_gross",
+     "value": "$410.72 USD",
+     "expect_admitted": true
+    },
+    {
+     "doc": "068d0838434b4e5597a70cce",
+     "field": "total_net",
+     "value": "$398.51 USD",
+     "expect_admitted": true
+    },
+    {
+     "doc": "068d0838434b4e5597a70cce",
+     "field": "total_vat",
+     "value": "$0.00 USD",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06945dcd737849b0b59544fb",
+     "field": "buyer_name",
+     "value": "MR. ANDREW PASHELUK",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06945dcd737849b0b59544fb",
+     "field": "seller_name",
+     "value": "Direct Network, Inc.",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0698aee6191c452b951af737",
+     "field": "amount_due",
+     "value": "83.81",
+     "expect_admitted": false
+    },
+    {
+     "doc": "0698aee6191c452b951af737",
+     "field": "buyer_name",
+     "value": "GUILMENOT CONSULTING INC./GCI",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0698aee6191c452b951af737",
+     "field": "seller_vat_id",
+     "value": "3889971",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0698aee6191c452b951af737",
+     "field": "total_vat",
+     "value": "6.56",
+     "expect_admitted": true
+    },
+    {
+     "doc": "069922e0f9ae4c60af6bc7e5",
+     "field": "buyer_name",
+     "value": "R. J. Reynolds Tobacco Company",
+     "expect_admitted": true
+    },
+    {
+     "doc": "069dbb3056594b459a39adb4",
+     "field": "amount_due",
+     "value": "1453.36",
+     "expect_admitted": true
+    },
+    {
+     "doc": "069dbb3056594b459a39adb4",
+     "field": "seller_name",
+     "value": "KVRE-FM 92.9",
+     "expect_admitted": true
+    },
+    {
+     "doc": "069dbb3056594b459a39adb4",
+     "field": "total_net",
+     "value": "1453.36",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06a6fbe04d3d40a2956378ab",
+     "field": "amount_due",
+     "value": "$8,294.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06a6fbe04d3d40a2956378ab",
+     "field": "buyer_name",
+     "value": "Citibank, N.A.",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06a6fbe04d3d40a2956378ab",
+     "field": "seller_name",
+     "value": "ROBERTS & HOLLAND LLP",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06a6fbe04d3d40a2956378ab",
+     "field": "seller_vat_id",
+     "value": "13-1833405",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06a94234728b4a04b7e14bb2",
+     "field": "buyer_name",
+     "value": "SCREEN STRATEGIES MEDIA",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06bcdb2b22e94c839c822849",
+     "field": "buyer_name",
+     "value": "DAVIS POLK & WARDWELL",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06bcdb2b22e94c839c822849",
+     "field": "issue_date",
+     "value": "December 3, 1999",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06bcdb2b22e94c839c822849",
+     "field": "seller_vat_id",
+     "value": "135023295",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06c69b729aa94182867d5a5a",
+     "field": "buyer_name",
+     "value": "PHILIP MORRIS U.S.A.",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06c69b729aa94182867d5a5a",
+     "field": "seller_name",
+     "value": "IIT Research Institute",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06c76cf7636f44f69320c117",
+     "field": "buyer_name",
+     "value": "Jason Niosi",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06c76cf7636f44f69320c117",
+     "field": "invoice_number",
+     "value": "343",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06c76cf7636f44f69320c117",
+     "field": "issue_date",
+     "value": "5/15/02",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06eb6e1f400647ce96fff1b9",
+     "field": "amount_due",
+     "value": "10045.62",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06eb6e1f400647ce96fff1b9",
+     "field": "buyer_name",
+     "value": "MADDEN SERVICES INC",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06eb6e1f400647ce96fff1b9",
+     "field": "issue_date",
+     "value": "05/25/99",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06eb6e1f400647ce96fff1b9",
+     "field": "seller_name",
+     "value": "DISPLAY TECHNOLOGIES LLC",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06ed70d6aadb481696b2636f",
+     "field": "invoice_number",
+     "value": "721989",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06ed70d6aadb481696b2636f",
+     "field": "total_gross",
+     "value": "2,750.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06ed70d6aadb481696b2636f",
+     "field": "total_net",
+     "value": "2,291.66",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0702dd1bf01840b68230b252",
+     "field": "buyer_name",
+     "value": "Biden",
+     "expect_admitted": true
+    },
+    {
+     "doc": "07164182d4104ad9b73a7188",
+     "field": "seller_name",
+     "value": "KDUX-FM",
+     "expect_admitted": true
+    },
+    {
+     "doc": "07214b89d1bd407b829a7847",
+     "field": "seller_name",
+     "value": "KVRE-FM 92.9",
+     "expect_admitted": true
+    },
+    {
+     "doc": "072d66f581f344bfbf3bc8ef",
+     "field": "buyer_name",
+     "value": "Philip Morris, USA",
+     "expect_admitted": true
+    },
+    {
+     "doc": "072d66f581f344bfbf3bc8ef",
+     "field": "invoice_number",
+     "value": "1",
+     "expect_admitted": true
+    },
+    {
+     "doc": "072d66f581f344bfbf3bc8ef",
+     "field": "issue_date",
+     "value": "January 21, 2002",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0746d3a85e0545b98b343196",
+     "field": "amount_due",
+     "value": "$2,002.15",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0746d3a85e0545b98b343196",
+     "field": "seller_name",
+     "value": "Radio Campesina",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0746d3a85e0545b98b343196",
+     "field": "total_gross",
+     "value": "$2,343.75",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0746d3a85e0545b98b343196",
+     "field": "total_net",
+     "value": "$1,992.19",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0746d3a85e0545b98b343196",
+     "field": "total_vat",
+     "value": "$9.96",
+     "expect_admitted": true
+    },
+    {
+     "doc": "074b8104cd7548919d36fc37",
+     "field": "buyer_name",
+     "value": "Mr. Andrew Pasheluk, Director, Mkt. Planning/Info",
+     "expect_admitted": true
+    },
+    {
+     "doc": "074b8104cd7548919d36fc37",
+     "field": "invoice_number",
+     "value": "062219",
+     "expect_admitted": true
+    },
+    {
+     "doc": "074b8104cd7548919d36fc37",
+     "field": "issue_date",
+     "value": "November 30, 1999",
+     "expect_admitted": true
+    },
+    {
+     "doc": "074b8104cd7548919d36fc37",
+     "field": "seller_name",
+     "value": "epsilon",
+     "expect_admitted": true
+    },
+    {
+     "doc": "074b8104cd7548919d36fc37",
+     "field": "total_vat",
+     "value": "$0.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "074ca3c6fdeb4ccc8dad3d02",
+     "field": "amount_due",
+     "value": "$341.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "074ca3c6fdeb4ccc8dad3d02",
+     "field": "issue_date",
+     "value": "10/31/2020",
+     "expect_admitted": true
+    }
+   ]
+  },
+  "GPT 5.6 SOL": {
+   "model": "GPT 5.6 SOL",
+   "answered": 168,
+   "expect_rejected": 118,
+   "rows": [
+    {
+     "doc": "046e0c4924044de09f6d9e7b",
+     "field": "buyer_name",
+     "value": "SHIYA IFA",
+     "expect_admitted": true
+    },
+    {
+     "doc": "046e0c4924044de09f6d9e7b",
+     "field": "seller_name",
+     "value": "Cumulus-Muskegon - WVIB-FM",
+     "expect_admitted": true
+    },
+    {
+     "doc": "047651e509ba4173b4403492",
+     "field": "seller_name",
+     "value": "KJZZ-TV",
+     "expect_admitted": false
+    },
+    {
+     "doc": "047651e509ba4173b4403492",
+     "field": "total_gross",
+     "value": "$200.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0486b9113afc4ee2b4783d91",
+     "field": "amount_due",
+     "value": "$8,500.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "0486b9113afc4ee2b4783d91",
+     "field": "buyer_name",
+     "value": "Assembly Media",
+     "expect_admitted": false
+    },
+    {
+     "doc": "049006c19fad484cbfce7ffe",
+     "field": "total_net",
+     "value": "$1,800.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "049aa72bba734a3ab34c04c2",
+     "field": "invoice_number",
+     "value": "2",
+     "expect_admitted": true
+    },
+    {
+     "doc": "049aa72bba734a3ab34c04c2",
+     "field": "seller_name",
+     "value": "NEW YORK MEDICAL COLLEGE",
+     "expect_admitted": false
+    },
+    {
+     "doc": "049ae2c3f29945b481c22617",
+     "field": "amount_due",
+     "value": "0.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "049ae2c3f29945b481c22617",
+     "field": "buyer_name",
+     "value": "MAIN STREET BAR AND GRILL",
+     "expect_admitted": false
+    },
+    {
+     "doc": "049ae2c3f29945b481c22617",
+     "field": "total_gross",
+     "value": "400.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "049c373c8e494b2eab3a2efa",
+     "field": "amount_due",
+     "value": "182,887.70",
+     "expect_admitted": false
+    },
+    {
+     "doc": "049c373c8e494b2eab3a2efa",
+     "field": "due_date",
+     "value": "APR17/00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "049c373c8e494b2eab3a2efa",
+     "field": "issue_date",
+     "value": "APR07/00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "049c373c8e494b2eab3a2efa",
+     "field": "total_gross",
+     "value": "182,887.70",
+     "expect_admitted": false
+    },
+    {
+     "doc": "04b06c345ae74c5daa59e189",
+     "field": "total_gross",
+     "value": "$285.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "04b06c345ae74c5daa59e189",
+     "field": "total_net",
+     "value": "$242.25",
+     "expect_admitted": false
+    },
+    {
+     "doc": "04c1af19678f40a9b72729c7",
+     "field": "amount_due",
+     "value": "11,294.53",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04c1af19678f40a9b72729c7",
+     "field": "buyer_name",
+     "value": "LORILLARD TOBACCO CO",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04c1af19678f40a9b72729c7",
+     "field": "due_date",
+     "value": "AUG22/02",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04c1af19678f40a9b72729c7",
+     "field": "total_net",
+     "value": "11,111.20",
+     "expect_admitted": true
+    },
+    {
+     "doc": "04c7b8068c3f47d581cae70a",
+     "field": "buyer_name",
+     "value": "LORILLARD YOUTH SMOKING PREVENTION PROGRAM",
+     "expect_admitted": false
+    },
+    {
+     "doc": "04c8eae2485142aca9677163",
+     "field": "buyer_name",
+     "value": "LORILLARD TOBACCO COMPANY",
+     "expect_admitted": false
+    },
+    {
+     "doc": "04c8eae2485142aca9677163",
+     "field": "seller_name",
+     "value": "MANAGEMENT SCIENCE ASSOCIATES, INC.",
+     "expect_admitted": false
+    },
+    {
+     "doc": "04c8eae2485142aca9677163",
+     "field": "seller_vat_id",
+     "value": "25-1126415",
+     "expect_admitted": false
+    },
+    {
+     "doc": "04cb9c50d4c949598689ea6f",
+     "field": "buyer_name",
+     "value": "PHILLIP MORRIS USA",
+     "expect_admitted": false
+    },
+    {
+     "doc": "04cb9c50d4c949598689ea6f",
+     "field": "due_date",
+     "value": "DUE UPON RECEIPT",
+     "expect_admitted": false
+    },
+    {
+     "doc": "04cb9c50d4c949598689ea6f",
+     "field": "issue_date",
+     "value": "1/31/02",
+     "expect_admitted": false
+    },
+    {
+     "doc": "04cb9c50d4c949598689ea6f",
+     "field": "seller_name",
+     "value": "MDS Pharma Services",
+     "expect_admitted": false
+    },
+    {
+     "doc": "04d531ca811f448a91c6ff4e",
+     "field": "due_date",
+     "value": "Payable Upon Receipt",
+     "expect_admitted": false
+    },
+    {
+     "doc": "04d531ca811f448a91c6ff4e",
+     "field": "seller_name",
+     "value": "McDermott, Will & Emery",
+     "expect_admitted": false
+    },
+    {
+     "doc": "04d531ca811f448a91c6ff4e",
+     "field": "seller_vat_id",
+     "value": "36-1453176",
+     "expect_admitted": false
+    },
+    {
+     "doc": "04e8f8701242428b96aed535",
+     "field": "amount_due",
+     "value": "$422,539.03",
+     "expect_admitted": false
+    },
+    {
+     "doc": "04e8f8701242428b96aed535",
+     "field": "seller_name",
+     "value": "McDermott, Will & Emery",
+     "expect_admitted": false
+    },
+    {
+     "doc": "051155407f5142569d18b37b",
+     "field": "seller_vat_id",
+     "value": "94-6036494W",
+     "expect_admitted": false
+    },
+    {
+     "doc": "0516feb42d844ffba7b68494",
+     "field": "buyer_name",
+     "value": "STEWART MEDIA GROUP",
+     "expect_admitted": false
+    },
+    {
+     "doc": "0516feb42d844ffba7b68494",
+     "field": "total_gross",
+     "value": "$385.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "0516feb42d844ffba7b68494",
+     "field": "total_net",
+     "value": "$385.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "051e4a894bb342e9b243ff69",
+     "field": "buyer_name",
+     "value": "Philip Morris USA",
+     "expect_admitted": true
+    },
+    {
+     "doc": "051e4a894bb342e9b243ff69",
+     "field": "invoice_number",
+     "value": "2",
+     "expect_admitted": true
+    },
+    {
+     "doc": "051e4a894bb342e9b243ff69",
+     "field": "seller_name",
+     "value": "Thomas Jefferson University",
+     "expect_admitted": true
+    },
+    {
+     "doc": "054e57bddc234d1d9c5b0380",
+     "field": "amount_due",
+     "value": "22,500.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "054e57bddc234d1d9c5b0380",
+     "field": "buyer_name",
+     "value": "R.J. Reynolds",
+     "expect_admitted": true
+    },
+    {
+     "doc": "054e57bddc234d1d9c5b0380",
+     "field": "due_date",
+     "value": "1/18/99",
+     "expect_admitted": true
+    },
+    {
+     "doc": "054e57bddc234d1d9c5b0380",
+     "field": "invoice_number",
+     "value": "9903153-IN",
+     "expect_admitted": true
+    },
+    {
+     "doc": "054e57bddc234d1d9c5b0380",
+     "field": "issue_date",
+     "value": "02/24/99",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05964c88eedc4729a601c24e",
+     "field": "buyer_name",
+     "value": "Weber Shandwick",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05964c88eedc4729a601c24e",
+     "field": "invoice_number",
+     "value": "1148",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05993f7600bf451f8a36e49b",
+     "field": "amount_due",
+     "value": "$52,550.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05993f7600bf451f8a36e49b",
+     "field": "buyer_name",
+     "value": "Philip Morris",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05993f7600bf451f8a36e49b",
+     "field": "invoice_number",
+     "value": "1-Dec",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05993f7600bf451f8a36e49b",
+     "field": "total_gross",
+     "value": "$52,550.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05a4ab115b77425a9f79f572",
+     "field": "amount_due",
+     "value": "$940.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05a4ab115b77425a9f79f572",
+     "field": "invoice_number",
+     "value": "347",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05a4ab115b77425a9f79f572",
+     "field": "seller_name",
+     "value": "Larsen Interactive, Inc.",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05a4ab115b77425a9f79f572",
+     "field": "seller_vat_id",
+     "value": "35-2082890",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05a4ab115b77425a9f79f572",
+     "field": "total_gross",
+     "value": "$940.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05d4fdbe707348de80e1e764",
+     "field": "buyer_name",
+     "value": "RJR TOBACCO COMPANY",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05d4fdbe707348de80e1e764",
+     "field": "seller_name",
+     "value": "The Russell Agency",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05ebd9e7cf16493bbb4edec5",
+     "field": "amount_due",
+     "value": "$250.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05ebd9e7cf16493bbb4edec5",
+     "field": "buyer_name",
+     "value": "Media Financial Services",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05ebd9e7cf16493bbb4edec5",
+     "field": "invoice_number",
+     "value": "947321244",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05ebd9e7cf16493bbb4edec5",
+     "field": "issue_date",
+     "value": "1/9/2019",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05ec7dea25cc40d29f99b699",
+     "field": "amount_due",
+     "value": "$500.65",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05ec7dea25cc40d29f99b699",
+     "field": "buyer_name",
+     "value": "MEDIA FINANCIAL SERVICES",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05ec7dea25cc40d29f99b699",
+     "field": "total_gross",
+     "value": "$589.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "05f54086450b4503bd0de7ce",
+     "field": "amount_due",
+     "value": "1,499.59",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05f54086450b4503bd0de7ce",
+     "field": "buyer_name",
+     "value": "Philip Morris, Valued Customer",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05f54086450b4503bd0de7ce",
+     "field": "due_date",
+     "value": "05/29/01",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05f54086450b4503bd0de7ce",
+     "field": "seller_name",
+     "value": "PHILIP MORRIS BENSON&HEDGES",
+     "expect_admitted": false
+    },
+    {
+     "doc": "05fdeef697944bdbacf4b911",
+     "field": "total_net",
+     "value": "1,458.27",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06003408e6064f7aad9798fc",
+     "field": "amount_due",
+     "value": "0.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06003408e6064f7aad9798fc",
+     "field": "total_gross",
+     "value": "300.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06042be876f64270a9f330b6",
+     "field": "amount_due",
+     "value": "$200,000.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06042be876f64270a9f330b6",
+     "field": "buyer_name",
+     "value": "Philip Morris USA",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06042be876f64270a9f330b6",
+     "field": "invoice_number",
+     "value": "8269",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06042be876f64270a9f330b6",
+     "field": "seller_name",
+     "value": "PONTIAC SILVERDOME",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06042be876f64270a9f330b6",
+     "field": "total_gross",
+     "value": "$200,000.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06057bde200c472198287570",
+     "field": "seller_name",
+     "value": "JONES, DAY, REAVIS & POGUE",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06057bde200c472198287570",
+     "field": "total_net",
+     "value": "$ 1,683.51",
+     "expect_admitted": false
+    },
+    {
+     "doc": "060b4258a8eb4a7bb50c54b5",
+     "field": "amount_due",
+     "value": "6605.4",
+     "expect_admitted": false
+    },
+    {
+     "doc": "060b4258a8eb4a7bb50c54b5",
+     "field": "issue_date",
+     "value": "1 19 00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "060b4258a8eb4a7bb50c54b5",
+     "field": "total_gross",
+     "value": "6605.4",
+     "expect_admitted": false
+    },
+    {
+     "doc": "061bb0dc31ad4a0e8bc10219",
+     "field": "buyer_name",
+     "value": "ONE ALASKA (BRIGHT)",
+     "expect_admitted": false
+    },
+    {
+     "doc": "061bb0dc31ad4a0e8bc10219",
+     "field": "issue_date",
+     "value": "09/23/20",
+     "expect_admitted": false
+    },
+    {
+     "doc": "061bb0dc31ad4a0e8bc10219",
+     "field": "seller_name",
+     "value": "LAST FRONTIER MEDIACTIVE, LLC",
+     "expect_admitted": false
+    },
+    {
+     "doc": "061bb0dc31ad4a0e8bc10219",
+     "field": "total_gross",
+     "value": "3612.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "061bb0dc31ad4a0e8bc10219",
+     "field": "total_net",
+     "value": "3070.20",
+     "expect_admitted": false
+    },
+    {
+     "doc": "062044dabaa24e27af3f733a",
+     "field": "seller_name",
+     "value": "WROM",
+     "expect_admitted": true
+    },
+    {
+     "doc": "062044dabaa24e27af3f733a",
+     "field": "total_net",
+     "value": "800.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "062d94841d1649a5b5a4e720",
+     "field": "issue_date",
+     "value": "5/22/00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "062d94841d1649a5b5a4e720",
+     "field": "total_net",
+     "value": "14,550.50",
+     "expect_admitted": false
+    },
+    {
+     "doc": "0639e1ea5b114070803df68a",
+     "field": "invoice_number",
+     "value": "13961",
+     "expect_admitted": false
+    },
+    {
+     "doc": "0639e1ea5b114070803df68a",
+     "field": "issue_date",
+     "value": "08/02/01",
+     "expect_admitted": false
+    },
+    {
+     "doc": "0639e1ea5b114070803df68a",
+     "field": "seller_vat_id",
+     "value": "94-2945544",
+     "expect_admitted": false
+    },
+    {
+     "doc": "0639e1ea5b114070803df68a",
+     "field": "total_gross",
+     "value": "18,841.46",
+     "expect_admitted": false
+    },
+    {
+     "doc": "0639e1ea5b114070803df68a",
+     "field": "total_vat",
+     "value": "0.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "067e58970ab14323b428bcab",
+     "field": "buyer_name",
+     "value": "GUARDARRAYA",
+     "expect_admitted": false
+    },
+    {
+     "doc": "067e58970ab14323b428bcab",
+     "field": "invoice_number",
+     "value": "16-10-089",
+     "expect_admitted": false
+    },
+    {
+     "doc": "067e58970ab14323b428bcab",
+     "field": "issue_date",
+     "value": "10/31/2016",
+     "expect_admitted": false
+    },
+    {
+     "doc": "067e58970ab14323b428bcab",
+     "field": "seller_name",
+     "value": "WYQE",
+     "expect_admitted": false
+    },
+    {
+     "doc": "067e58970ab14323b428bcab",
+     "field": "total_net",
+     "value": "403.20",
+     "expect_admitted": false
+    },
+    {
+     "doc": "067e90fb90374c1ca55313f5",
+     "field": "total_gross",
+     "value": "$410.72 USD",
+     "expect_admitted": false
+    },
+    {
+     "doc": "067e90fb90374c1ca55313f5",
+     "field": "total_net",
+     "value": "$398.51 USD",
+     "expect_admitted": false
+    },
+    {
+     "doc": "067e90fb90374c1ca55313f5",
+     "field": "total_vat",
+     "value": "$0.00 USD",
+     "expect_admitted": false
+    },
+    {
+     "doc": "068d0838434b4e5597a70cce",
+     "field": "buyer_name",
+     "value": "LORILLARD TOBACCO COMPANY",
+     "expect_admitted": false
+    },
+    {
+     "doc": "068d0838434b4e5597a70cce",
+     "field": "due_date",
+     "value": "ON RECEIPT",
+     "expect_admitted": false
+    },
+    {
+     "doc": "068d0838434b4e5597a70cce",
+     "field": "invoice_number",
+     "value": "0-013508-1",
+     "expect_admitted": false
+    },
+    {
+     "doc": "068d0838434b4e5597a70cce",
+     "field": "issue_date",
+     "value": "09-01-99",
+     "expect_admitted": false
+    },
+    {
+     "doc": "068d0838434b4e5597a70cce",
+     "field": "seller_name",
+     "value": "Direct Network, Inc.",
+     "expect_admitted": false
+    },
+    {
+     "doc": "068d0838434b4e5597a70cce",
+     "field": "total_gross",
+     "value": "$10,445.69",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06945dcd737849b0b59544fb",
+     "field": "buyer_name",
+     "value": "Mentzer Media",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06945dcd737849b0b59544fb",
+     "field": "seller_name",
+     "value": "Katz Communications • Katz Media Group Inc",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06945dcd737849b0b59544fb",
+     "field": "total_net",
+     "value": "$50,623.45",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06945dcd737849b0b59544fb",
+     "field": "total_vat",
+     "value": "$0.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0698aee6191c452b951af737",
+     "field": "amount_due",
+     "value": "83.81",
+     "expect_admitted": false
+    },
+    {
+     "doc": "0698aee6191c452b951af737",
+     "field": "buyer_name",
+     "value": "GUILMENOT CONSULTING INC./GCI",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0698aee6191c452b951af737",
+     "field": "seller_vat_id",
+     "value": "3889971",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0698aee6191c452b951af737",
+     "field": "total_gross",
+     "value": "83.81",
+     "expect_admitted": false
+    },
+    {
+     "doc": "0698aee6191c452b951af737",
+     "field": "total_vat",
+     "value": "6.56",
+     "expect_admitted": true
+    },
+    {
+     "doc": "069922e0f9ae4c60af6bc7e5",
+     "field": "buyer_name",
+     "value": "FRENCH HILL FOR CONGRESS(6623)",
+     "expect_admitted": false
+    },
+    {
+     "doc": "069922e0f9ae4c60af6bc7e5",
+     "field": "invoice_number",
+     "value": "45864",
+     "expect_admitted": false
+    },
+    {
+     "doc": "069922e0f9ae4c60af6bc7e5",
+     "field": "total_net",
+     "value": "$ 1453.36",
+     "expect_admitted": false
+    },
+    {
+     "doc": "069dbb3056594b459a39adb4",
+     "field": "seller_name",
+     "value": "TAPPI",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06a6fbe04d3d40a2956378ab",
+     "field": "amount_due",
+     "value": "124.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06a6fbe04d3d40a2956378ab",
+     "field": "buyer_name",
+     "value": "R. J. Reynolds Tobacco Company",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06a6fbe04d3d40a2956378ab",
+     "field": "seller_name",
+     "value": "TAPPI",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06a94234728b4a04b7e14bb2",
+     "field": "buyer_name",
+     "value": "Jason Niosi",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06a94234728b4a04b7e14bb2",
+     "field": "seller_vat_id",
+     "value": "35-2082890",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06a94234728b4a04b7e14bb2",
+     "field": "total_net",
+     "value": "1,350.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06bcdb2b22e94c839c822849",
+     "field": "amount_due",
+     "value": "$876.39",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06bcdb2b22e94c839c822849",
+     "field": "buyer_name",
+     "value": "DAVIS POLK & WARDWELL",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06bcdb2b22e94c839c822849",
+     "field": "issue_date",
+     "value": "December 3, 1999",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06bcdb2b22e94c839c822849",
+     "field": "seller_vat_id",
+     "value": "135023295",
+     "expect_admitted": true
+    },
+    {
+     "doc": "06c69b729aa94182867d5a5a",
+     "field": "buyer_name",
+     "value": "Biden",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06c69b729aa94182867d5a5a",
+     "field": "seller_name",
+     "value": "WXII-TV",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06c69b729aa94182867d5a5a",
+     "field": "total_gross",
+     "value": "$100.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06c69b729aa94182867d5a5a",
+     "field": "total_net",
+     "value": "$85.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06c76cf7636f44f69320c117",
+     "field": "buyer_name",
+     "value": "PHILIP MORRIS U.S.A.",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06c76cf7636f44f69320c117",
+     "field": "due_date",
+     "value": "01/19/02",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06c76cf7636f44f69320c117",
+     "field": "issue_date",
+     "value": "12/19/01",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06eb6e1f400647ce96fff1b9",
+     "field": "buyer_name",
+     "value": "RACHAEL JONES",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06eb6e1f400647ce96fff1b9",
+     "field": "issue_date",
+     "value": "SEP14/20 15.27",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06eb6e1f400647ce96fff1b9",
+     "field": "seller_name",
+     "value": "WAMI-TV",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06eb6e1f400647ce96fff1b9",
+     "field": "total_gross",
+     "value": "$1,980.00",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06ed70d6aadb481696b2636f",
+     "field": "due_date",
+     "value": "6/25",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06ed70d6aadb481696b2636f",
+     "field": "invoice_number",
+     "value": "302375",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06ed70d6aadb481696b2636f",
+     "field": "total_gross",
+     "value": "10045.62",
+     "expect_admitted": false
+    },
+    {
+     "doc": "06ed70d6aadb481696b2636f",
+     "field": "total_net",
+     "value": "10045.62",
+     "expect_admitted": false
+    },
+    {
+     "doc": "07164182d4104ad9b73a7188",
+     "field": "invoice_number",
+     "value": "721989",
+     "expect_admitted": false
+    },
+    {
+     "doc": "07164182d4104ad9b73a7188",
+     "field": "seller_name",
+     "value": "THE LAMAR COMPANIES",
+     "expect_admitted": false
+    },
+    {
+     "doc": "07214b89d1bd407b829a7847",
+     "field": "seller_name",
+     "value": "CADDO BROADCASTING COMPANY",
+     "expect_admitted": true
+    },
+    {
+     "doc": "072d66f581f344bfbf3bc8ef",
+     "field": "buyer_name",
+     "value": "Philip Morris, USA",
+     "expect_admitted": true
+    },
+    {
+     "doc": "072d66f581f344bfbf3bc8ef",
+     "field": "invoice_number",
+     "value": "1",
+     "expect_admitted": true
+    },
+    {
+     "doc": "072d66f581f344bfbf3bc8ef",
+     "field": "issue_date",
+     "value": "January 21, 2002",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0746d3a85e0545b98b343196",
+     "field": "amount_due",
+     "value": "$2,002.15",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0746d3a85e0545b98b343196",
+     "field": "seller_name",
+     "value": "Radio Campesina",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0746d3a85e0545b98b343196",
+     "field": "total_gross",
+     "value": "$2,343.75",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0746d3a85e0545b98b343196",
+     "field": "total_net",
+     "value": "$1,992.19",
+     "expect_admitted": true
+    },
+    {
+     "doc": "0746d3a85e0545b98b343196",
+     "field": "total_vat",
+     "value": "$9.96",
+     "expect_admitted": true
+    },
+    {
+     "doc": "074b8104cd7548919d36fc37",
+     "field": "buyer_name",
+     "value": "Lorillard Tobacco Company",
+     "expect_admitted": true
+    },
+    {
+     "doc": "074b8104cd7548919d36fc37",
+     "field": "invoice_number",
+     "value": "062219",
+     "expect_admitted": true
+    },
+    {
+     "doc": "074b8104cd7548919d36fc37",
+     "field": "issue_date",
+     "value": "November 30, 1999",
+     "expect_admitted": true
+    },
+    {
+     "doc": "074b8104cd7548919d36fc37",
+     "field": "seller_name",
+     "value": "epsilon",
+     "expect_admitted": true
+    },
+    {
+     "doc": "074b8104cd7548919d36fc37",
+     "field": "total_vat",
+     "value": "$0.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "074ca3c6fdeb4ccc8dad3d02",
+     "field": "amount_due",
+     "value": "$341.00",
+     "expect_admitted": true
+    },
+    {
+     "doc": "074ca3c6fdeb4ccc8dad3d02",
+     "field": "issue_date",
+     "value": "10/31/2020",
+     "expect_admitted": true
+    }
+   ]
+  }
+ }
+}
