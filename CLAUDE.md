@@ -2,6 +2,7 @@
 
 ## 先读
 
+0. `GOAL.md` —— 冲突时优先什么。**当下面两份不够用的时候看这个**
 1. `ARCHITECTURE.md` —— 奠基文档,自包含。里面每个数字都可从校准仓库重算
 2. `~/Developer/dws-derisk/REPORT.md` §9c/§9d —— 六轮实验结论(为什么不承诺"抽得准")
 3. `~/Developer/dws-derisk/THRESHOLDS.md` §6f/§6g —— 预注册判据与结果对照
