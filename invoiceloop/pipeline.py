@@ -65,6 +65,14 @@ def build_drafts(
     return drafts
 
 
+def _load(doc_id: str, mode: str) -> dws.StoredResponse | None:
+    """存盘响应损坏(JSON 不可读、结构缺失)= 不可用,由门禁记阻断,不 crash 整批。"""
+    try:
+        return dws.load_response(doc_id, mode)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def run(
     doc_ids: list[str],
     out_dir: Path,
@@ -98,8 +106,8 @@ def run(
     artifact_digest = _digest(artifacts)
     emit("artifacts_registered", n=len(artifacts), digest=artifact_digest)
 
-    understand = {d: dws.load_response(d, "understand") for d in doc_ids}
-    agentic = {d: dws.load_response(d, "agentic") for d in doc_ids}
+    understand = {d: _load(d, "understand") for d in doc_ids}
+    agentic = {d: _load(d, "agentic") for d in doc_ids}
     vision_answers = dws.load_vision_answers() if include_vision else {}
 
     spans: list[dict] = []

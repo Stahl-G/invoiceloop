@@ -79,6 +79,9 @@ def normalise_tokens(text: str) -> list[str]:
     实测 dws-derisk doc 0486b911 里两处 `$5.00` 的碎片足以让一行错位的
     `$8,500.00` 从 2/3 拒绝变成 3/3 接纳(ARCHITECTURE.md §8b)。
     不要"优化"这条。
+
+    已知边界:非 ASCII 字母(é、ß、中文字)整词丢弃 —— 校准语料是美国
+    英文发票,这是刻意的简单,不是疏漏;换语料时与 §8b 一起重测。
     """
     return _TOKEN_RE.findall(text.lower())
 

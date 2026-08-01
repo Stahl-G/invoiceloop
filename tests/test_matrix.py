@@ -36,8 +36,14 @@ class TestApplicability:
 
     def test_disputed_rows_marked_and_queued_not_errored(self):
         u = make_response("doc-a", "understand", self.DISPUTED)
+        claims = [
+            {"claim_id": f"FC-000{i}", "doc_id": "doc-a", "field": f,
+             "value": self.DISPUTED[f], "span_ids": [], "drafted_by": "dws_understand",
+             "binding_coverage": 1.0}
+            for i, f in enumerate(("total_net", "total_gross", "amount_due"), 1)
+        ]
         report = _gates({})
-        out = matrix.build_matrix(["doc-a"], understand={"doc-a": u}, claims=[],
+        out = matrix.build_matrix(["doc-a"], understand={"doc-a": u}, claims=claims,
                                   rejections=[], gate_report=report, vision_answers={})
         disputed = [r for r in out["rows"] if r["applicability"] == "label_convention_disputed"]
         assert {r["field"] for r in disputed} == {"total_net", "total_gross", "amount_due"}
@@ -45,6 +51,32 @@ class TestApplicability:
         assert out["summary"]["applicability_disputed"] == 3
         # 宪章五:争议进人工裁决,summary 里没有任何"错误率"计数它
         assert "errors" not in out["summary"]
+
+    def test_dispute_requires_admitted_values(self):
+        """判据收紧:三个值都冻结被拒的文档不标争议 —— 争议要落在绑得上的证据上。"""
+        u = make_response("doc-a", "understand", self.DISPUTED)
+        out = matrix.build_matrix(["doc-a"], understand={"doc-a": u}, claims=[],
+                                  rejections=[], gate_report=_gates({}), vision_answers={})
+        assert all(r["applicability"] == "matches" for r in out["rows"])
+
+
+class TestBlockingAttachment:
+    def test_doc_level_blocking_attaches_to_every_row(self):
+        """文档级阻断(如 agentic 缺失)属于这份文档的每一行,不是只挂在某处。"""
+        u = make_response("doc-a", "understand", {"total_gross": "100.00"})
+        blocking_finding = {
+            "finding_id": "GF-0001", "gate_id": "cross_mode_agreement",
+            "doc_id": "doc-a", "field": None, "severity": "high",
+            "blocking_level": "blocking", "blocking": True,
+            "repair_owner": "re_extract", "recommendation": "重跑",
+            "evidence_ref": "raw/x", "message": "agentic 不可用",
+        }
+        report = {"findings": [blocking_finding], "evaluations": _gates({})["evaluations"]}
+        out = matrix.build_matrix(["doc-a"], understand={"doc-a": u},
+                                  claims=_claims("doc-a", "total_gross"),
+                                  rejections=[], gate_report=report, vision_answers={})
+        assert all("GF-0001" in r["blocking_findings"] for r in out["rows"])
+        assert all(r["requires_adjudication"] for r in out["rows"])
 
 
 class TestStrength:

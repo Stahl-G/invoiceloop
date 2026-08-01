@@ -162,8 +162,12 @@ def render_crop(pdf_path: Path, page_no: int, rect: list[float], out_stem: Path)
          str(pdf_path), str(out_stem)],
         check=True, capture_output=True,
     )
-    produced = out_stem.parent / f"{out_stem.name}-{page_no}.png"
-    return produced.name, sha256_file(produced)
+    # pdftoppm 按文档总页数给序号补零(10 页以上输出 stem-03.png),
+    # 不猜文件名,按产物找
+    produced = sorted(out_stem.parent.glob(f"{out_stem.name}-*.png"))
+    if not produced:
+        return None
+    return produced[0].name, sha256_file(produced[0])
 
 
 # ------------------------------------------------------------------ 证据片段

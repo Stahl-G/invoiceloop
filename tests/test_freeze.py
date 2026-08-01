@@ -152,11 +152,25 @@ def test_ledger_carries_stable_content_hash(tiny_corpus):
     assert len(a["sha256"]) == 64
 
 
+def test_unknown_field_is_rejected_not_silently_dropped(tiny_corpus):
+    """DWS 会返回评估集外的字段,甚至幻觉字段名(实测 \x06)—— 显式拒。"""
+    result = freeze.freeze_drafts(
+        [
+            {"doc_id": "doc-a", "field": "currency", "value": "INV-42"},
+            {"doc_id": "doc-a", "field": "\x06", "value": "INV-42"},
+            {"doc_id": "doc-a", "field": "invoice_number", "value": "INV-42"},
+        ]
+    )
+    assert [c["field"] for c in result.claims] == ["invoice_number"]
+    assert [r["reason"] for r in result.rejections] == ["unknown_field", "unknown_field"]
+    assert result.events[0]["event"] == "draft_unknown_field_rejected"
+
+
 def test_missing_ocr_raises_not_silently_rejects(tiny_corpus):
     """宪章四:OCR 缺失是阻断,抛异常,不压成 False 藏进拒绝率。"""
     with pytest.raises(ocr.OcrUnavailable):
         freeze.binds_to_document("doc-ghost", "INV-42")
     with pytest.raises(ocr.OcrUnavailable):
         freeze.freeze_drafts(
-            [{"doc_id": "doc-ghost", "field": "f", "value": "v"}]
+            [{"doc_id": "doc-ghost", "field": "invoice_number", "value": "INV-42"}]
         )

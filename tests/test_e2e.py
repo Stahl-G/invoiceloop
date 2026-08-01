@@ -83,3 +83,15 @@ class TestDeliverableHonesty:
 
         monkeypatch.setattr(socket.socket, "connect", blocked)
         run(DOCS, two_runs[0].parent / "run-offline", render_crops=False)
+
+
+class TestCorruptInput:
+    def test_malformed_response_is_unavailable_not_a_crash(self, tmp_path, monkeypatch):
+        """存盘文件损坏 = 该文档不可用(门禁记阻断),不许带垮整批。"""
+        from invoiceloop.pipeline import _load
+
+        raw = tmp_path / "derisk" / "raw"
+        raw.mkdir(parents=True)
+        (raw / "doc-bad.understand.json").write_text("{not json", encoding="utf-8")
+        monkeypatch.setenv("INVOICELOOP_DWS_DERISK", str(tmp_path / "derisk"))
+        assert _load("doc-bad", "understand") is None

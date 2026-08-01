@@ -65,7 +65,18 @@ def build_matrix(
     for doc_id in doc_ids:
         u = understand.get(doc_id)
         evaluations = gate_report["evaluations"].get(doc_id, {})
-        disputed = label_convention_disputed(u.data) if u is not None else False
+        doc_claims = [c for c in claims if c["doc_id"] == doc_id]
+        # §4 判据的收紧(改判据,记录在案):三个值不仅要被 DWS 返回,
+        # 还必须已通过冻结绑定 —— 争议标注要落在能绑定到页面的证据上,
+        # 不能落在冻结事务刚拒掉的值上。判据本身(due≈net 且 ≠gross)不变。
+        admitted_amounts = {
+            c["field"] for c in doc_claims if c["drafted_by"] == "dws_understand"
+        }
+        disputed = (
+            u is not None
+            and {"total_net", "total_gross", "amount_due"} <= admitted_amounts
+            and label_convention_disputed(u.data)
+        )
 
         for field_name in FIELDS:
             slot = (doc_id, field_name)
@@ -135,9 +146,9 @@ def build_matrix(
             if gate_verdicts.get("citation_holds") == "unavailable" and emitted:
                 limitations.append("citation_not_checkable")
 
-            blocking = blocking_by_slot.get(slot, []) + (
-                blocking_by_doc.get(doc_id, []) if u is None else []
-            )
+            # 文档级阻断(响应缺失、门禁异常)属于这份文档的每一行 ——
+            # 基础设施没跑,这份文档上没有任何一行算"查过了"
+            blocking = blocking_by_slot.get(slot, []) + blocking_by_doc.get(doc_id, [])
             requires = (
                 strength == "unsupported"
                 or any(v == "fail" for v in gate_verdicts.values())

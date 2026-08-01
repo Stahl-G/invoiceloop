@@ -17,6 +17,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Iterable, Mapping, Sequence
 
+from .fields import FIELDS
 from .ocr import OcrUnavailable, doc_tokens, normalise_tokens
 
 __all__ = [
@@ -119,7 +120,31 @@ def freeze_drafts(
             )
             continue
 
-        # 第 2 步(b):空草稿无可绑定 —— 它不是"绑上了",显式拒
+        # 第 2 步(b):字段必须在评估集内 —— schema 能管的规则交给事务(宪章三)。
+        # DWS 会返回评估集外的字段,甚至幻觉出 \x06 这样的字段名(实测
+        # doc 026b4022);静默丢弃是藏缺口,进账本是污染,显式拒。
+        if field_name not in FIELDS:
+            result.rejections.append(
+                {
+                    "reason": "unknown_field",
+                    "doc_id": doc_id,
+                    "field": field_name,
+                    "value": value,
+                    "drafted_by": drafted_by,
+                }
+            )
+            result.events.append(
+                {
+                    "event": "draft_unknown_field_rejected",
+                    "doc_id": doc_id,
+                    "field": field_name,
+                    "drafted_by": drafted_by,
+                    "line_no": line_no,
+                }
+            )
+            continue
+
+        # 第 2 步(c):空草稿无可绑定 —— 它不是"绑上了",显式拒
         if value is None or not normalise_tokens(str(value)):
             result.rejections.append(
                 {
