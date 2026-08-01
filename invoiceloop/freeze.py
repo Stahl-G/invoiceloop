@@ -119,6 +119,28 @@ def freeze_drafts(
             )
             continue
 
+        # 第 2 步(b):空草稿无可绑定 —— 它不是"绑上了",显式拒
+        if value is None or not normalise_tokens(str(value)):
+            result.rejections.append(
+                {
+                    "reason": "empty_value",
+                    "doc_id": doc_id,
+                    "field": field_name,
+                    "value": value,
+                    "drafted_by": drafted_by,
+                }
+            )
+            result.events.append(
+                {
+                    "event": "draft_empty_value_rejected",
+                    "doc_id": doc_id,
+                    "field": field_name,
+                    "drafted_by": drafted_by,
+                    "line_no": line_no,
+                }
+            )
+            continue
+
         # 第 2 步(b):文档级绑定 —— 值必须出现在这份发票的独立 OCR 里
         coverage = token_coverage(str(value), doc_tokens(str(doc_id)))
         if coverage < BINDING_THRESHOLD:
@@ -146,12 +168,14 @@ def freeze_drafts(
             continue
 
         # 第 3 步:分配稳定 ID;随后记录值落在哪个已注册片段内(决定强度,不决定接纳)
+        # 片段匹配必须限在本 doc —— 别的发票的片段里有同样的字,不等于这个值有出处
         seq += 1
         claim_id = f"FC-{seq:04d}"
         containing = [
             span["span_id"]
             for span in spans
-            if binds_to_span(str(value), str(span.get("ocr_text", "")))
+            if span.get("doc_id") == doc_id
+            and binds_to_span(str(value), str(span.get("ocr_text", "")))
         ]
         result.claims.append(
             {

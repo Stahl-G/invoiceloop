@@ -113,14 +113,15 @@ def test_empty_value_cannot_bind(tiny_corpus):
         [{"doc_id": "doc-a", "field": "invoice_number", "value": "$,.:"}]
     )
     assert result.claims == []
-    assert result.rejections[0]["coverage"] == 0.0
+    assert result.rejections[0]["reason"] == "empty_value"
+    assert result.events[0]["event"] == "draft_empty_value_rejected"
 
 
 def test_span_containment_is_recorded_not_gating(tiny_corpus):
     """值落在哪个片段决定 support_strength;不落在任何片段也必须能入账。"""
     spans = [
-        {"span_id": "ES-0001", "ocr_text": "Total 100.00"},
-        {"span_id": "ES-0002", "ocr_text": "Gross Amt: 100.00"},
+        {"span_id": "ES-0001", "doc_id": "doc-a", "ocr_text": "Total 100.00"},
+        {"span_id": "ES-0002", "doc_id": "doc-a", "ocr_text": "Gross Amt: 100.00"},
     ]
     result = freeze.freeze_drafts(
         [
@@ -131,6 +132,16 @@ def test_span_containment_is_recorded_not_gating(tiny_corpus):
     )
     assert result.claims[0]["span_ids"] == ["ES-0001", "ES-0002"]
     assert result.claims[1]["span_ids"] == []  # 不在任何片段,仍入账
+
+
+def test_span_from_another_doc_never_counts(tiny_corpus):
+    """别的发票的片段里有同样的字,不等于这个值有出处 —— 片段匹配限本 doc。"""
+    spans = [{"span_id": "ES-0009", "doc_id": "doc-b", "ocr_text": "Total 100.00"}]
+    result = freeze.freeze_drafts(
+        [{"doc_id": "doc-a", "field": "total_gross", "value": "100.00"}],
+        spans=spans,
+    )
+    assert result.claims[0]["span_ids"] == []
 
 
 def test_ledger_carries_stable_content_hash(tiny_corpus):

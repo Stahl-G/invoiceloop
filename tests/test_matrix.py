@@ -1,0 +1,108 @@
+"""支持矩阵:四维、强度按层级数、口径争议运行时判据、分诊排序。"""
+
+from __future__ import annotations
+
+from invoiceloop import matrix
+from tests.conftest import make_response
+
+
+def _claims(doc, field, spans=(), by="dws_understand", value="100.00"):
+    return [{"claim_id": "FC-0001", "doc_id": doc, "field": field, "value": value,
+             "span_ids": list(spans), "drafted_by": by, "binding_coverage": 1.0}]
+
+
+def _gates(verdicts):
+    return {"findings": [], "evaluations": {"doc-a": {f: dict(verdicts) for f in
+            ("invoice_number", "issue_date", "due_date", "seller_name", "buyer_name",
+             "seller_vat_id", "total_net", "total_vat", "total_gross", "amount_due")}}}
+
+
+class TestApplicability:
+    DISPUTED = {"total_net": "8,500.00", "total_gross": "10,000.00", "amount_due": "8,500.00"}
+
+    def test_criterion_hits(self):
+        assert matrix.label_convention_disputed(self.DISPUTED)
+
+    def test_criterion_misses_when_due_is_gross(self):
+        assert not matrix.label_convention_disputed(
+            {**self.DISPUTED, "amount_due": "10,000.00"})
+
+    def test_criterion_misses_when_gross_equals_net(self):
+        assert not matrix.label_convention_disputed(
+            {"total_net": "100", "total_gross": "100", "amount_due": "100"})
+
+    def test_criterion_misses_when_values_missing(self):
+        assert not matrix.label_convention_disputed({"total_net": "100"})
+
+    def test_disputed_rows_marked_and_queued_not_errored(self):
+        u = make_response("doc-a", "understand", self.DISPUTED)
+        report = _gates({})
+        out = matrix.build_matrix(["doc-a"], understand={"doc-a": u}, claims=[],
+                                  rejections=[], gate_report=report, vision_answers={})
+        disputed = [r for r in out["rows"] if r["applicability"] == "label_convention_disputed"]
+        assert {r["field"] for r in disputed} == {"total_net", "total_gross", "amount_due"}
+        assert all(r["requires_adjudication"] for r in disputed)
+        assert out["summary"]["applicability_disputed"] == 3
+        # 宪章五:争议进人工裁决,summary 里没有任何"错误率"计数它
+        assert "errors" not in out["summary"]
+
+
+class TestStrength:
+    def _build(self, claims, verdicts, rejections=(), data=None):
+        u = make_response("doc-a", "understand", data or {"total_gross": "100.00"})
+        out = matrix.build_matrix(["doc-a"], understand={"doc-a": u}, claims=claims,
+                                  rejections=list(rejections), gate_report=_gates(verdicts),
+                                  vision_answers={})
+        return next(r for r in out["rows"] if r["field"] == "total_gross")
+
+    def test_corroborated_needs_two_independent_tiers(self):
+        row = self._build(
+            _claims("doc-a", "total_gross", spans=["ES-0001"]),
+            {"arithmetic_consistency": "pass"},
+        )
+        assert row["support_strength"] == "corroborated"
+        assert set(row["source_tiers"]) == {"dws_extraction", "independent_ocr", "arithmetic"}
+
+    def test_dws_plus_span_ocr_is_corroborated(self):
+        # 值落在引用区 = 独立 OCR 这一层在支持它,和 DWS 抽取合起来就是两层
+        row = self._build(_claims("doc-a", "total_gross", spans=["ES-0001"]), {})
+        assert row["support_strength"] == "corroborated"
+        assert set(row["source_tiers"]) == {"dws_extraction", "independent_ocr"}
+
+    def test_admitted_outside_any_span_is_single_source_not_rejected(self):
+        row = self._build(_claims("doc-a", "total_gross"), {})
+        assert row["support_strength"] == "single_source"
+        assert "value_not_in_cited_span" in row["limitations"]
+
+    def test_no_claim_is_unsupported(self):
+        row = self._build([], {"extraction_present": "fail"},
+                          data={"total_gross": None})
+        assert row["support_strength"] == "unsupported"
+        assert row["requires_adjudication"]
+
+    def test_rejected_draft_is_unsupported_and_visible(self):
+        row = self._build([], {"extraction_present": "pass"},
+                          rejections=[{"reason": "binding", "doc_id": "doc-a",
+                                       "field": "total_gross", "value": "9,999.00",
+                                       "drafted_by": "dws_understand", "coverage": 0.0}])
+        assert row["support_strength"] == "unsupported"
+        assert "draft_rejected_at_freeze" in row["limitations"]
+        assert row["rejections"][0]["value"] == "9,999.00"
+
+    def test_vision_offer_surfaced_when_dws_value_absent(self):
+        claims = _claims("doc-a", "total_gross", by="vision:Opus 5")
+        row = self._build(claims, {"extraction_present": "fail"},
+                          data={"total_gross": None})
+        assert any(x.startswith("vision_offers:Opus 5=") for x in row["limitations"])
+
+
+class TestTriage:
+    def test_rows_sorted_unsupported_first(self):
+        u = make_response("doc-a", "understand", {"total_gross": "100.00"})
+        claims = _claims("doc-a", "total_gross", spans=["ES-0001"])
+        verdicts = {"arithmetic_consistency": "pass"}
+        out = matrix.build_matrix(["doc-a"], understand={"doc-a": u}, claims=claims,
+                                  rejections=[], gate_report=_gates(verdicts), vision_answers={})
+        ranks = [{"unsupported": 0, "single_source": 1, "corroborated": 2}[r["support_strength"]]
+                 for r in out["rows"]]
+        assert ranks == sorted(ranks)
