@@ -22,9 +22,11 @@
 - **常见错**:说"因为它抽错了" —— 系统不做这个判断,追问"它怎么知道?"
 
 ### T2 —— "panel 上说 623 条草稿被拒。这个数字你怎么核实?"
-- **答案**:`grep -c draft_ runs/demo/event_log.jsonl` 分类数,或
-  `python3 -c "import json;print(sum(1 for l in open('runs/demo/event_log.jsonl') if 'draft_' in l and 'rejected' in l))"`
-  → 623。ledger 的 sha256 = claims 规范化序列化的内容哈希(内容寻址)。
+- **任务措辞(2026-08-02 验收修订)**:说"用一行命令从存盘证据**重算**",
+  不说"自己数出" —— 有被试读成逐条人工数,原话「这不可能」。
+- **答案**:`grep -c '"blocking": true' runs/demo/gate_report.json`(实测通过),
+  或 `jq`/`python` 数 findings。ledger 的 sha256 = claims 规范化序列化的
+  内容哈希(内容寻址)。
 - **通过**:数字对上 + 说出哈希是内容的函数(不是时间戳、不是随机)。
 
 ### T3 —— "系统在哪里明确表示自己不知道?举两类。"
