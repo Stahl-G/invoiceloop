@@ -39,6 +39,15 @@ def main() -> None:
     p_bun = sub.add_parser("bundle", help="打 audit_bundle.zip")
     p_bun.add_argument("--run", type=Path, required=True)
 
+    p_ho = sub.add_parser("heldout", help="留出集(docs/HELDOUT.md)")
+    ho_sub = p_ho.add_subparsers(dest="heldout_command", required=True)
+    p_hop = ho_sub.add_parser("plan", help="生成并落盘名单(先于任何调用)")
+    p_hop.add_argument("--workspace", type=Path, required=True)
+    p_hop.add_argument("--n", type=int, default=100)
+    p_hoe = ho_sub.add_parser("extract", help="按名单跑双模式,断点续跑,预算熔断")
+    p_hoe.add_argument("--workspace", type=Path, required=True)
+    p_hoe.add_argument("--budget", type=float, default=6000.0)
+
     args = parser.parse_args()
 
     if args.command == "run":
@@ -66,6 +75,13 @@ def main() -> None:
         from .adjudicate import build_audit_bundle
 
         print(build_audit_bundle(args.run))
+    elif args.command == "heldout":
+        from . import heldout
+
+        if args.heldout_command == "plan":
+            heldout.cmd_plan(args.workspace, args.n)
+        else:
+            heldout.cmd_extract(args.workspace, budget=args.budget)
 
 
 if __name__ == "__main__":
