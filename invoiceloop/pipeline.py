@@ -136,6 +136,11 @@ def run(
         )
         spans.extend(builder.build())
         graphs.append(evidence.build_claim_graph(doc_id))
+        if render_crops:
+            evidence.render_pages(
+                derisk_root() / "data" / "docile" / "pdfs" / f"{doc_id}.pdf",
+                out_dir / "pages",
+            )
     _write_json(out_dir / "evidence_span_registry.json", spans)
     _write_json(out_dir / "field_claim_graph.json", graphs)
     emit("evidence_registered", n_spans=len(spans))
@@ -173,6 +178,7 @@ def run(
         understand=understand, claims=result.claims, rejections=result.rejections,
         gate_report=gate_report, vision_answers=vision_answers,
         blocked_docs=frozenset(d for d in doc_ids if not ocr_ok[d]),
+        spans=spans,
     )
     _write_json(out_dir / "support_matrix.json", support)
     emit("matrix_built", **support["summary"])

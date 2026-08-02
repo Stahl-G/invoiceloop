@@ -66,6 +66,8 @@ class TestBundle:
             decision="accept", rationale="r", adjudicator="y", decided_at="t")
         (run_dir / "crops").mkdir()
         (run_dir / "crops" / "ES-0001-1.png").write_bytes(b"\x89PNG fake")
+        (run_dir / "pages").mkdir()
+        (run_dir / "pages" / "doc-a-1.png").write_bytes(b"\x89PNG page")
         bundle = adjudicate.build_audit_bundle(run_dir)
         with zipfile.ZipFile(bundle) as zf:
             names = set(zf.namelist())
@@ -73,6 +75,9 @@ class TestBundle:
             for required in adjudicate.REQUIRED_ARTIFACTS:
                 assert required in names
             assert "crops/ES-0001-1.png" in names
+            assert "pages/doc-a-1.png" in names
             manifest = zf.read("MANIFEST.sha256").decode()
             digest = hashlib.sha256(b"\x89PNG fake").hexdigest()
             assert f"{digest}  crops/ES-0001-1.png" in manifest
+            digest_p = hashlib.sha256(b"\x89PNG page").hexdigest()
+            assert f"{digest_p}  pages/doc-a-1.png" in manifest

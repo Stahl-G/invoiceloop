@@ -89,9 +89,10 @@ def build_audit_bundle(run_dir: Path) -> Path:
         raise FileNotFoundError(f"audit bundle 缺工件,阻断:{missing}")
 
     members: list[Path] = [run_dir / name for name in REQUIRED_ARTIFACTS]
-    crops_dir = run_dir / "crops"
-    if crops_dir.exists():
-        members.extend(sorted(crops_dir.glob("*.png")))
+    for asset_dir in ("crops", "pages"):
+        directory = run_dir / asset_dir
+        if directory.exists():
+            members.extend(sorted(directory.glob("*.png")))
 
     manifest_lines = []
     for path in members:

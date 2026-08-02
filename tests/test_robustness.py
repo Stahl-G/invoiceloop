@@ -142,12 +142,65 @@ class TestPanelEscapesHostileInput:
                   "page": 1, "bbox_rel": [0, 0, 0.1, 0.1], "ocr_text": evil,
                   "printed_label": evil, "source": "dws_source_bbox",
                   "crop": None, "crop_sha256": None}]
+        support["rows"][0]["cited_span_ids"] = ["ES-0001"]
         render_panel(tmp_path, support=support,
                      gate_report={"findings": [], "evaluations": {}},
                      spans=spans, ledger={"claims": [], "sha256": "x"}, artifact_digest="y")
         panel = (tmp_path / "support_panel.html").read_text(encoding="utf-8")
         assert "<script>alert" not in panel
-        assert panel.count("&lt;script&gt;") >= 3  # 值、限制、拒绝、OCR、标签五处都转义
+        # 值、限制、拒绝、片段 OCR、片段标签 —— 五处全部要转义
+        assert panel.count("&lt;script&gt;") >= 5
+
+
+class TestPanelShowsReviewEvidence:
+    """人类验收 T1 实测抓出的缺陷:被拒的行没有图,复核者看不懂。"""
+
+    def _render(self, tmp_path, row, spans, make_pages=False):
+        from invoiceloop.panel import render_panel
+
+        support = {
+            "summary": {"docs": 1, "slots": 1,
+                        "by_strength": {"unsupported": 1, "single_source": 0, "corroborated": 0},
+                        "requires_adjudication": 1, "applicability_disputed": 0,
+                        "blocking_findings": 0, "claims_admitted": 0, "drafts_rejected": 1,
+                        "rejected_by_drafter": {}},
+            "rows": [row],
+        }
+        if make_pages:
+            (tmp_path / "pages").mkdir(parents=True)
+            (tmp_path / "pages" / f"{row['doc_id']}-1.png").write_bytes(b"\x89PNG")
+        render_panel(tmp_path, support=support,
+                     gate_report={"findings": [], "evaluations": {}},
+                     spans=spans, ledger={"claims": [], "sha256": "x"}, artifact_digest="y")
+        return (tmp_path / "support_panel.html").read_text(encoding="utf-8")
+
+    REJECTED_ROW = {
+        "doc_id": "doc-a", "field": "amount_due", "value": "21,900.66", "claim_id": None,
+        "support_strength": "unsupported", "source_tiers": [],
+        "applicability": "matches", "limitations": ["draft_rejected_at_freeze"],
+        "requires_adjudication": True, "gate_verdicts": {}, "span_ids": [],
+        "cited_span_ids": ["ES-0003"],
+        "rejections": [{"reason": "binding", "doc_id": "doc-a", "field": "amount_due",
+                        "value": "21,900.66", "drafted_by": "dws_understand", "coverage": 0.33}],
+        "blocking_findings": [],
+    }
+    CITED_SPAN = [{"span_id": "ES-0003", "doc_id": "doc-a", "field": "amount_due",
+                   "page": 1, "bbox_rel": [0, 0, 0.1, 0.1], "ocr_text": "21,000.00",
+                   "printed_label": "TOTAL AMOUNT DUE", "source": "dws_source_bbox",
+                   "crop": "ES-0003-1.png", "crop_sha256": "x"}]
+
+    def test_rejected_row_shows_where_dws_pointed(self, tmp_path):
+        (tmp_path / "crops").mkdir()
+        (tmp_path / "crops" / "ES-0003-1.png").write_bytes(b"\x89PNG")
+        panel = self._render(tmp_path, self.REJECTED_ROW, self.CITED_SPAN)
+        assert "DWS 指向这里(复核用)" in panel
+        assert "crops/ES-0003-1.png" in panel
+        assert "21,000.00" in panel  # 引用区的独立 OCR,复核者要对照的就是它
+
+    def test_row_without_any_citation_gets_full_page_link(self, tmp_path):
+        row = {**self.REJECTED_ROW, "cited_span_ids": []}
+        panel = self._render(tmp_path, row, [], make_pages=True)
+        assert "看整页" in panel and f"pages/{row['doc_id']}-1.png" in panel
 
 
 @pytest.mark.skipif(not REAL_CORPUS, reason="存盘证据不在")

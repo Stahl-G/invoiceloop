@@ -170,6 +170,23 @@ def render_crop(pdf_path: Path, page_no: int, rect: list[float], out_stem: Path)
     return produced[0].name, sha256_file(produced[0])
 
 
+def render_pages(pdf_path: Path, out_dir: Path) -> list[str]:
+    """整页渲染(DWS 没给引用区时,复核者唯一的去处)。搬 vision_eval6.py::cmd_render。
+
+    返回文件名列表;渲染不了返回空列表(调用方不藏:没有引用又没有整页的行,
+    panel 上就是光秃秃的 —— 那是要人看见的形状)。
+    """
+    if not pdf_path.exists() or shutil.which("pdftoppm") is None:
+        return []
+    out_dir.mkdir(parents=True, exist_ok=True)
+    stem = out_dir / pdf_path.stem
+    subprocess.run(
+        ["pdftoppm", "-png", "-r", str(DPI), str(pdf_path), str(stem)],
+        check=True, capture_output=True,
+    )
+    return sorted(p.name for p in out_dir.glob(f"{pdf_path.stem}-*.png"))
+
+
 # ------------------------------------------------------------------ 证据片段
 
 @dataclass

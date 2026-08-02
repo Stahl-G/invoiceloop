@@ -61,6 +61,19 @@ def _chips(verdicts: dict) -> str:
     )
 
 
+def _span_html(span: dict, run_dir: Path) -> str:
+    crop = ""
+    if span.get("crop") and (run_dir / "crops" / span["crop"]).exists():
+        crop = (f'<a href="crops/{_esc(span["crop"])}" target="_blank">'
+                f'<img class="crop" src="crops/{_esc(span["crop"])}" loading="lazy" '
+                f'alt="{_esc(span["span_id"])}"></a>')
+    return (
+        f'<div class="span">{crop}<div class="span-meta">'
+        f'<b>{_esc(span["span_id"])}</b> p{span["page"]} · 标签:<i>{_esc(span["printed_label"])}</i><br>'
+        f'<span class="ocr">OCR: {_esc(span["ocr_text"][:160])}</span></div></div>'
+    )
+
+
 def _row_html(row: dict, spans_by_id: dict, run_dir: Path) -> str:
     strength = row["support_strength"]
     tiers = " ".join(
@@ -72,18 +85,25 @@ def _row_html(row: dict, spans_by_id: dict, run_dir: Path) -> str:
     )
     limitations = "".join(f"<li>{_esc(x)}</li>" for x in row["limitations"])
     evidence = []
-    for span_id in row["span_ids"]:
-        span = spans_by_id.get(span_id)
-        if not span:
-            continue
-        crop = ""
-        if span.get("crop") and (run_dir / "crops" / span["crop"]).exists():
-            crop = f'<a href="crops/{_esc(span["crop"])}" target="_blank"><img class="crop" src="crops/{_esc(span["crop"])}" loading="lazy" alt="{_esc(span_id)}"></a>'
-        evidence.append(
-            f'<div class="span">{crop}<div class="span-meta">'
-            f'<b>{_esc(span_id)}</b> p{span["page"]} · 标签:<i>{_esc(span["printed_label"])}</i><br>'
-            f'<span class="ocr">OCR: {_esc(span["ocr_text"][:160])}</span></div></div>'
-        )
+    containing = [spans_by_id[s] for s in row["span_ids"] if s in spans_by_id]
+    cited = [spans_by_id[s] for s in row.get("cited_span_ids", []) if s in spans_by_id]
+    cited_only = [s for s in cited if s["span_id"] not in set(row["span_ids"])]
+    if containing:
+        evidence.append('<div class="evlabel">值落在这里(印证):</div>')
+        evidence.extend(_span_html(s, run_dir) for s in containing)
+    if cited_only:
+        # 被拒/未落在引用区的行:这里才是复核者裁决"值到底在不在页上"的依据
+        evidence.append('<div class="evlabel">DWS 指向这里(复核用):</div>')
+        evidence.extend(_span_html(s, run_dir) for s in cited_only)
+    if not containing and not cited_only:
+        # 没有任何引用(DWS 没返回值时总是如此)—— 复核者需要整页自己找
+        pages = sorted((run_dir / "pages").glob(f"{row['doc_id']}-*.png")) \
+            if (run_dir / "pages").exists() else []
+        if pages:
+            links = " ".join(
+                f'<a href="pages/{p.name}" target="_blank">p{i + 1}</a>'
+                for i, p in enumerate(pages))
+            evidence.append(f'<div class="evlabel">无引用区,看整页:{links}</div>')
     rejected = ""
     if row["rejections"]:
         items = "".join(
@@ -165,6 +185,7 @@ ul.lim {{ margin:0; padding-left:1.1rem; color:var(--mute); font-size:.85em; }}
 .crop {{ max-width:340px; border:1px solid var(--line); }}
 .span-meta {{ font-size:.8em; color:#444; }}
 .ocr {{ color:var(--mute); }}
+.evlabel {{ font-size:.78em; font-weight:600; color:#555; margin-top:.4rem; }}
 .rejected {{ font-size:.8em; color:var(--bad); }} .rejected ul {{ margin:.1rem 0; padding-left:1.1rem; }}
 .blocking {{ font-size:.8em; color:var(--bad); font-weight:600; }}
 tr.blk td {{ background:#fdecea; }}

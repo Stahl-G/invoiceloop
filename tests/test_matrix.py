@@ -121,6 +121,23 @@ class TestStrength:
         assert "draft_rejected_at_freeze" in row["limitations"]
         assert row["rejections"][0]["value"] == "9,999.00"
 
+    def test_cited_spans_follow_the_field_not_the_claim(self):
+        """DWS 指向的片段按 (doc, field) 归行 —— 与值是否落在里面无关。
+
+        被拒的行没有声明,但复核者要看"DWS 指的地方 OCR 说了什么"(T1 实测)。
+        """
+        u = make_response("doc-a", "understand", {"total_gross": "9,999.00"})
+        spans = [{"span_id": "ES-0007", "doc_id": "doc-a", "field": "total_gross",
+                  "ocr_text": "100.00"}]
+        out = matrix.build_matrix(
+            ["doc-a"], understand={"doc-a": u}, claims=[],
+            rejections=[{"reason": "binding", "doc_id": "doc-a", "field": "total_gross",
+                         "value": "9,999.00", "drafted_by": "dws_understand", "coverage": 0.0}],
+            gate_report=_gates({}), vision_answers={}, spans=spans)
+        row = next(r for r in out["rows"] if r["field"] == "total_gross")
+        assert row["span_ids"] == []           # 值没落在任何片段(所以被拒)
+        assert row["cited_span_ids"] == ["ES-0007"]  # 但 DWS 指的位置仍在行上
+
     def test_vision_offer_surfaced_when_dws_value_absent(self):
         claims = _claims("doc-a", "total_gross", by="vision:Opus 5")
         row = self._build(claims, {"extraction_present": "fail"},

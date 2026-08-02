@@ -42,11 +42,16 @@ def build_matrix(
     gate_report: dict,
     vision_answers: dict,
     blocked_docs: frozenset[str] = frozenset(),
+    spans: list[dict] = (),
 ) -> dict:
     """从冻结账本 + 门禁报告 + 存盘证据组矩阵。纯函数,零 API,可重算。
 
     blocked_docs: 因 OCR 缺失被流水线整体阻断的文档 —— 行上必须有字,
     不然"这份没查"和"查了没支持"看起来一样(宪章四)。
+    spans: 已注册证据片段。行上带两份几何证据,用途不同:
+    span_ids(值落在哪,印证)与 cited_span_ids(DWS 指向哪,复核上下文)。
+    被拒的行没有声明、没有前者,但后者是人类裁决"值到底在不在页上"的依据 ——
+    没有它,被拒的行恰恰是最看不懂的行(人类验收 T1 实测)。
     """
     # 索引:claim / rejection 按 (doc, field, drafted_by)
     claims_by_slot: dict[tuple[str, str], list[dict]] = {}
@@ -65,6 +70,10 @@ def build_matrix(
             blocking_by_slot.setdefault((f["doc_id"], f["field"]), []).append(f)
         else:
             blocking_by_doc.setdefault(f["doc_id"], []).append(f)
+
+    cited_by_slot: dict[tuple[str, str], list[str]] = {}
+    for s in spans:
+        cited_by_slot.setdefault((s["doc_id"], s["field"]), []).append(s["span_id"])
 
     rows: list[dict] = []
     for doc_id in doc_ids:
@@ -176,6 +185,7 @@ def build_matrix(
                 "requires_adjudication": requires,
                 "gate_verdicts": gate_verdicts,
                 "span_ids": emitted["span_ids"] if emitted else [],
+                "cited_span_ids": cited_by_slot.get(slot, []),
                 "rejections": slot_rejections,
                 "blocking_findings": [f["finding_id"] for f in blocking],
             })
