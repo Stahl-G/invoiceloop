@@ -41,8 +41,13 @@ def build_matrix(
     rejections: list[dict],
     gate_report: dict,
     vision_answers: dict,
+    blocked_docs: frozenset[str] = frozenset(),
 ) -> dict:
-    """从冻结账本 + 门禁报告 + 存盘证据组矩阵。纯函数,零 API,可重算。"""
+    """从冻结账本 + 门禁报告 + 存盘证据组矩阵。纯函数,零 API,可重算。
+
+    blocked_docs: 因 OCR 缺失被流水线整体阻断的文档 —— 行上必须有字,
+    不然"这份没查"和"查了没支持"看起来一样(宪章四)。
+    """
     # 索引:claim / rejection 按 (doc, field, drafted_by)
     claims_by_slot: dict[tuple[str, str], list[dict]] = {}
     for c in claims:
@@ -143,6 +148,8 @@ def build_matrix(
 
             if gate_verdicts.get("visual_corroboration") == "unavailable":
                 limitations.append("visual_not_measured")
+            if doc_id in blocked_docs:
+                limitations.append("ocr_unavailable_pipeline_blocked")
             if gate_verdicts.get("citation_holds") == "unavailable" and emitted:
                 limitations.append("citation_not_checkable")
 

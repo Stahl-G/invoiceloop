@@ -13,7 +13,7 @@ import json
 from pathlib import Path
 
 from . import __version__, dws, evidence, freeze, gates, matrix
-from .ocr import derisk_root
+from .ocr import OcrUnavailable, derisk_root, load_ocr
 
 
 def _write_json(path: Path, payload) -> None:
@@ -110,12 +110,25 @@ def run(
     agentic = {d: _load(d, "agentic") for d in doc_ids}
     vision_answers = dws.load_vision_answers() if include_vision else {}
 
+    # 独立 OCR 缺失的文档:这份阻断,其余照常(宪章四)。不预查的话,
+    # freeze 的 OcrUnavailable 会把整批带死 —— 那是崩溃,不是阻断。
+    ocr_ok: dict[str, bool] = {}
+    for doc_id in doc_ids:
+        try:
+            load_ocr(doc_id)
+            ocr_ok[doc_id] = True
+        except OcrUnavailable:
+            ocr_ok[doc_id] = False
+            emit("doc_blocked", doc_id=doc_id, reason="ocr_unavailable", blocking=True)
+
     spans: list[dict] = []
     graphs: list[dict] = []
     for doc_id in doc_ids:
         u = understand[doc_id]
         if u is None:
             emit("response_unavailable", doc_id=doc_id, mode="understand")
+            continue
+        if not ocr_ok[doc_id]:
             continue
         builder = evidence.SpanBuilder(
             doc_id, u, crop_dir=(out_dir / "crops") if render_crops else None,
@@ -128,8 +141,14 @@ def run(
     emit("evidence_registered", n_spans=len(spans))
 
     # ---- ③ 冻结事务:草稿 → 绑定校验 → FC ID → 冻结账本
-    drafts = build_drafts(doc_ids, understand, agentic, vision_answers)
-    _write_json(out_dir / "field_drafts.json", drafts)
+    # field_drafts.json 记模型的全部产出(忠实);OCR 缺失文档的草稿不进冻结,
+    # 缺口由 doc_blocked 事件承担,不藏
+    drafts_all = build_drafts(doc_ids, understand, agentic, vision_answers)
+    _write_json(out_dir / "field_drafts.json", drafts_all)
+    drafts = [d for d in drafts_all if ocr_ok[d["doc_id"]]]
+    if len(drafts) != len(drafts_all):
+        emit("drafts_excluded", reason="ocr_unavailable",
+             count=len(drafts_all) - len(drafts))
     result = freeze.freeze_drafts(drafts, spans=spans)
     ledger = result.ledger()
     _write_json(out_dir / "field_ledger.json", ledger)
@@ -153,6 +172,7 @@ def run(
         doc_ids,
         understand=understand, claims=result.claims, rejections=result.rejections,
         gate_report=gate_report, vision_answers=vision_answers,
+        blocked_docs=frozenset(d for d in doc_ids if not ocr_ok[d]),
     )
     _write_json(out_dir / "support_matrix.json", support)
     emit("matrix_built", **support["summary"])
