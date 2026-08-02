@@ -57,12 +57,19 @@
 
 ## 里程碑
 
-见 `ARCHITECTURE.md` §11。**M0–M4 已全部落地**(2026-08-02):
+见 `ARCHITECTURE.md` §11。**M0–M4 已全部落地,并完成一轮验证**(2026-08-02):
 M2 冻结事务最先交付(唯一有实测证据能挡住真实故障的部分),随后 M0/M1 搬运、
 M3 矩阵 + panel、M4 裁决 + bundle。`python3 -m invoiceloop run --out runs/demo --crops`
-出完整 demo;`python3 -m pytest tests/` 95 条全绿,其中
+出完整 demo;`python3 -m pytest tests/` 116 条全绿,其中
 `test_binding_regression.py` 逐行复现第六轮错位事故的 454 行冻结判定,
-`test_port_fidelity.py` 与 dws-derisk 原始实现逐点对拍。
+`test_port_fidelity.py` 与 dws-derisk 原始实现逐点对拍,
+`test_triage_concentration.py` 实测本投影分诊集中度(4.10×)。
+
+**验证轮(`docs/VERIFICATION_2026-08-02.md`)**:留出集 100 份 H1–H6 全过
+(lift 3.04× > 1.5 线,§8 限定一退役,预测偏差照登);人类验收五任务通过
+(warm 版,抓出并修复"被拒行无复核证据"缺陷;不知情被试复测仍欠)。
+人类验收发现的东西优先信:被拒行的复核证据(cited_span_ids + 整页渲染)
+就是这么进来的。
 
 ## 提交习惯
 

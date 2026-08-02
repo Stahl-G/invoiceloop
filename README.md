@@ -26,8 +26,15 @@ BriefLoop 架构参考 v0.6.1 §3.6 支持充分性栈。该栈在 BriefLoop 中
 
 ## 状态
 
-M0–M4 全部落地。见 [ARCHITECTURE.md](ARCHITECTURE.md)(设计契约)与
-[GOAL.md](GOAL.md)(冲突时优化什么)。
+M0–M4 全部落地,且已经过一轮完整验证(2026-08-02,
+**总录:`docs/VERIFICATION_2026-08-02.md`**):
+
+- **留出集实验**:100 份未参与设计的文档,H1–H6 预注册判据全过
+  (分诊 lift 3.04× > 1.5 线)—— 分诊优于随机不再是校准集轶事,§8 限定一退役
+- **人类验收**:GOAL.md 证伪终点五任务通过(warm 版),抓出并修复一个
+  真实呈现缺陷;两条真人裁决入账,首个 audit bundle 打出
+- **测试 116 条全绿**:第六轮错位事故 454 行回归、对拍 dws-derisk 的搬运保真、
+  跨进程确定性 byte-compare、分诊集中度实测(本投影 4.10×,复现校准 4.2×)
 
 ```bash
 # 全流程:extract → freeze → gates → matrix → panel(零 API,只读存盘证据)
@@ -39,12 +46,21 @@ python3 -m invoiceloop adjudicate --run runs/demo --doc <doc_id> --field total_g
   --adjudicator <名字> --decided-at 2026-08-02T10:00:00
 python3 -m invoiceloop bundle --run runs/demo
 
-# 测试:第六轮错位事故 454 行回归 + 对拍 dws-derisk 原始实现的保真度 + e2e 确定性
+# 留出集(docs/HELDOUT.md;要花 DWS credits,判据已冻结)
+python3 -m invoiceloop heldout plan --workspace runs/heldout-workspace
+python3 -m invoiceloop heldout extract --workspace runs/heldout-workspace --budget 6000
+
+# 测试
 python3 -m pytest tests/
 ```
 
 打开 `runs/demo/support_panel.html` —— 静态、离线、无需服务。
-复核队列按支持强度升序:队首就是系统明确表示自己不知道的地方。
+复核队列按支持强度升序:队首就是系统明确表示自己不知道的地方;
+被拒的行带「DWS 指向这里」的裁剪图与独立 OCR,无引用区的行带整页图。
+
+文档:`ARCHITECTURE.md`(设计契约)/ `GOAL.md`(冲突时优化什么)/
+`docs/VERIFICATION_2026-08-02.md`(验证轮总录)/ `docs/HELDOUT.md`(留出集协议与结果)/
+`docs/TESTING.md` + `docs/TESTING_FACILITATOR.md`(人类验收协议与主持包)。
 
 校准语料与六轮实验证据:`~/Developer/dws-derisk/`(`REPORT.md` / `THRESHOLDS.md`)。
 本仓库引用的每个数字都可从该仓库零 API 重算。
