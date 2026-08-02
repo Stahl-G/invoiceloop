@@ -28,8 +28,30 @@ def derisk_root() -> Path:
     return Path(os.environ.get("INVOICELOOP_DWS_DERISK", "~/Developer/dws-derisk")).expanduser()
 
 
+def layout(root: Path | None = None) -> str:
+    """根目录的摆放契约(§12 决定 3 的输入契约):
+
+    - ``"derisk"``:校准档案 —— raw/ + data/docile/{ocr,pdfs,annotations}
+    - ``"workspace"``:用户工作区 —— raw/ + ocr/ + input/pdfs/
+      (有 input/pdfs 目录即视为工作区;held-out 工作区带 data/ 符号链接,
+      仍按 derisk 布局解析,不受影响)
+    """
+    root = root or derisk_root()
+    return "workspace" if (root / "input" / "pdfs").is_dir() else "derisk"
+
+
 def ocr_path(doc_id: str) -> Path:
-    return derisk_root() / "data" / "docile" / "ocr" / f"{doc_id}.json"
+    root = derisk_root()
+    if layout(root) == "workspace":
+        return root / "ocr" / f"{doc_id}.json"
+    return root / "data" / "docile" / "ocr" / f"{doc_id}.json"
+
+
+def pdf_path(doc_id: str) -> Path:
+    root = derisk_root()
+    if layout(root) == "workspace":
+        return root / "input" / "pdfs" / f"{doc_id}.pdf"
+    return root / "data" / "docile" / "pdfs" / f"{doc_id}.pdf"
 
 
 def raw_dir() -> Path:

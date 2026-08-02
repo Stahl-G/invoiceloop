@@ -22,7 +22,7 @@ from typing import Iterable
 
 from .dws import MODES, StoredResponse
 from .fields import FIELDS
-from .ocr import derisk_root, iter_words
+from .ocr import iter_words, pdf_path
 
 #: 引用区很紧,允许带上邻近 token(与 round3.citation_holds 同一 padding)。
 REGION_PAD = 0.03
@@ -203,7 +203,7 @@ class SpanBuilder:
     spans: list[dict] = field(default_factory=list)
 
     def build(self) -> list[dict]:
-        pdf = derisk_root() / "data" / "docile" / "pdfs" / f"{self.doc_id}.pdf"
+        pdf = pdf_path(self.doc_id)
         seq = self.start_seq
         for field_name in FIELDS:
             meta = self.response.meta.get(field_name)

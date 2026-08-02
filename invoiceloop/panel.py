@@ -135,8 +135,13 @@ def render_panel(
     spans: list[dict],
     ledger: dict,
     artifact_digest: str,
+    out_of_calibration: bool = False,
 ) -> Path:
-    """从 run 目录的冻结工件渲染 panel。只读工件,不重算任何门禁。"""
+    """从 run 目录的冻结工件渲染 panel。只读工件,不重算任何门禁。
+
+    out_of_calibration:输入契约(§12.3)—— 非校准集文档必须声明
+    "校准数字不直接适用",不声明就是把校准的信心偷渡给没测过的分布。
+    """
     run_dir = Path(run_dir)
     spans_by_id = {s["span_id"]: s for s in spans}
     s = support["summary"]
@@ -157,6 +162,13 @@ def render_panel(
     )
     qualifiers = "".join(f"<li>{_esc(q)}</li>" for q in _QUALIFIERS)
     non_claims = "".join(f"<li>{_esc(c)}</li>" for c in _NON_CLAIMS)
+    ooc_banner = (
+        '<div class="caveats"><b>输入不在校准集内(§12 输入契约)。</b>'
+        "这些文档未参与任何校准与留出验证:panel 上的校准数字(4.2×、78%)"
+        "不直接适用于它们(§8 限定三)。逐文档的机械核对 —— 绑定、门禁、"
+        "冻结、裁决 —— 不需要校准,照常成立。</div>"
+        if out_of_calibration else ""
+    )
 
     page = f"""<!DOCTYPE html>
 <html lang="zh"><head><meta charset="utf-8">
@@ -197,6 +209,7 @@ tr.blk td {{ background:#fdecea; }}
 本 panel 交付的是每个字段可机械验证的支持关系:证据片段、来源层级、六个门禁裁决、
 以及哪里说不准。它<b>不</b>说「这个值是对的」。复核队列按支持强度升序 ——
 排在最前的就是系统明确表示自己不知道、或证据互相打架的地方。</div>
+{ooc_banner}
 
 <h2>这是什么、不主张什么</h2>
 <ul>{non_claims}</ul>

@@ -40,6 +40,10 @@ M0–M4 全部落地,且已经过一轮完整验证(2026-08-02,
 # 全流程:extract → freeze → gates → matrix → panel(零 API,只读存盘证据)
 python3 -m invoiceloop run --out runs/demo --crops
 
+# 输入契约(§12):自己的发票 —— PDF 丢进 workspace/input/pdfs/
+python3 -m invoiceloop ingest --workspace ws/    # 本地独立 OCR + DWS 抽取(需 DWS_API_KEY)
+python3 -m invoiceloop run --workspace ws/ --crops   # 产出在 ws/output,panel 标注「不在校准集内」
+
 # 人工裁决(append-only,不改冻结输入)与交付(含逐文件 sha256 清单)
 python3 -m invoiceloop adjudicate --run runs/demo --doc <doc_id> --field total_gross \
   --claim-id FC-0042 --decision accept --rationale "证据齐" \

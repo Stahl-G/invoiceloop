@@ -21,9 +21,16 @@ def main() -> None:
     p_run = sub.add_parser("run", help="extract → freeze → gates → matrix → panel")
     p_run.add_argument("--docs", type=int, default=None, help="只跑前 N 份(默认全部存盘文档)")
     p_run.add_argument("--doc-ids", nargs="*", default=None, help="指定 doc_id 列表")
-    p_run.add_argument("--out", type=Path, required=True, help="run 目录")
+    p_run.add_argument("--out", type=Path, default=None, help="run 目录(--workspace 时不用)")
+    p_run.add_argument("--workspace", type=Path, default=None,
+                       help="输入契约工作区:读 ws/raw + ws/ocr + ws/input/pdfs,写到 ws/output")
     p_run.add_argument("--crops", action="store_true", help="渲染证据裁剪图(需 poppler + PDF 语料)")
     p_run.add_argument("--no-vision", action="store_true", help="不并入第六轮读图作答")
+
+    p_ing = sub.add_parser("ingest", help="输入契约:input/pdfs → ocr/ + raw/")
+    p_ing.add_argument("--workspace", type=Path, required=True)
+    p_ing.add_argument("--no-ocr", action="store_true", help="跳过本地独立 OCR")
+    p_ing.add_argument("--no-extract", action="store_true", help="跳过 DWS 抽取(先只产 OCR)")
 
     p_adj = sub.add_parser("adjudicate", help="追加人工裁决")
     p_adj.add_argument("--run", type=Path, required=True)
@@ -51,16 +58,36 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command == "run":
+        import os
+
         from .pipeline import run
 
-        doc_ids = args.doc_ids or dws.stored_docs()
+        out_of_calibration = False
+        if args.workspace is not None:
+            # 输入契约:整个工作区就是根目录,产出固定落 ws/output,
+            # panel 必须声明"不在校准集内"(§12.3)
+            os.environ["INVOICELOOP_DWS_DERISK"] = str(args.workspace)
+            out_dir = args.workspace / "output"
+            out_of_calibration = True
+            doc_ids = args.doc_ids or dws.stored_docs()
+        else:
+            if args.out is None:
+                parser.error("run 需要 --out 或 --workspace")
+            out_dir = args.out
+            doc_ids = args.doc_ids or dws.stored_docs()
         if args.docs is not None:
             doc_ids = doc_ids[: args.docs]
-        paths = run(doc_ids, args.out, render_crops=args.crops,
-                    include_vision=not args.no_vision)
+        paths = run(doc_ids, out_dir, render_crops=args.crops,
+                    include_vision=not args.no_vision,
+                    out_of_calibration=out_of_calibration)
         summary = json.loads(paths["matrix"].read_text(encoding="utf-8"))["summary"]
         print(json.dumps({"run_dir": str(paths["run_dir"]), "summary": summary},
                          ensure_ascii=False, indent=1))
+    elif args.command == "ingest":
+        from .ingest import cmd_ingest
+
+        cmd_ingest(args.workspace, do_ocr=not args.no_ocr,
+                   do_extract=not args.no_extract)
     elif args.command == "adjudicate":
         from .adjudicate import append_adjudication
 

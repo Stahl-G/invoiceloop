@@ -13,7 +13,7 @@ import json
 from pathlib import Path
 
 from . import __version__, dws, evidence, freeze, gates, matrix
-from .ocr import OcrUnavailable, derisk_root, load_ocr
+from .ocr import OcrUnavailable, derisk_root, layout, load_ocr, pdf_path
 
 
 def _write_json(path: Path, payload) -> None:
@@ -79,8 +79,13 @@ def run(
     *,
     render_crops: bool = False,
     include_vision: bool = True,
+    out_of_calibration: bool = False,
 ) -> dict:
-    """跑全流程,返回各工件路径。render_crops 需要 poppler 与 PDF 语料。"""
+    """跑全流程,返回各工件路径。render_crops 需要 poppler 与 PDF 语料。
+
+    out_of_calibration:工作区(非校准集)输入时为真,panel 顶部必须
+    声明校准数字不直接适用(§12 输入契约)。
+    """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     doc_ids = sorted(doc_ids)
@@ -96,6 +101,8 @@ def run(
         "n_docs": len(doc_ids),
         "render_crops": render_crops,
         "include_vision": include_vision,
+        "out_of_calibration": out_of_calibration,
+        "layout": layout(),
         "derisk_root": str(derisk_root()),
     })
     emit("run_started", n_docs=len(doc_ids))
@@ -137,10 +144,7 @@ def run(
         spans.extend(builder.build())
         graphs.append(evidence.build_claim_graph(doc_id))
         if render_crops:
-            evidence.render_pages(
-                derisk_root() / "data" / "docile" / "pdfs" / f"{doc_id}.pdf",
-                out_dir / "pages",
-            )
+            evidence.render_pages(pdf_path(doc_id), out_dir / "pages")
     _write_json(out_dir / "evidence_span_registry.json", spans)
     _write_json(out_dir / "field_claim_graph.json", graphs)
     emit("evidence_registered", n_spans=len(spans))
@@ -185,7 +189,8 @@ def run(
 
     from .panel import render_panel
     render_panel(out_dir, support=support, gate_report=gate_report, spans=spans,
-                 ledger=ledger, artifact_digest=artifact_digest)
+                 ledger=ledger, artifact_digest=artifact_digest,
+                 out_of_calibration=out_of_calibration)
     emit("panel_rendered")
 
     (out_dir / "event_log.jsonl").write_text(
