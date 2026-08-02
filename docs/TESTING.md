@@ -5,6 +5,9 @@ GOAL.md 说完成是可证伪的:一个**不了解内情的复核者**能回答�
 (同事、另一个模型、三个月后的自己)。材料只有 `runs/demo/` 目录
 (先 `python3 -m invoiceloop run --out runs/demo --crops` 生成)。
 
+> **主持用 `docs/TESTING_FACILITATOR.md`**(含具体锚点文档、答案 key、
+> 记录表)。本文件是原则;那份是拿来就用的执行包。
+
 ## 纪律
 
 - 被试**不许问构建者**。答案必须来自工件本身。问了一次 = 该任务失败。
