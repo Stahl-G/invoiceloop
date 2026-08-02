@@ -50,9 +50,9 @@ class TestDeliverableHonesty:
 
     def test_panel_carries_all_three_qualifiers(self, two_runs):
         panel = (two_runs[0] / "support_panel.html").read_text(encoding="utf-8")
-        assert "留出集确认从未执行" in panel
+        assert "带乐观偏差" in panel and "留出集确认已于" in panel
         assert "8 例是标注错" in panel
-        assert "分布外表现未知" in panel
+        assert "DocILE 之外的表现仍未知" in panel
 
     def test_every_blocking_finding_has_a_repair_route(self, two_runs):
         report = json.loads((two_runs[0] / "gate_report.json").read_text(encoding="utf-8"))
