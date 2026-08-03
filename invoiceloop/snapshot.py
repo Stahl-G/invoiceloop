@@ -32,10 +32,16 @@ def _sha_or_none(path: Path) -> str | None:
     return sha256_file(path) if path.exists() else None
 
 
-def build_input_manifest(doc_ids: list[str]) -> dict:
+def build_input_manifest(doc_ids: list[str], *, include_vision: bool = True) -> dict:
     """这批输入的内容清单 + 指纹。缺的成分记 null,不阻断
-    (缺 DWS 响应是 extraction_present 门禁的事,不是清单的事)。"""
-    from .dws import MODES, response_path
+    (缺 DWS 响应是 extraction_present 门禁的事,不是清单的事)。
+
+    include_vision:读图作答(vision/answers6.*.tsv)也进草稿,必须进指纹 —
+    否则改了读图答案,重放会错误地返回旧 run。--no-vision 的 run 不消费
+    它们,指纹也不含(改了不影响该 run 的输入)。
+    """
+    from .dws import MODES, VISION_READERS, response_path
+    from .ocr import derisk_root
 
     docs = []
     for doc_id in sorted(doc_ids):
@@ -46,6 +52,12 @@ def build_input_manifest(doc_ids: list[str]) -> dict:
             "raw_sha256": {mode: _sha_or_none(response_path(doc_id, mode))
                            for mode in MODES},
         })
+    vision_sha256 = None
+    if include_vision:
+        vision_sha256 = {
+            tag: _sha_or_none(derisk_root() / "vision" / f"answers6.{tag}.tsv")
+            for tag in sorted(VISION_READERS)
+        }
     # schema 只有产品路径(workspace)知道:ingest 用本包的 extraction_schema;
     # derisk 存盘响应是校准仓库抽的,schema 不在本仓库手里,诚实记 null
     schema_sha256 = None
@@ -55,7 +67,8 @@ def build_input_manifest(doc_ids: list[str]) -> dict:
         schema_sha256 = hashlib.sha256(
             json.dumps(extraction_schema(), sort_keys=True).encode()
         ).hexdigest()
-    manifest = {"layout": layout(), "schema_sha256": schema_sha256, "docs": docs}
+    manifest = {"layout": layout(), "schema_sha256": schema_sha256,
+                "vision_sha256": vision_sha256, "docs": docs}
     canonical = json.dumps(manifest, sort_keys=True, ensure_ascii=False).encode()
     manifest["fingerprint"] = hashlib.sha256(canonical).hexdigest()
     return manifest

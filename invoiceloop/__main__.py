@@ -91,7 +91,8 @@ def main() -> None:
             doc_ids = args.doc_ids or dws.stored_docs()
             if not doc_ids:
                 parser.error(f"{args.workspace}/raw 里没有存盘响应 —— 先跑 ingest")
-            fingerprint = snapshot.build_input_manifest(doc_ids)["fingerprint"]
+            fingerprint = snapshot.build_input_manifest(
+                doc_ids, include_vision=not args.no_vision)["fingerprint"]
             runs_dir = args.workspace / "runs"
             if not args.new_run:
                 replayed = snapshot.find_run_by_fingerprint(runs_dir, fingerprint)

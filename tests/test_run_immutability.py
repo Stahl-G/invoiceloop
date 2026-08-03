@@ -109,6 +109,20 @@ class TestIdentityArtifacts:
         fp2 = build_input_manifest([DOC])["fingerprint"]
         assert fp1 != fp2, "输入变了指纹必须变 —— 这是开新 run 的依据"
 
+    def test_fingerprint_covers_vision_answers_only_when_consumed(self, workspace):
+        vision = workspace / "vision"
+        fp_before = build_input_manifest([DOC], include_vision=True)["fingerprint"]
+        vision.mkdir()
+        (vision / "answers6.A.tsv").write_text(
+            "doc\tfield\tvalue\nacme-001\ttotal_gross\t100.00\n", encoding="utf-8")
+        fp_after = build_input_manifest([DOC], include_vision=True)["fingerprint"]
+        assert fp_before != fp_after, "读图作答进草稿,必须进指纹,否则重放会返回旧 run"
+        fp_nv1 = build_input_manifest([DOC], include_vision=False)["fingerprint"]
+        (vision / "answers6.A.tsv").write_text("doc\tfield\tvalue\nx\ty\tz\n",
+                                               encoding="utf-8")
+        fp_nv2 = build_input_manifest([DOC], include_vision=False)["fingerprint"]
+        assert fp_nv1 == fp_nv2, "--no-vision 的 run 不消费读图,指纹不含"
+
 
 class TestWorkspaceGenerations:
     def _cli(self, monkeypatch, capsys, *argv: str) -> dict:

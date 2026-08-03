@@ -92,7 +92,8 @@ def _overlay_html(slot: dict | None) -> str:
         return ('<div class="human conflict"><b>裁决链冲突:</b>'
                 '多条 tip —— 先人工整理 adjudication_ledger.jsonl,系统不猜哪条算数</div>')
     tip = slot["tip"]
-    label = _DECISION_LABEL.get(tip["decision"], tip["decision"])
+    # label 也要转义:v1/手编账本的 decision 字段没经过枚举校验,不能信
+    label = _esc(_DECISION_LABEL.get(tip["decision"], tip["decision"]))
     corrected = (f' → “{_esc(tip["corrected_value"])}”'
                  if tip["decision"] == "correct" else "")
     supersedes = (f' · 取代 {_esc(tip["supersedes_decision_id"])}'

@@ -105,7 +105,7 @@ def run(
         "layout": layout(),
         "derisk_root": str(derisk_root()),
     })
-    input_manifest = snapshot.build_input_manifest(doc_ids)
+    input_manifest = snapshot.build_input_manifest(doc_ids, include_vision=include_vision)
     _write_json(out_dir / "input_manifest.json", input_manifest)
     emit("run_started", n_docs=len(doc_ids), fingerprint=input_manifest["fingerprint"])
 
