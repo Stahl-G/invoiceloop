@@ -27,6 +27,8 @@ def main() -> None:
                        help="输入契约工作区:读 ws/raw + ws/ocr + ws/input/pdfs,写到 ws/output")
     p_run.add_argument("--crops", action="store_true", help="渲染证据裁剪图(需 poppler + PDF 语料)")
     p_run.add_argument("--no-vision", action="store_true", help="不并入第六轮读图作答")
+    p_run.add_argument("--new-run", action="store_true",
+                       help="输入未变也开新 run(默认重放同指纹的既有 run;旧 run 永远原样保留)")
 
     p_ing = sub.add_parser("ingest", help="输入契约:input/pdfs → ocr/ + raw/")
     p_ing.add_argument("--workspace", type=Path, required=True)
@@ -67,26 +69,49 @@ def main() -> None:
     if args.command == "run":
         import os
 
+        from . import snapshot
         from .pipeline import run
 
         out_of_calibration = False
+        replayed = None
         if args.workspace is not None:
-            # 输入契约:整个工作区就是根目录,产出固定落 ws/output,
-            # panel 必须声明"不在校准集内"(§12.3)
+            # 输入契约:整个工作区就是根目录,产出落 ws/runs/run-NNNN(不可变,
+            # 逐代递增),panel 必须声明"不在校准集内"(§12.3)
             os.environ["INVOICELOOP_DWS_DERISK"] = str(args.workspace)
-            out_dir = args.workspace / "output"
             out_of_calibration = True
             doc_ids = args.doc_ids or dws.stored_docs()
+            if not doc_ids:
+                parser.error(f"{args.workspace}/raw 里没有存盘响应 —— 先跑 ingest")
+            fingerprint = snapshot.build_input_manifest(doc_ids)["fingerprint"]
+            runs_dir = args.workspace / "runs"
+            if not args.new_run:
+                replayed = snapshot.find_run_by_fingerprint(runs_dir, fingerprint)
+            out_dir = snapshot.allocate_run_dir(runs_dir)
         else:
             if args.out is None:
                 parser.error("run 需要 --out 或 --workspace")
             out_dir = args.out
             doc_ids = args.doc_ids or dws.stored_docs()
+            if not doc_ids:
+                parser.error("存盘证据里没有文档 —— 检查 INVOICELOOP_DWS_DERISK 指向")
+        if replayed is not None:
+            print(json.dumps({
+                "replayed": True,
+                "run_dir": str(replayed),
+                "note": "输入指纹与既有 run 一致,重放不重跑;"
+                        "输入变化或 --new-run 才开新 run(旧 run 永远原样保留)",
+            }, ensure_ascii=False, indent=1))
+            return
         if args.docs is not None:
             doc_ids = doc_ids[: args.docs]
         paths = run(doc_ids, out_dir, render_crops=args.crops,
                     include_vision=not args.no_vision,
                     out_of_calibration=out_of_calibration)
+        if args.workspace is not None:
+            # current.json 只是可重建指针,权威是各 run 目录自己
+            (args.workspace / "runs" / "current.json").write_text(
+                json.dumps({"run": paths["run_dir"].name}, ensure_ascii=False) + "\n",
+                encoding="utf-8")
         summary = json.loads(paths["matrix"].read_text(encoding="utf-8"))["summary"]
         print(json.dumps({"run_dir": str(paths["run_dir"]), "summary": summary},
                          ensure_ascii=False, indent=1))

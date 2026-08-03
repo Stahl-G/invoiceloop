@@ -5,7 +5,8 @@ workspace/
   input/pdfs/   ← 把发票丢这里(文件名即文档身份,见 sanitise_doc_id)
   ocr/          ← 独立 OCR(本地产,文字层或 tesseract)
   raw/          ← DWS 响应落这里(先存盘后解释)
-  output/       ← run --workspace 的产出(panel、矩阵、bundle)
+  runs/run-NNNN ← run --workspace 的产出:不可变,逐代递增;
+  runs/current.json   最新一代的指针(可重建,不是权威)
 ```
 
 两条命令:`python3 -m invoiceloop ingest --workspace ws/`(本文)

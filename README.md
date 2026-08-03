@@ -57,7 +57,8 @@ python3 -m invoiceloop run --out runs/demo --crops
 
 # 输入契约(§12):自己的发票 —— PDF 丢进 workspace/input/pdfs/
 python3 -m invoiceloop ingest --workspace ws/    # 本地独立 OCR + DWS 抽取(需 DWS_API_KEY)
-python3 -m invoiceloop run --workspace ws/ --crops   # 产出在 ws/output,panel 标注「不在校准集内」
+python3 -m invoiceloop run --workspace ws/ --crops   # 产出在 ws/runs/run-NNNN(不可变,panel 标注「不在校准集内」)
+# 同一份输入再跑 = 重放既有 run;输入变了自动开新代;--new-run 强制新代。旧 run 永远原样保留。
 
 # 人工裁决(append-only,不改冻结输入)与交付(含逐文件 sha256 清单)
 python3 -m invoiceloop adjudicate --run runs/demo --doc <doc_id> --field total_gross \

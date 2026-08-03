@@ -12,8 +12,13 @@ import hashlib
 import json
 from pathlib import Path
 
-from . import __version__, dws, evidence, freeze, gates, matrix
+from . import __version__, dws, evidence, freeze, gates, matrix, snapshot
 from .ocr import OcrUnavailable, derisk_root, layout, load_ocr, pdf_path
+
+
+class RunExistsError(RuntimeError):
+    """输出目录非空 —— 运行不可变。没有 --force,也不许建议删裁决账本:
+    销毁历史不是显式 Human decision。"""
 
 
 def _write_json(path: Path, payload) -> None:
@@ -87,6 +92,11 @@ def run(
     声明校准数字不直接适用(§12 输入契约)。
     """
     out_dir = Path(out_dir)
+    if out_dir.exists() and any(out_dir.iterdir()):
+        raise RunExistsError(
+            f"运行目录 {out_dir} 已存在且非空 —— 运行不可变,没有 --force。"
+            f"--out 请换一个目录;--workspace 会自动分配 runs/run-NNNN"
+        )
     out_dir.mkdir(parents=True, exist_ok=True)
     doc_ids = sorted(doc_ids)
     events: list[dict] = []
@@ -94,7 +104,7 @@ def run(
     def emit(event: str, **detail) -> None:
         events.append({"seq": len(events) + 1, "event": event, **detail})
 
-    # ---- ① 运行状态
+    # ---- ① 运行状态 + 输入指纹(重放与新 run 代数的依据)
     _write_json(out_dir / "run_manifest.json", {
         "invoiceloop_version": __version__,
         "docs": doc_ids,
@@ -105,7 +115,9 @@ def run(
         "layout": layout(),
         "derisk_root": str(derisk_root()),
     })
-    emit("run_started", n_docs=len(doc_ids))
+    input_manifest = snapshot.build_input_manifest(doc_ids)
+    _write_json(out_dir / "input_manifest.json", input_manifest)
+    emit("run_started", n_docs=len(doc_ids), fingerprint=input_manifest["fingerprint"])
 
     # ---- ② 抽取事务:工件注册 + 证据片段 + 声明图
     artifacts = evidence.register_artifacts(doc_ids)
@@ -176,6 +188,11 @@ def run(
          findings=len(gate_report["findings"]),
          blocking=sum(1 for f in gate_report["findings"] if f["blocking"]))
 
+    # ---- ④b 复核快照:人工裁决绑定的完整身份(不只是账本)
+    review_snapshot = snapshot.compute_review_snapshot(out_dir)
+    _write_json(out_dir / "review_snapshot.json", review_snapshot)
+    emit("review_snapshot", review_snapshot_id=review_snapshot["review_snapshot_id"])
+
     # ---- ⑤ 支持矩阵 + panel
     support = matrix.build_matrix(
         doc_ids,
@@ -200,6 +217,8 @@ def run(
     return {
         "run_dir": out_dir,
         "manifest": out_dir / "run_manifest.json",
+        "input_manifest": out_dir / "input_manifest.json",
+        "review_snapshot": out_dir / "review_snapshot.json",
         "artifacts": out_dir / "artifact_registry.json",
         "spans": out_dir / "evidence_span_registry.json",
         "ledger": out_dir / "field_ledger.json",

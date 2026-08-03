@@ -17,9 +17,10 @@ from invoiceloop.pipeline import run
 
 DOCS = ["046e0c4924044de09f6d9e7b", "00134dd365a24343b35b78c6", "00136a27c7774c1e8dc6b2f2"]
 ARTIFACTS = [
-    "run_manifest.json", "artifact_registry.json", "evidence_span_registry.json",
-    "field_claim_graph.json", "field_drafts.json", "field_ledger.json",
-    "gate_report.json", "support_matrix.json", "support_panel.html", "event_log.jsonl",
+    "run_manifest.json", "input_manifest.json", "artifact_registry.json",
+    "evidence_span_registry.json", "field_claim_graph.json", "field_drafts.json",
+    "field_ledger.json", "gate_report.json", "review_snapshot.json",
+    "support_matrix.json", "support_panel.html", "event_log.jsonl",
 ]
 
 pytestmark = pytest.mark.skipif(
