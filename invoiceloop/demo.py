@@ -36,9 +36,14 @@ def cmd_demo(out: Path) -> None:
     prev = {k: os.environ.get(k) for k in ("INVOICELOOP_CORPUS", "INVOICELOOP_DWS_DERISK")}
     os.environ["INVOICELOOP_CORPUS"] = str(out)
     try:
-        from . import dws
+        from . import dws, ocr as ocr_mod
         from .ingest import cmd_ingest
         from .pipeline import run
+
+        # lru_cache 按 doc_id 记:同进程里别的语料先跑过的话,
+        # 同名文档会拿到旧语料的 OCR(长驻进程缓存污染,同复核 #6 一类)
+        ocr_mod.load_ocr.cache_clear()
+        ocr_mod.doc_tokens.cache_clear()
 
         summary = cmd_ingest(out, do_ocr=True, do_extract=False)
         doc_ids = dws.stored_docs()
