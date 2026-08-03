@@ -76,6 +76,11 @@ python3 -m invoiceloop workbench --workspace ws/   # http://127.0.0.1:8765,仅�
 # 上传 PDF → ingest → 复核队列(任务行+证据裁剪图+OCR+标签,默认摊开)→ 裁决(自动带 supersession)
 # → 交付报告(复核完成度+修正清单+残余风险声明)→ 打 bundle / 离线 verify
 
+# 读图(可选):整页渲染 → 读图模型作答 → 复核队列出现「读图建议」预填块
+python3 -m invoiceloop vision --workspace ws/    # 需 ANTHROPIC_API_KEY;作答是草稿,进输入指纹
+# 建议只预填表单:一致 → 「采用建议」一键填入(人仍要点提交);分歧 → 摊开各读者的值
+# OCR 受阻的文档上,读图是唯一幸存的机器信号(实测:它标中了 DWS 抽反的买卖双方)
+
 # 测试
 python3 -m pytest tests/
 

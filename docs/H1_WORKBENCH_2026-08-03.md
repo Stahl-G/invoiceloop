@@ -139,3 +139,25 @@ workspace 没有 vision/ 目录,读图门如实报「未测」而不是跳过。
 > 读图的独立性判据已通过;warning 的真实理由是读者自身错误率与弃权率。
 > 另:表中读者 C(GPT 5.6 SOL)在第六轮因 63.1% 内容出现在别的文档被
 > 整体作废,不进任何判定,此处仅作机制演示。
+
+## 读图预填建议层(2026-08-03 晚)
+
+用户提案「需要裁决的默认开读图,读图出问题再交人」的合规版本。
+不能要的一半:读图自动裁决 —— 「读图出问题」没有探测器(读图模型自己
+就是抽取器,第六轮 118 行错位就是某读者自信地错、零自报)。可以要的一半:
+读图默认开,但只建议不裁决 —— 交付不变量守住:每个发出的值要么有机械
+支持,要么有一次人类点击。
+
+- **建议层(workbench)**:行内紫色 advisory 块「读图建议:X · n/n 读者一致
+  + [采用建议]」。采用只预填表单(accept 或 correct+修正值+理由预设),
+  提交与署名仍是人;读者分歧时摊开各值不给采用按钮;全弃权如实显示
+  「读图也看不清」。一致性用与双模式门禁同一套 fields.normalise。
+  测试钉死:渲染建议后裁决账本仍为空(预填只是表单状态)。
+- **vision-ingest**:`python3 -m invoiceloop vision --workspace ws/` ——
+  packet 规格由子代理从 vision_eval6.py 逐项抄回(DPI 150 全页、五条纪律
+  prompt 逐字、tsv 列序、ABSTAIN 约定、空=弃权);单文档 API 调用
+  (纪律 5 本来禁拼图);tag D = Claude Sonnet 5,需 ANTHROPIC_API_KEY,
+  缺 key = typed unavailable;断点续跑只追加不重写。
+- **answers6 glob 修复**:VISION_READERS 曾是硬编码 ABC 名单 —— 新读者的
+  tsv 会被 load_vision_answers 漏读、被输入指纹漏哈希(改了作答旧 run
+  照样被重放)。现在按盘上 answers6.*.tsv 全量读、全量哈希。
