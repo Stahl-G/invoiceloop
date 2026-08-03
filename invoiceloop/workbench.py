@@ -571,7 +571,9 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
             items = "".join(f"<li>{_esc(_lim(lang, x))}</li>" for x in row["limitations"])
             parts.append(f"<ul>{items}</ul>")
         inner = "".join(parts) or "—"
-        return (f'<details class="wb-evidence"><summary>{_esc(_t(lang, "evidence"))}'
+        # 默认摊开:证据是复核的主信息,不是高级选项 —— 每行多点一下才看得见,
+        # 这个交互就是无意义的(2026-08-03 用户原话)。仍可手动折叠。
+        return (f'<details class="wb-evidence" open><summary>{_esc(_t(lang, "evidence"))}'
                 f"</summary>{inner}</details>")
 
     def _decide_form(self, lang: str, ctx: RunCtx, row: dict, tip: dict | None,

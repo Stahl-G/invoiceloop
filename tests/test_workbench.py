@@ -152,6 +152,8 @@ class TestRouting:
         assert "INV-42" in text, "队列页得让人看到自己复核的是什么值"
         assert 'class="decide"' in text, "每行一个裁决表单,这是 H1 的主交互"
         assert 'name="rationale"' in text, "「问题/理由」输入域必须在表单里"
+        assert '<details class="wb-evidence" open>' in text, \
+            "证据默认摊开:多点一下才看得见 = 交互无意义(2026-08-03 用户原话)"
 
     def test_report_shows_progress_after_decision(self, workspace, server):
         rows = json.loads(
