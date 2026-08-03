@@ -58,6 +58,10 @@ def main() -> None:
     p_ver = sub.add_parser("verify", help="离线校验 audit bundle(改一个字节就失败)")
     p_ver.add_argument("bundle", type=Path)
 
+    p_wb = sub.add_parser("workbench", help="H1 复核工作台:本地 loopback Web 应用(127.0.0.1)")
+    p_wb.add_argument("--workspace", type=Path, required=True)
+    p_wb.add_argument("--port", type=int, default=8765)
+
     sub.add_parser("doctor", help="环境自检:poppler/tesseract/requests/研究数据")
 
     p_ho = sub.add_parser("heldout", help="留出集(docs/HELDOUT.md)")
@@ -162,6 +166,10 @@ def main() -> None:
         report = verify_bundle(args.bundle)
         print(json.dumps(report, ensure_ascii=False, indent=1))
         raise SystemExit(0 if report["ok"] else 1)
+    elif args.command == "workbench":
+        from .workbench import cmd_workbench
+
+        raise SystemExit(cmd_workbench(args.workspace, args.port))
     elif args.command == "heldout":
         from . import heldout
 

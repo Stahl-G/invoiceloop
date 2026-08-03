@@ -54,10 +54,15 @@ def build_input_manifest(doc_ids: list[str], *, include_vision: bool = True) -> 
         })
     vision_sha256 = None
     if include_vision:
-        vision_sha256 = {
+        shas = {
             tag: _sha_or_none(derisk_root() / "vision" / f"answers6.{tag}.tsv")
             for tag in sorted(VISION_READERS)
         }
+        # 一个读图文件都不存在时(典型:workspace),归一成 None ——
+        # 否则 --vision/--no-vision 会产出两个不同指纹,而实际上两边
+        # 消费的输入完全相同(空气),重放会在 CLI 与工作台之间失灵
+        if any(shas.values()):
+            vision_sha256 = shas
     # schema 只有产品路径(workspace)知道:ingest 用本包的 extraction_schema;
     # derisk 存盘响应是校准仓库抽的,schema 不在本仓库手里,诚实记 null
     schema_sha256 = None
