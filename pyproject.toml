@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "invoiceloop"
+dynamic = ["version"]
+description = "发票抽取的支持关系,不是发票抽取的正确性 —— verifiable support for DWS extraction"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["requests>=2.31"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+# 研究路径(heldout 驱动、校准复算、run --out 读 dws-derisk 存盘证据)
+# 没有额外 PyPI 依赖,但需要 sibling 校准档案 ~/Developer/dws-derisk(见 README)。
+research = []
+
+[project.scripts]
+invoiceloop = "invoiceloop.__main__:main"
+
+[tool.setuptools]
+packages = ["invoiceloop"]
+
+[tool.setuptools.dynamic]
+version = { attr = "invoiceloop.__version__" }

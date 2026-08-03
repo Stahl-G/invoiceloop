@@ -3,6 +3,7 @@
     run         从存盘证据跑全流程(零 API)
     adjudicate  追加一条人工裁决
     bundle      打 audit_bundle.zip
+    doctor      环境自检(产品路径硬依赖缺失 → 退出码 1)
 """
 
 from __future__ import annotations
@@ -46,6 +47,8 @@ def main() -> None:
     p_bun = sub.add_parser("bundle", help="打 audit_bundle.zip")
     p_bun.add_argument("--run", type=Path, required=True)
 
+    sub.add_parser("doctor", help="环境自检:poppler/tesseract/requests/研究数据")
+
     p_ho = sub.add_parser("heldout", help="留出集(docs/HELDOUT.md)")
     ho_sub = p_ho.add_subparsers(dest="heldout_command", required=True)
     p_hop = ho_sub.add_parser("plan", help="生成并落盘名单(先于任何调用)")
@@ -57,6 +60,10 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    if args.command == "doctor":
+        from .doctor import cmd_doctor
+
+        raise SystemExit(cmd_doctor())
     if args.command == "run":
         import os
 

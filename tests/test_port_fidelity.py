@@ -22,13 +22,16 @@ import pytest
 DERISK = Path("~/Developer/dws-derisk").expanduser()
 pytestmark = pytest.mark.skipif(not DERISK.exists(), reason="校准仓库不在")
 
-sys.path.insert(0, str(DERISK))
+# 校准仓库不在时(评委的 clean clone)这些 import 必然失败 —— 必须只在
+# 仓库存在时执行,否则 skipif 还没生效 collection 就先炸了
+if DERISK.exists():
+    sys.path.insert(0, str(DERISK))
 
-import round3  # noqa: E402
-import routers  # noqa: E402
-import score  # noqa: E402
-import paired  # noqa: E402
-from schema import BY_NAME, Kind as DeriskKind  # noqa: E402
+    import round3  # noqa: E402
+    import routers  # noqa: E402
+    import score  # noqa: E402
+    import paired  # noqa: E402
+    from schema import BY_NAME, Kind as DeriskKind  # noqa: E402
 
 from invoiceloop import dws, gates  # noqa: E402
 from invoiceloop.fields import FIELDS, Kind, normalise  # noqa: E402
