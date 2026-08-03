@@ -161,3 +161,22 @@ workspace 没有 vision/ 目录,读图门如实报「未测」而不是跳过。
 - **answers6 glob 修复**:VISION_READERS 曾是硬编码 ABC 名单 —— 新读者的
   tsv 会被 load_vision_answers 漏读、被输入指纹漏哈希(改了作答旧 run
   照样被重放)。现在按盘上 answers6.*.tsv 全量读、全量哈希。
+
+## 读图生产线打通(2026-08-03 深夜,kimi-k3 现场作答)
+
+凭证通道的坎坷与结论:token-plan 转发纯文本(全模型探测,无一支持
+image input);本地 cliproxy(127.0.0.1:8317)的 kimi-k3 支持图片 ——
+`vision --workspace ws --model kimi-k3` 四份文档全读成功,14 个字段
+诚实弃权,零失败。现场作答的三个名场面:
+
+- 046e0c49 的 buyer/seller:kimi-k3 给出 SHIYA IFA(标签 "Bill To:")与
+  Cumulus-Muskegon - WVIB-FM(标签 "Station:")—— 与用户的修正、
+  与存档三读者,三方独立一致。
+- 00136a27 due_date:**ABSTAIN**,note 写明 "no explicit due date; only
+  Payment Terms: 30 Days" —— 纪律 1(抄,不要算)在运作;而用户当初
+  从开票日+30 天推出 11/30/2020。模型按纪律拒绝推断,人可以合法推理 ——
+  这正是「人的那次点击不能省」的最好注脚。
+- 003cc916 buyer_name:"Harry Huge, Esq.",标签 "For",独立找到。
+
+run-0004 起,40/40 行带建议块(1/1 读者,单读者一致不是印证;
+多读者接入后一致/分歧才是信号)。

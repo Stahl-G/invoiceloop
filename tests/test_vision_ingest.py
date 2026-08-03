@@ -84,13 +84,17 @@ class TestCmdVision:
         os.environ["INVOICELOOP_CORPUS"] = str(ws)
         try:
             answers = dws.load_vision_answers()
-            assert answers["Claude Sonnet 5"][(DOC, "total_gross")]["value"] == "100.00"
+            assert answers["kimi-k3"][(DOC, "total_gross")]["value"] == "100.00"
         finally:
             del os.environ["INVOICELOOP_CORPUS"]
 
     def test_missing_key_is_typed_unavailable(self, ws, monkeypatch):
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        with pytest.raises(SystemExit, match="ANTHROPIC_API_KEY"):
+        monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
+        monkeypatch.delenv("ANTHROPIC_BASE_URL", raising=False)
+        monkeypatch.setattr("invoiceloop.vision_ingest.VISION_ENV",
+                            ws / "no-such-file.env")
+        with pytest.raises(SystemExit, match="ANTHROPIC"):
             cmd_vision(ws)
 
     def test_failed_doc_is_recorded_not_fatal(self, ws):

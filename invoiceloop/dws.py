@@ -23,7 +23,7 @@ MODES = ("understand", "agentic")
 
 #: answers6.{A,B,C}.tsv → 读者登记(vision/readers6.md,打分前与答案同一次提交)。
 VISION_READERS = {"A": "Kimi K3", "B": "Opus 5", "C": "GPT 5.6 SOL",
-                  "D": "Claude Sonnet 5"}
+                  "D": "kimi-k3"}
 
 
 @dataclass

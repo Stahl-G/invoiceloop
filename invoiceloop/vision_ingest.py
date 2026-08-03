@@ -21,12 +21,39 @@ from pathlib import Path
 from .fields import FIELD_KINDS
 from .ingest import discover
 
-#: 默认读者与显示名(tag D;自定义模型请换 --tag,别让显示名撒谎)
-DEFAULT_MODEL = "claude-sonnet-5"
-API_URL = "https://api.anthropic.com/v1/messages"
+#: 默认读者与显示名(tag D ≡ kimi-k3;自定义模型请换 --tag,别让显示名撒谎)
+DEFAULT_MODEL = "kimi-k3"
 API_VERSION = "2023-06-01"
 
+#: 本地凭证文件(0600,永不进仓库):env 缺省时从这里补,三行 KEY=VALUE
+VISION_ENV = Path("~/.config/invoiceloop/vision.env").expanduser()
+
 _FIELDS = sorted(FIELD_KINDS)
+
+
+def _credentials() -> tuple[str | None, str, str]:
+    """(api_key, base_url, model)。env 优先,本地凭证文件兜底;
+    base_url/model 也走 env(代理兼容层,如 ANTHROPIC_BASE_URL)。"""
+    file_vars: dict[str, str] = {}
+    if VISION_ENV.exists():
+        for line in VISION_ENV.read_text(encoding="utf-8").splitlines():
+            if "=" in line and not line.startswith("#"):
+                k, _, v = line.partition("=")
+                file_vars[k.strip()] = v.strip()
+
+    def get(*names: str) -> str | None:
+        for name in names:
+            value = os.environ.get(name) or file_vars.get(name)
+            if value:
+                return value
+        return None
+
+    key = get("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
+    base = (get("ANTHROPIC_BASE_URL") or "https://api.anthropic.com").rstrip("/")
+    model = (get("ANTHROPIC_DEFAULT_SONNET_MODEL_NAME",
+                 "ANTHROPIC_DEFAULT_SONNET_MODEL",
+                 "ANTHROPIC_DEFAULT_HAIKU_MODEL") or DEFAULT_MODEL)
+    return key, base, model
 
 #: prompt:第六轮 READER_DOC 的五条纪律逐字保留(那是被测过的部分),
 #: 文件引用改内联,输出格式改成四列(调用方自己补 doc 列)
@@ -104,7 +131,7 @@ def _parse_rows(text: str, doc_id: str) -> list[list[str]]:
 
 
 def read_doc(doc_id: str, pages: list[Path], *, model: str, api_key: str,
-             _post=None) -> str:
+             base_url: str | None = None, _post=None) -> str:
     """一份文档的全部页 → 一次 messages 调用 → 模型的 tsv 文本。"""
     import requests
 
@@ -118,7 +145,7 @@ def read_doc(doc_id: str, pages: list[Path], *, model: str, api_key: str,
         n_pages=len(pages), fields=", ".join(_FIELDS))})
     post = _post or requests.post
     resp = post(
-        API_URL,
+        (base_url or "https://api.anthropic.com") + "/v1/messages",
         headers={"x-api-key": api_key, "anthropic-version": API_VERSION,
                  "content-type": "application/json"},
         json={"model": model, "max_tokens": 4096,
@@ -131,14 +158,17 @@ def read_doc(doc_id: str, pages: list[Path], *, model: str, api_key: str,
                    for block in resp.json().get("content", []))
 
 
-def cmd_vision(workspace: Path, *, tag: str = "D", model: str = DEFAULT_MODEL,
+def cmd_vision(workspace: Path, *, tag: str = "D", model: str | None = None,
                api_key: str | None = None, _post=None) -> dict:
     """workspace 的全部文档 → 读图作答 tsv。缺 key = typed unavailable,不藏。"""
     workspace = Path(workspace)
-    key = api_key or os.environ.get("ANTHROPIC_API_KEY")
+    cred_key, base_url, cred_model = _credentials()
+    key = api_key or cred_key
+    model = model or cred_model
     if not key:
         raise SystemExit(
-            "读图需要 ANTHROPIC_API_KEY(或 --api-key)—— 没有它读图步不可用,"
+            "读图需要 ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN(或写进 "
+            f"{VISION_ENV})—— 没有它读图步不可用,"
             "按宪章四这是「跑不了」,不是「跳过」"
         )
     docs = discover(workspace)
@@ -162,7 +192,8 @@ def cmd_vision(workspace: Path, *, tag: str = "D", model: str = DEFAULT_MODEL,
             if not list(pages_dir.glob(f"{doc_id}-*.png")):
                 render_pages(pdf, pages_dir)
             pages = sorted(pages_dir.glob(f"{doc_id}-*.png"))
-            text = read_doc(doc_id, pages, model=model, api_key=key, _post=_post)
+            text = read_doc(doc_id, pages, model=model, api_key=key,
+                            base_url=base_url, _post=_post)
             rows = _parse_rows(text, doc_id)
             summary["abstained_fields"] += sum(
                 1 for r in rows if not r[2] or r[2].upper() == "ABSTAIN")
