@@ -24,8 +24,12 @@ class OcrUnavailable(RuntimeError):
 
 
 def derisk_root() -> Path:
-    """校准档案根目录,可用环境变量覆盖(测试指向临时语料)。"""
-    return Path(os.environ.get("INVOICELOOP_DWS_DERISK", "~/Developer/dws-derisk")).expanduser()
+    """语料根目录。``INVOICELOOP_CORPUS`` 优先;``INVOICELOOP_DWS_DERISK``
+    是历史别名(仓库曾强依赖 sibling 校准档案 —— 现在产品路径自包含,
+    这个指针只服务研究路径:heldout / 校准复算 / run --out)。"""
+    value = os.environ.get("INVOICELOOP_CORPUS") or os.environ.get(
+        "INVOICELOOP_DWS_DERISK", "~/Developer/dws-derisk")
+    return Path(value).expanduser()
 
 
 def layout(root: Path | None = None) -> str:

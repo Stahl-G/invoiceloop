@@ -23,5 +23,9 @@ invoiceloop = "invoiceloop.__main__:main"
 [tool.setuptools]
 packages = ["invoiceloop"]
 
+[tool.setuptools.package-data]
+invoiceloop = ["samples/*.md", "samples/pdfs/*.pdf", "samples/raw/*.json",
+               "samples/vision/*.tsv"]
+
 [tool.setuptools.dynamic]
 version = { attr = "invoiceloop.__version__" }

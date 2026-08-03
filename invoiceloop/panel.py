@@ -61,8 +61,10 @@ def _esc(x) -> str:
 
 
 def _chips(verdicts: dict) -> str:
+    from .gateinfo import tooltip
+
     return "".join(
-        f'<span class="gate {v}" title="{_esc(g)}">{_esc(_GATE_SHORT.get(g, g))}:{_VERDICT_LABEL.get(v, v)}</span>'
+        f'<span class="gate {v}" title="{_esc(tooltip(g, v, "zh"))}">{_esc(_GATE_SHORT.get(g, g))}:{_VERDICT_LABEL.get(v, v)}</span>'
         for g, v in sorted(verdicts.items())
     )
 

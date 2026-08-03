@@ -29,6 +29,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from . import __version__
+from .gateinfo import tooltip as _gate_tooltip
 from .ingest import sanitise_doc_id
 from .review import load_decisions, project, target_id_for
 from .snapshot import (
@@ -522,7 +523,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 
         strength = row["support_strength"]
         gates = "".join(
-            f'<span class="wb-gate {v}" title="{_esc(g)}">'
+            f'<span class="wb-gate {v}" title="{_esc(_gate_tooltip(g, v, lang))}">'
             f'{_GATE_SHORT.get(g, (g, g))[0 if lang == "en" else 1]}:'
             f'{_VERDICT.get(v, (v, v))[0 if lang == "en" else 1]}</span>'
             for g, v in sorted(row["gate_verdicts"].items())

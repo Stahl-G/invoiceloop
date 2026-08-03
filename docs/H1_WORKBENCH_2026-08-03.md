@@ -106,3 +106,36 @@ CalledProcessError 炸穿 ingest —— 现在统一退到 OcrUnavailable 阻断
 
 另:这份 15 条裁决的 run 已打成 bundle 收档;受阻文档的整页图要新的
 run 代才有(旧 run 不可变,历史不动)。
+
+## 读图门的实测回答(2026-08-03,046e0c49 角色互换事件)
+
+用户问「读图为什么没开、开了会怎样」。答案分两层:
+
+**为什么默认没开**:读图作答是 dws-derisk 第六轮的研究产物(整页渲染 →
+三个前沿模型作答 → answers6 tsv),从未移植成 ingest 的活的步骤;
+workspace 没有 vision/ 目录,读图门如实报「未测」而不是跳过。
+
+**开了会怎样(在同一 workspace 上实测)**:把校准档案的 answers6 tsv
+拷进 ws/vision/ 起新 run 代(run-0003)。4 份文档里只有 046e0c49
+(正是 OCR 受阻、其他机械信号全灭的那份扫描件)有读图作答;它的
+10 个槽里 8 个 DWS 没返回值(读图门按设计报未测),但有值的 2 个槽
+**全部触发 warning —— 而且恰好是 DWS 把买卖双方抽反了的两个字段**:
+
+| 字段 | DWS understand | DWS agentic | 读图 A/B/C(一致) | 用户裁决(独立做出) |
+|---|---|---|---|---|
+| buyer_name | Cumulus-Muskegon - WVIB-FM(错) | SHIYA IFA | **SHIYA IFA** | HD-0016 修正 → **SHIYA IFA** |
+| seller_name | SHIYA IFA(错) | Cumulus-Muskegon - WVIB-FM | **Cumulus-Muskegon - WVIB-FM** | HD-0020 修正 → **Cumulus-Muskegon - WVIB-FM** |
+
+用户在看不到任何机器信号的情况下(纯看整页图)做出的两个修正,
+与读图模型的作答逐字一致;读图门的 warning 指的正是这两个
+被抽反的字段。这是「OCR 受阻文档上读图是唯一幸存的机器信号」的
+最佳演示。但宪章不动:读图门仍是 warning 不是判决 —— 读图相对 DWS
+的独立性过了预注册线(lift 1.29×/1.33× < 1.5,THRESHOLDS §6g),
+但读者自身静默错误 8.6–15.8% 远超 1% 线、弃权 59–61%,所以分歧
+只是「值得看」而非判决。它印证,它提示,它不裁决。
+
+> 勘误(2026-08-03 晚,保真复核抓出):本节初版写「读图与 DWS 失败模式
+> 相关(非独立,lift 2.40×)」是错的 —— 2.40× 是双模式分歧的 lift,
+> 读图的独立性判据已通过;warning 的真实理由是读者自身错误率与弃权率。
+> 另:表中读者 C(GPT 5.6 SOL)在第六轮因 63.1% 内容出现在别的文档被
+> 整体作废,不进任何判定,此处仅作机制演示。

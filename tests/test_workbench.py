@@ -454,3 +454,20 @@ class TestQueueSections:
         assert "需要裁决" in text and "印证行" in text
         assert text.index("需要裁决") < text.index("印证行"), \
             "需要裁决的行必须排在印证行前面"
+
+
+class TestGateTooltips:
+    """门禁 chip 悬停必须说出:这门查什么 + 这行的状态意味着什么
+    (2026-08-03 用户要求,评委也要能看懂)。"""
+
+    def test_chips_carry_plain_language_tooltips_zh(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=zh")
+        assert "算术一致性:验算" in text
+        assert "读图:前沿模型整页读图" in text
+        assert "只作警示,不作否决" in text, \
+            "读图门的真实立法理由(读者自身静默错误超限)必须同屏(宪章六)"
+
+    def test_chips_carry_plain_language_tooltips_en(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=en")
+        assert "Arithmetic: checks net+VAT=gross" in text
+        assert "it warns, it never convicts" in text

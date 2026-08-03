@@ -62,6 +62,9 @@ def main() -> None:
     p_wb.add_argument("--workspace", type=Path, required=True)
     p_wb.add_argument("--port", type=int, default=8765)
 
+    p_demo = sub.add_parser("demo", help="内嵌示例语料 → 完整 run(零 API、零外部数据)")
+    p_demo.add_argument("--out", type=Path, required=True, help="demo workspace 落点(必须不存在或为空)")
+
     sub.add_parser("doctor", help="环境自检:poppler/tesseract/requests/研究数据")
 
     p_ho = sub.add_parser("heldout", help="留出集(docs/HELDOUT.md)")
@@ -170,6 +173,10 @@ def main() -> None:
         from .workbench import cmd_workbench
 
         raise SystemExit(cmd_workbench(args.workspace, args.port))
+    elif args.command == "demo":
+        from .demo import cmd_demo
+
+        cmd_demo(args.out)
     elif args.command == "heldout":
         from . import heldout
 

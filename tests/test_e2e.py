@@ -49,6 +49,11 @@ class TestDeliverableHonesty:
         assert "抽取的正确性不可信" in panel
         assert "不主张 DWS 可信" in panel
 
+    def test_panel_gate_chips_explain_themselves(self, two_runs):
+        panel = (two_runs[0] / "support_panel.html").read_text(encoding="utf-8")
+        assert "算术一致性:验算" in panel, "悬停说明要进静态 panel(bundle 里的评委也看得到)"
+        assert "引用区里有这个值" in panel or "没有引用区或没有 OCR" in panel
+
     def test_panel_carries_all_three_qualifiers(self, two_runs):
         panel = (two_runs[0] / "support_panel.html").read_text(encoding="utf-8")
         assert "带乐观偏差" in panel and "留出集确认已于" in panel
@@ -96,3 +101,5 @@ class TestCorruptInput:
         (raw / "doc-bad.understand.json").write_text("{not json", encoding="utf-8")
         monkeypatch.setenv("INVOICELOOP_DWS_DERISK", str(tmp_path / "derisk"))
         assert _load("doc-bad", "understand") is None
+
+
