@@ -57,6 +57,8 @@ _T = {
         "queue": "Review queue", "report": "Delivery report",
         "upload": "Upload", "deliver": "Deliver & verify",
         "all": "All", "pending": "Pending", "done": "Decided",
+        "sec_required": "Needs adjudication ({n})",
+        "sec_corroborated": "Corroborated — no machine flags, spot-check ({n})",
         "reviewed": "{x} / {y} reviewed",
         "accept": "Accept", "reject": "Reject", "correct": "Correct", "abstain": "Abstain",
         "corrected_ph": "corrected value",
@@ -128,6 +130,8 @@ _T = {
         "queue": "复核队列", "report": "交付报告",
         "upload": "上传", "deliver": "交付与验证",
         "all": "全部", "pending": "待复核", "done": "已裁决",
+        "sec_required": "需要裁决 ({n})",
+        "sec_corroborated": "印证行 —— 机器未见异常,抽检性质 ({n})",
         "reviewed": "已复核 {x} / {y}",
         "accept": "接受", "reject": "拒绝", "correct": "修正", "abstain": "弃权",
         "corrected_ph": "修正值",
@@ -472,16 +476,27 @@ class Workbench:
             for k in ("all", "pending", "done")
         )
         adjudicator = params.get("adjudicator", [""])[0]
-        cards = "\n".join(
-            self.row_card(lang, ctx, r, tip, adjudicator) for r, tip in filt_rows
+        # 分节呈现:矩阵本来就知道哪些行「需要裁决」、哪些是多方印证。
+        # 不分节,印证行和待裁决行混在一起,用户会以为「全绿的也要我复审 =
+        # 假错误」(2026-08-03 用户实测原话)。印证行仍在(机器不设免审通道 —
+        # 六轮实验发现最危险的错恰是看起来全对的错),但标明是抽检性质。
+        groups = (
+            ("sec_required", [(r, t) for r, t in filt_rows if r["requires_adjudication"]]),
+            ("sec_corroborated", [(r, t) for r, t in filt_rows if not r["requires_adjudication"]]),
         )
+        cards = []
+        for key, items in groups:
+            if not items:
+                continue
+            cards.append(f'<h2 class="wb-section">{_esc(_t(lang, key, n=len(items)))}</h2>')
+            cards.extend(self.row_card(lang, ctx, r, tip, adjudicator) for r, tip in items)
         pct = int(100 * decided / len(rows)) if rows else 0
         body = f"""
 <div class="wb-progress" title="{_esc(_t(lang, 'reviewed', x=decided, y=len(rows)))}">
 <div class="wb-progress-bar" style="width:{pct}%"></div></div>
 <p>{_esc(_t(lang, 'reviewed', x=decided, y=len(rows)))}</p>
 <div class="wb-filters">{chips}</div>
-{cards}
+{''.join(cards)}
 <div class="wb-footer">{_esc(_t(lang, 'snapshot'))}={_esc(ctx.snapshot_id)}<br>
 field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__version__}</div>"""
         notice = self._notice(lang, params)

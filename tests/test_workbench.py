@@ -443,3 +443,14 @@ class TestAcceptPreset:
     def test_positive_chip_present(self, workspace, server):
         _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=zh")
         assert '>与页面一致</button>' in text
+
+
+class TestQueueSections:
+    """队列必须区分「需要裁决」与「印证行(抽检)」—— 混在一起,
+    用户会以为全绿行也要复审 = 假错误(2026-08-03 实测原话)。"""
+
+    def test_queue_splits_required_from_corroborated(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=zh&filter=all")
+        assert "需要裁决" in text and "印证行" in text
+        assert text.index("需要裁决") < text.index("印证行"), \
+            "需要裁决的行必须排在印证行前面"

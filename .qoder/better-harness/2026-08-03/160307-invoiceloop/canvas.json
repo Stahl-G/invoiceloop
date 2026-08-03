@@ -1,6 +1,5 @@
 {
   "schemaVersion": 1,
-  "summaryFactsSchemaVersion": 1,
   "summary": {
     "evidenceMode": "session-limited",
     "evidenceBoundary": {
@@ -88,20 +87,34 @@
       "state": "N/A",
       "summary": "暂不适用——需要两个可比的观察窗口和一次改进对比。",
       "interventions": []
-    },
-    "aiAgentPractice": {
-      "inspectedSurfaces": [],
-      "coverageRows": [
-        {
-          "surface": "Custom Agents",
-          "scopes": [
-            "Project"
-          ],
-          "count": 0
-        }
-      ]
     }
   },
-  "dimensions": [],
-  "findings": []
+  "dimensions": [
+    {
+      "id": "task-understanding"
+    },
+    {
+      "id": "controlled-execution"
+    },
+    {
+      "id": "change-validation"
+    },
+    {
+      "id": "reliable-delivery"
+    },
+    {
+      "id": "learning-capture"
+    }
+  ],
+  "findings": [
+    {
+      "id": "no-generic-agent-entrypoint"
+    },
+    {
+      "id": "workbench-change-without-focused-test"
+    },
+    {
+      "id": "no-ci-or-static-gate"
+    }
+  ]
 }
