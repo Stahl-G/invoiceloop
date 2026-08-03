@@ -62,8 +62,9 @@ _T = {
         "corrected_ph": "corrected value",
         "rationale_ph": "Issue / rationale (required) — write down what's wrong",
         "adjudicator_ph": "reviewer name",
-        "issue_chips": ["wrong value", "wrong location", "illegible",
-                        "label-convention conflict", "not on page", "other"],
+        "issue_chips": ["matches the page", "wrong value", "wrong location",
+                        "illegible", "label-convention conflict", "not on page", "other"],
+        "accept_preset": "matches the page",
         "submit": "Submit decision", "confirm": "Confirm",
         "current_note": "Current: {id} · {decision} · {by} · {at} — submitting supersedes it",
         "reason": "Reason",
@@ -132,7 +133,8 @@ _T = {
         "corrected_ph": "修正值",
         "rationale_ph": "发现的问题 / 理由(必填)—— 把问题直接写在这里",
         "adjudicator_ph": "裁决人",
-        "issue_chips": ["值不对", "位置不对", "看不清", "口径冲突", "页面上没有", "其他"],
+        "issue_chips": ["与页面一致", "值不对", "位置不对", "看不清", "口径冲突", "页面上没有", "其他"],
+        "accept_preset": "与页面一致",
         "submit": "提交裁决", "confirm": "确认",
         "current_note": "当前裁决 {id} · {decision} · {by} · {at} —— 提交将取代它",
         "reason": "理由",
@@ -230,6 +232,14 @@ document.addEventListener('change', function (e) {
   }
   var corr = form.querySelector('.wb-corr');
   if (corr) { corr.disabled = e.target.value !== 'correct'; if (!corr.disabled) corr.focus(); }
+  // 接受的天然理由预设:空着就预填「与页面一致」(可改可删);
+  // 切走且理由一字未动过预设,就还回空白,不把预设带去别的决策
+  var ta = form.querySelector('.wb-rationale');
+  var preset = form.dataset.acceptPreset;
+  if (ta && preset) {
+    if (e.target.value === 'accept' && !ta.value.trim()) ta.value = preset;
+    else if (e.target.value !== 'accept' && ta.value === preset) ta.value = '';
+  }
 });
 document.addEventListener('click', function (e) {
   var chip = e.target.closest('.wb-issue-chip');
@@ -602,7 +612,8 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
             for c in _T[lang]["issue_chips"]
         )
         return f"""<div class="wb-decide">{''.join(notes)}
-<form class="decide" method="post" action="/decide">
+<form class="decide" method="post" action="/decide"
+ data-accept-preset="{_esc(_t(lang, 'accept_preset'))}">
 <input type="hidden" name="run" value="{_esc(ctx.name)}">
 <input type="hidden" name="doc" value="{_esc(doc)}">
 <input type="hidden" name="field" value="{_esc(field)}">

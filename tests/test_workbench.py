@@ -429,3 +429,17 @@ class TestTaskLines:
             "没收录的码原样显示,不编"
         assert _lim("en", "vision_offers:GPT=x") == \
             "vision reader GPT saw “x” (reference only)"
+
+
+class TestAcceptPreset:
+    """接受 = 「与页面一致」的天然理由,不该手打(2026-08-03 用户要求)。"""
+
+    def test_form_carries_accept_preset_and_js_uses_it(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=zh")
+        assert 'data-accept-preset="与页面一致"' in text
+        _, _, js = _req(server, "GET", "/assets.js")
+        assert "acceptPreset" in js, "JS 要在选接受时预填、切走时还原"
+
+    def test_positive_chip_present(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=zh")
+        assert '>与页面一致</button>' in text
