@@ -389,3 +389,17 @@ class TestVerifyFragment:
                                headers={"Content-Type": "application/octet-stream"})
         assert status == 200
         assert "不是合法的 zip" in text, "坏输入要走失败分支,不是服务器崩溃"
+
+
+class TestNavigation:
+    def test_upload_tab_href_uses_question_mark(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=zh")
+        assert "/upload&lang=" not in text, \
+            "tab 链接拼接必须按有无 query string 选 ?/&(实测 /upload&lang=zh 404)"
+        assert 'href="/upload?lang=' in text
+
+    def test_404_page_has_a_way_back(self, workspace, server):
+        status, _, text = _req(server, "GET", "/no-such-page")
+        assert status == 404
+        assert f"/queue?run={RUN}" in text, \
+            "404/消息页必须给回队列的路(实测只剩上传 tab,被困住)"

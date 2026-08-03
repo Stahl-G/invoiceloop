@@ -87,3 +87,22 @@ handler 实例跨请求残留(HTTP/1.0 无 keep-alive)、三个 class 无样式(
 
 顺手带出的一个复核未报的洞:损坏 PDF 让 pdftotext/pdftoppm 抛
 CalledProcessError 炸穿 ingest —— 现在统一退到 OcrUnavailable 阻断(宪章四)。
+
+## 用户实测(2026-08-03 晚,warm subject,15 条真人裁决)
+
+4 份真实发票(3 正常 + 1 OCR 受阻的退化扫描件),40 槽。用户独立完成
+15 条裁决(8 correct / 6 abstain / 1 accept,含 Harry Huge 缺值补录),
+全部良构(快照绑定、无冲突、无改判)。bundle 54 成员,verify 三层全过。
+
+实测抓出三个真虫(均已修复 + 回归测试):
+
+1. **OCR 受阻文档没有整页图** —— `render_pages` 被关在 OCR 正常的分支里,
+   受阻文档每行都「没有原图」,复核直接断粮(用户原话,HD-0015)。
+   整页渲染不依赖 OCR/响应,提前到所有有 PDF 的文档。
+2. **上传 tab 链接拼成 `/upload&lang=zh`** —— 按有无 query string 选 `?`/`&`,
+   拼错就是 404;「无法返回」是 404/消息页没有导航 —— 导航现在永远指向
+   一个真实存在的 run。
+3. 快捷问题标签拼接产生「;;」(cosmetic)—— 拼接前先剥尾部 `;` 与空白。
+
+另:这份 15 条裁决的 run 已打成 bundle 收档;受阻文档的整页图要新的
+run 代才有(旧 run 不可变,历史不动)。

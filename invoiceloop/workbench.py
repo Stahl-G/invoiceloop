@@ -214,7 +214,7 @@ document.addEventListener('click', function (e) {
   if (!chip) return;
   var form = chip.closest('form');
   var ta = form.querySelector('.wb-rationale');
-  ta.value = (ta.value ? ta.value + '; ' : '') + chip.dataset.text;
+  ta.value = (ta.value ? ta.value.replace(/[;\s]+$/, '') + '; ' : '') + chip.dataset.text;
   ta.focus();
 });
 document.addEventListener('DOMContentLoaded', function () {
@@ -343,16 +343,24 @@ class Workbench:
     # ---- 骨架
     def page(self, lang: str, active: str, body: str, *,
              run_name: str | None = None, notice: str = "", ooc: bool = False) -> str:
+        # 导航永远指向一个真实存在的 run:消息页/404 页不传 run,
+        # 也得给人回得去的路(2026-08-03 实测:404 页只剩上传 tab,出不来)
+        nav_run = run_name
+        if nav_run is None:
+            current = self.current_run()
+            nav_run = current.name if current else None
         tabs = []
-        if run_name:
+        if nav_run:
             for key, href in (
-                ("queue", f"/queue?run={run_name}"),
-                ("report", f"/report?run={run_name}"),
-                ("deliver", f"/deliver?run={run_name}"),
+                ("queue", f"/queue?run={nav_run}"),
+                ("report", f"/report?run={nav_run}"),
+                ("deliver", f"/deliver?run={nav_run}"),
                 ("upload", "/upload"),
             ):
                 cls = "wb-tab active" if key == active else "wb-tab"
-                tabs.append(f'<a class="{cls}" href="{href}&lang={lang}">{_esc(_t(lang, key))}</a>')
+                sep = "&" if "?" in href else "?"
+                tabs.append(f'<a class="{cls}" href="{href}{sep}lang={lang}">'
+                            f'{_esc(_t(lang, key))}</a>')
         else:
             tabs.append(f'<a class="wb-tab{" active" if active == "upload" else ""}" '
                         f'href="/upload?lang={lang}">{_esc(_t(lang, "upload"))}</a>')

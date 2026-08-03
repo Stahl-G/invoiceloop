@@ -177,3 +177,47 @@ def test_garbage_pdf_is_ocr_unavailable_not_a_crash(tmp_path):
     garbage.write_bytes(b"%PDF-1.4 this is not a real pdf, just bytes")
     with pytest.raises(OcrUnavailable):
         ocr_pdf(garbage, work_dir=tmp_path)
+
+
+@pytest.mark.skipif(not POPPLER, reason="需要 poppler")
+def test_blocked_doc_still_gets_full_page_images(tmp_path, monkeypatch):
+    """OCR 受阻的文档:整页图是复核的最后证据,必须与正常文档一样渲染。
+    2026-08-03 工作台实测:受阻文档每行都「没有原图」,人工复核断粮。"""
+    from invoiceloop import ocr as ocr_mod
+    from invoiceloop.pipeline import run
+
+    ws = tmp_path / "ws"
+    (ws / "input" / "pdfs").mkdir(parents=True)
+    for name in ("good", "blocked"):
+        shutil.copy(FIXTURE_PDF, ws / "input" / "pdfs" / f"{name}.pdf")
+    (ws / "ocr").mkdir()
+    (ws / "ocr" / "good.json").write_text(json.dumps({
+        "pages": [{"page_idx": 0, "dimensions": [612, 792],
+                   "blocks": [{"lines": [{"words": [
+                       {"value": "INV-42", "confidence": 0.99,
+                        "geometry": [[0.1, 0.1], [0.2, 0.13]]}]}]}]}]}))
+    (ws / "raw").mkdir()
+
+    def rec(d, m):
+        return {"doc_id": d, "document": f"{d}.pdf", "mode": m, "http_status": 200,
+                "body": {"output": {"data": {"invoice_number": "INV-42"},
+                                    "metadata": {},
+                                    "pages": [{"page": 1, "width": 612,
+                                               "height": 792}]}}}
+
+    for d in ("good", "blocked"):
+        for m in ("understand", "agentic"):
+            (ws / "raw" / f"{d}.{m}.json").write_text(json.dumps(rec(d, m)))
+    monkeypatch.setenv("INVOICELOOP_DWS_DERISK", str(ws))
+    ocr_mod.load_ocr.cache_clear()
+    ocr_mod.doc_tokens.cache_clear()
+    try:
+        out = ws / "runs" / "run-0001"
+        run(["blocked", "good"], out, render_crops=True, include_vision=False,
+            out_of_calibration=True)
+        assert list((out / "pages").glob("blocked-*.png")), \
+            "OCR 受阻文档也必须渲染整页图 —— 没有它复核者没有最后证据"
+        assert list((out / "pages").glob("good-*.png"))
+    finally:
+        ocr_mod.load_ocr.cache_clear()
+        ocr_mod.doc_tokens.cache_clear()

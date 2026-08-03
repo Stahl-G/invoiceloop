@@ -138,6 +138,11 @@ def run(
     graphs: list[dict] = []
     for doc_id in doc_ids:
         u = understand[doc_id]
+        if render_crops and pdf_path(doc_id).exists():
+            # 整页渲染不依赖 OCR 或 DWS 响应 —— 它正是 OCR 受阻文档的最后
+            # 证据:没有它,受阻文档的每一行都「没有原图」,人工复核直接
+            # 断粮(2026-08-03 工作台实测,用户在 HD-0015 写下「没有原图」)
+            evidence.render_pages(pdf_path(doc_id), out_dir / "pages")
         if u is None:
             emit("response_unavailable", doc_id=doc_id, mode="understand")
             continue
@@ -149,8 +154,6 @@ def run(
         )
         spans.extend(builder.build())
         graphs.append(evidence.build_claim_graph(doc_id))
-        if render_crops:
-            evidence.render_pages(pdf_path(doc_id), out_dir / "pages")
     _write_json(out_dir / "evidence_span_registry.json", spans)
     _write_json(out_dir / "field_claim_graph.json", graphs)
     emit("evidence_registered", n_spans=len(spans))
