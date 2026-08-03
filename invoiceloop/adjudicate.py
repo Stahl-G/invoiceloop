@@ -85,6 +85,18 @@ def append_adjudication(
         raise ValueError(f"doc {doc_id!r} 不在本次 run 的文档集合里 —— 裁决必须指向 run 内文档")
 
     snapshot_id = load_or_derive_snapshot(run_dir)["review_snapshot_id"]
+    # 落盘的快照必须与此刻盘上的工件一致 —— 有人在 run 之后动过工件的话,
+    # 裁决会静默绑到一个名存实亡的快照上。不一致 = 阻断,先查清再裁决。
+    if (run_dir / "review_snapshot.json").exists():
+        from .snapshot import compute_review_snapshot
+
+        current = compute_review_snapshot(run_dir)["review_snapshot_id"]
+        if current != snapshot_id:
+            raise ValueError(
+                "run 目录内工件与 review_snapshot.json 不符 —— 有工件在 run 之后"
+                "被改动过。先比对 components 查清哪份被动了,再裁决;"
+                "系统不在被动过的证据上记裁决"
+            )
     if claim_id is not None:
         ledger = json.loads((run_dir / "field_ledger.json").read_text(encoding="utf-8"))
         claims = {c["claim_id"]: c for c in ledger["claims"]}
@@ -178,23 +190,43 @@ def build_audit_bundle(run_dir: Path) -> Path:
         os.environ["INVOICELOOP_DWS_DERISK"] = run_manifest["derisk_root"]
     try:
         from .dws import MODES, response_path
+        from .evidence import sha256_file
         from .ocr import ocr_path, pdf_path
+
+        # 上游证据的「应该有」以 input_manifest 在 run 时记录的 sha 为准:
+        # 记录了 sha → 必须存在且内容一致(run 之后丢失或被换 = 阻断);
+        # 记录为 null → run 时就不存在,如实进 notes,不算缺证据。
+        # 只查存在性会把"run 之后被换掉"的证据静默打进包。
+        input_manifest = json.loads(
+            (run_dir / "input_manifest.json").read_text(encoding="utf-8"))
+        recorded = {d["doc_id"]: d for d in input_manifest.get("docs", [])}
 
         upstream: list[tuple[str, bytes]] = []
         missing_up: list[str] = []
+        swapped: list[str] = []
+        absent_at_run: list[str] = []
         for doc in docs:
+            rec = recorded.get(doc, {})
+            raw_shas = rec.get("raw_sha256") or {}
             pairs = [
-                (pdf_path(doc), f"evidence/pdfs/{doc}.pdf"),
-                (ocr_path(doc), f"evidence/ocr/{doc}.json"),
-            ] + [(response_path(doc, mode), f"evidence/raw/{doc}.{mode}.json")
-                 for mode in MODES]
-            for path, arcname in pairs:
-                if path.exists():
-                    upstream.append((arcname, path.read_bytes()))
-                else:
+                (pdf_path(doc), f"evidence/pdfs/{doc}.pdf", rec.get("pdf_sha256")),
+                (ocr_path(doc), f"evidence/ocr/{doc}.json", rec.get("ocr_sha256")),
+            ] + [(response_path(doc, mode), f"evidence/raw/{doc}.{mode}.json",
+                  raw_shas.get(mode)) for mode in MODES]
+            for path, arcname, recorded_sha in pairs:
+                if recorded_sha is None:
+                    absent_at_run.append(arcname)
+                elif not path.exists():
                     missing_up.append(arcname)
-        if missing_up:
-            raise FileNotFoundError(f"audit bundle 缺上游证据,阻断:{missing_up}")
+                elif sha256_file(path) != recorded_sha:
+                    swapped.append(arcname)
+                else:
+                    upstream.append((arcname, path.read_bytes()))
+        if missing_up or swapped:
+            raise FileNotFoundError(
+                f"audit bundle 上游证据与 run 时记录不符,阻断:"
+                f"丢失={missing_up} 被换={swapped}"
+            )
 
         members: list[tuple[str, bytes]] = [
             (name, (run_dir / name).read_bytes()) for name in REQUIRED_ARTIFACTS
@@ -217,6 +249,9 @@ def build_audit_bundle(run_dir: Path) -> Path:
 
         snapshot = json.loads((run_dir / "review_snapshot.json").read_text(encoding="utf-8"))
         notes = []
+        if absent_at_run:
+            notes.append(f"以下上游证据在 run 时就不存在(input_manifest 记录为 null),"
+                         f"非打包缺失:{absent_at_run}")
         if run_manifest.get("include_vision"):
             notes.append("读图作答的值已并入 field_drafts.json;原始作答文件在校准档案"
                          "(dws-derisk 第六轮),不在包内 —— 本包唯一的非自包含成分")

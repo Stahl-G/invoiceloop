@@ -82,12 +82,16 @@ def run(
     声明校准数字不直接适用(§12 输入契约)。
     """
     out_dir = Path(out_dir)
-    if out_dir.exists() and any(out_dir.iterdir()):
-        raise RunExistsError(
-            f"运行目录 {out_dir} 已存在且非空 —— 运行不可变,没有 --force。"
-            f"--out 请换一个目录;--workspace 会自动分配 runs/run-NNNN"
-        )
-    out_dir.mkdir(parents=True, exist_ok=True)
+    if out_dir.exists():
+        if any(out_dir.iterdir()):
+            raise RunExistsError(
+                f"运行目录 {out_dir} 已存在且非空 —— 运行不可变,没有 --force。"
+                f"--out 请换一个目录;--workspace 会自动分配 runs/run-NNNN"
+            )
+    else:
+        # exist_ok=False:两个进程同时抢同一个目录时,输的那个当场炸出来,
+        # 而不是两边交错写出一摊半成品
+        out_dir.mkdir(parents=True)
     doc_ids = sorted(doc_ids)
     events: list[dict] = []
 

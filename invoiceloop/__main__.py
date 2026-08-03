@@ -91,6 +91,10 @@ def main() -> None:
             doc_ids = args.doc_ids or dws.stored_docs()
             if not doc_ids:
                 parser.error(f"{args.workspace}/raw 里没有存盘响应 —— 先跑 ingest")
+            if args.docs is not None:
+                doc_ids = doc_ids[: args.docs]
+            # 指纹必须在 --docs/--doc-ids 截断之后算 —— 否则「5 份文档的 run」
+            # 会被当成「全部文档的 run」重放
             fingerprint = snapshot.build_input_manifest(
                 doc_ids, include_vision=not args.no_vision)["fingerprint"]
             runs_dir = args.workspace / "runs"
@@ -104,6 +108,8 @@ def main() -> None:
             doc_ids = args.doc_ids or dws.stored_docs()
             if not doc_ids:
                 parser.error("存盘证据里没有文档 —— 检查 INVOICELOOP_DWS_DERISK 指向")
+            if args.docs is not None:
+                doc_ids = doc_ids[: args.docs]
         if replayed is not None:
             print(json.dumps({
                 "replayed": True,
@@ -112,8 +118,6 @@ def main() -> None:
                         "输入变化或 --new-run 才开新 run(旧 run 永远原样保留)",
             }, ensure_ascii=False, indent=1))
             return
-        if args.docs is not None:
-            doc_ids = doc_ids[: args.docs]
         paths = run(doc_ids, out_dir, render_crops=args.crops,
                     include_vision=not args.no_vision,
                     out_of_calibration=out_of_calibration)

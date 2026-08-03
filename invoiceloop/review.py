@@ -36,6 +36,9 @@ def load_decisions(run_dir: Path) -> list[dict]:
 
     v1 旧条目:合成 legacy-<sha8> id;同槽位的连续旧条目按 seq 隐式串链
     (supersedes 指向前一条),这是 v1 的语义,加载时确定性修复,不改文件。
+
+    绑定到其他快照的条目(典型:从另一个 run 目录复制来的账本)= orphan:
+    不进链、不投影,但显式标出 —— 历史不藏,也不许错投到这个 run 的槽位上。
     """
     path = Path(run_dir) / "adjudication_ledger.jsonl"
     if not path.exists():
@@ -54,6 +57,8 @@ def load_decisions(run_dir: Path) -> list[dict]:
                      "review_snapshot_id": snapshot_id,
                      "legacy": True}
             entry["supersedes_decision_id"] = prev_by_target.get(entry["target_id"])
+        if entry["review_snapshot_id"] != snapshot_id:
+            entry["orphan"] = True
         entries.append(entry)
         prev_by_target[entry["target_id"]] = entry["decision_id"]
     return entries
@@ -64,9 +69,12 @@ def project(decisions: list[dict]) -> dict[str, dict]:
 
     tip = 链上没有被任何条目 supersede 的那条;链断了(多条 tip,只可能是
     手工编辑账本造成)= conflict,显式标出,不替人猜哪条算数。
+    orphan(绑到别的快照)不进链。
     """
     slots: dict[str, list[dict]] = {}
     for entry in decisions:
+        if entry.get("orphan"):
+            continue
         slots.setdefault(entry["target_id"], []).append(entry)
     out: dict[str, dict] = {}
     for target, chain in slots.items():

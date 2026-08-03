@@ -163,5 +163,27 @@ class TestWorkspaceGenerations:
         (runs / "run-0001").mkdir(parents=True)
         (runs / "run-0001" / "input_manifest.json").write_text(
             json.dumps(manifest), encoding="utf-8")
+        assert find_run_by_fingerprint(runs, manifest["fingerprint"]) is None, \
+            "没有 event_log 的半拉子 run(跑到一半崩了)不许被重放"
+        (runs / "run-0001" / "event_log.jsonl").write_text("", encoding="utf-8")
         assert find_run_by_fingerprint(runs, manifest["fingerprint"]) is not None
         assert find_run_by_fingerprint(runs, "0" * 64) is None
+
+    def test_docs_slice_precedes_fingerprint(self, workspace, monkeypatch, capsys):
+        """--docs 1 的 run 不许被当成「全部文档」的 run 重放(指纹必须在截断后算)。"""
+        doc2 = "acme-002"
+        (workspace / "input" / "pdfs" / f"{doc2}.pdf").write_bytes(b"%PDF-1.4 fake2")
+        (workspace / "ocr" / f"{doc2}.json").write_text(
+            json.dumps(_ocr_payload()), encoding="utf-8")
+        for mode in ("understand", "agentic"):
+            (workspace / "raw" / f"{doc2}.{mode}.json").write_text(
+                json.dumps(_record(doc2, mode)), encoding="utf-8")
+        out1 = self._cli(monkeypatch, capsys, "run", "--workspace", str(workspace),
+                         "--no-vision", "--docs", "1")
+        assert Path(out1["run_dir"]).name == "run-0001"
+        out2 = self._cli(monkeypatch, capsys, "run", "--workspace", str(workspace),
+                         "--no-vision")
+        assert "replayed" not in out2, "全部 2 份 ≠ 前 1 份 —— 不许重放"
+        assert Path(out2["run_dir"]).name == "run-0002"
+        m = json.loads((Path(out2["run_dir"]) / "run_manifest.json").read_text())
+        assert m["n_docs"] == 2

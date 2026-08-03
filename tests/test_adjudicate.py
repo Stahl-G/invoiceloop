@@ -20,13 +20,13 @@ DECIDED = "2026-08-03T10:00:00"
 
 @pytest.fixture
 def run_dir(tmp_path):
-    """最小但可渲染的 v2 run 目录:真实形状的清单/账本/矩阵/门禁/快照。"""
+    """最小但可渲染、可打包的 v2 run 目录:真实形状的工件 + 上游证据 + 快照。"""
+    import hashlib
+
     d = tmp_path
     (d / "run_manifest.json").write_text(json.dumps({
         "docs": ["doc-a"], "n_docs": 1, "out_of_calibration": False,
         "layout": "workspace", "derisk_root": str(tmp_path)}), encoding="utf-8")
-    (d / "input_manifest.json").write_text(json.dumps(
-        {"fingerprint": "f" * 64, "docs": []}), encoding="utf-8")
     (d / "artifact_registry.json").write_text("[]", encoding="utf-8")
     (d / "evidence_span_registry.json").write_text("[]", encoding="utf-8")
     (d / "field_claim_graph.json").write_text("[]", encoding="utf-8")
@@ -49,8 +49,7 @@ def run_dir(tmp_path):
                     "blocking_findings": 0, "drafts_rejected": 0,
                     "rejected_by_drafter": {}}}), encoding="utf-8")
     (d / "event_log.jsonl").write_text("", encoding="utf-8")
-    # 上游证据(workspace 根 = run_manifest.derisk_root = 同一个 tmp_path):
-    # bundle 方案 A 要把它们全收进包
+    # 上游证据(workspace 根 = run_manifest.derisk_root = 同一个 tmp_path)
     (d / "input" / "pdfs").mkdir(parents=True)
     (d / "input" / "pdfs" / "doc-a.pdf").write_bytes(b"%PDF-1.4 fake")
     (d / "ocr").mkdir()
@@ -59,6 +58,19 @@ def run_dir(tmp_path):
     for mode in ("understand", "agentic"):
         (d / "raw" / f"doc-a.{mode}.json").write_text(
             json.dumps({"http_status": 200}), encoding="utf-8")
+    # input_manifest 记录上游证据的真实 sha —— bundle 按它判断
+    # 「应该有且内容一致 / run 时就不存在」,只查存在性会把被换的证据静默打进包
+    def h(p):
+        return hashlib.sha256(p.read_bytes()).hexdigest()
+
+    (d / "input_manifest.json").write_text(json.dumps({
+        "fingerprint": "f" * 64,
+        "docs": [{"doc_id": "doc-a",
+                  "pdf_sha256": h(d / "input" / "pdfs" / "doc-a.pdf"),
+                  "ocr_sha256": h(d / "ocr" / "doc-a.json"),
+                  "raw_sha256": {m: h(d / "raw" / f"doc-a.{m}.json")
+                                 for m in ("understand", "agentic")}}],
+    }), encoding="utf-8")
     # 快照最后写:成分齐了再算,与 pipeline 的顺序一致
     (d / "review_snapshot.json").write_text(
         json.dumps(compute_review_snapshot(d)), encoding="utf-8")
@@ -332,3 +344,62 @@ class TestVerify:
         assert any("review_snapshot" in f for f in report["failures"])
         assert not any("哈希不符" in f for f in report["failures"]), \
             "成员级应被攻击者蒙过 —— 抓它的必须是快照级重算"
+
+
+class TestSnapshotConsistency:
+    def test_append_blocks_when_run_artifacts_were_altered(self, run_dir):
+        _append(run_dir)  # 第一条在一致状态下落盘
+        (run_dir / "gate_report.json").write_text(json.dumps({"findings": [{"x": 1}]}))
+        with pytest.raises(ValueError, match="被改动过"):
+            _append(run_dir, claim_id=None, field="total_vat",
+                    decision="abstain", rationale="r")
+
+
+class TestOrphans:
+    def test_foreign_snapshot_decisions_are_flagged_not_projected(self, run_dir):
+        from invoiceloop.review import load_decisions
+
+        foreign_sid = "e" * 64
+        foreign = {"seq": 1, "decision_id": "HD-0001",
+                   "review_snapshot_id": foreign_sid,
+                   "target_id": target_id_for(foreign_sid, "doc-a", "total_gross"),
+                   "claim_id": "FC-0001", "doc_id": "doc-a", "field": "total_gross",
+                   "decision": "accept", "corrected_value": None,
+                   "rationale": "从另一个 run 复制来的",
+                   "adjudicator": "y", "decided_at": DECIDED,
+                   "supersedes_decision_id": None}
+        (run_dir / "adjudication_ledger.jsonl").write_text(
+            json.dumps(foreign) + "\n", encoding="utf-8")
+        decisions = load_decisions(run_dir)
+        assert decisions[0]["orphan"] is True
+        assert project_run(run_dir) == {}, "orphan 不进链,不许错投到这个 run 的槽位"
+        _render(run_dir)
+        html = (run_dir / "support_panel.html").read_text(encoding="utf-8")
+        assert "未投影" in html and "HD-0001" in html, "历史不藏:orphan 要显式标出"
+
+
+class TestUpstreamIntegrity:
+    def test_swapped_upstream_evidence_blocks(self, run_dir):
+        _append(run_dir)
+        _render(run_dir)
+        (run_dir / "input" / "pdfs" / "doc-a.pdf").write_bytes(b"%PDF-1.4 SWAPPED")
+        with pytest.raises(FileNotFoundError, match="被换"):
+            adjudicate.build_audit_bundle(run_dir)
+
+    def test_absent_at_run_is_noted_not_blocked(self, run_dir):
+        import zipfile
+
+        # run 时 agentic 响应就不存在:input_manifest 记 null → 不拦,进 notes
+        manifest = json.loads((run_dir / "input_manifest.json").read_text())
+        manifest["docs"][0]["raw_sha256"]["agentic"] = None
+        (run_dir / "input_manifest.json").write_text(json.dumps(manifest))
+        (run_dir / "raw" / "doc-a.agentic.json").unlink()
+        (run_dir / "review_snapshot.json").write_text(
+            json.dumps(compute_review_snapshot(run_dir)))
+        _append(run_dir)
+        _render(run_dir)
+        bundle = adjudicate.build_audit_bundle(run_dir)
+        with zipfile.ZipFile(bundle) as zf:
+            assert "evidence/raw/doc-a.agentic.json" not in zf.namelist()
+            scope = json.loads(zf.read("bundle_manifest.json"))
+            assert any("run 时就不存在" in n for n in scope["notes"])

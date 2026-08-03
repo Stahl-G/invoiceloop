@@ -104,11 +104,17 @@ def load_or_derive_snapshot(run_dir: Path) -> dict:
 
 
 def find_run_by_fingerprint(runs_dir: Path, fingerprint: str) -> Path | None:
-    """runs/ 下是否已有同样输入指纹的 run —— 有就重放它,不新开。"""
+    """runs/ 下是否已有同样输入指纹的**完整** run —— 有就重放它,不新开。
+
+    半拉子 run(跑到一半崩了:有 input_manifest 但没有 event_log)不算 —
+    重放一个不完整的 run 等于把崩溃当成果。它留在原地当现场,新 run 开新代。
+    """
     runs_dir = Path(runs_dir)
     if not runs_dir.is_dir():
         return None
     for candidate in sorted(runs_dir.glob("run-*/input_manifest.json")):
+        if not (candidate.parent / "event_log.jsonl").exists():
+            continue
         try:
             if json.loads(candidate.read_text(encoding="utf-8")).get("fingerprint") == fingerprint:
                 return candidate.parent

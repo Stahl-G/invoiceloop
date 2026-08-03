@@ -188,6 +188,7 @@ def render_panel(
     snapshot_id = load_or_derive_snapshot(run_dir)["review_snapshot_id"]
     decisions = load_decisions(run_dir)
     slots = project(decisions)
+    orphans = [e for e in decisions if e.get("orphan")]
     rows_html = "\n".join(
         _row_html(r, spans_by_id, run_dir,
                   slots.get(target_id_for(snapshot_id, r["doc_id"], r["field"])))
@@ -211,6 +212,14 @@ def render_panel(
     non_claims = "".join(f"<li>{_esc(c)}</li>" for c in _NON_CLAIMS)
     decided_stat = (f'<div class="stat"><b>{len(decisions)}</b>已人工裁决'
                     f'(current state 按 supersession 链)</div>' if decisions else "")
+    orphan_banner = ""
+    if orphans:
+        shown = "、".join(_esc(e["decision_id"]) for e in orphans[:8])
+        orphan_banner = (
+            f'<div class="caveats"><b>⚠ {len(orphans)} 条裁决绑定到其他 review_snapshot'
+            f'({shown}),未投影到本 panel。</b>它们仍在 adjudication_ledger.jsonl 里 —— '
+            f'典型来源是从另一个 run 复制了账本。历史不藏,但也不许错投到这个 run 的槽位上。</div>'
+        )
     ooc_banner = (
         '<div class="caveats"><b>输入不在校准集内(§12 输入契约)。</b>'
         "这些文档未参与任何校准与留出验证:panel 上的校准数字(4.2×、78%)"
@@ -263,6 +272,7 @@ tr.blk td {{ background:#fdecea; }}
 以及哪里说不准。它<b>不</b>说「这个值是对的」。复核队列按支持强度升序 ——
 排在最前的就是系统明确表示自己不知道、或证据互相打架的地方。</div>
 {ooc_banner}
+{orphan_banner}
 
 <h2>这是什么、不主张什么</h2>
 <ul>{non_claims}</ul>
