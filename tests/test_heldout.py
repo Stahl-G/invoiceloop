@@ -10,10 +10,10 @@ import pytest
 
 from invoiceloop import heldout
 
-CORPUS = Path("~/Developer/dws-derisk/data/docile/annotations").expanduser()
+from invoiceloop.ocr import corpus_available
 
 
-@pytest.mark.skipif(not CORPUS.exists(), reason="校准档案不在")
+@pytest.mark.skipif(not corpus_available(), reason="校准档案不在")
 class TestDocList:
     def test_deterministic_and_preregistered_shape(self):
         ids = heldout.heldout_list()

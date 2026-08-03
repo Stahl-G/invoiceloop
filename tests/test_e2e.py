@@ -23,9 +23,9 @@ ARTIFACTS = [
     "support_matrix.json", "support_panel.html", "event_log.jsonl",
 ]
 
-pytestmark = pytest.mark.skipif(
-    not Path("~/Developer/dws-derisk/raw").expanduser().exists(), reason="存盘证据不在"
-)
+from invoiceloop.ocr import corpus_available
+
+pytestmark = pytest.mark.skipif(not corpus_available(), reason="存盘证据不在")
 
 
 @pytest.fixture(scope="module")

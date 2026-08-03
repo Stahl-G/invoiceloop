@@ -59,6 +59,20 @@ def raw_dir() -> Path:
     return derisk_root() / "raw"
 
 
+def corpus_available() -> bool:
+    """研究路径(校准复算 / heldout / run --out)需要的全部存盘证据是否齐。
+
+    与代码取数走同一个 derisk_root()(env 可变)—— 测试守卫必须用它,
+    各写各的硬编码路径就会出现「守卫说有、取数说没有」的错位。
+    产品路径(workspace)不查这个。
+    """
+    root = derisk_root()
+    return all((root / p).is_dir() for p in (
+        "raw", "vision",
+        "data/docile/ocr", "data/docile/annotations", "data/docile/pdfs",
+    ))
+
+
 @lru_cache(maxsize=None)
 def load_ocr(doc_id: str) -> dict:
     """整份文档的词级 OCR(pages → blocks → lines → words)。

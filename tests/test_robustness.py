@@ -21,7 +21,9 @@ from invoiceloop import freeze, ocr
 from invoiceloop.pipeline import run
 
 REPO = Path(__file__).resolve().parent.parent
-REAL_CORPUS = Path("~/Developer/dws-derisk/raw").expanduser().exists()
+from invoiceloop.ocr import corpus_available
+
+REAL_CORPUS = corpus_available()
 
 
 def _record(doc_id: str, mode: str, data: dict) -> dict:

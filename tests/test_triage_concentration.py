@@ -26,12 +26,10 @@ from pathlib import Path
 import pytest
 
 from invoiceloop.fields import FIELD_KINDS, normalise
-from invoiceloop.ocr import derisk_root
+from invoiceloop.ocr import corpus_available, derisk_root
 from invoiceloop.pipeline import run
 
-pytestmark = pytest.mark.skipif(
-    not Path("~/Developer/dws-derisk/raw").expanduser().exists(), reason="存盘证据不在"
-)
+pytestmark = pytest.mark.skipif(not corpus_available(), reason="存盘证据不在")
 
 #: 搬 score.py::DOCILE_TO_FIELD(预注册映射,currency_code_amount_due 按 A-1 缺席)。
 DOCILE_TO_FIELD = {

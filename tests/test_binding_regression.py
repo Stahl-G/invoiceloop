@@ -21,6 +21,10 @@ import pathlib
 
 import pytest
 
+from invoiceloop.ocr import corpus_available
+
+pytestmark = pytest.mark.skipif(not corpus_available(), reason="存盘证据不在")
+
 FIXTURE = pathlib.Path(__file__).parent / "fixtures/round6_binding.json"
 
 

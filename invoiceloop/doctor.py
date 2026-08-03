@@ -33,12 +33,10 @@ def cmd_doctor() -> int:
     check("tesseract", shutil.which("tesseract") is not None, False,
           "扫描件退路(无文字层的 PDF);没有它,扫描件按宪章四阻断而不是静默跳过")
 
-    from .ocr import derisk_root
+    from .ocr import corpus_available, derisk_root
 
-    root = derisk_root()
-    research = (root / "raw").is_dir() and (root / "data" / "docile" / "ocr").is_dir()
-    check("research:dws-derisk 存盘证据", research, False,
-          f"{root} —— heldout/校准复算/run --out 需要;产品路径(workspace)不需要")
+    check("research:dws-derisk 存盘证据", corpus_available(), False,
+          f"{derisk_root()} —— heldout/校准复算/run --out 需要;产品路径(workspace)不需要")
 
     report = {"ok": all(c["ok"] for c in checks if c["required"]), "checks": checks}
     print(json.dumps(report, ensure_ascii=False, indent=1))
