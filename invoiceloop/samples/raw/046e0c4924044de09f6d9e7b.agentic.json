@@ -1,0 +1,383 @@
+{
+  "doc_id": "046e0c4924044de09f6d9e7b",
+  "document": "046e0c4924044de09f6d9e7b.pdf",
+  "mode": "agentic",
+  "http_status": 200,
+  "body": {
+    "configuration": {
+      "apiVersion": "2026-05-25",
+      "engine": {
+        "requestedEngineVersion": "stable"
+      },
+      "maxLanguages": 2,
+      "maxScripts": 2,
+      "mode": "agentic"
+    },
+    "metrics": {
+      "pagesProcessed": 1,
+      "processingTimeMs": 8577
+    },
+    "output": {
+      "data": {
+        "invoice_number": "494804",
+        "issue_date": "07/31/18",
+        "currency": "USD",
+        "due_date": "Due on Receipt",
+        "seller_name": "Cumulus-Muskegon - WVIB-FM",
+        "seller_vat_id": "",
+        "buyer_name": "SHIYA IFA",
+        "total_net": "",
+        "total_vat": "",
+        "total_gross": "$120.00",
+        "amount_due": "$120.00"
+      },
+      "metadata": {
+        "invoice_number": {
+          "bbox": {
+            "height": 22,
+            "width": 94,
+            "x": 1097,
+            "y": 550
+          },
+          "confidence": 0.95,
+          "confidenceComponents": {
+            "groundingScore": 0.95,
+            "source": "no-logprobs"
+          },
+          "match": "id_match_multiblock",
+          "pageIndex": 0,
+          "pageNumber": 1,
+          "source_bboxes": [
+            {
+              "bbox": {
+                "height": 22.99456787109375,
+                "width": 233.87353515625,
+                "x": 957.12646484375,
+                "y": 549.0054321289062
+              },
+              "block_id": "b9",
+              "pageIndex": 0,
+              "pageNumber": 1
+            },
+            {
+              "bbox": {
+                "height": 21.93701171875,
+                "width": 94.007568359375,
+                "x": 1096.1351318359375,
+                "y": 548.9998779296875
+              },
+              "block_id": "b23",
+              "pageIndex": 0,
+              "pageNumber": 1
+            }
+          ]
+        },
+        "issue_date": {
+          "bbox": {
+            "height": 22,
+            "width": 108,
+            "x": 1097,
+            "y": 591
+          },
+          "confidence": 0.95,
+          "confidenceComponents": {
+            "groundingScore": 0.95,
+            "source": "no-logprobs"
+          },
+          "match": "id_match_multiblock",
+          "pageIndex": 0,
+          "pageNumber": 1,
+          "source_bboxes": [
+            {
+              "bbox": {
+                "height": 22.8369140625,
+                "width": 222.9901123046875,
+                "x": 982.0098876953125,
+                "y": 591
+              },
+              "block_id": "b10",
+              "pageIndex": 0,
+              "pageNumber": 1
+            },
+            {
+              "bbox": {
+                "height": 22.10906982421875,
+                "width": 107.51318359375,
+                "x": 1096.8668212890625,
+                "y": 591.2046508789062
+              },
+              "block_id": "b24",
+              "pageIndex": 0,
+              "pageNumber": 1
+            }
+          ]
+        },
+        "currency": {
+          "bbox": {
+            "height": 19.64697265625,
+            "width": 80.67962646484375,
+            "x": 760.3203735351562,
+            "y": 1354.630615234375
+          },
+          "confidence": 0.95,
+          "confidenceComponents": {
+            "groundingScore": 0.95,
+            "source": "no-logprobs"
+          },
+          "match": "id_match",
+          "pageIndex": 0,
+          "pageNumber": 1,
+          "source_bboxes": [
+            {
+              "bbox": {
+                "height": 19.64697265625,
+                "width": 80.67962646484375,
+                "x": 760.3203735351562,
+                "y": 1354.630615234375
+              },
+              "block_id": "b30",
+              "pageIndex": 0,
+              "pageNumber": 1
+            }
+          ]
+        },
+        "due_date": {
+          "bbox": {
+            "height": 27,
+            "width": 200,
+            "x": 158,
+            "y": 827
+          },
+          "confidence": 0.95,
+          "confidenceComponents": {
+            "groundingScore": 0.95,
+            "source": "no-logprobs"
+          },
+          "match": "id_match_multiblock",
+          "pageIndex": 0,
+          "pageNumber": 1,
+          "source_bboxes": [
+            {
+              "bbox": {
+                "height": 27.60028076171875,
+                "width": 304.8267517089844,
+                "x": 55,
+                "y": 827
+              },
+              "block_id": "b5",
+              "pageIndex": 0,
+              "pageNumber": 1
+            },
+            {
+              "bbox": {
+                "height": 25.669921875,
+                "width": 244,
+                "x": 1097,
+                "y": 1396.330078125
+              },
+              "block_id": "b33",
+              "pageIndex": 0,
+              "pageNumber": 1
+            }
+          ]
+        },
+        "seller_name": {
+          "bbox": {
+            "height": 25,
+            "width": 330,
+            "x": 1097,
+            "y": 422
+          },
+          "confidence": 0.95,
+          "confidenceComponents": {
+            "groundingScore": 0.95,
+            "source": "no-logprobs"
+          },
+          "match": "id_match",
+          "pageIndex": 0,
+          "pageNumber": 1,
+          "source_bboxes": [
+            {
+              "bbox": {
+                "height": 25.5355224609375,
+                "width": 436.976806640625,
+                "x": 991,
+                "y": 422
+              },
+              "block_id": "b21",
+              "pageIndex": 0,
+              "pageNumber": 1
+            }
+          ]
+        },
+        "seller_vat_id": {
+          "confidence": 0.4,
+          "confidenceComponents": {
+            "groundingScore": 0.4,
+            "source": "no-logprobs"
+          },
+          "match": "not_found",
+          "source_bboxes": []
+        },
+        "buyer_name": {
+          "bbox": {
+            "height": 22,
+            "width": 133,
+            "x": 202,
+            "y": 466
+          },
+          "confidence": 0.95,
+          "confidenceComponents": {
+            "groundingScore": 0.95,
+            "source": "no-logprobs"
+          },
+          "match": "id_match_multiblock",
+          "pageIndex": 0,
+          "pageNumber": 1,
+          "source_bboxes": [
+            {
+              "bbox": {
+                "height": 23.034210205078125,
+                "width": 138.49111938476562,
+                "x": 199.43270874023438,
+                "y": 464.9657897949219
+              },
+              "block_id": "b1",
+              "pageIndex": 0,
+              "pageNumber": 1
+            },
+            {
+              "bbox": {
+                "height": 22.672760009765625,
+                "width": 197.72476196289062,
+                "x": 200,
+                "y": 507.3272399902344
+              },
+              "block_id": "b2",
+              "pageIndex": 0,
+              "pageNumber": 1
+            },
+            {
+              "bbox": {
+                "height": 26.70733642578125,
+                "width": 298.43707275390625,
+                "x": 201.16183471679688,
+                "y": 590.5238037109375
+              },
+              "block_id": "b3",
+              "pageIndex": 0,
+              "pageNumber": 1
+            }
+          ]
+        },
+        "total_net": {
+          "confidence": 0.4,
+          "confidenceComponents": {
+            "groundingScore": 0.4,
+            "source": "no-logprobs"
+          },
+          "match": "not_found",
+          "source_bboxes": []
+        },
+        "total_vat": {
+          "confidence": 0.4,
+          "confidenceComponents": {
+            "groundingScore": 0.4,
+            "source": "no-logprobs"
+          },
+          "match": "not_found",
+          "source_bboxes": []
+        },
+        "total_gross": {
+          "bbox": {
+            "height": 19,
+            "width": 80,
+            "x": 761,
+            "y": 1355
+          },
+          "confidence": 0.95,
+          "confidenceComponents": {
+            "groundingScore": 0.95,
+            "source": "no-logprobs"
+          },
+          "match": "id_match",
+          "pageIndex": 0,
+          "pageNumber": 1,
+          "source_bboxes": [
+            {
+              "bbox": {
+                "height": 19.64697265625,
+                "width": 80.67962646484375,
+                "x": 760.3203735351562,
+                "y": 1354.630615234375
+              },
+              "block_id": "b30",
+              "pageIndex": 0,
+              "pageNumber": 1
+            }
+          ]
+        },
+        "amount_due": {
+          "bbox": {
+            "height": 19,
+            "width": 80,
+            "x": 761,
+            "y": 1355
+          },
+          "confidence": 0.95,
+          "confidenceComponents": {
+            "groundingScore": 0.95,
+            "source": "no-logprobs"
+          },
+          "match": "id_match",
+          "pageIndex": 0,
+          "pageNumber": 1,
+          "source_bboxes": [
+            {
+              "bbox": {
+                "height": 19.64697265625,
+                "width": 80.67962646484375,
+                "x": 760.3203735351562,
+                "y": 1354.630615234375
+              },
+              "block_id": "b30",
+              "pageIndex": 0,
+              "pageNumber": 1
+            }
+          ]
+        }
+      },
+      "pages": [
+        {
+          "height": 2200,
+          "page": 1,
+          "width": 1700
+        }
+      ]
+    },
+    "requestId": "GMetESAKaP7qTxwABxFi",
+    "status": 200,
+    "usage": {
+      "data_extraction_credits": {
+        "cost": 24.0,
+        "remainingCredits": 3986.0
+      },
+      "price_composition": {
+        "extract": {
+          "cost": 6.0,
+          "currency": "data_extraction_credits",
+          "unit_cost": 6.0,
+          "units": 1
+        },
+        "parse": {
+          "cost": 18.0,
+          "currency": "data_extraction_credits",
+          "unit_cost": 18.0,
+          "units": 1
+        }
+      }
+    }
+  },
+  "credits": null,
+  "request_id": "GMetESAKaP7qTxwABxFi"
+}

@@ -49,42 +49,48 @@ python3 -m invoiceloop doctor    # 环境自检:缺什么说什么,产品路径�
 tesseract 可选(扫描件退路,没有它扫描件按宪章四阻断而不是静默跳过)。
 
 研究路径(`heldout`、校准复算、`run --out` 读存盘证据)另需 sibling 校准档案
-`~/Developer/dws-derisk`;产品路径(workspace 全流程)不需要它。
+`~/Developer/dws-derisk`(`INVOICELOOP_CORPUS` 指向它);产品路径(workspace 全流程、
+demo、workbench)完全不需要它 —— 仓库自包含。
 
 ```bash
-# 全流程:extract → freeze → gates → matrix → panel(零 API,只读存盘证据)
-python3 -m invoiceloop run --out runs/demo --crops
+# 两分钟 demo:内嵌示例语料跑通全流程 —— 零 API、零外部数据、零 sibling 仓库
+python3 -m invoiceloop demo --out demo-ws
+python3 -m invoiceloop workbench --workspace demo-ws   # http://127.0.0.1:8765 网页复核
 
-# 输入契约(§12):自己的发票 —— PDF 丢进 workspace/input/pdfs/
+# 自己的发票:PDF 丢进 workspace/input/pdfs/(输入契约 §12)
 python3 -m invoiceloop ingest --workspace ws/    # 本地独立 OCR + DWS 抽取(需 DWS_API_KEY)
 python3 -m invoiceloop run --workspace ws/ --crops   # 产出在 ws/runs/run-NNNN(不可变,panel 标注「不在校准集内」)
 # 同一份输入再跑 = 重放既有 run;输入变了自动开新代;--new-run 强制新代。旧 run 永远原样保留。
 
 # 人工裁决(append-only,绑定完整复核快照)与交付(全量自包含 bundle)
-python3 -m invoiceloop adjudicate --run runs/demo --doc <doc_id> --field total_gross \
+python3 -m invoiceloop adjudicate --run demo-ws/runs/run-0001 --doc <doc_id> --field total_gross \
   --claim-id FC-0042 --decision accept --rationale "证据齐" \
   --adjudicator <名字> --decided-at 2026-08-02T10:00:00
 #   二次决定同一字段须显式 --supersedes HD-0001;裁决后 panel 自动重渲(失败不丢裁决)
-python3 -m invoiceloop render --run runs/demo     # 随时从盘上工件重建 panel(纯投影)
-python3 -m invoiceloop bundle --run runs/demo     # 全量自包含:上游 PDF/OCR/raw + 全部派生物
-python3 -m invoiceloop verify runs/demo/audit_bundle.zip   # 离线三层校验,改一个字节就失败
+python3 -m invoiceloop render --run demo-ws/runs/run-0001   # 随时从盘上工件重建 panel(纯投影)
+python3 -m invoiceloop bundle --run demo-ws/runs/run-0001   # 全量自包含:上游 PDF/OCR/raw + 全部派生物
+python3 -m invoiceloop verify demo-ws/runs/run-0001/audit_bundle.zip   # 离线三层校验,改一个字节就失败
 
 # H1 复核工作台:网页上直接复核 —— 每行四个决策按钮 + 修正值 + 问题/理由输入域
 python3 -m invoiceloop workbench --workspace ws/   # http://127.0.0.1:8765,仅本机 loopback
-# 上传 PDF → ingest → 复核队列(证据裁剪图+OCR+标签)→ 裁决(自动带 supersession)
+# 上传 PDF → ingest → 复核队列(任务行+证据裁剪图+OCR+标签,默认摊开)→ 裁决(自动带 supersession)
 # → 交付报告(复核完成度+修正清单+残余风险声明)→ 打 bundle / 离线 verify
-
-# 留出集(docs/HELDOUT.md;要花 DWS credits,判据已冻结)
-python3 -m invoiceloop heldout plan --workspace runs/heldout-workspace
-python3 -m invoiceloop heldout extract --workspace runs/heldout-workspace --budget 6000
 
 # 测试
 python3 -m pytest tests/
+
+# ── 研究路径(开发侧)────────────────────────────────
+# 以下命令读校准档案(~/Developer/dws-derisk,由 INVOICELOOP_CORPUS 指向;
+# 历史别名 INVOICELOOP_DWS_DERISK 仍有效)。评委与产品路径都不需要它们:
+python3 -m invoiceloop run --out runs/demo --crops        # 160 份校准存盘证据的全流程
+python3 -m invoiceloop heldout plan --workspace runs/heldout-workspace
+python3 -m invoiceloop heldout extract --workspace runs/heldout-workspace --budget 6000
 ```
 
-打开 `runs/demo/support_panel.html` —— 静态、离线、无需服务。
-复核队列按支持强度升序:队首就是系统明确表示自己不知道的地方;
-被拒的行带「DWS 指向这里」的裁剪图与独立 OCR,无引用区的行带整页图。
+打开 `demo-ws/runs/run-0001/support_panel.html` —— 静态、离线、无需服务。
+复核队列按支持强度升序、分「需要裁决」与「印证行(抽检)」两节:
+队首就是系统明确表示自己不知道的地方;每行有任务行(核什么、DWS 读到什么),
+门禁 chip 悬停有一句话解释(查什么、这状态意味着什么)。
 
 文档:`ARCHITECTURE.md`(设计契约)/ `GOAL.md`(冲突时优化什么)/
 `docs/VERIFICATION_2026-08-02.md`(验证轮总录)/ `docs/HELDOUT.md`(留出集协议与结果)/

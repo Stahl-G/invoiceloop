@@ -32,18 +32,27 @@ def cmd_demo(out: Path) -> None:
         raise SystemExit(f"{out} 已存在且非空 —— run 不可变同样适用于 demo,换个目录")
     _copy_samples(out)
 
+    # 语料指针只在本命令内改向,用完还回 —— 库调用不许留下环境副作用
+    prev = {k: os.environ.get(k) for k in ("INVOICELOOP_CORPUS", "INVOICELOOP_DWS_DERISK")}
     os.environ["INVOICELOOP_CORPUS"] = str(out)
-    from . import dws
-    from .ingest import cmd_ingest
-    from .pipeline import run
+    try:
+        from . import dws
+        from .ingest import cmd_ingest
+        from .pipeline import run
 
-    summary = cmd_ingest(out, do_ocr=True, do_extract=False)
-    doc_ids = dws.stored_docs()
-    run_dir = out / "runs" / "run-0001"
-    paths = run(doc_ids, run_dir, render_crops=True,
-                include_vision=True, out_of_calibration=True)
-    (out / "runs" / "current.json").write_text(
-        json.dumps({"run": "run-0001"}, ensure_ascii=False) + "\n", encoding="utf-8")
+        summary = cmd_ingest(out, do_ocr=True, do_extract=False)
+        doc_ids = dws.stored_docs()
+        run_dir = out / "runs" / "run-0001"
+        paths = run(doc_ids, run_dir, render_crops=True,
+                    include_vision=True, out_of_calibration=True)
+        (out / "runs" / "current.json").write_text(
+            json.dumps({"run": "run-0001"}, ensure_ascii=False) + "\n", encoding="utf-8")
+    finally:
+        for key, value in prev.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
 
     blocked = summary.get("ocr_blocked", [])
     print(json.dumps({

@@ -68,6 +68,20 @@ echo "== 同输入重跑 = 重放,不开新代 =="
 "$VENV/python" -m invoiceloop run --workspace "$WS" --no-vision | grep -q '"replayed": true'
 test ! -d "$WS/runs/run-0002"
 
+echo "== demo 命令:内嵌语料(wheel 里的 samples)跑通全流程 =="
+"$VENV/python" -m invoiceloop demo --out "$WORK/demo-ws" > /dev/null
+DEMO_RUN="$WORK/demo-ws/runs/run-0001"
+test -f "$DEMO_RUN/support_panel.html"
+grep -q "输入不在校准集内" "$DEMO_RUN/support_panel.html"
+"$VENV/python" - "$DEMO_RUN" <<'PY'
+import json, sys
+from pathlib import Path
+
+gate = json.loads((Path(sys.argv[1]) / "gate_report.json").read_text())
+assert any(f["gate_id"] == "visual_corroboration" for f in gate["findings"]), \
+    "demo 的读图门 warning(买卖双方抽反)必须在"
+PY
+
 echo "== pytest(研究数据缺失时研究测试自动跳过,产品路径不受影响)=="
 INVOICELOOP_DWS_DERISK=/nonexistent "$VENV/python" -m pytest -q
 

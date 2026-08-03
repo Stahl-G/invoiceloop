@@ -1,0 +1,7 @@
+doc	field	value	printed_label	note
+046e0c4924044de09f6d9e7b	buyer_name	SHIYA IFA	Bill To:	
+046e0c4924044de09f6d9e7b	due_date	ABSTAIN		只印 "Terms: Due on Receipt",无具体到期日期
+046e0c4924044de09f6d9e7b	seller_name	Cumulus-Muskegon - WVIB-FM	Station:	抬头 logo 为 CUMULUS MUSKEGON
+046e0c4924044de09f6d9e7b	seller_vat_id	ABSTAIN		页面无任何税号/VAT 字段
+046e0c4924044de09f6d9e7b	total_net	ABSTAIN		无 net 标签,全页仅 Amount Due $120.00
+046e0c4924044de09f6d9e7b	total_vat	ABSTAIN		页面无税额字段

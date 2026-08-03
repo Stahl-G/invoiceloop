@@ -1,0 +1,256 @@
+{
+  "doc_id": "003cc91637994b7d9566ac41",
+  "document": "003cc91637994b7d9566ac41.pdf",
+  "mode": "agentic",
+  "http_status": 200,
+  "body": {
+    "configuration": {
+      "apiVersion": "2026-05-25",
+      "engine": {
+        "requestedEngineVersion": "stable"
+      },
+      "maxLanguages": 2,
+      "maxScripts": 2,
+      "mode": "agentic"
+    },
+    "metrics": {
+      "pagesProcessed": 2,
+      "processingTimeMs": 14821
+    },
+    "output": {
+      "data": {
+        "invoice_number": "83519",
+        "issue_date": "September 24, 1999",
+        "seller_name": "POWELL, GOLDSTEIN, FRAZER & MURPHY LLP",
+        "buyer_name": "Harry Huge, Esq.",
+        "total_gross": "$119,517.21",
+        "amount_due": "$119,517.21"
+      },
+      "metadata": {
+        "invoice_number": {
+          "bbox": {
+            "height": 223.517822265625,
+            "width": 40.91357421875,
+            "x": 1413.416259765625,
+            "y": 1888.7919921875
+          },
+          "confidence": 0.95,
+          "confidenceComponents": {
+            "groundingScore": 0.95,
+            "source": "no-logprobs"
+          },
+          "match": "id_match",
+          "pageIndex": 0,
+          "pageNumber": 1,
+          "source_bboxes": [
+            {
+              "bbox": {
+                "height": 223.517822265625,
+                "width": 40.91357421875,
+                "x": 1413.416259765625,
+                "y": 1888.7919921875
+              },
+              "block_id": "b8",
+              "pageIndex": 0,
+              "pageNumber": 1
+            }
+          ]
+        },
+        "issue_date": {
+          "bbox": {
+            "height": 57.7562255859375,
+            "width": 227.59375,
+            "x": 233.9075927734375,
+            "y": 686.4412841796875
+          },
+          "confidence": 0.95,
+          "confidenceComponents": {
+            "groundingScore": 0.95,
+            "source": "no-logprobs"
+          },
+          "match": "id_match",
+          "pageIndex": 0,
+          "pageNumber": 1,
+          "source_bboxes": [
+            {
+              "bbox": {
+                "height": 57.7562255859375,
+                "width": 227.59375,
+                "x": 233.9075927734375,
+                "y": 686.4412841796875
+              },
+              "block_id": "b6",
+              "pageIndex": 0,
+              "pageNumber": 1
+            }
+          ]
+        },
+        "seller_name": {
+          "bbox": {
+            "height": 32.33929443359375,
+            "width": 774.9132080078125,
+            "x": 434.807861328125,
+            "y": 318.03533935546875
+          },
+          "confidence": 0.95,
+          "confidenceComponents": {
+            "groundingScore": 0.95,
+            "source": "no-logprobs"
+          },
+          "match": "id_match",
+          "pageIndex": 0,
+          "pageNumber": 1,
+          "source_bboxes": [
+            {
+              "bbox": {
+                "height": 32.33929443359375,
+                "width": 774.9132080078125,
+                "x": 434.807861328125,
+                "y": 318.03533935546875
+              },
+              "block_id": "b1",
+              "pageIndex": 0,
+              "pageNumber": 1
+            }
+          ]
+        },
+        "buyer_name": {
+          "bbox": {
+            "height": 170.0897216796875,
+            "width": 267.7961730957031,
+            "x": 233.9075927734375,
+            "y": 606.7420043945312
+          },
+          "confidence": 0.95,
+          "confidenceComponents": {
+            "groundingScore": 0.95,
+            "source": "no-logprobs"
+          },
+          "match": "id_match_multiblock",
+          "pageIndex": 0,
+          "pageNumber": 1,
+          "source_bboxes": [
+            {
+              "bbox": {
+                "height": 57.7562255859375,
+                "width": 227.59375,
+                "x": 233.9075927734375,
+                "y": 686.4412841796875
+              },
+              "block_id": "b6",
+              "pageIndex": 0,
+              "pageNumber": 1
+            },
+            {
+              "bbox": {
+                "height": 170.0897216796875,
+                "width": 265.13531494140625,
+                "x": 236.56845092773438,
+                "y": 606.7420043945312
+              },
+              "block_id": "b22",
+              "pageIndex": 1,
+              "pageNumber": 2
+            }
+          ]
+        },
+        "total_gross": {
+          "bbox": {
+            "height": 26,
+            "width": 154,
+            "x": 1162,
+            "y": 1429
+          },
+          "confidence": 0.95,
+          "confidenceComponents": {
+            "groundingScore": 0.95,
+            "source": "no-logprobs"
+          },
+          "match": "id_match",
+          "pageIndex": 1,
+          "pageNumber": 2,
+          "recognitionScore": 0.9640949368476868,
+          "source_bboxes": [
+            {
+              "bbox": {
+                "height": 39.7099609375,
+                "width": 169.169677734375,
+                "x": 1150.43115234375,
+                "y": 1419.4638671875
+              },
+              "block_id": "c25",
+              "pageIndex": 1,
+              "pageNumber": 2
+            }
+          ]
+        },
+        "amount_due": {
+          "bbox": {
+            "height": 26,
+            "width": 154,
+            "x": 1162,
+            "y": 1429
+          },
+          "confidence": 0.95,
+          "confidenceComponents": {
+            "groundingScore": 0.95,
+            "source": "no-logprobs"
+          },
+          "match": "id_match",
+          "pageIndex": 1,
+          "pageNumber": 2,
+          "recognitionScore": 0.9640949368476868,
+          "source_bboxes": [
+            {
+              "bbox": {
+                "height": 39.7099609375,
+                "width": 169.169677734375,
+                "x": 1150.43115234375,
+                "y": 1419.4638671875
+              },
+              "block_id": "c25",
+              "pageIndex": 1,
+              "pageNumber": 2
+            }
+          ]
+        }
+      },
+      "pages": [
+        {
+          "height": 2244,
+          "page": 1,
+          "width": 1692
+        },
+        {
+          "height": 2244,
+          "page": 2,
+          "width": 1692
+        }
+      ]
+    },
+    "requestId": "GMea85XItdsRfnMABHpS",
+    "status": 200,
+    "usage": {
+      "data_extraction_credits": {
+        "cost": 48.0,
+        "remainingCredits": 4325.0
+      },
+      "price_composition": {
+        "extract": {
+          "cost": 12.0,
+          "currency": "data_extraction_credits",
+          "unit_cost": 6.0,
+          "units": 2
+        },
+        "parse": {
+          "cost": 36.0,
+          "currency": "data_extraction_credits",
+          "unit_cost": 18.0,
+          "units": 2
+        }
+      }
+    }
+  },
+  "credits": null,
+  "request_id": "GMea85XItdsRfnMABHpS"
+}

@@ -1,0 +1,244 @@
+{
+  "doc_id": "002e3cf97973428f905671b3",
+  "document": "002e3cf97973428f905671b3.pdf",
+  "mode": "understand",
+  "http_status": 200,
+  "body": {
+    "configuration": {
+      "apiVersion": "2026-05-25",
+      "engine": {
+        "requestedEngineVersion": "stable"
+      },
+      "maxLanguages": 2,
+      "maxScripts": 2,
+      "mode": "understand"
+    },
+    "metrics": {
+      "pagesProcessed": 1,
+      "processingTimeMs": 16604
+    },
+    "output": {
+      "data": {
+        "invoice_number": "t 096084",
+        "issue_date": "12/09/99",
+        "seller_name": "UMI PUBLICATIONS, INC",
+        "buyer_name": "MR. RICH HABEGGER",
+        "total_gross": "250000 .00",
+        "amount_due": "250000.00"
+      },
+      "metadata": {
+        "invoice_number": {
+          "bbox": {
+            "height": 20,
+            "width": 149,
+            "x": 1185,
+            "y": 221
+          },
+          "confidence": 0.95,
+          "confidenceComponents": {
+            "groundingScore": 0.95,
+            "source": "no-logprobs"
+          },
+          "match": "id_match",
+          "pageIndex": 0,
+          "pageNumber": 1,
+          "recognitionScore": 0.7308673858642578,
+          "source_bboxes": [
+            {
+              "bbox": {
+                "height": 26.290679931640625,
+                "width": 446.0030517578125,
+                "x": 887.9969482421875,
+                "y": 215.335693359375
+              },
+              "block_id": "b5",
+              "pageIndex": 0,
+              "pageNumber": 1
+            }
+          ]
+        },
+        "issue_date": {
+          "bbox": {
+            "height": 23,
+            "width": 154,
+            "x": 1221,
+            "y": 285
+          },
+          "confidence": 0.95,
+          "confidenceComponents": {
+            "groundingScore": 0.95,
+            "source": "no-logprobs"
+          },
+          "match": "id_match",
+          "pageIndex": 0,
+          "pageNumber": 1,
+          "recognitionScore": 0.9357220530509949,
+          "source_bboxes": [
+            {
+              "bbox": {
+                "height": 28.56201171875,
+                "width": 448.28643798828125,
+                "x": 927.6281127929688,
+                "y": 280.385986328125
+              },
+              "block_id": "b6",
+              "pageIndex": 0,
+              "pageNumber": 1
+            }
+          ]
+        },
+        "seller_name": {
+          "bbox": {
+            "height": 37,
+            "width": 459,
+            "x": 282,
+            "y": 70
+          },
+          "confidence": 0.95,
+          "confidenceComponents": {
+            "groundingScore": 0.95,
+            "source": "no-logprobs"
+          },
+          "match": "id_match",
+          "pageIndex": 0,
+          "pageNumber": 1,
+          "recognitionScore": 0.636178195476532,
+          "source_bboxes": [
+            {
+              "bbox": {
+                "height": 42.51726531982422,
+                "width": 464.1716003417969,
+                "x": 280.1176452636719,
+                "y": 68.48053741455078
+              },
+              "block_id": "b19",
+              "pageIndex": 0,
+              "pageNumber": 1
+            }
+          ]
+        },
+        "buyer_name": {
+          "bbox": {
+            "height": 31,
+            "width": 337,
+            "x": 260,
+            "y": 409
+          },
+          "confidence": 0.95,
+          "confidenceComponents": {
+            "groundingScore": 0.95,
+            "source": "no-logprobs"
+          },
+          "match": "id_match",
+          "pageIndex": 0,
+          "pageNumber": 1,
+          "recognitionScore": 0.8567321300506592,
+          "source_bboxes": [
+            {
+              "bbox": {
+                "height": 31,
+                "width": 339.8155517578125,
+                "x": 260,
+                "y": 409
+              },
+              "block_id": "b21",
+              "pageIndex": 0,
+              "pageNumber": 1
+            }
+          ]
+        },
+        "total_gross": {
+          "bbox": {
+            "height": 25,
+            "width": 176,
+            "x": 1433,
+            "y": 2014
+          },
+          "confidence": 0.95,
+          "confidenceComponents": {
+            "groundingScore": 0.95,
+            "source": "no-logprobs"
+          },
+          "match": "id_match",
+          "pageIndex": 0,
+          "pageNumber": 1,
+          "recognitionScore": 0.8556668162345886,
+          "source_bboxes": [
+            {
+              "bbox": {
+                "height": 30.4273681640625,
+                "width": 179.447509765625,
+                "x": 1429.552490234375,
+                "y": 2009.40478515625
+              },
+              "block_id": "b108",
+              "pageIndex": 0,
+              "pageNumber": 1
+            }
+          ]
+        },
+        "amount_due": {
+          "bbox": {
+            "height": 24,
+            "width": 181,
+            "x": 1429,
+            "y": 2085
+          },
+          "confidence": 0.95,
+          "confidenceComponents": {
+            "groundingScore": 0.95,
+            "source": "no-logprobs"
+          },
+          "match": "id_match",
+          "pageIndex": 0,
+          "pageNumber": 1,
+          "recognitionScore": 0.892751932144165,
+          "source_bboxes": [
+            {
+              "bbox": {
+                "height": 29.1435546875,
+                "width": 183.6085205078125,
+                "x": 1426.55322265625,
+                "y": 2081.13037109375
+              },
+              "block_id": "b110",
+              "pageIndex": 0,
+              "pageNumber": 1
+            }
+          ]
+        }
+      },
+      "pages": [
+        {
+          "height": 2344,
+          "page": 1,
+          "width": 1661
+        }
+      ]
+    },
+    "requestId": "GMeavjYOLgE8JA8ABIqC",
+    "status": 200,
+    "usage": {
+      "data_extraction_credits": {
+        "cost": 15.0,
+        "remainingCredits": 4715.0
+      },
+      "price_composition": {
+        "extract": {
+          "cost": 6.0,
+          "currency": "data_extraction_credits",
+          "unit_cost": 6.0,
+          "units": 1
+        },
+        "parse": {
+          "cost": 9.0,
+          "currency": "data_extraction_credits",
+          "unit_cost": 9.0,
+          "units": 1
+        }
+      }
+    }
+  },
+  "credits": null,
+  "request_id": "GMeavjYOLgE8JA8ABIqC"
+}
