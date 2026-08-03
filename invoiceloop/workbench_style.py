@@ -757,4 +757,25 @@ a:hover { text-decoration: underline; }
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition-duration: 0.01ms !important; }
 }
+
+/* ---- 复核任务的主角(2026-08-03 用户反馈:字段名又小又灰,任务目标看不见) ---- */
+.wb-field {
+    font-family: var(--wb-font-body);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0;
+    color: var(--wb-ink);
+}
+.wb-raw {
+    font-family: var(--wb-font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--wb-faint);
+    margin-left: 6px;
+}
+.wb-task {
+    margin: 2px 0 4px;
+    font-size: 13.5px;
+    color: var(--wb-ink-soft);
+}
 """

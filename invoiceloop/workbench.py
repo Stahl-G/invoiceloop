@@ -74,6 +74,17 @@ _T = {
         "value_here": "Value found here (corroborating):",
         "cited_here": "DWS pointed here (for review):",
         "no_citation": "No citation region — see full page:",
+        "task_with_value": "Task: verify the {label} on the page — "
+                           "DWS read “{value}”. Is it there? Is it right?",
+        "task_no_value": "Task: DWS gave no {label} — look for it on the page: "
+                         "“Correct” to supply it, “Abstain” if truly absent or illegible.",
+        "lim_value_not_in_cited_span": "value not found in DWS's cited region (possible misplacement)",
+        "lim_draft_rejected_at_freeze": "draft rejected at freeze (value doesn't bind to this document)",
+        "lim_dws_returned_no_value": "DWS returned no value for this field",
+        "lim_vision_offers": "vision reader {model} saw “{value}” (reference only)",
+        "lim_visual_not_measured": "visual gate not measured",
+        "lim_ocr_unavailable_pipeline_blocked": "independent OCR unavailable — no mechanical checks on this row; your eyes only",
+        "lim_citation_not_checkable": "citation not mechanically checkable (no cited region)",
         "ooc": "Inputs are outside the calibration set (§12): calibration numbers "
                "(4.2×, 78%) do not directly apply. Per-document mechanical checks "
                "(binding, gates, freeze, adjudication) need no calibration.",
@@ -132,6 +143,17 @@ _T = {
         "value_here": "值落在这里(印证):",
         "cited_here": "DWS 指向这里(复核用):",
         "no_citation": "无引用区,看整页:",
+        "task_with_value": "任务:在页面上核对{label} —— DWS 读到“{value}”。"
+                           "页面上有吗?对不对?",
+        "task_no_value": "任务:DWS 没给出{label} —— 请在页面上找:"
+                         "有就「修正」补录,确实没有或看不清就「弃权」。",
+        "lim_value_not_in_cited_span": "值不在 DWS 指的引用区里(可能错位)",
+        "lim_draft_rejected_at_freeze": "草稿在冻结时被拒(值绑不进本文档)",
+        "lim_dws_returned_no_value": "DWS 没返回这个字段",
+        "lim_vision_offers": "读图模型 {model} 看到的值:“{value}”(仅参考)",
+        "lim_visual_not_measured": "读图门未测",
+        "lim_ocr_unavailable_pipeline_blocked": "独立 OCR 产不出:本行没有机械核对,全靠你人工看整页",
+        "lim_citation_not_checkable": "引用无法机检(无引用区)",
         "ooc": "输入不在校准集内(§12):校准数字(4.2×、78%)不直接适用;"
                "逐文档的机械核对(绑定、门禁、冻结、裁决)不需要校准,照常成立。",
         "stat_reviewed": "槽位已复核", "stat_corrections": "处修正",
@@ -257,6 +279,31 @@ document.addEventListener('DOMContentLoaded', function () {
 """
 
 _DECISIONS = ("accept", "reject", "correct", "abstain")
+
+#: 字段的人类名字 —— 复核者找的是「买方名称」,不是 buyer_name(2026-08-03
+#: 用户反馈:字段名又小又灰,不知道自己的任务是什么)
+_FIELD_LABEL = {
+    "en": {"invoice_number": "Invoice number", "issue_date": "Issue date",
+           "due_date": "Due date", "seller_name": "Seller name",
+           "seller_vat_id": "Seller VAT ID", "buyer_name": "Buyer name",
+           "total_net": "Total (net)", "total_vat": "VAT",
+           "total_gross": "Total (gross)", "amount_due": "Amount due"},
+    "zh": {"invoice_number": "发票号码", "issue_date": "开票日期",
+           "due_date": "到期日", "seller_name": "卖方名称",
+           "seller_vat_id": "卖方 VAT 号", "buyer_name": "买方名称",
+           "total_net": "净额(未含税)", "total_vat": "税额",
+           "total_gross": "总额(含税)", "amount_due": "应付金额"},
+}
+
+
+def _lim(lang: str, code: str) -> str:
+    """matrix 的限制码 → 人话。vision_offers 带动态载荷单独拆;
+    没收录的码原样显示(诚实,不编)。"""
+    if code.startswith("vision_offers:"):
+        payload = code.split(":", 1)[1]
+        model, _, value = payload.partition("=")
+        return _t(lang, "lim_vision_offers", model=model, value=value)
+    return _t(lang, f"lim_{code}")
 _STRENGTH_LABEL = {
     "en": {"unsupported": "unsupported", "single_source": "single source",
            "corroborated": "corroborated"},
@@ -470,15 +517,19 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         else:
             status = f'<span class="wb-status pending">{_esc(_t(lang, "pending"))}</span>'
 
+        label = _FIELD_LABEL[lang].get(field, field)
+        task = (_t(lang, "task_no_value", label=label) if value in (None, "")
+                else _t(lang, "task_with_value", label=label, value=value))
         return f"""<div class="wb-row" id="{_esc(anchor)}">
 <div class="wb-row-head">
 <span class="wb-doc" title="{_esc(doc)}">{_esc(doc[:8])}</span>
-<span class="wb-field">{_esc(field)}</span>
+<span class="wb-field">{_esc(label)}<span class="wb-raw">{_esc(field)}</span></span>
 {value_html}
 <span class="wb-badge {strength}">{_esc(_STRENGTH_LABEL[lang][strength])}</span>
 <span class="wb-gates">{gates}</span>
 {status}
 </div>
+<div class="wb-task">{_esc(task)}</div>
 {self._evidence(lang, ctx, row)}
 {self._decide_form(lang, ctx, row, tip, conflict, len(orphans), adjudicator)}
 </div>"""
@@ -517,7 +568,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         if row["blocking_findings"]:
             parts.append(f'<div class="wb-blocking">{_esc(", ".join(row["blocking_findings"]))}</div>')
         if row["limitations"]:
-            items = "".join(f"<li>{_esc(x)}</li>" for x in row["limitations"])
+            items = "".join(f"<li>{_esc(_lim(lang, x))}</li>" for x in row["limitations"])
             parts.append(f"<ul>{items}</ul>")
         inner = "".join(parts) or "—"
         return (f'<details class="wb-evidence"><summary>{_esc(_t(lang, "evidence"))}'

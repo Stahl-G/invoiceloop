@@ -403,3 +403,27 @@ class TestNavigation:
         assert status == 404
         assert f"/queue?run={RUN}" in text, \
             "404/消息页必须给回队列的路(实测只剩上传 tab,被困住)"
+
+
+class TestTaskLines:
+    """2026-08-03 用户反馈:复核者要在每行看到自己的任务目标。"""
+
+    def test_row_states_the_task_in_plain_language(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=zh&filter=all")
+        assert "任务:在页面上核对" in text, "有值的行要说出核什么、DWS 读到什么"
+        assert "买方名称" in text, "字段要有人类名字,不只是 buyer_name"
+        assert "任务:DWS 没给出" in text, "无值的行要说出补录路径"
+        assert "buyer_name" in text, "原始字段名保留(小字),对账用"
+
+    def test_task_line_english_default(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=en&filter=all")
+        assert "Task: verify the" in text and "Buyer name" in text
+
+    def test_limitation_codes_are_humanized(self, workspace, server):
+        from invoiceloop.workbench import _lim
+
+        assert "机械核对" in _lim("zh", "ocr_unavailable_pipeline_blocked")
+        assert "机械核对" not in _lim("zh", "unknown_future_code"), \
+            "没收录的码原样显示,不编"
+        assert _lim("en", "vision_offers:GPT=x") == \
+            "vision reader GPT saw “x” (reference only)"
