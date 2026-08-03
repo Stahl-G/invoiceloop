@@ -52,8 +52,11 @@ def main() -> None:
     p_ren = sub.add_parser("render", help="从盘上工件重渲 panel(纯投影,可重算)")
     p_ren.add_argument("--run", type=Path, required=True)
 
-    p_bun = sub.add_parser("bundle", help="打 audit_bundle.zip")
+    p_bun = sub.add_parser("bundle", help="打 audit_bundle.zip(全量自包含)")
     p_bun.add_argument("--run", type=Path, required=True)
+
+    p_ver = sub.add_parser("verify", help="离线校验 audit bundle(改一个字节就失败)")
+    p_ver.add_argument("bundle", type=Path)
 
     sub.add_parser("doctor", help="环境自检:poppler/tesseract/requests/研究数据")
 
@@ -148,6 +151,12 @@ def main() -> None:
         from .adjudicate import build_audit_bundle
 
         print(build_audit_bundle(args.run))
+    elif args.command == "verify":
+        from .adjudicate import verify_bundle
+
+        report = verify_bundle(args.bundle)
+        print(json.dumps(report, ensure_ascii=False, indent=1))
+        raise SystemExit(0 if report["ok"] else 1)
     elif args.command == "heldout":
         from . import heldout
 

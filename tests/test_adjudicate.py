@@ -49,10 +49,26 @@ def run_dir(tmp_path):
                     "blocking_findings": 0, "drafts_rejected": 0,
                     "rejected_by_drafter": {}}}), encoding="utf-8")
     (d / "event_log.jsonl").write_text("", encoding="utf-8")
+    # 上游证据(workspace 根 = run_manifest.derisk_root = 同一个 tmp_path):
+    # bundle 方案 A 要把它们全收进包
+    (d / "input" / "pdfs").mkdir(parents=True)
+    (d / "input" / "pdfs" / "doc-a.pdf").write_bytes(b"%PDF-1.4 fake")
+    (d / "ocr").mkdir()
+    (d / "ocr" / "doc-a.json").write_text(json.dumps({"pages": []}), encoding="utf-8")
+    (d / "raw").mkdir()
+    for mode in ("understand", "agentic"):
+        (d / "raw" / f"doc-a.{mode}.json").write_text(
+            json.dumps({"http_status": 200}), encoding="utf-8")
     # 快照最后写:成分齐了再算,与 pipeline 的顺序一致
     (d / "review_snapshot.json").write_text(
         json.dumps(compute_review_snapshot(d)), encoding="utf-8")
     return d
+
+
+def _render(run_dir):
+    from invoiceloop.panel import render_panel_from_run
+
+    render_panel_from_run(run_dir)
 
 
 def _append(d, **kw):
@@ -201,14 +217,9 @@ class TestRenderProjection:
 
 
 class TestBundle:
-    def _render(self, run_dir):
-        from invoiceloop.panel import render_panel_from_run
-
-        render_panel_from_run(run_dir)
-
     def test_missing_artifact_blocks_the_bundle(self, run_dir):
         _append(run_dir)
-        self._render(run_dir)
+        _render(run_dir)
         (run_dir / "gate_report.json").unlink()
         with pytest.raises(FileNotFoundError, match="阻断"):
             adjudicate.build_audit_bundle(run_dir)
@@ -218,7 +229,7 @@ class TestBundle:
         import zipfile
 
         _append(run_dir)
-        self._render(run_dir)
+        _render(run_dir)
         (run_dir / "crops").mkdir()
         (run_dir / "crops" / "ES-0001-1.png").write_bytes(b"\x89PNG fake")
         (run_dir / "pages").mkdir()
@@ -232,3 +243,92 @@ class TestBundle:
             manifest = zf.read("MANIFEST.sha256").decode()
             digest = hashlib.sha256(b"\x89PNG fake").hexdigest()
             assert f"{digest}  crops/ES-0001-1.png" in manifest
+
+
+class TestSelfContainedBundle:
+    def test_bundle_includes_all_upstream_evidence(self, run_dir):
+        import hashlib
+        import zipfile
+
+        _append(run_dir)
+        _render(run_dir)
+        bundle = adjudicate.build_audit_bundle(run_dir)
+        with zipfile.ZipFile(bundle) as zf:
+            names = set(zf.namelist())
+            assert {"evidence/pdfs/doc-a.pdf", "evidence/ocr/doc-a.json",
+                    "evidence/raw/doc-a.understand.json",
+                    "evidence/raw/doc-a.agentic.json",
+                    "extraction_schema.json", "bundle_manifest.json"} <= names
+            scope = json.loads(zf.read("bundle_manifest.json"))
+            assert scope["bundle_scope"] == "full_run"
+            assert scope["docs"] == ["doc-a"]
+            assert scope["review_snapshot_id"]
+            manifest = zf.read("MANIFEST.sha256").decode()
+            digest = hashlib.sha256(b"%PDF-1.4 fake").hexdigest()
+            assert f"{digest}  evidence/pdfs/doc-a.pdf" in manifest
+
+    def test_missing_upstream_evidence_blocks(self, run_dir):
+        _append(run_dir)
+        _render(run_dir)
+        (run_dir / "ocr" / "doc-a.json").unlink()
+        with pytest.raises(FileNotFoundError, match="上游证据"):
+            adjudicate.build_audit_bundle(run_dir)
+
+
+class TestVerify:
+    def _build(self, run_dir):
+        _append(run_dir)
+        _render(run_dir)
+        return adjudicate.build_audit_bundle(run_dir)
+
+    def _repack(self, bundle, mutate):
+        import zipfile
+
+        with zipfile.ZipFile(bundle) as zf:
+            items = {i.filename: zf.read(i.filename) for i in zf.infolist()}
+        mutate(items)
+        with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as zf:
+            for name, data in items.items():
+                zf.writestr(name, data)
+
+    def test_fresh_bundle_verifies(self, run_dir):
+        report = adjudicate.verify_bundle(self._build(run_dir))
+        assert report["ok"] and report["failures"] == [] and report["members"] > 10
+
+    def test_one_flipped_byte_fails(self, run_dir):
+        bundle = self._build(run_dir)
+        self._repack(bundle, lambda items: items.__setitem__(
+            "gate_report.json", items["gate_report.json"] + b"x"))
+        report = adjudicate.verify_bundle(bundle)
+        assert not report["ok"]
+        assert any("哈希不符" in f for f in report["failures"])
+
+    def test_unregistered_member_fails(self, run_dir):
+        bundle = self._build(run_dir)
+        self._repack(bundle, lambda items: items.__setitem__("evil.txt", b"x"))
+        report = adjudicate.verify_bundle(bundle)
+        assert not report["ok"]
+        assert any("未登记成员" in f for f in report["failures"])
+
+    def test_manifest_aware_attacker_is_caught_by_snapshot_recompute(self, run_dir):
+        """改了工件又同步改 MANIFEST 的攻击者:成员级被蒙过,快照级抓。"""
+        import hashlib
+
+        bundle = self._build(run_dir)
+
+        def attack(items):
+            items["gate_report.json"] = items["gate_report.json"] + b"x"
+            lines = []
+            for line in items["MANIFEST.sha256"].decode().splitlines():
+                digest, rel = line.split("  ", 1)
+                if rel == "gate_report.json":
+                    digest = hashlib.sha256(items["gate_report.json"]).hexdigest()
+                lines.append(f"{digest}  {rel}")
+            items["MANIFEST.sha256"] = ("\n".join(lines) + "\n").encode()
+
+        self._repack(bundle, attack)
+        report = adjudicate.verify_bundle(bundle)
+        assert not report["ok"]
+        assert any("review_snapshot" in f for f in report["failures"])
+        assert not any("哈希不符" in f for f in report["failures"]), \
+            "成员级应被攻击者蒙过 —— 抓它的必须是快照级重算"

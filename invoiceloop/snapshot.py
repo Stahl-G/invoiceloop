@@ -61,6 +61,14 @@ def build_input_manifest(doc_ids: list[str]) -> dict:
     return manifest
 
 
+def snapshot_id_from_components(components: dict[str, str | None]) -> str:
+    """成分哈希 → 快照 id。bundle verify 在 zip 内重算时也走这里。"""
+    h = hashlib.sha256()
+    for name in SNAPSHOT_COMPONENTS:
+        h.update(f"{name}={components.get(name)}\n".encode())
+    return h.hexdigest()
+
+
 def compute_review_snapshot(run_dir: Path) -> dict:
     """从 run 目录的工件字节推导复核快照。成分缺失记 null(v1 旧 run 没有
     input_manifest.json,快照仍确定 —— 旧 run 不可变,推导结果不变)。"""
@@ -69,10 +77,8 @@ def compute_review_snapshot(run_dir: Path) -> dict:
     for name in SNAPSHOT_COMPONENTS:
         path = run_dir / name
         components[name] = _sha_or_none(path) if path.exists() else None
-    h = hashlib.sha256()
-    for name in SNAPSHOT_COMPONENTS:
-        h.update(f"{name}={components[name]}\n".encode())
-    return {"review_snapshot_id": h.hexdigest(), "components": components}
+    return {"review_snapshot_id": snapshot_id_from_components(components),
+            "components": components}
 
 
 def load_or_derive_snapshot(run_dir: Path) -> dict:
