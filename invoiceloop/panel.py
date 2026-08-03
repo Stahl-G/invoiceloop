@@ -26,6 +26,12 @@ _TIER_LABEL = {
     "arithmetic": "算术恒等",
 }
 _VERDICT_LABEL = {"pass": "过", "warning": "警", "fail": "拒", "unavailable": "—"}
+_DECISION_LABEL = {
+    "accept": "人工接受",
+    "reject": "人工拒绝",
+    "correct": "人工修正",
+    "abstain": "人工弃权",
+}
 _GATE_SHORT = {
     "arithmetic_consistency": "算术",
     "field_wellformed": "形态",
@@ -74,7 +80,33 @@ def _span_html(span: dict, run_dir: Path) -> str:
     )
 
 
-def _row_html(row: dict, spans_by_id: dict, run_dir: Path) -> str:
+def _overlay_html(slot: dict | None) -> str:
+    """一行的人工裁决叠加层:current human state + 历史规模。
+
+    原 DWS/冻结值永远留在原处(值列不动),修正值只出现在这里 ——
+    裁决是叠加,不是篡改。链冲突显式标出,不替人猜。
+    """
+    if not slot:
+        return ""
+    if slot["conflict"]:
+        return ('<div class="human conflict"><b>裁决链冲突:</b>'
+                '多条 tip —— 先人工整理 adjudication_ledger.jsonl,系统不猜哪条算数</div>')
+    tip = slot["tip"]
+    label = _DECISION_LABEL.get(tip["decision"], tip["decision"])
+    corrected = (f' → “{_esc(tip["corrected_value"])}”'
+                 if tip["decision"] == "correct" else "")
+    supersedes = (f' · 取代 {_esc(tip["supersedes_decision_id"])}'
+                  if tip.get("supersedes_decision_id") else "")
+    legacy = ' · <span title="v1 格式,加载时确定性串链">v1 条目</span>' if tip.get("legacy") else ""
+    n = len(slot["history"])
+    history = f' · <a href="adjudication_ledger.jsonl">历史 {n} 条</a>' if n > 1 else ""
+    return (f'<div class="human"><b>{label}{corrected}</b>'
+            f'({_esc(tip["decision_id"])} · {_esc(tip["adjudicator"])} · '
+            f'{_esc(tip["decided_at"])}{supersedes}{legacy})<br>'
+            f'<i>理由:{_esc(tip["rationale"])}</i>{history}</div>')
+
+
+def _row_html(row: dict, spans_by_id: dict, run_dir: Path, overlay: dict | None = None) -> str:
     strength = row["support_strength"]
     tiers = " ".join(
         f'<span class="tier">{_esc(_TIER_LABEL.get(t, t))}</span>' for t in row["source_tiers"]
@@ -116,6 +148,7 @@ def _row_html(row: dict, spans_by_id: dict, run_dir: Path) -> str:
     blocking = ""
     if row["blocking_findings"]:
         blocking = f'<div class="blocking">阻断发现: {_esc(", ".join(row["blocking_findings"]))}</div>'
+    human = _overlay_html(overlay)
     return f"""<tr class="row {strength}">
 <td class="doc" title="{_esc(row['doc_id'])}">{_esc(row['doc_id'][:8])}</td>
 <td class="field">{_esc(row['field'])}</td>
@@ -123,7 +156,7 @@ def _row_html(row: dict, spans_by_id: dict, run_dir: Path) -> str:
 <td><span class="badge {strength}">{_STRENGTH_LABEL[strength]}</span>{applicability}</td>
 <td>{tiers}</td>
 <td class="gates">{_chips(row['gate_verdicts'])}</td>
-<td class="detail"><ul class="lim">{limitations}</ul>{''.join(evidence)}{rejected}{blocking}</td>
+<td class="detail"><ul class="lim">{limitations}</ul>{''.join(evidence)}{rejected}{blocking}{human}</td>
 </tr>"""
 
 
@@ -145,7 +178,20 @@ def render_panel(
     run_dir = Path(run_dir)
     spans_by_id = {s["span_id"]: s for s in spans}
     s = support["summary"]
-    rows_html = "\n".join(_row_html(r, spans_by_id, run_dir) for r in support["rows"])
+
+    # 人工裁决叠加层:panel 只是投影 —— 裁决的权威是 adjudication_ledger.jsonl,
+    # 这里读出来叠上去;一条没有就什么都不叠
+    from .review import load_decisions, project, target_id_for
+    from .snapshot import load_or_derive_snapshot
+
+    snapshot_id = load_or_derive_snapshot(run_dir)["review_snapshot_id"]
+    decisions = load_decisions(run_dir)
+    slots = project(decisions)
+    rows_html = "\n".join(
+        _row_html(r, spans_by_id, run_dir,
+                  slots.get(target_id_for(snapshot_id, r["doc_id"], r["field"])))
+        for r in support["rows"]
+    )
 
     findings = gate_report["findings"]
     blocking = [f for f in findings if f["blocking"]]
@@ -162,6 +208,8 @@ def render_panel(
     )
     qualifiers = "".join(f"<li>{_esc(q)}</li>" for q in _QUALIFIERS)
     non_claims = "".join(f"<li>{_esc(c)}</li>" for c in _NON_CLAIMS)
+    decided_stat = (f'<div class="stat"><b>{len(decisions)}</b>已人工裁决'
+                    f'(current state 按 supersession 链)</div>' if decisions else "")
     ooc_banner = (
         '<div class="caveats"><b>输入不在校准集内(§12 输入契约)。</b>'
         "这些文档未参与任何校准与留出验证:panel 上的校准数字(4.2×、78%)"
@@ -200,6 +248,10 @@ ul.lim {{ margin:0; padding-left:1.1rem; color:var(--mute); font-size:.85em; }}
 .evlabel {{ font-size:.78em; font-weight:600; color:#555; margin-top:.4rem; }}
 .rejected {{ font-size:.8em; color:var(--bad); }} .rejected ul {{ margin:.1rem 0; padding-left:1.1rem; }}
 .blocking {{ font-size:.8em; color:var(--bad); font-weight:600; }}
+.human {{ font-size:.85em; background:#eef4ff; border:1px solid #b9cdf0; border-radius:4px;
+         padding:.3rem .5rem; margin-top:.4rem; }}
+.human.conflict {{ background:#fdecea; border-color:#f0b4ae; color:var(--bad); }}
+.human a {{ color:#3457a8; }}
 tr.blk td {{ background:#fdecea; }}
 .novalue {{ color:var(--mute); }}
 .footer {{ margin-top:2rem; font-size:.8em; color:var(--mute); border-top:1px solid var(--line); padding-top:.6rem; word-break:break-all; }}
@@ -225,6 +277,7 @@ tr.blk td {{ background:#fdecea; }}
 <div class="stat"><b>{s['applicability_disputed']}</b>口径争议(不进错误率)</div>
 <div class="stat"><b>{s['blocking_findings']}</b>阻断发现</div>
 <div class="stat"><b>{s['drafts_rejected']}</b>草稿被冻结事务拒绝</div>
+{decided_stat}
 </div>
 <p>分诊排序经 160 份预注册文档实测:门禁挑出的字段偏差率 50.0%,未挑出的 11.8%,
 集中度 4.2× —— 看 46% 的字段覆盖 78% 的偏差。分诊不要求任何一档「可信」,
@@ -250,9 +303,34 @@ tr.blk td {{ background:#fdecea; }}
 <div class="footer">
 输入签名(§5.3):artifact_digest={artifact_digest}<br>
 field_ledger sha256={ledger['sha256']}<br>
+review_snapshot_id={snapshot_id}(人工裁决绑定的完整快照,不只是账本)<br>
 本 panel 由 Python 从冻结工件渲染;上面每个数字都可用同一份存盘证据零 API 重算。
 </div>
 </body></html>"""
     out = run_dir / "support_panel.html"
     out.write_text(page, encoding="utf-8")
     return out
+
+
+def render_panel_from_run(run_dir: Path) -> Path:
+    """只从盘上工件重渲 panel —— panel 是纯投影,任何时候都可重建。
+
+    裁决后重渲、HTML 弄丢了重建、换了样式重出,都走这里;不重算任何门禁。
+    """
+    run_dir = Path(run_dir)
+
+    def _load(name: str):
+        return json.loads((run_dir / name).read_text(encoding="utf-8"))
+
+    from .evidence import digest_registry
+
+    manifest = _load("run_manifest.json")
+    return render_panel(
+        run_dir,
+        support=_load("support_matrix.json"),
+        gate_report=_load("gate_report.json"),
+        spans=_load("evidence_span_registry.json"),
+        ledger=_load("field_ledger.json"),
+        artifact_digest=digest_registry(_load("artifact_registry.json")),
+        out_of_calibration=manifest.get("out_of_calibration", False),
+    )

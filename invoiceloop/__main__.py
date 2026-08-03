@@ -35,7 +35,7 @@ def main() -> None:
     p_ing.add_argument("--no-ocr", action="store_true", help="跳过本地独立 OCR")
     p_ing.add_argument("--no-extract", action="store_true", help="跳过 DWS 抽取(先只产 OCR)")
 
-    p_adj = sub.add_parser("adjudicate", help="追加人工裁决")
+    p_adj = sub.add_parser("adjudicate", help="追加人工裁决(随后自动重渲 panel)")
     p_adj.add_argument("--run", type=Path, required=True)
     p_adj.add_argument("--doc", required=True)
     p_adj.add_argument("--field", required=True)
@@ -44,7 +44,13 @@ def main() -> None:
     p_adj.add_argument("--rationale", required=True)
     p_adj.add_argument("--adjudicator", required=True)
     p_adj.add_argument("--decided-at", required=True, help="ISO 时间,由人给出")
-    p_adj.add_argument("--corrected-value", default=None)
+    p_adj.add_argument("--corrected-value", default=None,
+                       help="decision=correct 时必填,其余决策禁带")
+    p_adj.add_argument("--supersedes", dest="supersedes_decision_id", default=None,
+                       help="该字段槽已有裁决时必填:当前 tip 的 decision_id")
+
+    p_ren = sub.add_parser("render", help="从盘上工件重渲 panel(纯投影,可重算)")
+    p_ren.add_argument("--run", type=Path, required=True)
 
     p_bun = sub.add_parser("bundle", help="打 audit_bundle.zip")
     p_bun.add_argument("--run", type=Path, required=True)
@@ -121,15 +127,23 @@ def main() -> None:
         cmd_ingest(args.workspace, do_ocr=not args.no_ocr,
                    do_extract=not args.no_extract)
     elif args.command == "adjudicate":
-        from .adjudicate import append_adjudication
+        from .adjudicate import adjudicate_and_render
 
-        entry = append_adjudication(
+        result = adjudicate_and_render(
             args.run, claim_id=args.claim_id, doc_id=args.doc, field=args.field,
             decision=args.decision, rationale=args.rationale,
             adjudicator=args.adjudicator, decided_at=args.decided_at,
             corrected_value=args.corrected_value,
+            supersedes_decision_id=args.supersedes_decision_id,
         )
-        print(json.dumps(entry, ensure_ascii=False, indent=1))
+        if not result["panel_refreshed"]:
+            result["hint"] = ("panel 未刷新,但裁决已落盘(fsync)。"
+                              f"修好渲染后跑:python3 -m invoiceloop render --run {args.run}")
+        print(json.dumps(result, ensure_ascii=False, indent=1))
+    elif args.command == "render":
+        from .panel import render_panel_from_run
+
+        print(render_panel_from_run(args.run))
     elif args.command == "bundle":
         from .adjudicate import build_audit_bundle
 

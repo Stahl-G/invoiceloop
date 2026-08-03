@@ -36,6 +36,15 @@ def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def digest_registry(entries: Iterable[dict]) -> str:
+    """工件注册表的内容摘要:同样输入 → 同样签名(§5.3 门禁事务绑定它)。"""
+    h = hashlib.sha256()
+    for e in entries:
+        h.update(e["artifact_id"].encode())
+        h.update(e.get("sha256", "<absent>").encode())
+    return h.hexdigest()
+
+
 def register_artifacts(doc_ids: Iterable[str]) -> list[dict]:
     """把每份存盘响应按内容哈希登记为工件(§10 保留:内容寻址冻结)。
 

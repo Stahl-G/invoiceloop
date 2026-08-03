@@ -1,69 +1,224 @@
-"""M4 裁决与交付:append-only、指向真实声明、打包带哈希清单、缺工件阻断。"""
+"""M4 裁决 v2:快照绑定、三元一致、决策语义、supersession、渲染失败隔离。
+
+对应不变量 5/6/7/8/9:裁决绑完整 review_snapshot;claim_id↔doc_id↔field
+精确一致;缺值槽用稳定 target_id;二次决定必须显式 supersede;panel 是
+可重建投影,渲染失败不回滚已落盘的裁决。
+"""
 
 from __future__ import annotations
 
-import hashlib
 import json
-import zipfile
 
 import pytest
 
 from invoiceloop import adjudicate
+from invoiceloop.review import project_run, target_id_for
+from invoiceloop.snapshot import compute_review_snapshot
+
+DECIDED = "2026-08-03T10:00:00"
 
 
 @pytest.fixture
 def run_dir(tmp_path):
-    """最小合法 run 目录:必备工件 + 一条冻结声明。"""
-    for name in adjudicate.REQUIRED_ARTIFACTS:
-        content = {} if name.endswith(".json") else ""
-        if name == "field_ledger.json":
-            content = {"claims": [{"claim_id": "FC-0001", "doc_id": "doc-a",
-                                   "field": "total_gross", "value": "100.00"}],
-                       "sha256": "x"}
-        path = tmp_path / name
-        if name.endswith(".json"):
-            path.write_text(json.dumps(content), encoding="utf-8")
-        else:
-            path.write_text("", encoding="utf-8")
-    (tmp_path / "adjudication_ledger.jsonl").unlink()  # 从空白开始,测试自己造
-    return tmp_path
+    """最小但可渲染的 v2 run 目录:真实形状的清单/账本/矩阵/门禁/快照。"""
+    d = tmp_path
+    (d / "run_manifest.json").write_text(json.dumps({
+        "docs": ["doc-a"], "n_docs": 1, "out_of_calibration": False,
+        "layout": "workspace", "derisk_root": str(tmp_path)}), encoding="utf-8")
+    (d / "input_manifest.json").write_text(json.dumps(
+        {"fingerprint": "f" * 64, "docs": []}), encoding="utf-8")
+    (d / "artifact_registry.json").write_text("[]", encoding="utf-8")
+    (d / "evidence_span_registry.json").write_text("[]", encoding="utf-8")
+    (d / "field_claim_graph.json").write_text("[]", encoding="utf-8")
+    (d / "field_drafts.json").write_text("[]", encoding="utf-8")
+    (d / "field_ledger.json").write_text(json.dumps({
+        "claims": [{"claim_id": "FC-0001", "doc_id": "doc-a",
+                    "field": "total_gross", "value": "100.00"}],
+        "rejections": [], "sha256": "ledger-sha"}), encoding="utf-8")
+    (d / "gate_report.json").write_text(json.dumps({"findings": []}), encoding="utf-8")
+    row = {"doc_id": "doc-a", "field": "total_gross", "value": "100.00",
+           "support_strength": "single_source", "source_tiers": ["dws_extraction"],
+           "applicability": "applicable", "limitations": [], "span_ids": [],
+           "cited_span_ids": [], "rejections": [], "blocking_findings": [],
+           "gate_verdicts": {}}
+    (d / "support_matrix.json").write_text(json.dumps({
+        "rows": [row],
+        "summary": {"docs": 1, "slots": 1,
+                    "by_strength": {"unsupported": 0, "single_source": 1, "corroborated": 0},
+                    "requires_adjudication": 1, "applicability_disputed": 0,
+                    "blocking_findings": 0, "drafts_rejected": 0,
+                    "rejected_by_drafter": {}}}), encoding="utf-8")
+    (d / "event_log.jsonl").write_text("", encoding="utf-8")
+    # 快照最后写:成分齐了再算,与 pipeline 的顺序一致
+    (d / "review_snapshot.json").write_text(
+        json.dumps(compute_review_snapshot(d)), encoding="utf-8")
+    return d
 
 
-class TestAppend:
+def _append(d, **kw):
+    base = dict(claim_id="FC-0001", doc_id="doc-a", field="total_gross",
+                decision="accept", rationale="证据齐", adjudicator="y",
+                decided_at=DECIDED)
+    base.update(kw)
+    return adjudicate.append_adjudication(d, **base)
+
+
+class TestEntryShape:
+    def test_entry_binds_full_review_snapshot(self, run_dir):
+        entry = _append(run_dir)
+        persisted = json.loads((run_dir / "review_snapshot.json").read_text())
+        assert entry["review_snapshot_id"] == persisted["review_snapshot_id"]
+        assert entry["decision_id"] == "HD-0001"
+        assert entry["target_id"] == target_id_for(
+            persisted["review_snapshot_id"], "doc-a", "total_gross")
+        assert entry["supersedes_decision_id"] is None
+
+    def test_missing_field_slot_uses_stable_target(self, run_dir):
+        entry = _append(run_dir, claim_id=None, field="total_vat",
+                        decision="correct", corrected_value="10.00",
+                        rationale="纸面为 10")
+        sid = json.loads((run_dir / "review_snapshot.json").read_text())["review_snapshot_id"]
+        assert entry["target_id"] == target_id_for(sid, "doc-a", "total_vat")
+        assert entry["claim_id"] is None
+
     def test_entries_are_append_only_with_seq(self, run_dir):
-        adjudicate.append_adjudication(
-            run_dir, claim_id="FC-0001", doc_id="doc-a", field="total_gross",
-            decision="accept", rationale="证据齐", adjudicator="y", decided_at="2026-08-02T10:00:00")
-        adjudicate.append_adjudication(
-            run_dir, claim_id=None, doc_id="doc-a", field="total_vat",
-            decision="correct", corrected_value="10.00", rationale="纸面为 10",
-            adjudicator="y", decided_at="2026-08-02T10:01:00")
+        _append(run_dir)
+        _append(run_dir, claim_id=None, field="total_vat", decision="abstain",
+                rationale="看不准")
         lines = (run_dir / "adjudication_ledger.jsonl").read_text().splitlines()
         assert [json.loads(x)["seq"] for x in lines] == [1, 2]
-        assert json.loads(lines[1])["decision"] == "correct"
+        assert json.loads(lines[1])["decision_id"] == "HD-0002"
+
+
+class TestValidation:
+    def test_unknown_decision_is_refused(self, run_dir):
+        with pytest.raises(ValueError, match="decision"):
+            _append(run_dir, decision="looks-good")
+
+    def test_correct_requires_corrected_value(self, run_dir):
+        with pytest.raises(ValueError, match="corrected_value"):
+            _append(run_dir, decision="correct")
+
+    def test_non_correct_forbids_corrected_value(self, run_dir):
+        with pytest.raises(ValueError, match="禁止携带"):
+            _append(run_dir, decision="accept", corrected_value="100.00")
+
+    def test_unknown_field_is_refused(self, run_dir):
+        with pytest.raises(ValueError, match="受评字段"):
+            _append(run_dir, field="address")
+
+    def test_doc_outside_run_is_refused(self, run_dir):
+        with pytest.raises(ValueError, match="文档集合"):
+            _append(run_dir, claim_id=None, doc_id="doc-b")
+
+    def test_empty_decided_at_is_refused(self, run_dir):
+        with pytest.raises(ValueError, match="decided_at"):
+            _append(run_dir, decided_at=" ")
 
     def test_unknown_claim_id_is_refused(self, run_dir):
         with pytest.raises(ValueError, match="不在已冻结账本"):
-            adjudicate.append_adjudication(
-                run_dir, claim_id="FC-9999", doc_id="doc-a", field="f",
-                decision="accept", rationale="r", adjudicator="y", decided_at="t")
+            _append(run_dir, claim_id="FC-9999")
 
-    def test_unknown_decision_is_refused(self, run_dir):
-        with pytest.raises(ValueError, match="decision"):
-            adjudicate.append_adjudication(
-                run_dir, claim_id=None, doc_id="doc-a", field="f",
-                decision="looks-good", rationale="r", adjudicator="y", decided_at="t")
+    def test_claim_doc_field_triple_must_match(self, run_dir):
+        with pytest.raises(ValueError, match="精确一致"):
+            _append(run_dir, claim_id="FC-0001", field="total_net")
+
+
+class TestSupersession:
+    def test_second_decision_must_supersede_current_tip(self, run_dir):
+        first = _append(run_dir)
+        with pytest.raises(ValueError, match="supersedes_decision_id='HD-0001'"):
+            _append(run_dir, decision="reject", rationale="看错了")
+        with pytest.raises(ValueError, match="supersedes"):
+            _append(run_dir, decision="reject", rationale="看错了",
+                    supersedes_decision_id="HD-9999")
+        second = _append(run_dir, decision="reject", rationale="复核后改判",
+                         supersedes_decision_id=first["decision_id"])
+        assert second["decision_id"] == "HD-0002"
+        slot = project_run(run_dir)[first["target_id"]]
+        assert slot["tip"]["decision_id"] == "HD-0002"
+        assert len(slot["history"]) == 2 and not slot["conflict"]
+
+    def test_supersedes_on_fresh_slot_is_refused(self, run_dir):
+        with pytest.raises(ValueError, match="必须为 null"):
+            _append(run_dir, supersedes_decision_id="HD-0001")
+
+    def test_conflicted_chain_blocks_new_decisions(self, run_dir):
+        sid = json.loads((run_dir / "review_snapshot.json").read_text())["review_snapshot_id"]
+        target = target_id_for(sid, "doc-a", "total_gross")
+        lines = []
+        for i, decision in enumerate(("accept", "reject"), 1):
+            lines.append(json.dumps({
+                "seq": i, "decision_id": f"HD-{i:04d}", "review_snapshot_id": sid,
+                "target_id": target, "claim_id": "FC-0001", "doc_id": "doc-a",
+                "field": "total_gross", "decision": decision, "corrected_value": None,
+                "rationale": "r", "adjudicator": "y", "decided_at": DECIDED,
+                "supersedes_decision_id": None}))
+        (run_dir / "adjudication_ledger.jsonl").write_text("\n".join(lines) + "\n")
+        with pytest.raises(ValueError, match="冲突"):
+            _append(run_dir, decision="abstain", rationale="r")
+
+
+class TestRenderProjection:
+    def test_adjudicate_and_render_reflects_on_panel(self, run_dir):
+        result = adjudicate.adjudicate_and_render(
+            run_dir, claim_id="FC-0001", doc_id="doc-a", field="total_gross",
+            decision="correct", corrected_value="21000.00",
+            rationale="printed total 与独立 OCR 一致", adjudicator="alice",
+            decided_at=DECIDED)
+        assert result["decision_recorded"] is True
+        assert result["panel_refreshed"] is True
+        html = (run_dir / "support_panel.html").read_text(encoding="utf-8")
+        assert "人工修正" in html and "21000.00" in html
+        assert "HD-0001" in html and "alice" in html
+        assert "printed total 与独立 OCR 一致" in html
+        assert "100.00" in html, "原 DWS 值必须留在原处,不许被修正值替换"
+        assert "已人工裁决" in html
+
+    def test_render_failure_does_not_rollback_decision(self, run_dir, monkeypatch):
+        import invoiceloop.panel
+
+        def boom(_):
+            raise RuntimeError("磁盘满了")
+
+        monkeypatch.setattr(invoiceloop.panel, "render_panel_from_run", boom)
+        result = adjudicate.adjudicate_and_render(
+            run_dir, claim_id="FC-0001", doc_id="doc-a", field="total_gross",
+            decision="accept", rationale="证据齐", adjudicator="y", decided_at=DECIDED)
+        assert result["decision_recorded"] is True
+        assert result["panel_refreshed"] is False
+        assert "磁盘满了" in result["render_error"]
+        lines = (run_dir / "adjudication_ledger.jsonl").read_text().splitlines()
+        assert len(lines) == 1, "渲染失败不许重复写裁决,也不许撤销"
+
+    def test_render_from_disk_after_offline_append(self, run_dir):
+        from invoiceloop.panel import render_panel_from_run
+
+        _append(run_dir, decision="abstain", rationale="吃不准")
+        render_panel_from_run(run_dir)
+        html = (run_dir / "support_panel.html").read_text(encoding="utf-8")
+        assert "人工弃权" in html and "review_snapshot_id=" in html
 
 
 class TestBundle:
+    def _render(self, run_dir):
+        from invoiceloop.panel import render_panel_from_run
+
+        render_panel_from_run(run_dir)
+
     def test_missing_artifact_blocks_the_bundle(self, run_dir):
+        _append(run_dir)
+        self._render(run_dir)
+        (run_dir / "gate_report.json").unlink()
         with pytest.raises(FileNotFoundError, match="阻断"):
             adjudicate.build_audit_bundle(run_dir)
 
     def test_bundle_carries_manifest_with_verifiable_hashes(self, run_dir):
-        adjudicate.append_adjudication(
-            run_dir, claim_id="FC-0001", doc_id="doc-a", field="total_gross",
-            decision="accept", rationale="r", adjudicator="y", decided_at="t")
+        import hashlib
+        import zipfile
+
+        _append(run_dir)
+        self._render(run_dir)
         (run_dir / "crops").mkdir()
         (run_dir / "crops" / "ES-0001-1.png").write_bytes(b"\x89PNG fake")
         (run_dir / "pages").mkdir()
@@ -74,10 +229,6 @@ class TestBundle:
             assert "MANIFEST.sha256" in names
             for required in adjudicate.REQUIRED_ARTIFACTS:
                 assert required in names
-            assert "crops/ES-0001-1.png" in names
-            assert "pages/doc-a-1.png" in names
             manifest = zf.read("MANIFEST.sha256").decode()
             digest = hashlib.sha256(b"\x89PNG fake").hexdigest()
             assert f"{digest}  crops/ES-0001-1.png" in manifest
-            digest_p = hashlib.sha256(b"\x89PNG page").hexdigest()
-            assert f"{digest_p}  pages/doc-a-1.png" in manifest

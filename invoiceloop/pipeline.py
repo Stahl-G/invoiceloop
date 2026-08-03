@@ -8,7 +8,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 
@@ -27,15 +26,6 @@ def _write_json(path: Path, payload) -> None:
         json.dumps(payload, indent=1, ensure_ascii=False, sort_keys=False) + "\n",
         encoding="utf-8",
     )
-
-
-def _digest(entries: list[dict]) -> str:
-    """工件注册表的内容摘要:同样输入 → 同样签名(§5.3 门禁事务绑定它)。"""
-    h = hashlib.sha256()
-    for e in entries:
-        h.update(e["artifact_id"].encode())
-        h.update(e.get("sha256", "<absent>").encode())
-    return h.hexdigest()
 
 
 def build_drafts(
@@ -122,7 +112,7 @@ def run(
     # ---- ② 抽取事务:工件注册 + 证据片段 + 声明图
     artifacts = evidence.register_artifacts(doc_ids)
     _write_json(out_dir / "artifact_registry.json", artifacts)
-    artifact_digest = _digest(artifacts)
+    artifact_digest = evidence.digest_registry(artifacts)
     emit("artifacts_registered", n=len(artifacts), digest=artifact_digest)
 
     understand = {d: _load(d, "understand") for d in doc_ids}
