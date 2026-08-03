@@ -16,6 +16,30 @@ audit bundle 不能独立复核上游证据、human loop 不闭环(裁决不回�
 | 1d0798c | 裁决 v2:绑定完整复核快照(不只是账本);`claim_id↔doc_id↔field` 三元精确一致;缺值槽用稳定 `target_id`;决策语义冻结(correct 必带值,余者禁带);二次决定必须显式 supersede;panel 成为可重建投影,渲染失败不回滚裁决 |
 | e943412 | 自包含 bundle(方案 A):全量上游证据(PDF/OCR/raw×2)+ 抽取 schema + 范围元数据;`verify` 命令三层离线校验(成员哈希 → 快照成分重算 → 裁决绑定) |
 | 1133483 | 自查补洞:读图作答进输入指纹(否则重放会返回旧 run);panel 叠加层 label 转义 |
+| a044c09 | 内联对抗复核加固(6 项,见下「自查发现」) |
+| 后续 | 研究测试守卫统一为 `corpus_available()`(守卫与取数同一来源) |
+
+## 自查发现(子代理网关 503,内联对抗复核代替;每项带测试)
+
+独立子代理评审两次尝试均被推理网关拒绝(503 auth_unavailable),改为内联
+逐维攻击自己的实现,发现并已修复:
+
+1. **追加裁决不校验快照与盘上工件仍一致** —— run 之后工件被动过,裁决会静默
+   绑到名存实亡的快照。现在不一致即阻断(`test_append_blocks_when_run_artifacts_were_altered`)。
+2. **绑定别快照的裁决静默不可见** —— 从另一个 run 复制账本,旧裁决不进链也不显示。
+   现在标 orphan:不投影(不许错投),但 panel 显式警告(历史不藏)。
+3. **`--docs` 截断在指纹之后** —— 「前 1 份的 run」会被当成「全部文档的 run」重放。
+   现在截断先于指纹(`test_docs_slice_precedes_fingerprint`)。
+4. **重放不验完整性** —— 跑到一半崩掉的 run(有 input_manifest 无 event_log)
+   会被当成果重放。现在半拉子 run 跳过重放,留在原地当现场。
+5. **bundle 上游证据只查存在性** —— run 之后被换掉的 PDF 会静默进包。现在按
+   input_manifest 记录的 sha 验收:被换/丢失 = 阻断;run 时就不存在 = 进 notes。
+6. **研究测试守卫与取数来源错位** —— 守卫查硬编码默认路径,取数走环境变量;
+   fresh-venv 验证脚本当场抓住 13 个失败。统一为 `corpus_available()`。
+
+已知边界(记录,不修):bundle zip 的时间戳使两次打包字节不同(包内 MANIFEST
+与 verify 不受影响);并发 CLI 抢同一 run 代的理论窗口由 `mkdir(exist_ok=False)`
+压到最小,输家当场报错。
 
 ## 关键设计决定(为什么这样做)
 
@@ -45,6 +69,10 @@ audit bundle 不能独立复核上游证据、human loop 不闭环(裁决不回�
 | bundle 缺任一上游证据即阻断 | `test_missing_upstream_evidence_blocks` |
 | bundle 任一字节被改,verify 失败 | `TestVerify` 四条(含"改了工件又同步改 MANIFEST"被快照重算抓住) |
 | clean clone 无 dws-derisk,产品路径仍能跑 | `scripts/fresh_venv_check.sh`(clone → venv → install → doctor → E2E → pytest) |
+
+`fresh_venv_check.sh` 已于本日跑通:clean clone → 安装 → doctor →
+ingest → run → 裁决 → panel 投影 → bundle → verify → 重放 →
+pytest(129 过,40 研究测试跳过)= 全绿。
 
 ## 边界(这轮不做什么)
 

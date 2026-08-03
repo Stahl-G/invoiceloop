@@ -343,3 +343,25 @@ artifact supersession、repair cycle、finalize render、跨运行改进账本�
 3. **输入**:v0 仅 DocILE(证据链完整、可零 API 重算);
    上传路径后续加,且必须标注"不在校准集内"
 4. **截止日**:未知 → 里程碑设计成每层独立可演示,截止日只决定停在哪一层
+
+## 13. H0 完整性地基(2026-08-03,外部复核驱动)
+
+外部复核发现「冻结未被真正强制」等四个瓦解核心承诺的问题后确立的机制
+(全录:`docs/H0_INTEGRITY_2026-08-03.md`):
+
+- **运行不可变**:输出目录非空永拒,没有 `--force`,也不要求删除历史;
+  workspace 逐代 `runs/run-NNNN`,`current.json` 只是可重建指针。
+  输入指纹(PDF+OCR+raw+schema+读图作答的内容哈希)相同的重跑 = 重放既有 run;
+  半拉子 run(无 event_log)不许被重放,留在原地当现场。
+- **复核快照**:每条人工裁决绑定 `review_snapshot_id`(输入清单 + 工件注册表 +
+  证据片段 + 冻结账本 + 门禁报告五成分的哈希),不是只绑账本。
+  追加裁决前先验快照与盘上工件仍一致,不一致即阻断。
+- **裁决链**:`claim_id↔doc_id↔field` 三元精确一致;`correct` 必带修正值,
+  余者禁带;同槽二次决定必须显式 supersede 当前 tip;current state 由
+  supersession 链投影,链断显式标冲突;绑定别快照的裁决标 orphan,
+  不投影但不藏。
+- **panel 是投影**:从盘上工件随时可重建(`render --run`);
+  渲染失败不回滚已落盘的裁决。
+- **bundle 全量自包含**:上游证据按 input_manifest 记录的 sha 验收
+  (被换/丢失 = 阻断;run 时就不存在 = 进 notes);`verify` 三层离线校验
+  (成员哈希 → 快照成分重算 → 裁决绑定)。

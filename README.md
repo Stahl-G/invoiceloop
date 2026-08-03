@@ -60,11 +60,14 @@ python3 -m invoiceloop ingest --workspace ws/    # 本地独立 OCR + DWS 抽取
 python3 -m invoiceloop run --workspace ws/ --crops   # 产出在 ws/runs/run-NNNN(不可变,panel 标注「不在校准集内」)
 # 同一份输入再跑 = 重放既有 run;输入变了自动开新代;--new-run 强制新代。旧 run 永远原样保留。
 
-# 人工裁决(append-only,不改冻结输入)与交付(含逐文件 sha256 清单)
+# 人工裁决(append-only,绑定完整复核快照)与交付(全量自包含 bundle)
 python3 -m invoiceloop adjudicate --run runs/demo --doc <doc_id> --field total_gross \
   --claim-id FC-0042 --decision accept --rationale "证据齐" \
   --adjudicator <名字> --decided-at 2026-08-02T10:00:00
-python3 -m invoiceloop bundle --run runs/demo
+#   二次决定同一字段须显式 --supersedes HD-0001;裁决后 panel 自动重渲(失败不丢裁决)
+python3 -m invoiceloop render --run runs/demo     # 随时从盘上工件重建 panel(纯投影)
+python3 -m invoiceloop bundle --run runs/demo     # 全量自包含:上游 PDF/OCR/raw + 全部派生物
+python3 -m invoiceloop verify runs/demo/audit_bundle.zip   # 离线三层校验,改一个字节就失败
 
 # 留出集(docs/HELDOUT.md;要花 DWS credits,判据已冻结)
 python3 -m invoiceloop heldout plan --workspace runs/heldout-workspace
