@@ -69,12 +69,26 @@ def workspace(tmp_path, monkeypatch):
     for mode in ("understand", "agentic"):
         (ws / "raw" / f"{DOC}.{mode}.json").write_text(
             json.dumps(_record(DOC, mode)), encoding="utf-8")
+    # 读图预填建议层的输入:必须在 pipeline.run 之前落盘(进 run 输入指纹)。
+    (ws / "vision").mkdir()
+    (ws / "vision" / "answers6.A.tsv").write_text(
+        "doc\tfield\tvalue\tprinted_label\tnote\n"
+        f"{DOC}\ttotal_gross\t100.00\tTotal\t\n"
+        f"{DOC}\ttotal_net\t10.00\tNet\t\n"
+        f"{DOC}\tissue_date\t10/31/2020\tDate\t\n"
+        f"{DOC}\tinvoice_number\tABSTAIN\t\t\n", encoding="utf-8")
+    (ws / "vision" / "answers6.B.tsv").write_text(
+        "doc\tfield\tvalue\tprinted_label\tnote\n"
+        f"{DOC}\ttotal_gross\t100.00\tTotal\t\n"
+        f"{DOC}\ttotal_net\t10.00\tNet\t\n"
+        f"{DOC}\tissue_date\t11/30/2020\tDate\t\n"
+        f"{DOC}\tinvoice_number\tABSTAIN\t\t\n", encoding="utf-8")
     monkeypatch.setenv("INVOICELOOP_DWS_DERISK", str(ws))
     ocr.load_ocr.cache_clear()
     ocr.doc_tokens.cache_clear()
     from invoiceloop.pipeline import run
 
-    run([DOC], ws / "runs" / RUN, include_vision=False, out_of_calibration=True)
+    run([DOC], ws / "runs" / RUN, include_vision=True, out_of_calibration=True)
     (ws / "runs" / "current.json").write_text('{"run": "run-0001"}',
                                               encoding="utf-8")
     yield ws
@@ -251,6 +265,8 @@ class TestUpload:
 
 class TestIngest:
     def test_ingest_replays_same_inputs(self, workspace, server):
+        # fixture 的 run 与 /ingest 都按 include_vision=True 算指纹,
+        # 读图作答原样在盘上 —— 输入一字未动,必须重放
         status, headers, _ = _req(
             server, "POST", "/ingest",
             body=urlencode({"do_extract": "0"}).encode(),
@@ -471,3 +487,102 @@ class TestGateTooltips:
         _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=en")
         assert "Arithmetic: checks net+VAT=gross" in text
         assert "it warns, it never convicts" in text
+
+
+# ---------------------------------------------------- 读图预填建议层(契约,先测试后实现)
+
+def _vs_row(text: str, field: str) -> str:
+    """切出某一字段的整张行卡片(行锚 → 下一行锚),断言才不会串行。"""
+    start = text.index(f'id="row-{DOC}-{field}"')
+    nxt = text.find('<div class="wb-row" id="', start + 1)
+    return text[start: nxt if nxt != -1 else len(text)]
+
+
+class TestVisionSuggest:
+    """行内读图建议:数据源 workspace/vision/answers6.{tag}.tsv。
+
+    钉死的语义(渲染层与 JS 双向遵守):
+    - 一致且与 DWS 同值 → wb-vs-value + 「2/2 读者一致」 + 采用按钮;
+    - 一致但 DWS 无值 → 同上(采用 = 补录);
+    - 分歧 → wb-vs-split 列出各读者作答,没有采用按钮;
+    - 全弃权 → muted + 「读图也看不清」;
+    - 无作答 → 该行根本不出现 wb-vision-suggest;
+    - 建议只是表单预填,人没点提交,账本一个字不写(宪章)。
+    """
+
+    def test_vs_render_contract_zh(self, workspace, server):
+        status, _, text = _req(server, "GET",
+                               f"/queue?run={RUN}&lang=zh&filter=all")
+        assert status == 200
+
+        gross = _vs_row(text, "total_gross")
+        assert 'class="wb-vision-suggest"' in gross
+        assert 'wb-vs-value">100.00' in gross, "一致建议要显示建议值"
+        assert "2/2 读者一致" in gross
+        assert 'wb-vs-adopt" data-value="100.00"' in gross, \
+            "一致建议必须有采用按钮,data-value 带建议值"
+
+        net = _vs_row(text, "total_net")
+        assert 'wb-vs-value">10.00' in net and "2/2 读者一致" in net
+        assert 'wb-vs-adopt" data-value="10.00"' in net, \
+            "DWS 无值时采用 = 补录,按钮照样在"
+
+        split = _vs_row(text, "issue_date")
+        assert "wb-vs-split" in split, "读者分歧要走分歧块,不装作一致"
+        assert "Kimi K3=10/31/2020" in split and "Opus 5=11/30/2020" in split, \
+            "分歧块要列出各读者(显示名,来自 dws.VISION_READERS)的作答"
+        assert "wb-vs-adopt" not in split, "分歧没有可采用的单一值,不许给按钮"
+
+        blind = _vs_row(text, "invoice_number")
+        assert "wb-vision-suggest muted" in blind
+        assert "读图也看不清" in blind, "全弃权 = 承认看不清,不许伪装成没建议"
+        assert "wb-vs-adopt" not in blind
+
+        silent = _vs_row(text, "due_date")
+        assert "wb-vision-suggest" not in silent, \
+            "无作答的字段不出现建议块 —— 空块是噪音"
+
+    def test_vs_assets_js_adopt_handler(self, workspace, server):
+        status, _, js = _req(server, "GET", "/assets.js")
+        assert status == 200
+        assert "wb-vs-adopt" in js, "JS 必须有 .wb-vs-adopt 点击处理器"
+        assert "dataset.rationale" in js, \
+            "采用时 rationale 由按钮的 data-rationale 预填(空才填,不覆盖人写的)"
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=zh")
+        assert 'data-rationale="确认读图建议"' in text, \
+            "预填文案由服务器按语言注入按钮属性(JS 保持语言中立)"
+        assert "acceptPreset" in js, "既有 acceptPreset 预填逻辑不许被挤掉"
+
+    def test_vs_render_contract_en(self, workspace, server):
+        _, _, text = _req(server, "GET",
+                          f"/queue?run={RUN}&lang=en&filter=all")
+        gross = _vs_row(text, "total_gross")
+        assert "2/2 readers agree" in gross
+
+    def test_vs_suggestion_writes_nothing(self, workspace, server):
+        status, _, _ = _req(server, "GET",
+                            f"/queue?run={RUN}&lang=zh&filter=all")
+        assert status == 200
+        assert _ledger(workspace) == [], \
+            "渲染建议只是表单状态,人没点提交就一个字不写进裁决账本(宪章)"
+
+    def test_vs_value_is_escaped(self, workspace):
+        payload = "<script>alert(1)</script>"
+        (workspace / "vision" / "answers6.A.tsv").write_text(
+            "doc\tfield\tvalue\tprinted_label\tnote\n"
+            f"{DOC}\ttotal_gross\t{payload}\tTotal\t\n", encoding="utf-8")
+        # 读图作答在 tsv 落盘后才读,另起一个服务器避免顺序依赖
+        from invoiceloop.workbench import make_server
+
+        srv = make_server(workspace, 0)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            _, _, text = _req(srv.server_address[1], "GET",
+                              f"/queue?run={RUN}&lang=zh&filter=all")
+        finally:
+            srv.shutdown()
+            srv.server_close()
+        assert payload not in text, \
+            "读图值原样进 HTML 就是 XSS —— data-value 与显示值都必须转义"
+        assert "&lt;script&gt;" in text, \
+            "转义后的值必须真的渲染出来,否则这条断言守的是一块没有输出的页面"

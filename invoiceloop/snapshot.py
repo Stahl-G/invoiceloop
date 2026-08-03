@@ -40,7 +40,7 @@ def build_input_manifest(doc_ids: list[str], *, include_vision: bool = True) -> 
     否则改了读图答案,重放会错误地返回旧 run。--no-vision 的 run 不消费
     它们,指纹也不含(改了不影响该 run 的输入)。
     """
-    from .dws import MODES, VISION_READERS, response_path
+    from .dws import MODES, response_path
     from .ocr import derisk_root
 
     docs = []
@@ -54,10 +54,13 @@ def build_input_manifest(doc_ids: list[str], *, include_vision: bool = True) -> 
         })
     vision_sha256 = None
     if include_vision:
+        # 盘上有几个 answers6 文件就哈希几个 —— vision-ingest 新接的读者
+        # (tag D、E…)不在 VISION_READERS 名单里,只按名单哈希会把新读者
+        # 漏出指纹,改了作答旧 run 照样被重放
         shas = {
-            tag: _sha_or_none(derisk_root() / "vision" / f"answers6.{tag}.tsv")
-            for tag in sorted(VISION_READERS)
-        }
+            path.name: _sha_or_none(path)
+            for path in sorted((derisk_root() / "vision").glob("answers6.*.tsv"))
+        } if (derisk_root() / "vision").is_dir() else {}
         # 一个读图文件都不存在时(典型:workspace),归一成 None ——
         # 否则 --vision/--no-vision 会产出两个不同指纹,而实际上两边
         # 消费的输入完全相同(空气),重放会在 CLI 与工作台之间失灵

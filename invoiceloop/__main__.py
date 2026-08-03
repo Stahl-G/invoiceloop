@@ -65,6 +65,12 @@ def main() -> None:
     p_demo = sub.add_parser("demo", help="内嵌示例语料 → 完整 run(零 API、零外部数据)")
     p_demo.add_argument("--out", type=Path, required=True, help="demo workspace 落点(必须不存在或为空)")
 
+    p_vis = sub.add_parser("vision", help="读图 ingest:整页渲染 → 读图模型作答 → vision/answers6 tsv")
+    p_vis.add_argument("--workspace", type=Path, required=True)
+    p_vis.add_argument("--tag", default="D", help="读者 tag(显示名映射见 dws.VISION_READERS)")
+    p_vis.add_argument("--model", default=None, help="读图模型(默认 claude-sonnet-5)")
+    p_vis.add_argument("--api-key", default=None, help="默认读 ANTHROPIC_API_KEY")
+
     sub.add_parser("doctor", help="环境自检:poppler/tesseract/requests/研究数据")
 
     p_ho = sub.add_parser("heldout", help="留出集(docs/HELDOUT.md)")
@@ -177,6 +183,11 @@ def main() -> None:
         from .demo import cmd_demo
 
         cmd_demo(args.out)
+    elif args.command == "vision":
+        from .vision_ingest import DEFAULT_MODEL, cmd_vision
+
+        cmd_vision(args.workspace, tag=args.tag,
+                   model=args.model or DEFAULT_MODEL, api_key=args.api_key)
     elif args.command == "heldout":
         from . import heldout
 

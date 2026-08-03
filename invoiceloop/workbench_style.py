@@ -754,6 +754,43 @@ a:hover { text-decoration: underline; }
     .wb-evidence > div, .wb-evidence > section { display: block; }
 }
 
+
+/* ---- 读图预填建议层(紫 = advisory,永不绿;建议不是裁决) ---- */
+.wb-vision-suggest {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 6px 0;
+    padding: 6px 10px;
+    background: var(--wb-advisory-wash);
+    border: 1px solid var(--wb-advisory-line);
+    border-radius: var(--wb-radius-sm);
+    font-size: 13px;
+}
+.wb-vision-suggest.muted { opacity: 0.75; }
+.wb-vs-label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--wb-advisory);
+    letter-spacing: 0.04em;
+}
+.wb-vs-value { color: var(--wb-ink); }
+.wb-vs-agree { color: var(--wb-muted); font-size: 12px; }
+.wb-vs-split { color: var(--wb-warn); font-size: 12.5px; }
+.wb-vs-blind { color: var(--wb-muted); font-size: 12.5px; }
+.wb-vs-adopt {
+    margin-left: auto;
+    padding: 3px 12px;
+    border: 1px solid var(--wb-advisory);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--wb-advisory);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+.wb-vs-adopt:hover { background: var(--wb-advisory); color: #fff; }
+
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition-duration: 0.01ms !important; }
 }

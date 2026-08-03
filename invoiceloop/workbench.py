@@ -68,6 +68,12 @@ _T = {
         "issue_chips": ["matches the page", "wrong value", "wrong location",
                         "illegible", "label-convention conflict", "not on page", "other"],
         "accept_preset": "matches the page",
+        "vision_suggest": "Vision suggestion",
+        "vision_agree": "{a}/{n} readers agree",
+        "vision_split": "readers disagree",
+        "vision_adopt": "Adopt",
+        "vision_blind": "vision readers can't read it either",
+        "vision_rationale": "confirmed vision suggestion",
         "submit": "Submit decision", "confirm": "Confirm",
         "current_note": "Current: {id} · {decision} · {by} · {at} — submitting supersedes it",
         "reason": "Reason",
@@ -140,6 +146,12 @@ _T = {
         "adjudicator_ph": "裁决人",
         "issue_chips": ["与页面一致", "值不对", "位置不对", "看不清", "口径冲突", "页面上没有", "其他"],
         "accept_preset": "与页面一致",
+        "vision_suggest": "读图建议",
+        "vision_agree": "{a}/{n} 读者一致",
+        "vision_split": "读者分歧",
+        "vision_adopt": "采用建议",
+        "vision_blind": "读图也看不清",
+        "vision_rationale": "确认读图建议",
         "submit": "提交裁决", "confirm": "确认",
         "current_note": "当前裁决 {id} · {decision} · {by} · {at} —— 提交将取代它",
         "reason": "理由",
@@ -248,11 +260,30 @@ document.addEventListener('change', function (e) {
 });
 document.addEventListener('click', function (e) {
   var chip = e.target.closest('.wb-issue-chip');
-  if (!chip) return;
-  var form = chip.closest('form');
-  var ta = form.querySelector('.wb-rationale');
-  ta.value = (ta.value ? ta.value.replace(/[;\s]+$/, '') + '; ' : '') + chip.dataset.text;
-  ta.focus();
+  if (chip) {
+    var form = chip.closest('form');
+    var ta = form.querySelector('.wb-rationale');
+    ta.value = (ta.value ? ta.value.replace(/[;\s]+$/, '') + '; ' : '') + chip.dataset.text;
+    ta.focus();
+    return;
+  }
+  // 读图「采用建议」:只预填表单 —— 人不点提交,账本一个字不进(宪章)
+  var btn = e.target.closest('.wb-vs-adopt');
+  if (!btn) return;
+  var row = btn.closest('.wb-row');
+  var form2 = row.querySelector('form.decide');
+  var value = btn.dataset.value;
+  var ta2 = form2.querySelector('.wb-rationale');
+  if (ta2 && !ta2.value.trim()) ta2.value = btn.dataset.rationale || '';
+  var rowValue = row.querySelector('.wb-value');
+  var same = rowValue && !rowValue.classList.contains('none') &&
+             rowValue.textContent.trim() === value;
+  var radio = form2.querySelector(
+    'input[name=decision][value="' + (same ? 'accept' : 'correct') + '"]');
+  radio.checked = true;
+  radio.dispatchEvent(new Event('change', { bubbles: true }));
+  if (!same) form2.querySelector('.wb-corr').value = value;
+  ta2.focus();
 });
 document.addEventListener('DOMContentLoaded', function () {
   // 修正值输入:HTML 里不带 disabled(无 JS 也要能提交 correct ——
@@ -364,6 +395,14 @@ class RunCtx:
                               for c in self.ledger["claims"]}
         self.spans_by_id = {s["span_id"]: s for s in self.spans}
         self.orphans = [d for d in self.decisions if d.get("orphan")]
+        # 读图作答 → 建议层:{(doc, field): [(读者, 值)]}。建议只是建议:
+        # 它出现在表单旁边,人不点「采用」不进表单,人不点「提交」不进账本
+        from .dws import load_vision_answers
+
+        self.vision: dict[tuple[str, str], list[tuple[str, str]]] = {}
+        for model, rows in load_vision_answers().items():
+            for key, ans in rows.items():
+                self.vision.setdefault(key, []).append((model, ans["value"]))
 
     def slot(self, doc_id: str, field: str) -> dict | None:
         return self.projection.get(target_id_for(self.snapshot_id, doc_id, field))
@@ -556,9 +595,42 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 {status}
 </div>
 <div class="wb-task">{_esc(task)}</div>
+{self._vision_suggest(lang, ctx, row)}
 {self._evidence(lang, ctx, row)}
 {self._decide_form(lang, ctx, row, tip, conflict, len(orphans), adjudicator)}
 </div>"""
+
+    def _vision_suggest(self, lang: str, ctx: RunCtx, row: dict) -> str:
+        """读图预填建议:一致 → 可「采用」(只预填表单,不写账本);
+        分歧 → 摊开各读者的值,不给采用按钮;全弃权 → 如实说也看不清。
+
+        一致性用与双模式门禁同一套归一化(fields.normalise)—— 两侧同规则,
+        不搞第二套「差不多就行」的比较。
+        """
+        answers = ctx.vision.get((row["doc_id"], row["field"]))
+        if not answers:
+            return ""
+        label = _esc(_t(lang, "vision_suggest"))
+        live = [(m, v) for m, v in answers if v and v.upper() != "ABSTAIN"]
+        if not live:
+            return (f'<div class="wb-vision-suggest muted"><span class="wb-vs-label">'
+                    f'{label}</span> <span class="wb-vs-blind">'
+                    f'{_esc(_t(lang, "vision_blind"))}</span></div>')
+        from .fields import FIELD_KINDS, normalise
+
+        kind = FIELD_KINDS.get(row["field"])
+        normalised = {normalise(v, kind) for _, v in live}
+        if len(normalised) == 1:
+            value = live[0][1]
+            return (f'<div class="wb-vision-suggest"><span class="wb-vs-label">{label}</span> '
+                    f'<b class="wb-vs-value">{_esc(value)}</b>'
+                    f'<span class="wb-vs-agree">{_esc(_t(lang, "vision_agree", a=len(live), n=len(answers)))}</span>'
+                    f'<button type="button" class="wb-vs-adopt" data-value="{_esc(value)}" '
+                    f'data-rationale="{_esc(_t(lang, "vision_rationale"))}">'
+                    f'{_esc(_t(lang, "vision_adopt"))}</button></div>')
+        split = " · ".join(f"{_esc(m)}={_esc(v)}" for m, v in live)
+        return (f'<div class="wb-vision-suggest"><span class="wb-vs-label">{label}</span> '
+                f'<span class="wb-vs-split">{_esc(_t(lang, "vision_split"))}:{split}</span></div>')
 
     def _evidence(self, lang: str, ctx: RunCtx, row: dict) -> str:
         parts = []

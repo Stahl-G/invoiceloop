@@ -22,7 +22,8 @@ from .ocr import raw_dir, derisk_root
 MODES = ("understand", "agentic")
 
 #: answers6.{A,B,C}.tsv → 读者登记(vision/readers6.md,打分前与答案同一次提交)。
-VISION_READERS = {"A": "Kimi K3", "B": "Opus 5", "C": "GPT 5.6 SOL"}
+VISION_READERS = {"A": "Kimi K3", "B": "Opus 5", "C": "GPT 5.6 SOL",
+                  "D": "Claude Sonnet 5"}
 
 
 @dataclass
@@ -69,17 +70,18 @@ def stored_docs() -> list[str]:
 
 
 def load_vision_answers() -> dict[str, dict[tuple[str, str], dict]]:
-    """第六轮三个读图模型的整页作答。
+    """读图模型的整页作答(vision/answers6.<tag>.tsv,全部 tag)。
 
     返回 {模型名: {(doc_id, field): {"value", "printed_label", "note"}}}。
+    tag → 显示名走 VISION_READERS,没收录的 tag(比如 vision-ingest 新接的
+    读者)用 tag 本身 —— 文件在就算数,不许硬编码名单把新读者漏掉。
     ABSTAIN 也是真实作答(承认看不清),保留原样,由使用方决定怎么解释。
     """
     vision_dir = derisk_root() / "vision"
     out: dict[str, dict[tuple[str, str], dict]] = {}
-    for tag, model in VISION_READERS.items():
-        path = vision_dir / f"answers6.{tag}.tsv"
-        if not path.exists():
-            continue
+    for path in sorted(vision_dir.glob("answers6.*.tsv")):
+        tag = path.name.split(".")[1]
+        model = VISION_READERS.get(tag, tag)
         rows: dict[tuple[str, str], dict] = {}
         for line in path.read_text(encoding="utf-8").splitlines()[1:]:
             if not line.strip():
