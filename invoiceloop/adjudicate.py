@@ -20,6 +20,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import threading
 import zipfile
 from pathlib import Path
 
@@ -29,6 +30,12 @@ from .snapshot import load_or_derive_snapshot
 from . import __version__
 
 DECISIONS = ("accept", "reject", "correct", "abstain")
+
+#: append 的读-改-写临界区(加载 → tip/supersede 校验 → seq 分配 → 追加)
+#: 必须串行:工作台是 ThreadingHTTPServer,两个并发 /decide 不打锁会
+#: 产出重复的 seq/decision_id —— 冻结账本里出现两个 HD-0001,而且
+#: verify 之前查不出来(对抗复核 2026-08-03 实测 261/300 命中)
+_APPEND_LOCK = threading.Lock()
 
 #: 打包进 audit bundle 的工件(缺了算包没打全,不静默跳过)
 REQUIRED_ARTIFACTS = (
@@ -110,43 +117,45 @@ def append_adjudication(
             )
 
     target = target_id_for(snapshot_id, doc_id, field)
-    decisions = load_decisions(run_dir)
-    slot = project(decisions).get(target)
-    if slot and slot["conflict"]:
-        raise ValueError(
-            f"{doc_id}/{field} 的裁决链冲突(多条 tip)—— "
-            f"先人工整理 adjudication_ledger.jsonl,系统不替人猜"
-        )
-    tip = slot["tip"] if slot else None
-    if tip is None and supersedes_decision_id is not None:
-        raise ValueError("该字段槽没有既有裁决,supersedes_decision_id 必须为 null")
-    if tip is not None and supersedes_decision_id != tip["decision_id"]:
-        raise ValueError(
-            f"该字段槽已有裁决 {tip['decision_id']}({tip['decision']})—— "
-            f"第二次决定必须显式带上 supersedes_decision_id={tip['decision_id']!r}"
-        )
+    # 临界区开始:加载 → tip/supersede 校验 → seq 分配 → 追加,全程持锁
+    with _APPEND_LOCK:
+        decisions = load_decisions(run_dir)
+        slot = project(decisions).get(target)
+        if slot and slot["conflict"]:
+            raise ValueError(
+                f"{doc_id}/{field} 的裁决链冲突(多条 tip)—— "
+                f"先人工整理 adjudication_ledger.jsonl,系统不替人猜"
+            )
+        tip = slot["tip"] if slot else None
+        if tip is None and supersedes_decision_id is not None:
+            raise ValueError("该字段槽没有既有裁决,supersedes_decision_id 必须为 null")
+        if tip is not None and supersedes_decision_id != tip["decision_id"]:
+            raise ValueError(
+                f"该字段槽已有裁决 {tip['decision_id']}({tip['decision']})—— "
+                f"第二次决定必须显式带上 supersedes_decision_id={tip['decision_id']!r}"
+            )
 
-    seq = len(decisions) + 1
-    entry = {
-        "seq": seq,
-        "decision_id": f"HD-{seq:04d}",
-        "review_snapshot_id": snapshot_id,
-        "target_id": target,
-        "claim_id": claim_id,
-        "doc_id": doc_id,
-        "field": field,
-        "decision": decision,
-        "corrected_value": corrected_value,
-        "rationale": rationale,
-        "adjudicator": adjudicator,
-        "decided_at": decided_at,
-        "supersedes_decision_id": supersedes_decision_id,
-    }
-    with (run_dir / "adjudication_ledger.jsonl").open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
-        fh.flush()
-        os.fsync(fh.fileno())
-    return entry
+        seq = len(decisions) + 1
+        entry = {
+            "seq": seq,
+            "decision_id": f"HD-{seq:04d}",
+            "review_snapshot_id": snapshot_id,
+            "target_id": target,
+            "claim_id": claim_id,
+            "doc_id": doc_id,
+            "field": field,
+            "decision": decision,
+            "corrected_value": corrected_value,
+            "rationale": rationale,
+            "adjudicator": adjudicator,
+            "decided_at": decided_at,
+            "supersedes_decision_id": supersedes_decision_id,
+        }
+        with (run_dir / "adjudication_ledger.jsonl").open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+        return entry
 
 
 def adjudicate_and_render(run_dir: Path, **kwargs) -> dict:
@@ -297,7 +306,11 @@ def verify_bundle(bundle: Path) -> dict:
     bundle = Path(bundle)
     failures: list[str] = []
     members = 0
-    with zipfile.ZipFile(bundle) as zf:
+    try:
+        zf = zipfile.ZipFile(bundle)
+    except zipfile.BadZipFile as exc:
+        return {"ok": False, "failures": [f"不是合法的 zip/bundle:{exc}"], "members": 0}
+    with zf:
         names = set(zf.namelist())
         if "MANIFEST.sha256" not in names:
             return {"ok": False, "failures": ["缺 MANIFEST.sha256"], "members": 0}
@@ -330,10 +343,19 @@ def verify_bundle(bundle: Path) -> dict:
                     "review_snapshot 成分与快照 id 不符 —— 快照内工件被替换过")
             snapshot_id = snap.get("review_snapshot_id")
             if "adjudication_ledger.jsonl" in names:
+                seen_ids: set[str] = set()
                 for raw in zf.read("adjudication_ledger.jsonl").decode().splitlines():
                     if not raw.strip():
                         continue
                     entry = json.loads(raw)
+                    # 重复 decision_id = 账本曾被并发写坏的指纹(2026-08-03 复核前
+                    # append 无锁,两个线程能写出两个 HD-0001)
+                    decision_id = entry.get("decision_id")
+                    if decision_id:
+                        if decision_id in seen_ids:
+                            failures.append(
+                                f"decision_id 重复:{decision_id} —— 账本完整性已破坏")
+                        seen_ids.add(decision_id)
                     if ("review_snapshot_id" in entry
                             and entry["review_snapshot_id"] != snapshot_id):
                         failures.append(

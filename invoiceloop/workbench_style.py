@@ -100,9 +100,17 @@ a:hover { text-decoration: underline; }
     font-size: 15px;
     letter-spacing: 0.01em;
     color: var(--wb-ink);
-    margin-right: auto;
     white-space: nowrap;
 }
+/* 顶栏内层:服务器输出的实际 flex 容器(brand/tabs/runs/lang 都在它里面),
+   外层 .wb-topbar 只负责底色与对齐内边距 */
+.wb-topbar-inner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+}
+.wb-topbar-inner .wb-brand { margin-right: auto; }
 .wb-tabs { display: flex; gap: 4px; }
 .wb-tab {
     font-size: 13.5px;
@@ -362,10 +370,10 @@ a:hover { text-decoration: underline; }
     padding: 2px 7px;
     margin: 2px 4px 2px 0;
 }
-/* 字段裁剪图,限宽 360px */
-.wb-crop { margin: 8px 0; }
-.wb-crop img {
+/* 字段裁剪图(class 直接挂在 <img> 上,没有容器),限宽 360px */
+.wb-crop {
     display: block;
+    margin: 8px 0;
     max-width: 360px;
     width: 100%;
     height: auto;
@@ -734,7 +742,7 @@ a:hover { text-decoration: underline; }
     .wb-row-head { flex-direction: column; align-items: flex-start; gap: 4px; }
     .wb-decide-row { flex-direction: column; align-items: stretch; }
     .wb-corr, .wb-adjudicator { min-width: 0; width: 100%; }
-    .wb-crop img { max-width: 100%; }
+    .wb-crop { max-width: 100%; }
     .wb-kv th { width: 130px; }
     .wb-msg-page { margin: 32px 14px; padding: 20px; }
 }

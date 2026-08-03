@@ -69,6 +69,11 @@ python3 -m invoiceloop render --run runs/demo     # 随时从盘上工件重建 
 python3 -m invoiceloop bundle --run runs/demo     # 全量自包含:上游 PDF/OCR/raw + 全部派生物
 python3 -m invoiceloop verify runs/demo/audit_bundle.zip   # 离线三层校验,改一个字节就失败
 
+# H1 复核工作台:网页上直接复核 —— 每行四个决策按钮 + 修正值 + 问题/理由输入域
+python3 -m invoiceloop workbench --workspace ws/   # http://127.0.0.1:8765,仅本机 loopback
+# 上传 PDF → ingest → 复核队列(证据裁剪图+OCR+标签)→ 裁决(自动带 supersession)
+# → 交付报告(复核完成度+修正清单+残余风险声明)→ 打 bundle / 离线 verify
+
 # 留出集(docs/HELDOUT.md;要花 DWS credits,判据已冻结)
 python3 -m invoiceloop heldout plan --workspace runs/heldout-workspace
 python3 -m invoiceloop heldout extract --workspace runs/heldout-workspace --budget 6000
@@ -83,6 +88,7 @@ python3 -m pytest tests/
 
 文档:`ARCHITECTURE.md`(设计契约)/ `GOAL.md`(冲突时优化什么)/
 `docs/VERIFICATION_2026-08-02.md`(验证轮总录)/ `docs/HELDOUT.md`(留出集协议与结果)/
+`docs/H0_INTEGRITY_2026-08-03.md` + `docs/H1_WORKBENCH_2026-08-03.md`(完整性地基与工作台两轮)/
 `docs/TESTING.md` + `docs/TESTING_FACILITATOR.md`(人类验收协议与主持包)。
 
 校准语料与六轮实验证据:`~/Developer/dws-derisk/`(`REPORT.md` / `THRESHOLDS.md`)。

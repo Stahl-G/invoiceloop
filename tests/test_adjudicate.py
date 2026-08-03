@@ -403,3 +403,84 @@ class TestUpstreamIntegrity:
             assert "evidence/raw/doc-a.agentic.json" not in zf.namelist()
             scope = json.loads(zf.read("bundle_manifest.json"))
             assert any("run 时就不存在" in n for n in scope["notes"])
+
+
+class TestAppendConcurrency:
+    """对抗复核(2026-08-03)实测:无锁时两个 barrier 对齐的线程 261/300
+    写出重复 decision_id。现在临界区持锁,必须确定性唯一。"""
+
+    def test_concurrent_appends_get_unique_ids(self, run_dir, tmp_path):
+        import threading
+
+        # 每线程一个独立槽位、每槽只打一枪(同槽第二枪合法地 400,
+        # 不是本测试的目标;本测试打的是 seq/decision_id 分配的读-改-写竞态)。
+        # 5 个全新 run 目录 × 10 线程同时开火。
+        fields = ["total_gross", "total_net", "total_vat", "issue_date",
+                  "due_date", "seller_name", "buyer_name", "seller_vat_id",
+                  "invoice_number", "amount_due"]
+        errors: list[Exception] = []
+
+        def fresh_run(name: str) -> object:
+            from invoiceloop.snapshot import compute_review_snapshot
+
+            d = tmp_path / name
+            d.mkdir()
+            (d / "run_manifest.json").write_text(json.dumps(
+                {"docs": ["doc-a"], "layout": "workspace"}))
+            (d / "field_ledger.json").write_text(json.dumps(
+                {"claims": [], "sha256": "x"}))
+            (d / "review_snapshot.json").write_text(
+                json.dumps(compute_review_snapshot(d)))
+            return d
+
+        for wave in range(5):
+            d = fresh_run(f"wave-{wave}")
+            barrier = threading.Barrier(len(fields) + 1)
+
+            def hammer(field, _d=d):
+                try:
+                    barrier.wait()
+                    adjudicate.append_adjudication(
+                        _d, claim_id=None, doc_id="doc-a", field=field,
+                        decision="abstain", rationale="race",
+                        adjudicator="t", decided_at="2026-08-03T00:00:00")
+                except Exception as exc:  # noqa: BLE001
+                    errors.append(exc)
+                    barrier.abort()
+
+            threads = [threading.Thread(target=hammer, args=(f,)) for f in fields]
+            for t in threads:
+                t.start()
+            barrier.wait()
+            for t in threads:
+                t.join()
+            lines = (d / "adjudication_ledger.jsonl").read_text().splitlines()
+            ids = [json.loads(x)["decision_id"] for x in lines]
+            seqs = [json.loads(x)["seq"] for x in lines]
+            assert len(lines) == len(fields)
+            assert len(set(ids)) == len(ids), f"decision_id 重复:{ids}"
+            assert sorted(seqs) == list(range(1, len(fields) + 1))
+        assert not errors, f"并发追加不该出错:{errors}"
+
+
+class TestVerifyHardening:
+    def test_verify_detects_duplicate_decision_ids(self, run_dir):
+        _append(run_dir)
+        # 手工伪造一条与 HD-0001 同 id 的条目(模拟无锁时代写坏的账本)
+        lines = (run_dir / "adjudication_ledger.jsonl").read_text().splitlines()
+        dup = json.loads(lines[0])
+        dup["seq"] = 2
+        dup["supersedes_decision_id"] = "HD-0001"
+        with (run_dir / "adjudication_ledger.jsonl").open("a") as fh:
+            fh.write(json.dumps(dup, ensure_ascii=False) + "\n")
+        _render(run_dir)
+        report = adjudicate.verify_bundle(adjudicate.build_audit_bundle(run_dir))
+        assert not report["ok"]
+        assert any("重复" in f for f in report["failures"])
+
+    def test_verify_rejects_non_zip(self, tmp_path):
+        bad = tmp_path / "not-a-bundle.zip"
+        bad.write_text("hello", encoding="utf-8")
+        report = adjudicate.verify_bundle(bad)
+        assert report["ok"] is False
+        assert any("zip" in f for f in report["failures"])

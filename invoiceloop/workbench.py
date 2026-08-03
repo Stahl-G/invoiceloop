@@ -41,6 +41,12 @@ from .snapshot import (
 HOST = "127.0.0.1"
 MAX_UPLOAD = 50 * 1024 * 1024  # 50MB,上传上限,先查 Content-Length 再读体
 
+#: Host 白名单 —— loopback 不等于安全:浏览器跨站表单可以直接 POST 到
+#: 127.0.0.1(CSRF),DNS rebinding 可以让恶意页面以任意 Host 读这个服务。
+#: 两道闸:Host 头必须在此列(杀 rebinding);POST 的 Origin 若在且外来 = 403
+#: (杀跨站表单;现代浏览器跨源 POST 必带 Origin)。
+_ALLOWED_HOSTS = {"127.0.0.1", "localhost", "::1"}
+
 # ---------------------------------------------------------------------- i18n
 
 _T = {
@@ -60,6 +66,7 @@ _T = {
                         "label-convention conflict", "not on page", "other"],
         "submit": "Submit decision", "confirm": "Confirm",
         "current_note": "Current: {id} · {decision} · {by} · {at} — submitting supersedes it",
+        "reason": "Reason",
         "orphan_note": "{n} decision(s) bound to a different snapshot — not projected here",
         "conflict_note": "Decision chain conflict — fix adjudication_ledger.jsonl manually; new decisions blocked",
         "evidence": "Evidence & limitations",
@@ -81,8 +88,8 @@ _T = {
         "upload_title": "Upload invoices",
         "drop_hint": "…or drop PDFs into workspace/input/pdfs/ directly (input contract), "
                      "then press Process.",
-        "same_name_note": "Same-name files are not re-OCRed (resume discipline): "
-                          "delete ocr/ and raw/ entries first to force re-extraction.",
+        "same_name_note": "Same-name file with new content: its old OCR and DWS responses "
+                          "are invalidated automatically (re-OCR/re-extract on next Process).",
         "start": "Process",
         "extract_cb": "Extract with DWS (spends API credits, needs DWS_API_KEY)",
         "no_key": "DWS_API_KEY not set — local OCR only; missing extraction blocks per charter",
@@ -117,6 +124,7 @@ _T = {
         "issue_chips": ["值不对", "位置不对", "看不清", "口径冲突", "页面上没有", "其他"],
         "submit": "提交裁决", "confirm": "确认",
         "current_note": "当前裁决 {id} · {decision} · {by} · {at} —— 提交将取代它",
+        "reason": "理由",
         "orphan_note": "{n} 条裁决绑定到其他快照 —— 不在此投影",
         "conflict_note": "裁决链冲突 —— 请人工整理 adjudication_ledger.jsonl;新裁决已阻断",
         "evidence": "证据与限制",
@@ -134,7 +142,7 @@ _T = {
         "was": "原值", "now": "改为",
         "upload_title": "上传发票",
         "drop_hint": "……也可以直接把 PDF 放进 workspace/input/pdfs/(输入契约),再点「开始处理」。",
-        "same_name_note": "同名文件不会重新 OCR(断点续跑纪律):要重抽请先删 ocr/ 与 raw/ 里对应文件。",
+        "same_name_note": "同名文件内容变化:旧 OCR 与旧 DWS 响应自动失效(下次处理重新 OCR/重抽)。",
         "start": "开始处理",
         "extract_cb": "调用 DWS 抽取(消耗 API credits,需要 DWS_API_KEY)",
         "no_key": "未配置 DWS_API_KEY —— 只做本地 OCR;抽取缺失按宪章四阻断",
@@ -191,6 +199,13 @@ document.addEventListener('submit', function (e) {
 document.addEventListener('change', function (e) {
   if (e.target.name !== 'decision') return;
   var form = e.target.closest('form');
+  // 换决策 = 上一次武装作废:确认文案必须说的是即将提交的那个决策
+  if (form.dataset.armed === '1') {
+    form.dataset.armed = '';
+    var b = form.querySelector('.wb-btn');
+    b.classList.remove('armed');
+    b.textContent = b.dataset.orig;
+  }
   var corr = form.querySelector('.wb-corr');
   if (corr) { corr.disabled = e.target.value !== 'correct'; if (!corr.disabled) corr.focus(); }
 });
@@ -203,6 +218,13 @@ document.addEventListener('click', function (e) {
   ta.focus();
 });
 document.addEventListener('DOMContentLoaded', function () {
+  // 修正值输入:HTML 里不带 disabled(无 JS 也要能提交 correct ——
+  // 语义由服务器守);有 JS 才按当前选择禁用,纯渐进增强
+  document.querySelectorAll('form.decide').forEach(function (form) {
+    var d = form.querySelector('input[name=decision]:checked');
+    var corr = form.querySelector('.wb-corr');
+    if (corr && (!d || d.value !== 'correct')) corr.disabled = true;
+  });
   var fi = document.getElementById('wb-files');
   if (fi) fi.addEventListener('change', async function () {
     var list = document.getElementById('wb-ul');
@@ -503,7 +525,8 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
             note = _t(lang, "current_note", id=tip["decision_id"],
                       decision=tip["decision"], by=tip["adjudicator"],
                       at=tip["decided_at"])
-            notes.append(f'<div class="wb-current">{_esc(note)}</div>')
+            notes.append(f'<div class="wb-current">{_esc(note)}<br>'
+                         f'<i>{_esc(_t(lang, "reason"))}:{_esc(tip["rationale"])}</i></div>')
         if n_orphans:
             notes.append(f'<div class="wb-orphan">{_esc(_t(lang, "orphan_note", n=n_orphans))}</div>')
         if conflict:
@@ -527,7 +550,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 <input type="hidden" name="lang" value="{_esc(lang)}">
 <div class="wb-decide-row">{radios}
 <input class="wb-corr" type="text" name="corrected_value"
- placeholder="{_esc(_t(lang, 'corrected_ph'))}" disabled></div>
+ placeholder="{_esc(_t(lang, 'corrected_ph'))}"></div>
 <textarea class="wb-rationale" name="rationale" rows="2" required
  placeholder="{_esc(_t(lang, 'rationale_ph'))}"></textarea>
 <div class="wb-issue-chips">{chips}</div>
@@ -675,6 +698,28 @@ class _Handler(BaseHTTPRequestHandler):
         split = urllib.parse.urlsplit(self.path)
         return split.path, urllib.parse.parse_qs(split.query)
 
+    @staticmethod
+    def _host_of(header_value: str | None) -> str | None:
+        """从 Host/Origin 头取出主机名;没有头 → None(本地老工具,放行)。"""
+        if not header_value:
+            return None
+        host = urllib.parse.urlsplit(header_value).hostname \
+            if "://" in header_value else header_value
+        if host.startswith("[") and "]" in host:
+            return host[1:host.index("]")]
+        return host.split(":")[0].lower()
+
+    def _check_gates(self, method: str) -> None:
+        host = self._host_of(self.headers.get("Host"))
+        if host is not None and host not in _ALLOWED_HOSTS:
+            raise _HttpError(403, f"Host {host!r} 不在 loopback 白名单 —— "
+                                  f"这通常是 DNS rebinding 的特征,已拒")
+        if method == "POST":
+            origin = self._host_of(self.headers.get("Origin"))
+            if origin is not None and origin not in _ALLOWED_HOSTS:
+                raise _HttpError(403, f"跨源 POST(Origin {origin!r})已拒 —— "
+                                      f"本服务只接受本页发起的写操作")
+
     def _body(self, limit: int = 10 * 1024 * 1024) -> bytes:
         length = int(self.headers.get("Content-Length") or 0)
         if length > limit:
@@ -717,6 +762,7 @@ class _Handler(BaseHTTPRequestHandler):
         set_cookies: list = []
         lang = self._lang(params, set_cookie=set_cookies)
         try:
+            self._check_gates(method)
             if method == "GET" and path == "/assets.css":
                 return self._send(200, CSS.encode(), "text/css; charset=utf-8")
             if method == "GET" and path == "/assets.js":
@@ -756,7 +802,7 @@ class _Handler(BaseHTTPRequestHandler):
                 return self._bundle(lang)
             if method == "POST" and path == "/verify":
                 return self._verify(lang)
-            return self._html(404, self.bench.message_page(lang, "404", [path]))
+            return self._html(404, self.bench.message_page(lang, "404", [_esc(path)]))
         except _HttpError as exc:
             run_q = f"/queue?run={exc.run}" if exc.run else None
             self._html(exc.status, self.bench.message_page(
@@ -831,11 +877,24 @@ class _Handler(BaseHTTPRequestHandler):
         doc_id = sanitise_doc_id(Path(filename).stem)
         target = self.bench.ws / "input" / "pdfs" / f"{doc_id}.pdf"
         target.parent.mkdir(parents=True, exist_ok=True)
+        invalidated: list[str] = []
         if target.exists() and target.read_bytes() == body:
             pass  # 幂等:同样内容重传不动作
         else:
             target.write_bytes(body)
-        payload = json.dumps({"saved": doc_id}).encode()
+            # 同名不同内容(或 sanitise 撞名):下游证据(旧 OCR / 旧 DWS 响应)
+            # 全部失效。断点续跑续的是「同一份输入」的跑;拿旧 OCR/旧抽取配
+            # 新文档,门禁全绿而证据全错 —— 最坏的一种静默(对抗复核 2026-08-03)
+            from .dws import MODES
+
+            stale = [self.bench.ws / "ocr" / f"{doc_id}.json"] + [
+                self.bench.ws / "raw" / f"{doc_id}.{mode}.json" for mode in MODES
+            ]
+            for path in stale:
+                if path.exists():
+                    path.unlink()
+                    invalidated.append(path.name)
+        payload = json.dumps({"saved": doc_id, "invalidated": invalidated}).encode()
         self._send(200, payload, "application/json")
 
     def _ingest(self, lang: str) -> None:
@@ -843,7 +902,7 @@ class _Handler(BaseHTTPRequestHandler):
         import io
         import os
 
-        from . import dws
+        from . import dws, ocr as ocr_mod
         from .ingest import cmd_ingest
         from .pipeline import run as pipeline_run
 
@@ -851,9 +910,19 @@ class _Handler(BaseHTTPRequestHandler):
         do_extract = form.get("do_extract", [""])[0] == "1"
         if do_extract and not os.environ.get("DWS_API_KEY"):
             raise _HttpError(400, _t(lang, "no_key"))
-        # ingest 的 stdout 摘要在网页上没位置放,收进日志
-        with contextlib.redirect_stdout(io.StringIO()):
-            cmd_ingest(self.bench.ws, do_ocr=True, do_extract=do_extract)
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                summary = cmd_ingest(self.bench.ws, do_ocr=True, do_extract=do_extract)
+        except SystemExit as exc:
+            # cmd_ingest 用 SystemExit 报输入契约不满足(没目录/没 PDF);
+            # BaseException,通用 except Exception 接不住 —— 不接的话连接被
+            # 掐、线程静默死,用户连一句提示都看不到
+            raise _HttpError(400, str(exc)) from exc
+        # 长驻进程:OCR 可能刚被换过(upload 失效传播 / 用户手工删了重跑),
+        # lru_cache 只按 doc_id 记 —— 不清就用旧 OCR 绑新文档,
+        # 而清单与快照记的是新文件的 sha(对抗复核 2026-08-03)
+        ocr_mod.load_ocr.cache_clear()
+        ocr_mod.doc_tokens.cache_clear()
         doc_ids = dws.stored_docs()
         if not doc_ids:
             raise _HttpError(400, "raw/ 里没有存盘响应 —— 先放 PDF 并勾选 DWS 抽取")
@@ -866,6 +935,15 @@ class _Handler(BaseHTTPRequestHandler):
                      include_vision=True, out_of_calibration=True)
         (self.bench.ws / "runs" / "current.json").write_text(
             json.dumps({"run": run_dir.name}, ensure_ascii=False) + "\n", encoding="utf-8")
+        # 失败必须显式:OCR/抽取失败的文档不悄悄消失,列出名字与原因
+        failures = [(f["doc_id"], f.get("reason", "")) for f in summary.get("ocr_blocked", [])]
+        failures += [(f["doc_id"], f.get("error", "")) for f in summary.get("extract_failed", [])]
+        if failures:
+            lines = [f"{_esc(doc)} — {_esc(why)}" for doc, why in failures]
+            lines.append(f'<a href="/queue?run={run_dir.name}&lang={lang}">'
+                         f'{_esc(_t(lang, "back"))}</a>')
+            return self._html(200, self.bench.message_page(
+                lang, _t(lang, "error_title"), lines))
         self._redirect(f"/queue?run={run_dir.name}&lang={lang}&notice=ingested")
 
     def _bundle(self, lang: str) -> None:

@@ -154,12 +154,14 @@ class TestRouting:
         assert 'name="rationale"' in text, "「问题/理由」输入域必须在表单里"
 
     def test_report_shows_progress_after_decision(self, workspace, server):
+        rows = json.loads(
+            (workspace / "runs" / RUN / "support_matrix.json").read_text())["rows"]
         s, _, _ = _decide(server)
         assert s == 303
         status, _, text = _req(server, "GET", f"/report?run={RUN}")
         assert status == 200
-        assert "1 / " in text or "reviewed" in text.lower(), \
-            "报告页必须给出复核完成度(decided/total)"
+        assert f"1 / {len(rows)}" in text, \
+            "完成度必须是真实计数(decided/total),不是恒真文案(对抗复核 #16)"
 
     def test_files_rejects_path_traversal(self, workspace, server):
         status, _, _ = _req(server, "GET",
@@ -220,6 +222,9 @@ class TestDecide:
         _, _, text = _req(server, "GET", f"/queue?run={RUN}&filter=all")
         assert payload not in text, \
             "人写的理由原样进 HTML 就是 XSS —— 要么转义要么不出现"
+        assert "&lt;script&gt;" in text, \
+            "理由必须真的渲染在队列页(当前裁决提示里)—— 否则这条断言守的是" \
+            "一块没有输出的页面(对抗复核 #17)"
 
 
 class TestUpload:
@@ -288,3 +293,99 @@ class TestBundle:
             "被改过的 bundle 过 /verify,页面必须说出失败,不许只回个 ok"
 
 # 契约如有调整以 invoiceloop/workbench.py 模块 docstring 为准。
+
+
+# ---------------------------------------------------------------- 对抗复核修复批(2026-08-03)
+
+class TestLoopbackGates:
+    """Host/Origin 两道闸:loopback ≠ 安全(跨站表单 + DNS rebinding)。"""
+
+    def test_foreign_host_is_rejected(self, server):
+        status, _, _ = _req(server, "GET", "/queue",
+                            headers={"Host": "evil.example"})
+        assert status == 403
+
+    def test_loopback_hosts_pass(self, server):
+        status, _, _ = _req(server, "GET", "/queue?run=%s" % RUN,
+                            headers={"Host": "localhost"})
+        assert status == 200
+
+    def test_cross_origin_post_writes_nothing(self, workspace, server):
+        form = {"run": RUN, "doc": DOC, "field": "total_gross", "claim_id": "",
+                "decision": "accept", "corrected_value": "",
+                "rationale": " forged by a malicious page",
+                "adjudicator": "mallory", "supersedes": ""}
+        status, _, _ = _req(
+            server, "POST", "/decide", body=urlencode(form).encode(),
+            headers={"Content-Type": "application/x-www-form-urlencoded",
+                     "Origin": "http://evil.example"})
+        assert status == 403
+        assert _ledger(workspace) == [], "跨源 POST 一个字都不许写进裁决账本"
+
+
+class TestUploadInvalidation:
+    def test_changed_same_name_pdf_invalidates_stale_evidence(self, workspace, server):
+        assert (workspace / "ocr" / f"{DOC}.json").exists()
+        status, _, text = _req(server, "POST", "/upload?filename=acme-001.pdf",
+                               body=b"%PDF-1.4 different bytes entirely",
+                               headers={"Content-Type": "application/octet-stream"})
+        assert status == 200
+        payload = json.loads(text)
+        assert payload["saved"] == DOC
+        assert set(payload["invalidated"]) == {
+            f"{DOC}.json", f"{DOC}.understand.json", f"{DOC}.agentic.json"}
+        assert not (workspace / "ocr" / f"{DOC}.json").exists(), \
+            "旧 OCR 必须随新内容失效 —— 拿旧证据配新文档是最坏的静默"
+        assert not (workspace / "raw" / f"{DOC}.understand.json").exists()
+
+    def test_identical_reupload_keeps_evidence(self, workspace, server):
+        body = (workspace / "input" / "pdfs" / f"{DOC}.pdf").read_bytes()
+        status, _, text = _req(server, "POST", "/upload?filename=acme-001.pdf",
+                               body=body,
+                               headers={"Content-Type": "application/octet-stream"})
+        assert status == 200
+        assert json.loads(text)["invalidated"] == []
+        assert (workspace / "ocr" / f"{DOC}.json").exists(), "同内容重传是幂等,不许失效"
+
+
+class TestIngestFailureSurfacing:
+    def test_ingest_without_pdfs_is_400_not_a_hang(self, tmp_path):
+        import os
+
+        from invoiceloop.workbench import make_server
+
+        empty = tmp_path / "empty-ws"
+        empty.mkdir()
+        prev = os.environ.get("INVOICELOOP_DWS_DERISK")
+        srv = make_server(empty, 0)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            status, _, text = _req(
+                srv.server_address[1], "POST", "/ingest",
+                body=urlencode({"do_extract": "0"}).encode(),
+                headers={"Content-Type": "application/x-www-form-urlencoded"})
+            assert status == 400, "SystemExit 必须变成 400 页,不是掐连接"
+            assert "input/pdfs" in text
+        finally:
+            srv.shutdown()
+            srv.server_close()
+            if prev is not None:
+                os.environ["INVOICELOOP_DWS_DERISK"] = prev
+
+
+class TestNoJsFallback:
+    def test_corrected_value_input_is_not_disabled_in_html(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}")
+        tag = re.search(r'<input class="wb-corr"[^>]*>', text)
+        assert tag, "修正值输入框必须在"
+        assert "disabled" not in tag.group(0), \
+            "disabled 只能由 JS 加载后按选择加 —— 无 JS 时 correct 也要能提交"
+
+
+class TestVerifyFragment:
+    def test_non_zip_body_is_failure_fragment_not_500(self, workspace, server):
+        status, _, text = _req(server, "POST", "/verify?lang=zh",
+                               body=b"definitely not a zip",
+                               headers={"Content-Type": "application/octet-stream"})
+        assert status == 200
+        assert "不是合法的 zip" in text, "坏输入要走失败分支,不是服务器崩溃"

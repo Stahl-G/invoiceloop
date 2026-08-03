@@ -50,15 +50,24 @@ def _local(tag: str) -> str:
 
 
 def _pdftotext_pages(pdf_path: Path) -> list[dict]:
-    """文字层取词:pdftotext -bbox 的 XHTML,坐标为 pt,按页宽高归一化。"""
+    """文字层取词:pdftotext -bbox 的 XHTML,坐标为 pt,按页宽高归一化。
+
+    取不到(命令失败、输出不是合法 XHTML)= 空列表退 tesseract,
+    不是异常 —— 损坏 PDF 是常态输入,宪章四要的是最后的 OcrUnavailable
+    阻断,不是半路的崩溃。
+    """
     if shutil.which("pdftotext") is None:
         return []
-    out = subprocess.run(
-        ["pdftotext", "-bbox", str(pdf_path), "-"],
-        check=True, capture_output=True, text=True,
-    ).stdout
+    try:
+        out = subprocess.run(
+            ["pdftotext", "-bbox", str(pdf_path), "-"],
+            check=True, capture_output=True, text=True,
+        ).stdout
+        root = ET.fromstring(out)
+    except (subprocess.CalledProcessError, OSError, ET.ParseError):
+        return []
     pages = []
-    for page_el in (e for e in ET.fromstring(out).iter() if _local(e.tag) == "page"):
+    for page_el in (e for e in root.iter() if _local(e.tag) == "page"):
         idx = len(pages)
         w = float(page_el.get("width", "0"))
         h = float(page_el.get("height", "0"))
@@ -101,20 +110,27 @@ def parse_tesseract_tsv(tsv: str, width: int, height: int) -> list[dict]:
 
 
 def _tesseract_pages(pdf_path: Path, work_dir: Path) -> list[dict]:
-    """扫描件退路:pdftoppm 渲染后 tesseract 取词。"""
+    """扫描件退路:pdftoppm 渲染后 tesseract 取词。渲染/识别失败同样退化
+    为空列表,由 ocr_pdf 统一给 OcrUnavailable。"""
     if shutil.which("tesseract") is None or shutil.which("pdftoppm") is None:
         return []
     work_dir.mkdir(parents=True, exist_ok=True)
     stem = work_dir / pdf_path.stem
-    subprocess.run(["pdftoppm", "-png", "-r", str(DPI), str(pdf_path), str(stem)],
-                   check=True, capture_output=True)
+    try:
+        subprocess.run(["pdftoppm", "-png", "-r", str(DPI), str(pdf_path), str(stem)],
+                       check=True, capture_output=True)
+    except (subprocess.CalledProcessError, OSError):
+        return []
     pages = []
     for idx, png in enumerate(sorted(work_dir.glob(f"{pdf_path.stem}-*.png"))):
         w_px, h_px = _png_size(png)
-        tsv = subprocess.run(
-            ["tesseract", str(png), "stdout", "tsv"],
-            check=True, capture_output=True, text=True,
-        ).stdout
+        try:
+            tsv = subprocess.run(
+                ["tesseract", str(png), "stdout", "tsv"],
+                check=True, capture_output=True, text=True,
+            ).stdout
+        except (subprocess.CalledProcessError, OSError):
+            continue
         pages.append(_page(parse_tesseract_tsv(tsv, w_px, h_px), idx, w_px, h_px))
     return pages
 

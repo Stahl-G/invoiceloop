@@ -165,3 +165,15 @@ class TestDwsClient:
 
         loaded = dws.load_response("d1", "understand")
         assert loaded is not None and loaded.data["invoice_number"] == "INV-42"
+
+
+@pytest.mark.skipif(not POPPLER, reason="需要 poppler")
+def test_garbage_pdf_is_ocr_unavailable_not_a_crash(tmp_path):
+    """损坏 PDF 是常态输入:pdftotext/pdftoppm 失败必须退到 OcrUnavailable
+    阻断(宪章四),不是 CalledProcessError 半路崩溃。"""
+    from invoiceloop.ocr import OcrUnavailable
+
+    garbage = tmp_path / "garbage.pdf"
+    garbage.write_bytes(b"%PDF-1.4 this is not a real pdf, just bytes")
+    with pytest.raises(OcrUnavailable):
+        ocr_pdf(garbage, work_dir=tmp_path)
