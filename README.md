@@ -41,6 +41,7 @@ M0–M4 全部落地,且已经过一轮完整验证(2026-08-02,
 ## 安装
 
 ```bash
+python3 -m venv .venv && source .venv/bin/activate   # macOS 系统 Python 拒全局 pip(PEP 668),先建 venv
 pip install -e ".[dev]"          # 或 pip install . 只装运行时(仅 requests 一个 PyPI 依赖)
 python3 -m invoiceloop doctor    # 环境自检:缺什么说什么,产品路径不齐 → 退出码 1
 ```
@@ -72,7 +73,7 @@ python3 -m invoiceloop adjudicate --run demo-ws/runs/run-0001 --doc <doc_id> --f
 #   二次决定同一字段须显式 --supersedes HD-0001;裁决后 panel 自动重渲(失败不丢裁决)
 python3 -m invoiceloop render --run demo-ws/runs/run-0001   # 随时从盘上工件重建 panel(纯投影)
 python3 -m invoiceloop bundle --run demo-ws/runs/run-0001   # 全量自包含:上游 PDF/OCR/raw + 全部派生物
-python3 -m invoiceloop verify demo-ws/runs/run-0001/audit_bundle.zip   # 离线三层校验,改一个字节就失败
+python3 -m invoiceloop verify demo-ws/runs/run-0001/audit_bundle.zip   # 离线三层校验:单点篡改(任一成员/哈希/快照/绑定)必被对应层抓住;包的真实性锚在带外公布的本包 sha256
 
 # H1 复核工作台:网页上直接复核 —— 每行四个决策按钮 + 修正值 + 问题/理由输入域
 python3 -m invoiceloop workbench --workspace ws/   # http://127.0.0.1:8765,仅本机 loopback
