@@ -180,12 +180,16 @@ def run_gates(
     ledger_sha256: str,
     artifact_digest: str,
     ocr_blocked: frozenset[str] = frozenset(),
+    duplicate_groups: list[dict] | None = None,
 ) -> dict:
     """门禁事务(§5.3):绑定确切工件哈希后运行;签名对不上则拒绝执行由调用方检查。
 
     ocr_blocked:独立 OCR 缺失的文档 —— 绑定与引用机检全部跑不了,
     必须作为阻断发现进 findings(此前只进 event_log,只读 findings 的
     审计消费方会漏掉整批受阻文档,评审 P2)。
+    duplicate_groups:crossdoc.duplicate_groups 的产出 —— 跨文档查重(C8)。
+    不是第七道门(六门叙事不变):它是文档集维度的检查,只在涉案文档的
+    invoice_number 行盖 fail 裁决 + 记 non-blocking finding,人裁,不进错误率。
     返回 gate_report:evaluations(每 doc×field×gate 的裁决)+ findings + 输入签名。
     """
     acc = GateAccumulator()
@@ -227,6 +231,37 @@ def run_gates(
             for f in FIELDS:
                 per_field[f] = {g: UNAVAILABLE for g in GATE_IDS}
         evaluations[doc_id] = per_field
+
+    # ---- 跨文档查重(C8):文档集维度,六门之外、不进错误率。
+    # 涉案行的 invoice_number 盖 fail(matrix 的既有规则自动把它送入
+    # requires_adjudication —— 跨文档冲突只出现在复核队列里)
+    for group in duplicate_groups or []:
+        for doc_entry in group["docs"]:
+            doc_id = doc_entry["doc_id"]
+            if doc_id not in evaluations:
+                continue
+            others = sorted(d["doc_id"] for d in group["docs"]
+                            if d["doc_id"] != doc_id)
+            evaluations[doc_id]["invoice_number"]["cross_document_duplicate"] = FAIL
+            if group["kind"] == "content_conflict":
+                acc.add(Finding(
+                    "cross_document_duplicate", doc_id, "invoice_number",
+                    "high", "non-blocking", "human",
+                    "与对端文档并排核对后人工裁决;不进错误率",
+                    f"docs:{','.join(others)}",
+                    f"发票号 {group['invoice_number']} 与 {'、'.join(others)} "
+                    f"同号同卖家但内容不同(gross/日期不一致)—— "
+                    f"同号冲突不是判决,是必须人看",
+                ))
+            else:
+                acc.add(Finding(
+                    "cross_document_duplicate", doc_id, "invoice_number",
+                    "medium", "non-blocking", "human",
+                    "确认是否重复提交/重复报销;不进错误率",
+                    f"docs:{','.join(others)}",
+                    f"发票号 {group['invoice_number']} 与 {'、'.join(others)} "
+                    f"同号同卖家同内容 —— 疑似重复提交,人确认",
+                ))
 
     return {
         "input_signature": {"ledger_sha256": ledger_sha256, "artifact_digest": artifact_digest},

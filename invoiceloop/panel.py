@@ -220,6 +220,35 @@ def render_panel(
         f"<tr><td>{_esc(model)}</td><td>{_esc(n)}</td></tr>"
         for model, n in s["rejected_by_drafter"].items()
     )
+    # 跨文档查重(C8):从同一冻结账本重算(确定性),与 gate_report 里的
+    # finding 互为印证 —— 这里给并排视图,finding 给裁决路由
+    from .crossdoc import duplicate_groups
+
+    dup_groups = duplicate_groups(ledger["claims"])
+    dup_section = ""
+    if dup_groups:
+        kind_label = {"content_conflict": "同号不同内容", "resubmission": "疑似重复提交"}
+        group_html = ""
+        for g in dup_groups:
+            rows_g = "".join(
+                f"<tr><td>{_esc(d['doc_id'][:12])}</td><td>{_esc(g['invoice_number'])}</td>"
+                f"<td>{_esc(g['seller'][:24])}</td><td>{_esc(d['total_gross'] or '—')}</td>"
+                f"<td>{_esc(d['issue_date'] or '—')}</td></tr>"
+                for d in g["docs"]
+            )
+            group_html += (
+                f"<table><tr><th colspan='5' style='text-align:left'>"
+                f"{_esc(kind_label[g['kind']])} —— 发票号 {_esc(g['invoice_number'])}"
+                f"</th></tr>"
+                f"<tr><th>文档</th><th>票号</th><th>卖家</th><th>总额</th><th>开票日期</th></tr>"
+                f"{rows_g}</table>"
+            )
+        dup_section = (
+            f"<h2>跨文档查重({len(dup_groups)} 组)</h2>"
+            "<p>同号同卖家的发票出现在本批文档集里。这不是判决 —— 内容冲突与"
+            "重复提交都必须人把两份并排看;已记入复核队列,不进错误率。</p>"
+            f"{group_html}"
+        )
     qualifiers = "".join(f"<li>{_esc(q)}</li>" for q in _QUALIFIERS)
     non_claims = "".join(f"<li>{_esc(c)}</li>" for c in _NON_CLAIMS)
     decided_stat = (f'<div class="stat"><b>{len(decisions)}</b>已人工裁决'
@@ -316,6 +345,8 @@ tr.blk td {{ background:#fdecea; }}
 <p style="font-size:.85em;color:var(--mute)">拒绝理由都是文档级绑定:值不在该发票的独立 OCR 里
 (token 匹配 &lt;80%)。GPT 5.6 SOL 那 118 行是第六轮真实错位事故 —— 当时靠事后 OCR 考古发现,
 现在当场被拒。</p>
+
+{dup_section}
 
 <h2>复核队列(支持强度升序 = 先看最上面的)</h2>
 <table><thead><tr><th>doc</th><th>字段</th><th>值</th><th>支持强度</th><th>来源层级</th><th>门禁</th><th>证据与限制</th></tr></thead>

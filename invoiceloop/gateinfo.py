@@ -57,6 +57,11 @@ _INFO: dict[str, dict[str, dict[str, str]]] = {
             "warning": "Vision disagrees with DWS — worth a human look.",
             "unavailable": "No vision answers, or no value to compare.",
         },
+        "cross_document_duplicate": {
+            "intro": "Cross-document duplicate: within this run's document set, do two invoices share the same number and seller? Numbering is per-seller, so the key is (seller, number). Content conflict and resubmission are both flagged.",
+            "fail": "Same number + same seller as another document — content conflict or suspected resubmission. Not a verdict: a human must look at both side by side; never counted into error rates.",
+            "unavailable": "Not evaluated (missing number or seller — already recorded by presence checks).",
+        },
     },
     "zh": {
         "arithmetic_consistency": {
@@ -94,6 +99,11 @@ _INFO: dict[str, dict[str, dict[str, str]]] = {
             "pass": "读图与 DWS 一致(参考)。",
             "warning": "读图与 DWS 不一致 —— 值得人看一眼。",
             "unavailable": "没有读图作答,或没有值可比对。",
+        },
+        "cross_document_duplicate": {
+            "intro": "跨文档查重:本 run 的文档集里,两份发票是否同号同卖家。编号空间按卖家独立,所以分组键是(卖家, 票号);内容冲突与疑似重复提交都会报。",
+            "fail": "与另一份文档同号同卖家 —— 内容冲突或疑似重复提交。这不是判决:需要人把两份并排看;不进错误率。",
+            "unavailable": "未评估(缺票号或缺卖家 —— 缺口已由在场检查记过)。",
         },
     },
 }

@@ -30,4 +30,8 @@ README 第一屏 pitch 与合规时间线(文案进 README 前用户过目)、�
 
 ## backlog
 
-跨文档查重(C8):设计小结已提交用户审(2026-08-04),点头后实现。
+跨文档查重(C8)—— **已实现**(用户 2026-08-04 点头后):crossdoc.duplicate_groups
+按 (卖家, 票号) 分组,同号同卖家内容冲突 / 疑似重复提交两类;non-blocking
+finding + 涉案 invoice_number 行 fail → 自动进复核队列;panel 加并排对照一节;
+gateinfo 双语一句话;10 条测试钉死语义(含「不同卖家同号放行」「agentic 异值
+不许盖过 understand」)。跨 run 查重与模糊匹配按设计不做(说辞写在模块 docstring)。

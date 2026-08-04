@@ -198,11 +198,20 @@ def run(
          sha256=ledger["sha256"])
 
     # ---- ④ 门禁事务(绑定输入签名)
+    # 跨文档查重(C8)看的是冻结账本:同号同卖家的内容冲突/重复提交,
+    # 六门之外的文档集维度,人裁不进错误率
+    from . import crossdoc
+
+    dup_groups = crossdoc.duplicate_groups(result.claims)
+    if dup_groups:
+        emit("cross_document_duplicates", groups=len(dup_groups),
+             docs=sorted({d["doc_id"] for g in dup_groups for d in g["docs"]}))
     gate_report = gates.run_gates(
         doc_ids,
         understand=understand, agentic=agentic, vision_answers=vision_answers,
         ledger_sha256=ledger["sha256"], artifact_digest=artifact_digest,
         ocr_blocked=frozenset(d for d in doc_ids if not ocr_ok[d]),
+        duplicate_groups=dup_groups,
     )
     _write_json(out_dir / "gate_report.json", gate_report)
     emit("gates_evaluated",
