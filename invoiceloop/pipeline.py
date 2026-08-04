@@ -212,6 +212,9 @@ def run(
         "".join(json.dumps(e, ensure_ascii=False) + "\n" for e in events),
         encoding="utf-8",
     )
+    # 空裁决账本也是真账本(零条裁决):run 时刻创建,人之后往里追加 —
+    # 否则「先打 bundle 再裁决」的自然流程会被缺工件阻断
+    (out_dir / "adjudication_ledger.jsonl").touch()
     return {
         "run_dir": out_dir,
         "manifest": out_dir / "run_manifest.json",
