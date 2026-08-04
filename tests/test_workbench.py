@@ -26,6 +26,7 @@ from urllib.parse import quote, urlencode
 import pytest
 
 from invoiceloop import adjudicate, ocr
+from tests.conftest import pin_corpus
 
 DOC = "acme-001"
 RUN = "run-0001"
@@ -83,7 +84,7 @@ def workspace(tmp_path, monkeypatch):
         f"{DOC}\ttotal_net\t10.00\tNet\t\n"
         f"{DOC}\tissue_date\t11/30/2020\tDate\t\n"
         f"{DOC}\tinvoice_number\tABSTAIN\t\t\n", encoding="utf-8")
-    monkeypatch.setenv("INVOICELOOP_DWS_DERISK", str(ws))
+    pin_corpus(monkeypatch, ws)
     ocr.load_ocr.cache_clear()
     ocr.doc_tokens.cache_clear()
     from invoiceloop.pipeline import run
@@ -503,7 +504,11 @@ class TestVisionSuggest:
 
     钉死的语义(渲染层与 JS 双向遵守):
     - 一致且与 DWS 同值 → wb-vs-value + 「2/2 读者一致」 + 采用按钮;
-    - 一致但 DWS 无值 → 同上(采用 = 补录);
+    - 一致但值在冻结时被拒(绑不进本文档)→ 照常展示建议值,
+      但标注「同值冻结时被拒」且绝不给采用按钮 —— 否则建议层架空
+      冻结否决权,注入载荷也能借预填按钮进门(82 评 P1-5;
+      fixture 里 vision 的 total_net=10.00 正是这个案例:OCR 里没有
+      「10.00」,绑定拒绝,事件日志有 draft_binding_rejected);
     - 分歧 → wb-vs-split 列出各读者作答,没有采用按钮;
     - 全弃权 → muted + 「读图也看不清」;
     - 无作答 → 该行根本不出现 wb-vision-suggest;
@@ -520,12 +525,14 @@ class TestVisionSuggest:
         assert 'wb-vs-value">100.00' in gross, "一致建议要显示建议值"
         assert "2/2 读者一致" in gross
         assert 'wb-vs-adopt" data-value="100.00"' in gross, \
-            "一致建议必须有采用按钮,data-value 带建议值"
+            "一致且未被拒的建议必须有采用按钮,data-value 带建议值"
 
         net = _vs_row(text, "total_net")
-        assert 'wb-vs-value">10.00' in net and "2/2 读者一致" in net
-        assert 'wb-vs-adopt" data-value="10.00"' in net, \
-            "DWS 无值时采用 = 补录,按钮照样在"
+        assert 'wb-vs-value">10.00' in net, "被拒的建议值照常展示(不藏)"
+        assert "同值冻结时被拒" in net, \
+            "冻结拒绝过的值必须标注 —— 同一卡片写着「冻结时被拒」不能又递按钮"
+        assert "wb-vs-adopt" not in net, \
+            "冻结否决的值绝不给采用按钮(82 评 P1-5:建议层不许架空冻结)"
 
         split = _vs_row(text, "issue_date")
         assert "wb-vs-split" in split, "读者分歧要走分歧块,不装作一致"

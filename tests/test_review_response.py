@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 
 from invoiceloop import adjudicate, evidence, ocr
+from tests.conftest import pin_corpus
 
 DOC = "acme-001"
 
@@ -51,7 +52,7 @@ def ws(tmp_path, monkeypatch):
     (d / "raw").mkdir()
     for mode in ("understand", "agentic"):
         (d / "raw" / f"{DOC}.{mode}.json").write_text(json.dumps(_record(DOC, mode)))
-    monkeypatch.setenv("INVOICELOOP_DWS_DERISK", str(d))
+    pin_corpus(monkeypatch, d)
     ocr.load_ocr.cache_clear()
     ocr.doc_tokens.cache_clear()
     yield d

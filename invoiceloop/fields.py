@@ -125,3 +125,45 @@ def date_parts(text: Any) -> tuple[int, ...] | None:
     if not any(1 <= d <= 31 for d in digits):
         return None
     return tuple(digits)
+
+
+def date_ymd(parts: tuple[int, ...], prefer: str | None = None) -> tuple[int, ...]:
+    """数字元组 → 可时序比较的 (year, month, day)。
+
+    routers.py 的「反序比较」只对 day-first 成立:ISO (2026,1,15) 反序成
+    (15,1,2026),按日先比,01/15 → 02/14 误报;美式 (1,15,2026) 反序成
+    (2026,15,1),真反序 02/14 → 01/15 漏报(82 评 P1-2 双向实测)。
+    这里显式判定格式:
+
+    - 首元素 > 31:ISO year-first
+    - 首元素 > 12:day-first(日不可能 ≤ 12 之外的值)
+    - 次元素 > 12:month-first(美式)
+    - 日/月均 ≤ 12:格式歧义,靠 prefer(文档级约定,由同文档另一个
+      无歧义日期给出);都给不出时回退 day-first —— 预注册行为,
+      校准数字不因本次修复漂移
+    """
+    if len(parts) == 2:
+        a, b = parts
+        return (a, b) if a > 31 else (b, a)  # (year, month)
+    a, b, c = parts
+    if a > 31:
+        return (a, b, c)
+    if a > 12:
+        return (c, b, a)
+    if b > 12:
+        return (c, a, b)
+    if prefer == "month":
+        return (c, a, b)
+    return (c, b, a)
+
+
+def date_order_prefer(*parts_list: tuple[int, ...] | None) -> str | None:
+    """同文档日期的格式约定:任一无歧义的年未日期定调(day-first / month-first)。"""
+    for parts in parts_list:
+        if parts and len(parts) == 3 and parts[0] <= 31:
+            if parts[0] > 12:
+                return "day"
+            if parts[1] > 12:
+                return "month"
+    return None
+

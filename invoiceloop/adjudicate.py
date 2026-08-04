@@ -22,7 +22,13 @@ import json
 import os
 import threading
 import zipfile
+import zlib
 from pathlib import Path
+
+try:
+    import fcntl
+except ImportError:  # Windows 无 fcntl:跨进程锁退化,进程内 threading.Lock 仍在
+    fcntl = None
 
 from .fields import FIELDS
 from .review import load_decisions, project, target_id_for
@@ -86,6 +92,16 @@ def append_adjudication(
         raise ValueError(f"field {field!r} 不是受评字段({sorted(FIELDS)} 之一)")
     if not (decided_at and str(decided_at).strip()):
         raise ValueError("decided_at 不能为空 —— 裁决时间由人给出,不由系统代填")
+    decided_at = str(decided_at).strip()
+    from datetime import datetime
+
+    try:
+        datetime.fromisoformat(decided_at.replace("Z", "+00:00"))
+    except ValueError:
+        raise ValueError(
+            f"decided_at {decided_at!r} 不是 ISO 8601 时间 —— 账本里的时间必须"
+            f"可机读,「下礼拜吧」进不了审计轨迹(82 评 P2)"
+        ) from None
 
     manifest = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
     if doc_id not in set(manifest.get("docs", [])):
@@ -117,45 +133,56 @@ def append_adjudication(
             )
 
     target = target_id_for(snapshot_id, doc_id, field)
-    # 临界区开始:加载 → tip/supersede 校验 → seq 分配 → 追加,全程持锁
+    # 临界区开始:加载 → tip/supersede 校验 → seq 分配 → 追加,全程持锁。
+    # threading.Lock 管进程内线程(2026-08-03 并发实测抓出重复 decision_id);
+    # flock 管跨进程(两个 workbench/CLI 同时追加同一 run —— 82 评 P2)。
+    # 锁文件本身不是工件,不进账本不进快照。
     with _APPEND_LOCK:
-        decisions = load_decisions(run_dir)
-        slot = project(decisions).get(target)
-        if slot and slot["conflict"]:
-            raise ValueError(
-                f"{doc_id}/{field} 的裁决链冲突(多条 tip)—— "
-                f"先人工整理 adjudication_ledger.jsonl,系统不替人猜"
-            )
-        tip = slot["tip"] if slot else None
-        if tip is None and supersedes_decision_id is not None:
-            raise ValueError("该字段槽没有既有裁决,supersedes_decision_id 必须为 null")
-        if tip is not None and supersedes_decision_id != tip["decision_id"]:
-            raise ValueError(
-                f"该字段槽已有裁决 {tip['decision_id']}({tip['decision']})—— "
-                f"第二次决定必须显式带上 supersedes_decision_id={tip['decision_id']!r}"
-            )
+        lock_fh = (run_dir / "adjudication_ledger.lock").open("a+")
+        try:
+            if fcntl is not None:
+                fcntl.flock(lock_fh, fcntl.LOCK_EX)
+            decisions = load_decisions(run_dir)
+            slot = project(decisions).get(target)
+            if slot and slot["conflict"]:
+                raise ValueError(
+                    f"{doc_id}/{field} 的裁决链冲突(多条 tip)—— "
+                    f"先人工整理 adjudication_ledger.jsonl,系统不替人猜"
+                )
+            tip = slot["tip"] if slot else None
+            if tip is None and supersedes_decision_id is not None:
+                raise ValueError("该字段槽没有既有裁决,supersedes_decision_id 必须为 null")
+            if tip is not None and supersedes_decision_id != tip["decision_id"]:
+                raise ValueError(
+                    f"该字段槽已有裁决 {tip['decision_id']}({tip['decision']})—— "
+                    f"第二次决定必须显式带上 supersedes_decision_id={tip['decision_id']!r}"
+                )
 
-        seq = len(decisions) + 1
-        entry = {
-            "seq": seq,
-            "decision_id": f"HD-{seq:04d}",
-            "review_snapshot_id": snapshot_id,
-            "target_id": target,
-            "claim_id": claim_id,
-            "doc_id": doc_id,
-            "field": field,
-            "decision": decision,
-            "corrected_value": corrected_value,
-            "rationale": rationale,
-            "adjudicator": adjudicator,
-            "decided_at": decided_at,
-            "supersedes_decision_id": supersedes_decision_id,
-        }
-        with (run_dir / "adjudication_ledger.jsonl").open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
-            fh.flush()
-            os.fsync(fh.fileno())
-        return entry
+            seq = len(decisions) + 1
+            entry = {
+                "seq": seq,
+                "decision_id": f"HD-{seq:04d}",
+                "review_snapshot_id": snapshot_id,
+                "target_id": target,
+                "claim_id": claim_id,
+                "doc_id": doc_id,
+                "field": field,
+                "decision": decision,
+                "corrected_value": corrected_value,
+                "rationale": rationale,
+                "adjudicator": adjudicator,
+                "decided_at": decided_at,
+                "supersedes_decision_id": supersedes_decision_id,
+            }
+            with (run_dir / "adjudication_ledger.jsonl").open("a", encoding="utf-8") as fh:
+                fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+                fh.flush()
+                os.fsync(fh.fileno())
+            return entry
+        finally:
+            if fcntl is not None:
+                fcntl.flock(lock_fh, fcntl.LOCK_UN)
+            lock_fh.close()
 
 
 def adjudicate_and_render(run_dir: Path, **kwargs) -> dict:
@@ -193,9 +220,13 @@ def build_audit_bundle(run_dir: Path) -> Path:
     run_manifest = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
     docs = run_manifest["docs"]
 
-    # 上游证据在 run 目录外,按 run 时记录的根解析(不看当前环境变量)
-    prev_env = os.environ.get("INVOICELOOP_DWS_DERISK")
+    # 上游证据在 run 目录外,按 run 时记录的根解析(不看当前环境变量)。
+    # 主变量与别名同设:评委环境里 export 过 INVOICELOOP_CORPUS 的话,
+    # 只设别名会被遮蔽,bundle 直接读错根(81 评 P1-1 的第二处产品侧孪生)
+    prev_env = {k: os.environ.get(k)
+                for k in ("INVOICELOOP_CORPUS", "INVOICELOOP_DWS_DERISK")}
     if run_manifest.get("derisk_root"):
+        os.environ["INVOICELOOP_CORPUS"] = run_manifest["derisk_root"]
         os.environ["INVOICELOOP_DWS_DERISK"] = run_manifest["derisk_root"]
     try:
         from .dws import MODES, response_path
@@ -278,10 +309,11 @@ def build_audit_bundle(run_dir: Path) -> Path:
         }, indent=1, ensure_ascii=False).encode() + b"\n"))
     finally:
         if run_manifest.get("derisk_root"):
-            if prev_env is None:
-                os.environ.pop("INVOICELOOP_DWS_DERISK", None)
-            else:
-                os.environ["INVOICELOOP_DWS_DERISK"] = prev_env
+            for key, value in prev_env.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
 
     manifest = "".join(
         f"{hashlib.sha256(data).hexdigest()}  {arcname}\n" for arcname, data in members
@@ -335,6 +367,10 @@ def verify_bundle(bundle: Path) -> dict:
         declared: dict[str, str] = {}
         for line in manifest_text.splitlines():
             if line.strip():
+                if "  " not in line:
+                    failures.append(f"MANIFEST 行不可解析:{line[:60]!r}")
+                    layers["members"] = False
+                    continue
                 digest, rel = line.split("  ", 1)
                 declared[rel] = digest
         member_bytes: dict[str, bytes] = {}
@@ -345,8 +381,10 @@ def verify_bundle(bundle: Path) -> dict:
                 continue
             try:
                 data = zf.read(rel)
-            except zipfile.BadZipFile:
-                failures.append(f"成员损坏(CRC):{rel}")
+            except (zipfile.BadZipFile, zlib.error, OSError) as exc:
+                # 成员级损坏(CRC / 压缩流):结构化失败,永不许裸 traceback ——
+                # verify 是交付信任的工具(双评 P1-3)
+                failures.append(f"成员损坏({type(exc).__name__}):{rel}")
                 layers["members"] = False
                 continue
             member_bytes[rel] = data
@@ -362,41 +400,71 @@ def verify_bundle(bundle: Path) -> dict:
         if "review_snapshot.json" in names:
             from .snapshot import SNAPSHOT_COMPONENTS, snapshot_id_from_components
 
-            snap = json.loads(member_bytes.get("review_snapshot.json")
-                              or zf.read("review_snapshot.json"))
-            recomputed = {
-                name: (hashlib.sha256(member_bytes[name]).hexdigest()
-                       if name in member_bytes else None)
-                for name in SNAPSHOT_COMPONENTS
-            }
-            layers["snapshot"] = (
-                snapshot_id_from_components(recomputed) == snap.get("review_snapshot_id"))
-            if not layers["snapshot"]:
-                failures.append(
-                    "review_snapshot 成分与快照 id 不符 —— 快照内工件被替换过")
-            snapshot_id = snap.get("review_snapshot_id")
-            layers["binding"] = True
-            if "adjudication_ledger.jsonl" in names:
-                seen_ids: set[str] = set()
-                for raw in zf.read("adjudication_ledger.jsonl").decode().splitlines():
-                    if not raw.strip():
-                        continue
-                    entry = json.loads(raw)
-                    # 重复 decision_id = 账本曾被并发写坏的指纹(2026-08-03 复核前
-                    # append 无锁,两个线程能写出两个 HD-0001)
-                    decision_id = entry.get("decision_id")
-                    if decision_id:
-                        if decision_id in seen_ids:
-                            failures.append(
-                                f"decision_id 重复:{decision_id} —— 账本完整性已破坏")
-                            layers["binding"] = False
-                        seen_ids.add(decision_id)
-                    if ("review_snapshot_id" in entry
-                            and entry["review_snapshot_id"] != snapshot_id):
+            snap: dict | None = None
+            try:
+                snap = json.loads(member_bytes.get("review_snapshot.json")
+                                  or zf.read("review_snapshot.json"))
+            except (zipfile.BadZipFile, zlib.error, OSError,
+                    UnicodeDecodeError, json.JSONDecodeError) as exc:
+                failures.append(f"review_snapshot.json 不可读:{type(exc).__name__}")
+                layers["snapshot"] = False
+                layers["binding"] = False
+            if snap is not None:
+                recomputed = {
+                    name: (hashlib.sha256(member_bytes[name]).hexdigest()
+                           if name in member_bytes else None)
+                    for name in SNAPSHOT_COMPONENTS
+                }
+                layers["snapshot"] = (
+                    snapshot_id_from_components(recomputed) == snap.get("review_snapshot_id"))
+                if not layers["snapshot"]:
+                    failures.append(
+                        "review_snapshot 成分与快照 id 不符 —— 快照内工件被替换过")
+                snapshot_id = snap.get("review_snapshot_id")
+                layers["binding"] = None
+                if "adjudication_ledger.jsonl" in names:
+                    seen_ids: set[str] = set()
+                    n_entries = 0
+                    ledger_lines: list[str] = []
+                    try:
+                        ledger_lines = (zf.read("adjudication_ledger.jsonl")
+                                        .decode().splitlines())
+                    except (zipfile.BadZipFile, zlib.error, OSError,
+                            UnicodeDecodeError) as exc:
                         failures.append(
-                            f"裁决 {entry.get('decision_id', entry.get('seq'))} "
-                            f"绑定的快照与包内快照不符")
+                            f"adjudication_ledger.jsonl 不可读:{type(exc).__name__}")
                         layers["binding"] = False
+                    for raw in ledger_lines:
+                        if not raw.strip():
+                            continue
+                        try:
+                            entry = json.loads(raw)
+                        except json.JSONDecodeError:
+                            failures.append("裁决账本含不可解析行 —— 账本完整性已破坏")
+                            layers["binding"] = False
+                            continue
+                        n_entries += 1
+                        # 重复 decision_id = 账本曾被并发写坏的指纹(2026-08-03 复核前
+                        # append 无锁,两个线程能写出两个 HD-0001)
+                        decision_id = entry.get("decision_id")
+                        if decision_id:
+                            if decision_id in seen_ids:
+                                failures.append(
+                                    f"decision_id 重复:{decision_id} —— 账本完整性已破坏")
+                                layers["binding"] = False
+                            seen_ids.add(decision_id)
+                        if ("review_snapshot_id" in entry
+                                and entry["review_snapshot_id"] != snapshot_id):
+                            failures.append(
+                                f"裁决 {entry.get('decision_id', entry.get('seq'))} "
+                                f"绑定的快照与包内快照不符")
+                            layers["binding"] = False
+                    if n_entries == 0 and layers["binding"] is not False:
+                        # 零裁决的包没有可绑定的对象:记 None 而不是真空理 True,
+                        # 与 snapshot 层「v1 包记 None」的诚实标记一致(81 评 P2)
+                        notes.append("包内裁决账本为空:无裁决可绑定,绑定层记 None")
+                    elif layers["binding"] is None:
+                        layers["binding"] = True
         else:
             notes.append("v1 形态的包:无 review_snapshot,校验深度止于成员级;"
                          "v2 包(2026-08-03 之后)才有快照与绑定两层")

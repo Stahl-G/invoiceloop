@@ -73,6 +73,7 @@ _T = {
         "vision_split": "readers disagree",
         "vision_adopt": "Adopt",
         "vision_blind": "vision readers can't read it either",
+        "vision_rejected": "same value rejected at freeze — no adopt",
         "vision_rationale": "confirmed vision suggestion",
         "submit": "Submit decision", "confirm": "Confirm",
         "current_note": "Current: {id} · {decision} · {by} · {at} — submitting supersedes it",
@@ -151,6 +152,7 @@ _T = {
         "vision_split": "读者分歧",
         "vision_adopt": "采用建议",
         "vision_blind": "读图也看不清",
+        "vision_rejected": "同值冻结时被拒,不提供采用",
         "vision_rationale": "确认读图建议",
         "submit": "提交裁决", "confirm": "确认",
         "current_note": "当前裁决 {id} · {decision} · {by} · {at} —— 提交将取代它",
@@ -622,6 +624,17 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         normalised = {normalise(v, kind) for _, v in live}
         if len(normalised) == 1:
             value = live[0][1]
+            value_norm = normalise(value, kind) or str(value).strip()
+            rejected = {(normalise(r["value"], kind) or str(r["value"]).strip())
+                        for r in row["rejections"]}
+            if value_norm in rejected:
+                # 同值已被冻结拒掉(绑不进本文档 —— 注入载荷也走这条路):
+                # 建议层如实展示但绝不给「采用」按钮,否则 200px 外写着
+                # 「冻结时被拒」、这里一个按钮就把它架空(82 评 P1-5)
+                return (f'<div class="wb-vision-suggest muted"><span class="wb-vs-label">'
+                        f'{label}</span> <b class="wb-vs-value">{_esc(value)}</b>'
+                        f'<span class="wb-vs-rejected">'
+                        f'{_esc(_t(lang, "vision_rejected"))}</span></div>')
             return (f'<div class="wb-vision-suggest"><span class="wb-vs-label">{label}</span> '
                     f'<b class="wb-vs-value">{_esc(value)}</b>'
                     f'<span class="wb-vs-agree">{_esc(_t(lang, "vision_agree", a=len(live), n=len(answers)))}</span>'
@@ -1180,6 +1193,9 @@ def make_server(workspace: Path, port: int) -> ThreadingHTTPServer:
     import os
 
     workspace = Path(workspace)
+    # 主变量与别名同设:评委照 README export 过 INVOICELOOP_CORPUS 的话,
+    # 只设别名会被环境里的主变量遮蔽,工作台直接读错根(81 评 P1-1 的产品侧孪生)
+    os.environ["INVOICELOOP_CORPUS"] = str(workspace)
     os.environ["INVOICELOOP_DWS_DERISK"] = str(workspace)
     server = ThreadingHTTPServer((HOST, port), _Handler)
     server.daemon_threads = True

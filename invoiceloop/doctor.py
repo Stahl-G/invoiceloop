@@ -28,6 +28,7 @@ def cmd_doctor() -> int:
     for tool, why in (
         ("pdftotext", "文字层独立 OCR 与 bbox 坐标(brew install poppler)"),
         ("pdftoppm", "证据裁剪与整页渲染(同上)"),
+        ("pdfinfo", "裁剪坐标换算的页尺寸来源(同上)"),
     ):
         check(f"poppler:{tool}", shutil.which(tool) is not None, True, why)
     check("tesseract", shutil.which("tesseract") is not None, False,

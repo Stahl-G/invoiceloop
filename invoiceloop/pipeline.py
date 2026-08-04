@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 from . import __version__, dws, evidence, freeze, gates, matrix, snapshot
@@ -82,16 +83,26 @@ def run(
     声明校准数字不直接适用(§12 输入契约)。
     """
     out_dir = Path(out_dir)
-    if out_dir.exists():
-        if any(out_dir.iterdir()):
-            raise RunExistsError(
-                f"运行目录 {out_dir} 已存在且非空 —— 运行不可变,没有 --force。"
-                f"--out 请换一个目录;--workspace 会自动分配 runs/run-NNNN"
-            )
-    else:
-        # exist_ok=False:两个进程同时抢同一个目录时,输的那个当场炸出来,
-        # 而不是两边交错写出一摊半成品
+    if out_dir.exists() and any(out_dir.iterdir()):
+        raise RunExistsError(
+            f"运行目录 {out_dir} 已存在且非空 —— 运行不可变,没有 --force。"
+            f"--out 请换一个目录;--workspace 会自动分配 runs/run-NNNN"
+        )
+    # 占坑分两步:mkdir 尽量建,再用 O_EXCL 独占 run_manifest.json。
+    # 单看 mkdir 有线程级 TOCTOU(两个进程都看到「不存在」→ 一边 FileExistsError
+    # 裸奔,或两边交错写出半成品 —— 81 评 P2);O_EXCL 让输的那个当场拿到
+    # RunExistsError。占坑文件在 run 真正写 manifest 时被覆盖。
+    try:
         out_dir.mkdir(parents=True)
+    except FileExistsError:
+        pass
+    try:
+        (out_dir / "run_manifest.json").open("x").close()
+    except FileExistsError:
+        raise RunExistsError(
+            f"运行目录 {out_dir} 已被另一个进程占用(run_manifest.json 已存在)—— "
+            f"运行不可变,没有 --force;--out 请换一个目录"
+        ) from None
     doc_ids = sorted(doc_ids)
     events: list[dict] = []
 
@@ -142,7 +153,12 @@ def run(
             # 整页渲染不依赖 OCR 或 DWS 响应 —— 它正是 OCR 受阻文档的最后
             # 证据:没有它,受阻文档的每一行都「没有原图」,人工复核直接
             # 断粮(2026-08-03 工作台实测,用户在 HD-0015 写下「没有原图」)
-            evidence.render_pages(pdf_path(doc_id), out_dir / "pages")
+            pages = evidence.render_pages(pdf_path(doc_id), out_dir / "pages")
+            if not pages and shutil.which("pdftoppm"):
+                # 坏 PDF / 渲染超时(poppler 缺席不算 —— 那是环境问题,doctor 的事):
+                # 不崩批(红队 P0-3),但缺口要进事件日志,不许静默 ——
+                # 没有原图的行在 panel 上光秃秃,人要看得见为什么
+                emit("pages_unavailable", doc_id=doc_id, reason="render_failed")
         if u is None:
             emit("response_unavailable", doc_id=doc_id, mode="understand")
             continue

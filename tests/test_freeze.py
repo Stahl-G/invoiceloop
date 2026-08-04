@@ -11,6 +11,7 @@ import json
 import pytest
 
 from invoiceloop import freeze, ocr
+from tests.conftest import pin_corpus
 
 
 @pytest.fixture(autouse=True)
@@ -66,7 +67,7 @@ def tiny_corpus(tmp_path, monkeypatch):
         json.dumps(page(["INV-42", "Total", "100.00", "Gross", "Amt:"]))
     )
     (ocr_dir / "doc-b.json").write_text(json.dumps(page(["Hello", "World"])))
-    monkeypatch.setenv("INVOICELOOP_DWS_DERISK", str(root))
+    pin_corpus(monkeypatch, root)
     return root
 
 

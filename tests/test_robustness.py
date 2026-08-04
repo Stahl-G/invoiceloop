@@ -19,6 +19,7 @@ import pytest
 
 from invoiceloop import freeze, ocr
 from invoiceloop.pipeline import run
+from tests.conftest import pin_corpus
 
 REPO = Path(__file__).resolve().parent.parent
 from invoiceloop.ocr import corpus_available
@@ -54,7 +55,7 @@ def two_doc_corpus(tmp_path, monkeypatch):
                         "lines": [{"geometry": [[0, 0], [1, 1]], "words": [word]}]}]}
     (root / "data" / "docile" / "ocr" / "doc-a.json").write_text(
         json.dumps({"pages": [page]}), encoding="utf-8")
-    monkeypatch.setenv("INVOICELOOP_DWS_DERISK", str(root))
+    pin_corpus(monkeypatch, root)
     ocr.load_ocr.cache_clear()
     ocr.doc_tokens.cache_clear()
     yield root

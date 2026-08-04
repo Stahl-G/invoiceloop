@@ -779,6 +779,7 @@ a:hover { text-decoration: underline; }
 .wb-vs-agree { color: var(--wb-muted); font-size: 12px; }
 .wb-vs-split { color: var(--wb-warn); font-size: 12.5px; }
 .wb-vs-blind { color: var(--wb-muted); font-size: 12.5px; }
+.wb-vs-rejected { color: var(--wb-block); font-size: 12.5px; }
 .wb-vs-adopt {
     margin-left: auto;
     padding: 3px 12px;

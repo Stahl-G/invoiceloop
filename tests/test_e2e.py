@@ -14,6 +14,7 @@ import pytest
 
 from invoiceloop import dws
 from invoiceloop.pipeline import run
+from tests.conftest import pin_corpus
 
 DOCS = ["046e0c4924044de09f6d9e7b", "00134dd365a24343b35b78c6", "00136a27c7774c1e8dc6b2f2"]
 ARTIFACTS = [
@@ -99,7 +100,7 @@ class TestCorruptInput:
         raw = tmp_path / "derisk" / "raw"
         raw.mkdir(parents=True)
         (raw / "doc-bad.understand.json").write_text("{not json", encoding="utf-8")
-        monkeypatch.setenv("INVOICELOOP_DWS_DERISK", str(tmp_path / "derisk"))
+        pin_corpus(monkeypatch, tmp_path / "derisk")
         assert _load("doc-bad", "understand") is None
 
 

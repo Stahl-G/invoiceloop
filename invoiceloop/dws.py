@@ -87,6 +87,11 @@ def load_vision_answers() -> dict[str, dict[tuple[str, str], dict]]:
             if not line.strip():
                 continue
             cols = line.split("\t")
+            if len(cols) < 2 or not cols[0].strip() or not cols[1].strip():
+                # 畸形行(空行/少列):跳过 —— 一行坏数据不许 IndexError 崩掉
+                # 整个 run(82 评 P1-7);空值=弃权由 cmd_vision 的解析保证,
+                # 这里收的是手改/截断的文件
+                continue
             doc, field = cols[0], cols[1]
             rows[(doc, field)] = {
                 "value": cols[2].strip() if len(cols) > 2 else "",

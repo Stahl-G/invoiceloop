@@ -68,9 +68,12 @@ def register_artifacts(doc_ids: Iterable[str]) -> list[dict]:
                 entry["sha256"] = sha256_file(path)
                 try:
                     record = json.loads(path.read_text(encoding="utf-8"))
+                    if not isinstance(record, dict):
+                        raise ValueError("top level is not an object")
                     entry["http_status"] = record.get("http_status")
-                except json.JSONDecodeError:
-                    # 损坏的存盘响应:字节哈希照登记(可审计),标 corrupt;
+                except (json.JSONDecodeError, ValueError, UnicodeDecodeError):
+                    # 损坏的存盘响应(不可解析、或合法 JSON 但不是对象):
+                    # 字节哈希照登记(可审计),标 corrupt;
                     # 后续 _load 解析失败 → 数据不可用 → extraction_present
                     # 记阻断 —— 不许一个坏文件 crash 整批(评审 P1)
                     entry["corrupt"] = True
@@ -155,6 +158,10 @@ def _page_pixels(pdf_path: Path, page_no: int) -> tuple[float, float]:
     raise RuntimeError(f"pdfinfo: no page size for {pdf_path.name} p{page_no}")
 
 
+#: poppler 子进程超时(秒):坏 PDF 不许把整批挂死(红队 P2:subprocess 无超时)。
+RENDER_TIMEOUT = 300
+
+
 def render_crop(pdf_path: Path, page_no: int, rect: list[float], out_stem: Path) -> tuple[str, str] | None:
     """渲染引用区裁剪图,返回 (文件名, sha256);渲染不了返回 None(调用方记缺口)。
 
@@ -168,15 +175,19 @@ def render_crop(pdf_path: Path, page_no: int, rect: list[float], out_stem: Path)
     if area <= FULL_PAGE:
         x0, y0 = 0.0, max(0.0, y0 - MARGIN)
         x1, y1 = min(1.0, x1 + MARGIN), min(1.0, y1 + MARGIN)
-    width, height = _page_pixels(pdf_path, page_no)
-    px, pw = int(x0 * width), max(1, int((x1 - x0) * width))
-    py, ph = int(y0 * height), max(1, int((y1 - y0) * height))
-    subprocess.run(
-        ["pdftoppm", "-png", "-r", str(DPI), "-f", str(page_no), "-l", str(page_no),
-         "-x", str(px), "-y", str(py), "-W", str(pw), "-H", str(ph),
-         str(pdf_path), str(out_stem)],
-        check=True, capture_output=True,
-    )
+    try:
+        width, height = _page_pixels(pdf_path, page_no)
+        px, pw = int(x0 * width), max(1, int((x1 - x0) * width))
+        py, ph = int(y0 * height), max(1, int((y1 - y0) * height))
+        subprocess.run(
+            ["pdftoppm", "-png", "-r", str(DPI), "-f", str(page_no), "-l", str(page_no),
+             "-x", str(px), "-y", str(py), "-W", str(pw), "-H", str(ph),
+             str(pdf_path), str(out_stem)],
+            check=True, capture_output=True, timeout=RENDER_TIMEOUT,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired,
+            OSError, RuntimeError):
+        return None  # 坏页/坏文件:这一个裁剪缺席,不许带崩整批
     # pdftoppm 按文档总页数给序号补零(10 页以上输出 stem-03.png),
     # 不猜文件名,按产物找
     produced = sorted(out_stem.parent.glob(f"{out_stem.name}-*.png"))
@@ -188,17 +199,21 @@ def render_crop(pdf_path: Path, page_no: int, rect: list[float], out_stem: Path)
 def render_pages(pdf_path: Path, out_dir: Path) -> list[str]:
     """整页渲染(DWS 没给引用区时,复核者唯一的去处)。搬 vision_eval6.py::cmd_render。
 
-    返回文件名列表;渲染不了返回空列表(调用方不藏:没有引用又没有整页的行,
-    panel 上就是光秃秃的 —— 那是要人看见的形状)。
+    返回文件名列表;渲染不了返回空列表(坏 PDF、pdftoppm 缺席、超时都一样 ——
+    调用方不藏:没有引用又没有整页的行,panel 上就是光秃秃的,
+    那是要人看见的形状;绝不许 check=True 把整批带崩,红队 P0-3)。
     """
     if not pdf_path.exists() or shutil.which("pdftoppm") is None:
         return []
     out_dir.mkdir(parents=True, exist_ok=True)
     stem = out_dir / pdf_path.stem
-    subprocess.run(
-        ["pdftoppm", "-png", "-r", str(DPI), str(pdf_path), str(stem)],
-        check=True, capture_output=True,
-    )
+    try:
+        subprocess.run(
+            ["pdftoppm", "-png", "-r", str(DPI), str(pdf_path), str(stem)],
+            check=True, capture_output=True, timeout=RENDER_TIMEOUT,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+        return []
     return sorted(p.name for p in out_dir.glob(f"{pdf_path.stem}-*.png"))
 
 

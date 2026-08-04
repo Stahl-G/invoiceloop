@@ -6,7 +6,7 @@ import pytest
 
 from invoiceloop import gates
 from invoiceloop.fields import FIELDS
-from tests.conftest import bbox_meta, make_response
+from tests.conftest import bbox_meta, make_response, pin_corpus
 
 FULL_DATA = {
     "invoice_number": "INV-42",
@@ -102,6 +102,41 @@ class TestArithmetic:
         assert verdicts(report, "issue_date")["arithmetic_consistency"] == "fail"
         assert verdicts(report, "due_date")["arithmetic_consistency"] == "fail"
 
+    def test_c3_us_format_no_false_positive(self):
+        """82 评 P1-2 实测误报:美式 01/15 → 02/14 合法,旧反序比较误判反序。"""
+        report = run({**FULL_DATA, "issue_date": "01/15/2026", "due_date": "02/14/2026"})
+        assert verdicts(report, "issue_date")["arithmetic_consistency"] == "pass"
+
+    def test_c3_us_format_catches_real_inversion(self):
+        """漏报半边:美式真反序 02/14 → 01/15 必须抓(假发票六门全过的路)。"""
+        report = run({**FULL_DATA, "issue_date": "02/14/2026", "due_date": "01/15/2026"})
+        assert verdicts(report, "issue_date")["arithmetic_consistency"] == "fail"
+        assert verdicts(report, "due_date")["arithmetic_consistency"] == "fail"
+
+    def test_c3_iso_format(self):
+        ok = run({**FULL_DATA, "issue_date": "2026-01-15", "due_date": "2026-02-14"})
+        assert verdicts(ok, "issue_date")["arithmetic_consistency"] == "pass"
+        bad = run({**FULL_DATA, "issue_date": "2026-02-14", "due_date": "2026-01-15"})
+        assert verdicts(bad, "issue_date")["arithmetic_consistency"] == "fail"
+
+    def test_c3_day_first_format(self):
+        ok = run({**FULL_DATA, "issue_date": "15.01.2026", "due_date": "14.02.2026"})
+        assert verdicts(ok, "issue_date")["arithmetic_consistency"] == "pass"
+        bad = run({**FULL_DATA, "issue_date": "14.02.2026", "due_date": "15.01.2026"})
+        assert verdicts(bad, "issue_date")["arithmetic_consistency"] == "fail"
+
+    def test_c3_ambiguous_pair_uses_unambiguous_sibling(self):
+        """01/15 无歧义定调美式 → 歧义的 01/05 按月/日读:1/5 < 1/15 真反序。"""
+        report = run({**FULL_DATA, "issue_date": "01/15/2026", "due_date": "01/05/2026"})
+        assert verdicts(report, "issue_date")["arithmetic_consistency"] == "fail"
+
+    def test_c3_both_ambiguous_keeps_preregistered_day_first(self):
+        """双歧义回退 day-first(预注册):05/06 = 6月5日 → 06/05 = 5月6日 是反序。"""
+        report = run({**FULL_DATA, "issue_date": "05/06/2026", "due_date": "06/05/2026"})
+        assert verdicts(report, "issue_date")["arithmetic_consistency"] == "fail"
+        ok = run({**FULL_DATA, "issue_date": "06/05/2026", "due_date": "05/06/2026"})
+        assert verdicts(ok, "issue_date")["arithmetic_consistency"] == "pass"
+
     def test_unevaluated_when_inputs_missing(self):
         report = run({**FULL_DATA, "total_net": None})
         # C1 缺输入评不了;C2 仍评了 gross/due
@@ -129,7 +164,7 @@ class TestCitation:
         assert f["repair_owner"] == "vision_reread" and not f["blocking"]
 
     def test_missing_ocr_is_blocking_not_silent(self, clear_ocr_caches, tmp_path, monkeypatch):
-        monkeypatch.setenv("INVOICELOOP_DWS_DERISK", str(tmp_path))  # 没有 OCR 文件
+        pin_corpus(monkeypatch, tmp_path)  # 没有 OCR 文件
         meta = {"total_gross": bbox_meta(300, 500, 450, 530)}
         report = run(FULL_DATA, meta=meta)
         assert verdicts(report, "total_gross")["citation_holds"] == "unavailable"

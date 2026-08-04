@@ -14,6 +14,7 @@ import pytest
 
 from invoiceloop import ocr
 from invoiceloop.pipeline import RunExistsError, run
+from tests.conftest import pin_corpus
 from invoiceloop.snapshot import (
     allocate_run_dir,
     build_input_manifest,
@@ -58,7 +59,7 @@ def workspace(tmp_path, monkeypatch):
     for mode in ("understand", "agentic"):
         (ws / "raw" / f"{DOC}.{mode}.json").write_text(
             json.dumps(_record(DOC, mode)), encoding="utf-8")
-    monkeypatch.setenv("INVOICELOOP_DWS_DERISK", str(ws))
+    pin_corpus(monkeypatch, ws)
     ocr.load_ocr.cache_clear()
     ocr.doc_tokens.cache_clear()
     yield ws

@@ -66,10 +66,16 @@ def sanitise_doc_id(stem: str) -> str:
 
 
 def discover(workspace: Path) -> dict[str, Path]:
-    """input/pdfs/ 里的全部 PDF:{doc_id: 路径},按 doc_id 排序。"""
+    """input/pdfs/ 里的全部 PDF:{doc_id: 路径},按 doc_id 排序。
+
+    后缀按小写比较:.PDF/.Pdf 在大小写敏感的文件系统上会被 glob("*.pdf")
+    漏掉 —— 那正是宪章四立誓要防的「静默丢单」(82 评 P1-6)。
+    """
     pdf_dir = Path(workspace) / "input" / "pdfs"
     out: dict[str, Path] = {}
-    for pdf in sorted(pdf_dir.glob("*.pdf")):
+    for pdf in sorted(pdf_dir.iterdir()):
+        if not pdf.is_file() or pdf.suffix.lower() != ".pdf":
+            continue
         doc_id = sanitise_doc_id(pdf.stem)
         if doc_id in out:  # 同名碰撞,挂短哈希,仍确定
             doc_id = f"{doc_id}-{hashlib.sha256(pdf.name.encode()).hexdigest()[:6]}"
@@ -122,19 +128,30 @@ def cmd_ingest(
             for mode in modes:
                 target = raw_dir / f"{doc_id}.{mode}.json"
                 if target.exists():
+                    record: object = None
                     try:
-                        if json.loads(target.read_text()).get("http_status") == 200:
-                            summary["extract_skipped"] += 1
-                            continue
-                    except json.JSONDecodeError:
-                        pass
+                        record = json.loads(target.read_text())
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        pass  # 损坏的存盘 = 没抽过,重抽(不许 .get 崩在 list 上)
+                    if isinstance(record, dict) and record.get("http_status") == 200:
+                        summary["extract_skipped"] += 1
+                        continue
                 try:
-                    extract_to_raw(pdf, extraction_schema(), raw_dir,
-                                   doc_id=doc_id, mode=mode)
-                    summary["extracted"] += 1
+                    record = extract_to_raw(pdf, extraction_schema(), raw_dir,
+                                            doc_id=doc_id, mode=mode)
                 except Exception as exc:  # noqa: BLE001 —— 记失败,不中断整批
                     summary["extract_failed"].append(
                         {"doc_id": doc_id, "mode": mode, "error": repr(exc)})
+                    continue
+                status = record.get("http_status") if isinstance(record, dict) else None
+                if status == 200:
+                    summary["extracted"] += 1
+                else:
+                    # 非 200 也存了盘(4xx body 是被拒原因的唯一记录,属分母),
+                    # 但摘要必须如实:拿错 key 不许看到「全部成功」(82 评 P1-8)
+                    summary["extract_failed"].append(
+                        {"doc_id": doc_id, "mode": mode,
+                         "error": f"http_status={status}"})
 
     print(json.dumps(summary, ensure_ascii=False, indent=1))
     return summary

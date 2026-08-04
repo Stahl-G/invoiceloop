@@ -203,10 +203,15 @@ def _main() -> None:
 
 
 def main() -> None:
-    """CLI 入口:用户的输入错误给干净的一句话,不给裸 traceback(评审 P2)。"""
+    """CLI 入口:用户的输入错误给干净的一句话,不给裸 traceback。
+
+    捕 Exception 全类(RunExistsError/CalledProcessError/OSError 都算用户
+    该看到一句话的错,双评 P1-2/P1-4 实测 5 类裸 traceback);SystemExit
+    与 KeyboardInterrupt 不是 Exception 的子类,自然穿透。
+    """
     try:
         _main()
-    except (ValueError, FileNotFoundError) as exc:
+    except Exception as exc:  # noqa: BLE001
         raise SystemExit(f"错误:{exc}") from None
 
 

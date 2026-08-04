@@ -9,6 +9,17 @@ import pytest
 from invoiceloop import dws, ocr
 
 
+def pin_corpus(monkeypatch, root) -> None:
+    """fixture 锁定语料根:主变量与 legacy 别名同设。
+
+    只设别名的话,评委照 README export 的 INVOICELOOP_CORPUS 会把 fixture
+    遮蔽掉(ocr.derisk_root 主变量优先),产品测试在评委机上变红(81 评 P1-1)。
+    研究测试不用这个 helper —— 它们读环境里的真语料。
+    """
+    monkeypatch.setenv("INVOICELOOP_CORPUS", str(root))
+    monkeypatch.setenv("INVOICELOOP_DWS_DERISK", str(root))
+
+
 @pytest.fixture
 def clear_ocr_caches():
     ocr.load_ocr.cache_clear()
@@ -52,7 +63,7 @@ def positioned_corpus(tmp_path, monkeypatch, clear_ocr_caches):
         }],
     }
     (ocr_dir / "doc-a.json").write_text(json.dumps({"pages": [page]}))
-    monkeypatch.setenv("INVOICELOOP_DWS_DERISK", str(root))
+    pin_corpus(monkeypatch, root)
     return root
 
 

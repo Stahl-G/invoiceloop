@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from invoiceloop import ingest, ocr
+from tests.conftest import pin_corpus
 from invoiceloop.ingest import cmd_ingest, discover, sanitise_doc_id
 from invoiceloop.ocr_ingest import ocr_pdf, parse_tesseract_tsv
 
@@ -38,13 +39,13 @@ class TestDocId:
 class TestLayout:
     def test_workspace_layout_detected_by_input_pdfs(self, tmp_path, monkeypatch):
         (tmp_path / "input" / "pdfs").mkdir(parents=True)
-        monkeypatch.setenv("INVOICELOOP_DWS_DERISK", str(tmp_path))
+        pin_corpus(monkeypatch, tmp_path)
         assert ocr.layout() == "workspace"
         assert ocr.ocr_path("d1") == tmp_path / "ocr" / "d1.json"
         assert ocr.pdf_path("d1") == tmp_path / "input" / "pdfs" / "d1.pdf"
 
     def test_derisk_layout_unchanged(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("INVOICELOOP_DWS_DERISK", str(tmp_path))
+        pin_corpus(monkeypatch, tmp_path)
         assert ocr.layout() == "derisk"
         assert "data/docile" in str(ocr.ocr_path("d1"))
 
@@ -97,7 +98,7 @@ class TestWorkspaceContract:
         for mode in ("understand", "agentic"):
             (ws / "raw" / f"{doc_id}.{mode}.json").write_text(
                 json.dumps(self._record(doc_id, mode, data, meta)), encoding="utf-8")
-        monkeypatch.setenv("INVOICELOOP_DWS_DERISK", str(ws))
+        pin_corpus(monkeypatch, ws)
         ocr.load_ocr.cache_clear()
         ocr.doc_tokens.cache_clear()
         yield ws, doc_id
@@ -157,7 +158,7 @@ class TestDwsClient:
         assert on_disk["body"]["output"]["data"]["invoice_number"] == "INV-42"
 
         # 与 dws.load_response 的读取契约对得上(同一份 record 形状)
-        monkeypatch.setenv("INVOICELOOP_DWS_DERISK", str(tmp_path.parent))
+        pin_corpus(monkeypatch, tmp_path.parent)
         (tmp_path.parent / "raw").mkdir(exist_ok=True)
         shutil.move(str(tmp_path / "d1.understand.json"),
                     str(tmp_path.parent / "raw" / "d1.understand.json"))
@@ -208,7 +209,7 @@ def test_blocked_doc_still_gets_full_page_images(tmp_path, monkeypatch):
     for d in ("good", "blocked"):
         for m in ("understand", "agentic"):
             (ws / "raw" / f"{d}.{m}.json").write_text(json.dumps(rec(d, m)))
-    monkeypatch.setenv("INVOICELOOP_DWS_DERISK", str(ws))
+    pin_corpus(monkeypatch, ws)
     ocr_mod.load_ocr.cache_clear()
     ocr_mod.doc_tokens.cache_clear()
     try:

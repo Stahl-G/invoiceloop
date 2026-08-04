@@ -20,6 +20,9 @@ from pathlib import Path
 from .evidence import DPI
 from .ocr import OcrUnavailable
 
+#: 单个外部命令的超时(秒):坏 PDF 不许把 ingest 挂死(红队 P2:subprocess 无超时)。
+CMD_TIMEOUT = 120
+
 
 def _word(value: str, x0: float, y0: float, x1: float, y1: float, conf: float = 0.99) -> dict:
     return {
@@ -61,10 +64,11 @@ def _pdftotext_pages(pdf_path: Path) -> list[dict]:
     try:
         out = subprocess.run(
             ["pdftotext", "-bbox", str(pdf_path), "-"],
-            check=True, capture_output=True, text=True,
+            check=True, capture_output=True, text=True, timeout=CMD_TIMEOUT,
         ).stdout
         root = ET.fromstring(out)
-    except (subprocess.CalledProcessError, OSError, ET.ParseError):
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired,
+            OSError, ET.ParseError):
         return []
     pages = []
     for page_el in (e for e in root.iter() if _local(e.tag) == "page"):
@@ -118,8 +122,8 @@ def _tesseract_pages(pdf_path: Path, work_dir: Path) -> list[dict]:
     stem = work_dir / pdf_path.stem
     try:
         subprocess.run(["pdftoppm", "-png", "-r", str(DPI), str(pdf_path), str(stem)],
-                       check=True, capture_output=True)
-    except (subprocess.CalledProcessError, OSError):
+                       check=True, capture_output=True, timeout=CMD_TIMEOUT * 3)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
         return []
     pages = []
     for idx, png in enumerate(sorted(work_dir.glob(f"{pdf_path.stem}-*.png"))):
@@ -127,9 +131,9 @@ def _tesseract_pages(pdf_path: Path, work_dir: Path) -> list[dict]:
         try:
             tsv = subprocess.run(
                 ["tesseract", str(png), "stdout", "tsv"],
-                check=True, capture_output=True, text=True,
+                check=True, capture_output=True, text=True, timeout=CMD_TIMEOUT,
             ).stdout
-        except (subprocess.CalledProcessError, OSError):
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
             continue
         pages.append(_page(parse_tesseract_tsv(tsv, w_px, h_px), idx, w_px, h_px))
     return pages

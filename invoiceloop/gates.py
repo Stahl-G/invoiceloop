@@ -17,7 +17,7 @@ from dataclasses import dataclass, field as dc_field
 
 from .dws import StoredResponse
 from .evidence import region_ocr_text
-from .fields import AMOUNT_FIELDS, FIELDS, Kind, amount, date_parts, normalise
+from .fields import AMOUNT_FIELDS, FIELDS, Kind, amount, date_order_prefer, date_parts, date_ymd, normalise
 from .ocr import OcrUnavailable
 
 PASS, WARNING, FAIL, UNAVAILABLE = "pass", "warning", "fail", "unavailable"
@@ -88,10 +88,13 @@ def _c1_c3(data: dict) -> dict[str, set[str]]:
     if None not in (gross, due) and abs(gross - due) > _EPSILON:
         failed["C2"] = {"total_gross", "amount_due"}
     issued, expires = date_parts(data.get("issue_date")), date_parts(data.get("due_date"))
-    if issued and expires and list(reversed(issued)) > list(reversed(expires)):
-        # 反序比较:字段顺序未知,但同一份文档上两个日期同格式,
-        # 反序后的数字元组给出正确的时序(routers.py 的注解)。
-        failed["C3"] = {"issue_date", "due_date"}
+    if issued and expires:
+        # 归一到 (year, month, day) 再比:旧的「反序比较」只对 day-first
+        # 成立,美式/ISO 双向失效(误报 + 漏报,82 评 P1-2)。歧义格式由
+        # 同文档无歧义日期定调,定不了回退 day-first(预注册行为不变)。
+        prefer = date_order_prefer(issued, expires)
+        if date_ymd(issued, prefer) > date_ymd(expires, prefer):
+            failed["C3"] = {"issue_date", "due_date"}
     return failed
 
 
