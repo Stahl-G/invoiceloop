@@ -3,8 +3,11 @@
 评委路径的关键一环:仓库不再要求任何外部数据 —— samples/ 内嵌三份
 DocILE 发票 + 已存盘的 DWS 响应(抽取不重跑,零 API)+ 读图作答,
 `demo --out ws/` 就地建 workspace、本地 OCR、跑完整 run,最后提示
-打开工作台。其中 046e0c49 是 OCR 受阻的退化扫描件 —— 它不是意外,
-是展品:受阻文档的诚实阻断 + 读图门对「买卖双方抽反」的 warning。
+打开工作台。046e0c49 是退化扫描件:多数 poppler 构建抽不出文字层,
+OCR 受阻 → 诚实阻断展品;个别构建能抽出,它就照常走全流程 ——
+两种形态都合法。与环境无关的展品是读图门对「买卖双方抽反」的
+warning(由 vendored 数据决定)。钉死「受阻必显式」的不变量,
+不钉「某份文档必须受阻」(78 评 P3:后者在评委机上实测失败)。
 """
 
 from __future__ import annotations
@@ -60,13 +63,19 @@ def cmd_demo(out: Path) -> None:
                 os.environ[key] = value
 
     blocked = summary.get("ocr_blocked", [])
+    blocked_ids = [b["doc_id"] for b in blocked]
+    if blocked_ids:
+        note = (f"OCR 受阻:{', '.join(blocked_ids)} —— 诚实阻断展品;"
+                f"046e0c49 的读图门「买卖双方抽反」warning 两份展品都在")
+    else:
+        note = ("本机 poppler 从退化扫描件也抽出了文字层,三份全流程正常;"
+                "046e0c49 的展品是读图门对「买卖双方抽反」的 warning(数据决定)")
     print(json.dumps({
         "workspace": str(out),
         "run_dir": str(run_dir),
         "panel": str(paths["panel"]),
         "docs": doc_ids,
-        "ocr_blocked": [b["doc_id"] for b in blocked],
+        "ocr_blocked": blocked_ids,
         "next": f"python3 -m invoiceloop workbench --workspace {out}",
-        "note": ("046e0c49 的 OCR 受阻是展品特性:诚实阻断 + 读图门对"
-                 "「买卖双方抽反」的 warning;其余两份有文字层,全流程正常"),
+        "note": note,
     }, ensure_ascii=False, indent=1))
