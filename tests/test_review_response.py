@@ -81,6 +81,21 @@ class TestCorruptStoredResponse:
         assert per_field["cross_mode_agreement"] != "pass", \
             "一侧响应损坏时双模式不许放行(评审 P1:以前是一个坏文件 crash 整批)"
 
+    def test_nested_non_object_data_blocks_instead_of_crashing(self, ws):
+        from invoiceloop.pipeline import run
+
+        record = json.loads((ws / "raw" / f"{DOC}.understand.json").read_text())
+        record["body"]["output"]["data"] = ["malformed"]
+        (ws / "raw" / f"{DOC}.understand.json").write_text(json.dumps(record))
+        out = ws / "runs" / "run-0001"
+        run([DOC], out, include_vision=False, out_of_calibration=True)
+        report = json.loads((out / "gate_report.json").read_text())
+        assert any(
+            f["gate_id"] == "extraction_present" and f["blocking"]
+            and f["doc_id"] == DOC
+            for f in report["findings"]
+        )
+
 
 class TestSilentDocLoss:
     def test_pdf_without_raw_is_blocked_not_invisible(self, ws, monkeypatch):

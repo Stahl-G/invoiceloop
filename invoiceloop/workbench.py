@@ -393,8 +393,13 @@ class RunCtx:
         self.snapshot_id = load_or_derive_snapshot(self.dir)["review_snapshot_id"]
         self.decisions = load_decisions(self.dir)
         self.projection = project(self.decisions)
-        self.claim_by_slot = {(c["doc_id"], c["field"]): c["claim_id"]
-                              for c in self.ledger["claims"]}
+        # The matrix is authoritative about which claim backs a row.  Taking
+        # the last ledger claim can silently select agentic/vision instead of
+        # the understand claim displayed by the matrix.
+        self.claim_by_slot = {
+            (row["doc_id"], row["field"]): row.get("claim_id") or ""
+            for row in self.matrix.get("rows", [])
+        }
         self.spans_by_id = {s["span_id"]: s for s in self.spans}
         self.orphans = [d for d in self.decisions if d.get("orphan")]
         # 读图作答 → 建议层:{(doc, field): [(读者, 值)]}。建议只是建议:
@@ -402,7 +407,9 @@ class RunCtx:
         from .dws import load_vision_answers
 
         self.vision: dict[tuple[str, str], list[tuple[str, str]]] = {}
-        for model, rows in load_vision_answers().items():
+        local_vision = self.dir / "vision"
+        vision_dir = local_vision if local_vision.is_dir() else None
+        for model, rows in load_vision_answers(vision_dir=vision_dir).items():
             for key, ans in rows.items():
                 self.vision.setdefault(key, []).append((model, ans["value"]))
 

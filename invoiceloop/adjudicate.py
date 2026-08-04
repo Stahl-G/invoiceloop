@@ -242,6 +242,7 @@ def build_audit_bundle(run_dir: Path) -> Path:
         recorded = {d["doc_id"]: d for d in input_manifest.get("docs", [])}
 
         upstream: list[tuple[str, bytes]] = []
+        vision_members: list[tuple[str, bytes]] = []
         missing_up: list[str] = []
         swapped: list[str] = []
         absent_at_run: list[str] = []
@@ -262,6 +263,23 @@ def build_audit_bundle(run_dir: Path) -> Path:
                     swapped.append(arcname)
                 else:
                     upstream.append((arcname, path.read_bytes()))
+        recorded_vision = input_manifest.get("vision_sha256") or {}
+        for name in sorted(set(run_manifest.get("vision_captured", []))):
+            # Names are generated from answers6.*.tsv and must not escape the
+            # run-local evidence directory.
+            if Path(name).name != name or not name.startswith("answers6."):
+                raise FileNotFoundError(f"audit bundle 读图文件名非法,阻断:{name!r}")
+            path = run_dir / "vision" / name
+            arcname = f"vision/{name}"
+            expected = recorded_vision.get(name)
+            if expected is None:
+                missing_up.append(arcname)
+            elif not path.exists():
+                missing_up.append(arcname)
+            elif sha256_file(path) != expected:
+                swapped.append(arcname)
+            else:
+                vision_members.append((arcname, path.read_bytes()))
         if missing_up or swapped:
             raise FileNotFoundError(
                 f"audit bundle 上游证据与 run 时记录不符,阻断:"
@@ -278,6 +296,7 @@ def build_audit_bundle(run_dir: Path) -> Path:
                     (f"{asset_dir}/{p.name}", p.read_bytes())
                     for p in sorted(directory.glob("*.png"))
                 )
+        members.extend(vision_members)
         members.extend(upstream)
 
         if run_manifest.get("layout") == "workspace":
@@ -292,9 +311,10 @@ def build_audit_bundle(run_dir: Path) -> Path:
         if absent_at_run:
             notes.append(f"以下上游证据在 run 时就不存在(input_manifest 记录为 null),"
                          f"非打包缺失:{absent_at_run}")
-        if run_manifest.get("include_vision"):
-            notes.append("读图作答的值已并入 field_drafts.json;原始作答文件在校准档案"
-                         "(dws-derisk 第六轮),不在包内 —— 本包唯一的非自包含成分")
+        if run_manifest.get("vision_captured"):
+            notes.append("读图原始作答文件已复制进 run/bundle,可离线重放工作台建议")
+        elif run_manifest.get("include_vision"):
+            notes.append("读图作答的值已并入 field_drafts.json;本 run 未捕获原始作答文件")
         if run_manifest.get("layout") != "workspace":
             notes.append("抽取 schema 由校准档案持有,本仓库无副本"
                          "(input_manifest.schema_sha256 为 null)")
@@ -493,20 +513,55 @@ def verify_bundle(bundle: Path) -> dict:
                                     f"裁决 {entry.get('decision_id')} 的 supersedes "
                                     f"指向不早于自己的 {sup}(链成环)")
                                 layers["binding"] = False
-                        # claim_id 必须指向包内冻结账本里的真实声明
+                        # 裁决必须绑定正确的槽位和冻结声明,不能只拿一个真实
+                        # claim_id 改写 doc/field 后伪造另一条裁决。
                         try:
                             ledger_doc = json.loads(
                                 member_bytes.get("field_ledger.json")
                                 or zf.read("field_ledger.json"))
-                            claim_ids = {c.get("claim_id")
-                                         for c in ledger_doc.get("claims", [])}
+                            claims_by_id = {
+                                c.get("claim_id"): c
+                                for c in ledger_doc.get("claims", [])
+                                if c.get("claim_id") is not None
+                            }
+                            run_manifest_doc = json.loads(
+                                member_bytes.get("run_manifest.json")
+                                or zf.read("run_manifest.json"))
+                            allowed_docs = set(run_manifest_doc.get("docs", []))
                             for entry in parsed:
-                                cid = entry.get("claim_id")
-                                if cid is not None and cid not in claim_ids:
+                                doc_id = entry.get("doc_id")
+                                field_name = entry.get("field")
+                                if doc_id not in allowed_docs:
                                     failures.append(
-                                        f"裁决 {entry.get('decision_id')} 指向包内"
-                                        f"不存在的 claim {cid}")
+                                        f"裁决 {entry.get('decision_id')} 指向包外文档"
+                                        f" {doc_id!r}")
                                     layers["binding"] = False
+                                if field_name not in FIELDS:
+                                    failures.append(
+                                        f"裁决 {entry.get('decision_id')} 指向非法字段"
+                                        f" {field_name!r}")
+                                    layers["binding"] = False
+                                expected_target = target_id_for(
+                                    snapshot_id, doc_id, field_name)
+                                if entry.get("target_id") != expected_target:
+                                    failures.append(
+                                        f"裁决 {entry.get('decision_id')} 的 target_id"
+                                        " 与 doc/field/snapshot 不一致")
+                                    layers["binding"] = False
+                                cid = entry.get("claim_id")
+                                if cid is not None:
+                                    claim = claims_by_id.get(cid)
+                                    if claim is None:
+                                        failures.append(
+                                            f"裁决 {entry.get('decision_id')} 指向包内"
+                                            f"不存在的 claim {cid}")
+                                        layers["binding"] = False
+                                    elif (claim.get("doc_id") != doc_id
+                                          or claim.get("field") != field_name):
+                                        failures.append(
+                                            f"裁决 {entry.get('decision_id')} 的 claim"
+                                            f" {cid} 与 doc/field 不一致")
+                                        layers["binding"] = False
                         except (zipfile.BadZipFile, zlib.error, OSError,
                                 UnicodeDecodeError, json.JSONDecodeError):
                             pass  # 账本成员自身的损坏已在成员级记过,不重复

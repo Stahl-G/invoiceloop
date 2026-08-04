@@ -116,6 +116,8 @@ def find_run_by_fingerprint(runs_dir: Path, fingerprint: str) -> Path | None:
 
     半拉子 run(跑到一半崩了:有 input_manifest 但没有 event_log)不算 —
     重放一个不完整的 run 等于把崩溃当成果。它留在原地当现场,新 run 开新代。
+    新版 run 还必须通过复核快照重算,否则同一输入指纹下被改过的门禁/账本
+    会被误当成可重放结果。
     """
     runs_dir = Path(runs_dir)
     if not runs_dir.is_dir():
@@ -124,8 +126,15 @@ def find_run_by_fingerprint(runs_dir: Path, fingerprint: str) -> Path | None:
         if not (candidate.parent / "event_log.jsonl").exists():
             continue
         try:
-            if json.loads(candidate.read_text(encoding="utf-8")).get("fingerprint") == fingerprint:
-                return candidate.parent
+            if json.loads(candidate.read_text(encoding="utf-8")).get("fingerprint") != fingerprint:
+                continue
+            snapshot_path = candidate.parent / "review_snapshot.json"
+            if snapshot_path.exists():
+                stored = json.loads(snapshot_path.read_text(encoding="utf-8"))
+                if compute_review_snapshot(candidate.parent)["review_snapshot_id"] != \
+                        stored.get("review_snapshot_id"):
+                    continue
+            return candidate.parent
         except json.JSONDecodeError:
             continue
     return None

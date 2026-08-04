@@ -170,6 +170,19 @@ class TestWorkspaceGenerations:
         assert find_run_by_fingerprint(runs, manifest["fingerprint"]) is not None
         assert find_run_by_fingerprint(runs, "0" * 64) is None
 
+    def test_find_by_fingerprint_rejects_changed_snapshot_component(self, workspace):
+        out = workspace / "runs" / "run-0001"
+        run([DOC], out, include_vision=False, out_of_calibration=True)
+        manifest = json.loads((out / "input_manifest.json").read_text())
+        assert find_run_by_fingerprint(
+            workspace / "runs", manifest["fingerprint"]
+        ) == out
+
+        (out / "gate_report.json").write_text(json.dumps({"findings": []}))
+        assert find_run_by_fingerprint(
+            workspace / "runs", manifest["fingerprint"]
+        ) is None, "同输入但快照成分被改过时不得重放"
+
     def test_docs_slice_precedes_fingerprint(self, workspace, monkeypatch, capsys):
         """--docs 1 的 run 不许被当成「全部文档」的 run 重放(指纹必须在截断后算)。"""
         doc2 = "acme-002"

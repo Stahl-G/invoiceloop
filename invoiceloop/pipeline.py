@@ -105,6 +105,7 @@ def run(
         ) from None
     doc_ids = sorted(doc_ids)
     events: list[dict] = []
+    vision_paths = dws.vision_answer_paths() if include_vision else []
 
     def emit(event: str, **detail) -> None:
         events.append({"seq": len(events) + 1, "event": event, **detail})
@@ -119,6 +120,7 @@ def run(
         "out_of_calibration": out_of_calibration,
         "layout": layout(),
         "derisk_root": str(derisk_root()),
+        "vision_captured": [path.name for path in vision_paths],
     })
     input_manifest = snapshot.build_input_manifest(doc_ids, include_vision=include_vision)
     _write_json(out_dir / "input_manifest.json", input_manifest)
@@ -140,6 +142,12 @@ def run(
         # 畸形行跳过必须留痕(78.5 评 P1):不崩批,但事件日志要看得见
         emit("vision_rows_skipped", count=len(skipped_vision_rows),
              samples=skipped_vision_rows[:5])
+    if vision_paths:
+        captured_dir = out_dir / "vision"
+        captured_dir.mkdir(parents=True, exist_ok=True)
+        for source in vision_paths:
+            shutil.copyfile(source, captured_dir / source.name)
+        emit("vision_inputs_captured", files=[path.name for path in vision_paths])
 
     # 独立 OCR 缺失的文档:这份阻断,其余照常(宪章四)。不预查的话,
     # freeze 的 OcrUnavailable 会把整批带死 —— 那是崩溃,不是阻断。

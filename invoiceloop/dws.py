@@ -44,22 +44,50 @@ def response_path(doc_id: str, mode: str) -> Path:
     return raw_dir() / f"{doc_id}.{mode}.json"
 
 
+def vision_answer_paths(vision_dir: Path | None = None) -> list[Path]:
+    """返回读图作答文件,按文件名排序。
+
+    pipeline 会把这些输入复制进 run,这样工作台和 audit bundle 不依赖
+    run 之后仍可变的校准目录。
+    """
+    root = Path(vision_dir) if vision_dir is not None else derisk_root() / "vision"
+    if not root.is_dir():
+        return []
+    return sorted(root.glob("answers6.*.tsv"))
+
+
 def load_response(doc_id: str, mode: str) -> StoredResponse | None:
     """读一份存盘响应;文件不存在或 HTTP 非 200 返回 None(调用方记阻断)。"""
     path = response_path(doc_id, mode)
     if not path.exists():
         return None
     record = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(record, dict):
+        raise ValueError("DWS record top level 不是 object")
     if record.get("http_status") != 200:
         return None
-    output = record["body"].get("output") or {}
+    body = record.get("body")
+    if not isinstance(body, dict):
+        raise ValueError("DWS record body 不是 object")
+    output = body.get("output") or {}
+    if not isinstance(output, dict):
+        raise ValueError("DWS output 不是 object")
+    data = output.get("data") or {}
+    meta = output.get("metadata") or {}
+    pages = output.get("pages") or []
+    if not isinstance(data, dict):
+        raise ValueError("DWS output.data 不是 object")
+    if not isinstance(meta, dict):
+        raise ValueError("DWS output.metadata 不是 object")
+    if not isinstance(pages, list):
+        raise ValueError("DWS output.pages 不是 array")
     return StoredResponse(
         doc_id=doc_id,
         mode=mode,
         http_status=record["http_status"],
-        data=output.get("data") or {},
-        meta=output.get("metadata") or {},
-        pages=output.get("pages") or [],
+        data=data,
+        meta=meta,
+        pages=pages,
         path=path,
     )
 
@@ -69,7 +97,9 @@ def stored_docs() -> list[str]:
     return sorted(p.name[: -len(".understand.json")] for p in raw_dir().glob("*.understand.json"))
 
 
-def load_vision_answers(on_skip=None) -> dict[str, dict[tuple[str, str], dict]]:
+def load_vision_answers(
+    on_skip=None, *, vision_dir: Path | None = None
+) -> dict[str, dict[tuple[str, str], dict]]:
     """读图模型的整页作答(vision/answers6.<tag>.tsv,全部 tag)。
 
     返回 {模型名: {(doc_id, field): {"value", "printed_label", "note"}}}。
@@ -79,9 +109,8 @@ def load_vision_answers(on_skip=None) -> dict[str, dict[tuple[str, str], dict]]:
     on_skip:畸形行(少列/空 doc/空 field)的回调 (文件名, 行首 40 字) ——
     跳过必须有人知道,不许静默(78.5 评 P1)。
     """
-    vision_dir = derisk_root() / "vision"
     out: dict[str, dict[tuple[str, str], dict]] = {}
-    for path in sorted(vision_dir.glob("answers6.*.tsv")):
+    for path in vision_answer_paths(vision_dir):
         tag = path.name.split(".")[1]
         model = VISION_READERS.get(tag, tag)
         rows: dict[tuple[str, str], dict] = {}

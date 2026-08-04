@@ -286,6 +286,38 @@ class TestSelfContainedBundle:
         with pytest.raises(FileNotFoundError, match="上游证据"):
             adjudicate.build_audit_bundle(run_dir)
 
+    def test_bundle_captures_run_local_vision_inputs(self, run_dir):
+        import hashlib
+
+        vision_name = "answers6.A.tsv"
+        vision = run_dir / "vision"
+        vision.mkdir()
+        vision_file = vision / vision_name
+        vision_file.write_text(
+            "doc\tfield\tvalue\n"
+            "doc-a\ttotal_gross\t100.00\n", encoding="utf-8")
+
+        manifest = json.loads((run_dir / "run_manifest.json").read_text())
+        manifest.update({"include_vision": True, "vision_captured": [vision_name]})
+        (run_dir / "run_manifest.json").write_text(json.dumps(manifest))
+        input_manifest = json.loads((run_dir / "input_manifest.json").read_text())
+        input_manifest["vision_sha256"] = {
+            vision_name: hashlib.sha256(vision_file.read_bytes()).hexdigest()
+        }
+        (run_dir / "input_manifest.json").write_text(json.dumps(input_manifest))
+        (run_dir / "review_snapshot.json").write_text(
+            json.dumps(compute_review_snapshot(run_dir)))
+
+        _append(run_dir)
+        _render(run_dir)
+        bundle = adjudicate.build_audit_bundle(run_dir)
+        import zipfile
+
+        with zipfile.ZipFile(bundle) as zf:
+            assert f"vision/{vision_name}" in zf.namelist()
+            scope = json.loads(zf.read("bundle_manifest.json"))
+            assert any("已复制进 run/bundle" in n for n in scope["notes"])
+
 
 class TestVerify:
     def _build(self, run_dir):
@@ -477,6 +509,36 @@ class TestVerifyHardening:
         report = adjudicate.verify_bundle(adjudicate.build_audit_bundle(run_dir))
         assert not report["ok"]
         assert any("重复" in f for f in report["failures"])
+
+    def test_verify_rejects_claim_doc_field_mismatch(self, run_dir):
+        import hashlib
+        import zipfile
+
+        from invoiceloop.snapshot import load_or_derive_snapshot
+
+        _append(run_dir)
+        _render(run_dir)
+        bundle = adjudicate.build_audit_bundle(run_dir)
+        with zipfile.ZipFile(bundle) as zf:
+            items = {i.filename: zf.read(i.filename) for i in zf.infolist()}
+        entry = json.loads(items["adjudication_ledger.jsonl"].decode().strip())
+        snapshot_id = load_or_derive_snapshot(run_dir)["review_snapshot_id"]
+        entry["field"] = "total_net"
+        entry["target_id"] = target_id_for(snapshot_id, "doc-a", "total_net")
+        items["adjudication_ledger.jsonl"] = (
+            (json.dumps(entry, ensure_ascii=False) + "\n").encode())
+        items["MANIFEST.sha256"] = "".join(
+            f"{hashlib.sha256(data).hexdigest()}  {name}\n"
+            for name, data in items.items() if name != "MANIFEST.sha256"
+        ).encode()
+        with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as zf:
+            for name, data in items.items():
+                zf.writestr(name, data)
+
+        report = adjudicate.verify_bundle(bundle)
+        assert not report["ok"]
+        assert any("claim" in failure and "不一致" in failure
+                   for failure in report["failures"])
 
     def test_verify_rejects_non_zip(self, tmp_path):
         bad = tmp_path / "not-a-bundle.zip"

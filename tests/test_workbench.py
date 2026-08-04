@@ -276,6 +276,17 @@ class TestIngest:
         assert "notice=replayed" in headers.get("location", ""), \
             "输入指纹没变就必须重放既有 run,不静默开新 run"
 
+    def test_queue_uses_run_local_vision_inputs(self, workspace, server):
+        for name in ("answers6.A.tsv", "answers6.B.tsv"):
+            (workspace / "vision" / name).write_text(
+                "doc\tfield\tvalue\tprinted_label\tnote\n"
+                f"{DOC}\ttotal_gross\t999.00\tTotal\t\n",
+                encoding="utf-8")
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=zh&filter=all")
+        gross = _vs_row(text, "total_gross")
+        assert "100.00" in gross and "999.00" not in gross, \
+            "工作台必须使用 run 内捕获的读图输入,不读 run 之后被改的外部 TSV"
+
 
 class TestBundle:
     def _bundle(self, workspace, server) -> Path:
@@ -575,10 +586,10 @@ class TestVisionSuggest:
 
     def test_vs_value_is_escaped(self, workspace):
         payload = "<script>alert(1)</script>"
-        (workspace / "vision" / "answers6.A.tsv").write_text(
+        (workspace / "runs" / RUN / "vision" / "answers6.A.tsv").write_text(
             "doc\tfield\tvalue\tprinted_label\tnote\n"
             f"{DOC}\ttotal_gross\t{payload}\tTotal\t\n", encoding="utf-8")
-        # 读图作答在 tsv 落盘后才读,另起一个服务器避免顺序依赖
+        # 读图作答在 run 内读取,另起一个服务器避免顺序依赖
         from invoiceloop.workbench import make_server
 
         srv = make_server(workspace, 0)

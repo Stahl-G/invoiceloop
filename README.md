@@ -84,6 +84,7 @@ python3 -m invoiceloop workbench --workspace ws/   # http://127.0.0.1:8765,仅�
 python3 -m invoiceloop vision --workspace ws/    # 需 ANTHROPIC_API_KEY;作答是草稿,进输入指纹
 # 建议只预填表单:一致 → 「采用建议」一键填入(人仍要点提交);分歧 → 摊开各读者的值
 # OCR 受阻的文档上,读图是唯一幸存的机器信号(实测:它标中了 DWS 抽反的买卖双方)
+# run 会捕获 answers6.*.tsv 到本地工件;工作台与 bundle 不依赖之后可变的 vision 目录
 
 # 测试
 python3 -m pytest tests/
