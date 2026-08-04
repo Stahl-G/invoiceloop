@@ -55,7 +55,7 @@ def _main() -> None:
     p_bun = sub.add_parser("bundle", help="打 audit_bundle.zip(全量自包含)")
     p_bun.add_argument("--run", type=Path, required=True)
 
-    p_ver = sub.add_parser("verify", help="离线校验 audit bundle(改一个字节就失败)")
+    p_ver = sub.add_parser("verify", help="离线校验 audit bundle(三层:成员/快照/绑定)")
     p_ver.add_argument("bundle", type=Path)
 
     p_wb = sub.add_parser("workbench", help="H1 复核工作台:本地 loopback Web 应用(127.0.0.1)")

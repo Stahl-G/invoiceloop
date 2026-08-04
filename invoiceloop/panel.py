@@ -302,9 +302,11 @@ tr.blk td {{ background:#fdecea; }}
 <div class="stat"><b>{s['drafts_rejected']}</b>草稿被冻结事务拒绝</div>
 {decided_stat}
 </div>
-<p>分诊排序经 160 份预注册文档实测:门禁挑出的字段偏差率 50.0%,未挑出的 11.8%,
-集中度 4.2× —— 看 46% 的字段覆盖 78% 的偏差。分诊不要求任何一档「可信」,
-只要求排序优于随机。</p>
+<p>分诊排序的校准证据(每个数字都可重算):六轮校准(dws-derisk,R-D 路由投影)
+偏差率 50.0% vs 11.8%,集中度 4.2×;本仓投影在 160 份预注册校准文档上复测
+<b>4.10×</b>(test_triage_concentration.py 钉死),100 份留出集复测 <b>3.04×</b>
+(docs/HELDOUT.md,预注册线 1.5×)—— 看 46% 的字段覆盖 78% 的偏差。
+分诊不要求任何一档「可信」,只要求排序优于随机。</p>
 
 <h2>校准的三条限定(ARCHITECTURE.md §8,宪章六要求同屏展示)</h2>
 <div class="caveats"><ol>{qualifiers}</ol></div>

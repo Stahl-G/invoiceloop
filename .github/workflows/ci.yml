@@ -1,0 +1,26 @@
+name: ci
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: System deps (poppler)
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      - name: Install
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -e ".[dev]"
+      - name: Doctor (environment self-check)
+        run: .venv/bin/python -m invoiceloop doctor
+      - name: Self-contained demo (zero API)
+        run: .venv/bin/python -m invoiceloop demo --out /tmp/demo-ws
+      - name: Test suite
+        # 研究测试(语料对拍/留出复算)在无语料的 CI 上按设计跳过(corpus_available 守卫),
+        # 产品路径全部照跑
+        run: .venv/bin/python -m pytest tests/ -q

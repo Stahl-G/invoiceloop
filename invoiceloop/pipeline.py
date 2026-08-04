@@ -132,7 +132,14 @@ def run(
 
     understand = {d: _load(d, "understand") for d in doc_ids}
     agentic = {d: _load(d, "agentic") for d in doc_ids}
-    vision_answers = dws.load_vision_answers() if include_vision else {}
+    skipped_vision_rows: list[dict] = []
+    vision_answers = dws.load_vision_answers(
+        on_skip=lambda fname, line: skipped_vision_rows.append(
+            {"file": fname, "line": line})) if include_vision else {}
+    if skipped_vision_rows:
+        # 畸形行跳过必须留痕(78.5 评 P1):不崩批,但事件日志要看得见
+        emit("vision_rows_skipped", count=len(skipped_vision_rows),
+             samples=skipped_vision_rows[:5])
 
     # 独立 OCR 缺失的文档:这份阻断,其余照常(宪章四)。不预查的话,
     # freeze 的 OcrUnavailable 会把整批带死 —— 那是崩溃,不是阻断。

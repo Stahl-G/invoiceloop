@@ -146,20 +146,20 @@ def printed_label(doc_id: str, page_no: int, rect: list[float]) -> str:
 
 # ---------------------------------------------------------------------- 裁剪
 
+#: poppler 子进程超时(秒):坏 PDF 不许把整批挂死(红队 P2:subprocess 无超时)。
+RENDER_TIMEOUT = 300
+
+
 def _page_pixels(pdf_path: Path, page_no: int) -> tuple[float, float]:
     info = subprocess.run(
         ["pdfinfo", "-f", str(page_no), "-l", str(page_no), str(pdf_path)],
-        check=True, capture_output=True, text=True,
+        check=True, capture_output=True, text=True, timeout=RENDER_TIMEOUT,
     ).stdout
     for line in info.splitlines():
         if "size:" in line and "pts" in line:
             nums = line.split("size:")[1].split("pts")[0].split("x")
             return float(nums[0]) * DPI / 72, float(nums[1]) * DPI / 72
     raise RuntimeError(f"pdfinfo: no page size for {pdf_path.name} p{page_no}")
-
-
-#: poppler 子进程超时(秒):坏 PDF 不许把整批挂死(红队 P2:subprocess 无超时)。
-RENDER_TIMEOUT = 300
 
 
 def render_crop(pdf_path: Path, page_no: int, rect: list[float], out_stem: Path) -> tuple[str, str] | None:

@@ -1,0 +1,6 @@
+requests>=2.31
+
+[dev]
+pytest>=8
+
+[research]

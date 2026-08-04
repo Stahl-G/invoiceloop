@@ -424,7 +424,7 @@ def verify_bundle(bundle: Path) -> dict:
                 layers["binding"] = None
                 if "adjudication_ledger.jsonl" in names:
                     seen_ids: set[str] = set()
-                    n_entries = 0
+                    parsed: list[dict] = []
                     ledger_lines: list[str] = []
                     try:
                         ledger_lines = (zf.read("adjudication_ledger.jsonl")
@@ -443,7 +443,7 @@ def verify_bundle(bundle: Path) -> dict:
                             failures.append("裁决账本含不可解析行 —— 账本完整性已破坏")
                             layers["binding"] = False
                             continue
-                        n_entries += 1
+                        parsed.append(entry)
                         # 重复 decision_id = 账本曾被并发写坏的指纹(2026-08-03 复核前
                         # append 无锁,两个线程能写出两个 HD-0001)
                         decision_id = entry.get("decision_id")
@@ -459,12 +459,89 @@ def verify_bundle(bundle: Path) -> dict:
                                 f"裁决 {entry.get('decision_id', entry.get('seq'))} "
                                 f"绑定的快照与包内快照不符")
                             layers["binding"] = False
-                    if n_entries == 0 and layers["binding"] is not False:
+                    if parsed:
+                        layers["binding"] = layers["binding"] is not False
+                        # 链投影重放(78.5 评 P1):只查「每条绑这个快照」不够 ——
+                        # 伪造一条自洽但内部矛盾的链(悬挂 supersedes、跨槽位、
+                        # 前向引用成环、同槽多 tip)在成员级与快照级都抓不到,
+                        # 只有重放 review.project 的链语义才现形
+                        shaped = [e for e in parsed
+                                  if e.get("decision_id") and e.get("target_id")]
+                        if len(shaped) != len(parsed):
+                            failures.append(
+                                "裁决行缺 decision_id/target_id —— "
+                                "v2 包不许含 v1 形态的行")
+                            layers["binding"] = False
+                        by_id = {e["decision_id"]: e for e in shaped}
+                        for entry in shaped:
+                            sup = entry.get("supersedes_decision_id")
+                            if sup is None:
+                                continue
+                            pointed = by_id.get(sup)
+                            if pointed is None:
+                                failures.append(
+                                    f"裁决 {entry.get('decision_id')} 的 supersedes "
+                                    f"指向不存在的 {sup}")
+                                layers["binding"] = False
+                            elif pointed.get("target_id") != entry.get("target_id"):
+                                failures.append(
+                                    f"裁决 {entry.get('decision_id')} 的 supersedes "
+                                    f"跨槽位指向 {sup}")
+                                layers["binding"] = False
+                            elif pointed.get("seq", 0) >= entry.get("seq", 0):
+                                failures.append(
+                                    f"裁决 {entry.get('decision_id')} 的 supersedes "
+                                    f"指向不早于自己的 {sup}(链成环)")
+                                layers["binding"] = False
+                        # claim_id 必须指向包内冻结账本里的真实声明
+                        try:
+                            ledger_doc = json.loads(
+                                member_bytes.get("field_ledger.json")
+                                or zf.read("field_ledger.json"))
+                            claim_ids = {c.get("claim_id")
+                                         for c in ledger_doc.get("claims", [])}
+                            for entry in parsed:
+                                cid = entry.get("claim_id")
+                                if cid is not None and cid not in claim_ids:
+                                    failures.append(
+                                        f"裁决 {entry.get('decision_id')} 指向包内"
+                                        f"不存在的 claim {cid}")
+                                    layers["binding"] = False
+                        except (zipfile.BadZipFile, zlib.error, OSError,
+                                UnicodeDecodeError, json.JSONDecodeError):
+                            pass  # 账本成员自身的损坏已在成员级记过,不重复
+                        # decision 语义不变量重放(与 append 同规):correct 必带
+                        # 修正值、其余禁带、decision 必须合法 —— 伪造账本过不了
+                        for entry in parsed:
+                            if entry.get("decision") not in DECISIONS:
+                                failures.append(
+                                    f"裁决 {entry.get('decision_id')} 的 decision "
+                                    f"非法:{entry.get('decision')!r}")
+                                layers["binding"] = False
+                            elif entry["decision"] == "correct" and not (
+                                    entry.get("corrected_value") or "").strip():
+                                failures.append(
+                                    f"裁决 {entry.get('decision_id')} correct "
+                                    f"缺 corrected_value")
+                                layers["binding"] = False
+                            elif entry["decision"] != "correct" and \
+                                    entry.get("corrected_value") is not None:
+                                failures.append(
+                                    f"裁决 {entry.get('decision_id')} "
+                                    f"{entry['decision']} 禁带 corrected_value")
+                                layers["binding"] = False
+                        from .review import project
+
+                        for target, slot in project(shaped).items():
+                            if slot["conflict"]:
+                                failures.append(
+                                    f"槽位 {target} 的裁决链多条 tip —— "
+                                    f"链内部矛盾,自洽伪造也过不了这层")
+                                layers["binding"] = False
+                    elif layers["binding"] is not False:
                         # 零裁决的包没有可绑定的对象:记 None 而不是真空理 True,
                         # 与 snapshot 层「v1 包记 None」的诚实标记一致(81 评 P2)
                         notes.append("包内裁决账本为空:无裁决可绑定,绑定层记 None")
-                    elif layers["binding"] is None:
-                        layers["binding"] = True
         else:
             notes.append("v1 形态的包:无 review_snapshot,校验深度止于成员级;"
                          "v2 包(2026-08-03 之后)才有快照与绑定两层")

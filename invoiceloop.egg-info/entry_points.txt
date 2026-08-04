@@ -1,0 +1,2 @@
+[console_scripts]
+invoiceloop = invoiceloop.__main__:main

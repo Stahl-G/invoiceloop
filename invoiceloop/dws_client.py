@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from pathlib import Path
 from typing import Any
 
@@ -27,22 +28,42 @@ def extract(
     mode: str = "understand",
     api_key: str | None = None,
     timeout: int = 180,
+    retries: int = 2,
 ) -> dict[str, Any]:
-    """跑一次 schema 驱动的抽取并返回存盘 record(写不写盘由调用方定)。"""
+    """跑一次 schema 驱动的抽取并返回存盘 record(写不写盘由调用方定)。
+
+    重试只覆盖瞬时故障(网络异常与 5xx,指数退避,默认 2 次);4xx 不重试 ——
+    文档被拒是终局答案,body 按存盘纪律落盘(78.5 评 P1:单发无重试)。
+    重试耗尽照样向上抛,ingest 记失败、门禁记阻断 —— 安全方向不变。
+    """
     key = api_key or os.environ.get("DWS_API_KEY")
     if not key:
         raise RuntimeError("DWS_API_KEY 未设置;环境变量注入,不写进任何文件")
 
     payload: dict[str, Any] = {"schema": schema, "parseConfig": {"mode": mode}}
     document = Path(document)
-    with document.open("rb") as handle:
-        response = requests.post(
-            EXTRACT_URL,
-            headers={"Authorization": f"Bearer {key}"},
-            files={"file": (document.name, handle, "application/pdf")},
-            data={"instructions": json.dumps(payload)},
-            timeout=timeout,
-        )
+    attempt = 0
+    while True:
+        try:
+            with document.open("rb") as handle:
+                response = requests.post(
+                    EXTRACT_URL,
+                    headers={"Authorization": f"Bearer {key}"},
+                    files={"file": (document.name, handle, "application/pdf")},
+                    data={"instructions": json.dumps(payload)},
+                    timeout=timeout,
+                )
+        except requests.RequestException:
+            if attempt >= retries:
+                raise
+            attempt += 1
+            time.sleep(2 ** attempt)
+            continue
+        if response.status_code >= 500 and attempt < retries:
+            attempt += 1
+            time.sleep(2 ** attempt)
+            continue
+        break
 
     try:
         body: Any = response.json()

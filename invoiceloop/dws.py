@@ -69,13 +69,15 @@ def stored_docs() -> list[str]:
     return sorted(p.name[: -len(".understand.json")] for p in raw_dir().glob("*.understand.json"))
 
 
-def load_vision_answers() -> dict[str, dict[tuple[str, str], dict]]:
+def load_vision_answers(on_skip=None) -> dict[str, dict[tuple[str, str], dict]]:
     """读图模型的整页作答(vision/answers6.<tag>.tsv,全部 tag)。
 
     返回 {模型名: {(doc_id, field): {"value", "printed_label", "note"}}}。
     tag → 显示名走 VISION_READERS,没收录的 tag(比如 vision-ingest 新接的
     读者)用 tag 本身 —— 文件在就算数,不许硬编码名单把新读者漏掉。
     ABSTAIN 也是真实作答(承认看不清),保留原样,由使用方决定怎么解释。
+    on_skip:畸形行(少列/空 doc/空 field)的回调 (文件名, 行首 40 字) ——
+    跳过必须有人知道,不许静默(78.5 评 P1)。
     """
     vision_dir = derisk_root() / "vision"
     out: dict[str, dict[tuple[str, str], dict]] = {}
@@ -91,6 +93,8 @@ def load_vision_answers() -> dict[str, dict[tuple[str, str], dict]]:
                 # 畸形行(空行/少列):跳过 —— 一行坏数据不许 IndexError 崩掉
                 # 整个 run(82 评 P1-7);空值=弃权由 cmd_vision 的解析保证,
                 # 这里收的是手改/截断的文件
+                if on_skip:
+                    on_skip(path.name, line[:40])
                 continue
             doc, field = cols[0], cols[1]
             rows[(doc, field)] = {
