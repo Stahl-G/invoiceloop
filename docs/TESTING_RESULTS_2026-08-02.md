@@ -73,5 +73,5 @@ panel 首页论点块(「抽取的正确性不可信,支持关系可验证……
 两处主持包措辞已修订。遗留:以 `docs/TESTING_FACILITATOR.md` 对
 不知情被试复测(本版被试读过构建汇报,污染范围见文件头声明)。
 
-**附带产出**:三条真人裁决入 `runs/demo/adjudication_ledger.jsonl`
-(seq 1 邮编修正、seq 2 买方名补值 + 本记录过程中一条),M4 全链路首演。
+**附带产出**:两条真人裁决入 `runs/demo/adjudication_ledger.jsonl`
+(seq 1 邮编修正、seq 2 买方名补值),M4 全链路首演。

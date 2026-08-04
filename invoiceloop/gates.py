@@ -176,9 +176,13 @@ def run_gates(
     vision_answers: dict[str, dict[tuple[str, str], dict]],
     ledger_sha256: str,
     artifact_digest: str,
+    ocr_blocked: frozenset[str] = frozenset(),
 ) -> dict:
     """门禁事务(§5.3):绑定确切工件哈希后运行;签名对不上则拒绝执行由调用方检查。
 
+    ocr_blocked:独立 OCR 缺失的文档 —— 绑定与引用机检全部跑不了,
+    必须作为阻断发现进 findings(此前只进 event_log,只读 findings 的
+    审计消费方会漏掉整批受阻文档,评审 P2)。
     返回 gate_report:evaluations(每 doc×field×gate 的裁决)+ findings + 输入签名。
     """
     acc = GateAccumulator()
@@ -188,6 +192,14 @@ def run_gates(
         u = understand.get(doc_id)
         a = agentic.get(doc_id)
         per_field: dict[str, dict[str, str]] = {f: {} for f in FIELDS}
+
+        if doc_id in ocr_blocked:
+            acc.add(Finding(
+                "independent_ocr", doc_id, None, "high", "blocking",
+                "human", "独立 OCR 缺失/不可读 —— 绑定与引用机检跑不了,"
+                "这份文档全靠人工复核(宪章四)",
+                f"ocr:{doc_id}", "独立 OCR 不可用",
+            ))
 
         # ---- 响应缺失:不是"所有字段失败",是门禁基础设施跑不了 —— 文档级阻断
         if u is None:

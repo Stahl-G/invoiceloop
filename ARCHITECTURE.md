@@ -362,6 +362,9 @@ artifact supersession、repair cycle、finalize render、跨运行改进账本�
   不投影但不藏。
 - **panel 是投影**:从盘上工件随时可重建(`render --run`);
   渲染失败不回滚已落盘的裁决。
+- **机器事件刻意无墙钟**:`event_log.jsonl` 只有 `seq`,不带时间戳 ——
+  这是确定性取舍(同输入重放须字节一致,墙钟会破坏它);
+  时间只由人在裁决时注入(`decided_at`,工作台由服务器在点击时盖章)。
 - **bundle 全量自包含**:上游证据按 input_manifest 记录的 sha 验收
   (被换/丢失 = 阻断;run 时就不存在 = 进 notes);`verify` 三层离线校验
   (成员哈希 → 快照成分重算 → 裁决绑定)。

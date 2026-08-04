@@ -15,7 +15,7 @@ from pathlib import Path
 from . import dws
 
 
-def main() -> None:
+def _main() -> None:
     parser = argparse.ArgumentParser(prog="invoiceloop")
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -101,9 +101,14 @@ def main() -> None:
             # 逐代递增),panel 必须声明"不在校准集内"(§12.3)
             os.environ["INVOICELOOP_DWS_DERISK"] = str(args.workspace)
             out_of_calibration = True
-            doc_ids = args.doc_ids or dws.stored_docs()
+            # 文档集 = input/pdfs ∪ raw:抽取失败的文档不许从 run 里隐身
+            # (静默丢单违反宪章四,评审 P1)—— 缺 raw 的由 extraction_present 记阻断
+            from .ingest import discover
+
+            doc_ids = args.doc_ids or sorted(
+                set(discover(args.workspace)) | set(dws.stored_docs()))
             if not doc_ids:
-                parser.error(f"{args.workspace}/raw 里没有存盘响应 —— 先跑 ingest")
+                parser.error(f"{args.workspace} 里没有文档 —— 先放 PDF 进 input/pdfs/ 再 ingest")
             if args.docs is not None:
                 doc_ids = doc_ids[: args.docs]
             # 指纹必须在 --docs/--doc-ids 截断之后算 —— 否则「5 份文档的 run」
@@ -195,6 +200,14 @@ def main() -> None:
             heldout.cmd_plan(args.workspace, args.n)
         else:
             heldout.cmd_extract(args.workspace, budget=args.budget)
+
+
+def main() -> None:
+    """CLI 入口:用户的输入错误给干净的一句话,不给裸 traceback(评审 P2)。"""
+    try:
+        _main()
+    except (ValueError, FileNotFoundError) as exc:
+        raise SystemExit(f"错误:{exc}") from None
 
 
 if __name__ == "__main__":

@@ -51,6 +51,9 @@ tesseract 可选(扫描件退路,没有它扫描件按宪章四阻断而不是�
 研究路径(`heldout`、校准复算、`run --out` 读存盘证据)另需 sibling 校准档案
 `~/Developer/dws-derisk`(`INVOICELOOP_CORPUS` 指向它);产品路径(workspace 全流程、
 demo、workbench)完全不需要它 —— 仓库自包含。
+研究测试(对拍 / 分诊集中度 / e2e)缺校准档案时自动跳过,评审机上约 40 条
+skip 属预期,不是失败。`heldout` 命令在运行时把 sibling 仓库插进 `sys.path`,
+换机即断,属开发侧工具,不走产品路径。
 
 ```bash
 # 两分钟 demo:内嵌示例语料跑通全流程 —— 零 API、零外部数据、零 sibling 仓库

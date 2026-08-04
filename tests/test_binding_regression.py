@@ -62,15 +62,10 @@ def test_expected_counts_are_frozen(
 def test_binding_rule_reproduces_the_fixture(fixture: dict, model: str) -> None:
     """真正被测的东西:实现出来的规则要和冻结的判定逐行一致。
 
-    M2 实现 invoiceloop.freeze.binds_to_document 之后解除跳过。签名:
-
-        binds_to_document(doc_id: str, value: str) -> bool
+    binds_to_document 是这条回归的生命线 —— import 失败就该红,
+    不许静默跳过(M2 脚手架遗骸,评审 P2 抓出)。
     """
-
-    try:
-        from invoiceloop.freeze import binds_to_document
-    except ImportError:
-        pytest.skip("M2 未实现:invoiceloop.freeze.binds_to_document")
+    from invoiceloop.freeze import binds_to_document
 
     mismatches = [
         (row["doc"], row["field"], row["value"])

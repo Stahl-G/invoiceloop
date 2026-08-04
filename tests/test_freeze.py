@@ -78,7 +78,6 @@ def test_admitted_rows_get_sequential_python_ids(tiny_corpus):
         ]
     )
     assert [c["claim_id"] for c in result.claims] == ["FC-0001", "FC-0002"]
-    assert all("draft_binding_rejected" not in e["event"] or True for e in result.events)
     assert [e["event"] for e in result.events] == ["claim_frozen", "claim_frozen"]
 
 

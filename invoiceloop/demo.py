@@ -37,7 +37,7 @@ def cmd_demo(out: Path) -> None:
     os.environ["INVOICELOOP_CORPUS"] = str(out)
     try:
         from . import dws, ocr as ocr_mod
-        from .ingest import cmd_ingest
+        from .ingest import cmd_ingest, discover
         from .pipeline import run
 
         # lru_cache 按 doc_id 记:同进程里别的语料先跑过的话,
@@ -46,7 +46,7 @@ def cmd_demo(out: Path) -> None:
         ocr_mod.doc_tokens.cache_clear()
 
         summary = cmd_ingest(out, do_ocr=True, do_extract=False)
-        doc_ids = dws.stored_docs()
+        doc_ids = sorted(set(discover(out)) | set(dws.stored_docs()))
         run_dir = out / "runs" / "run-0001"
         paths = run(doc_ids, run_dir, render_crops=True,
                     include_vision=True, out_of_calibration=True)

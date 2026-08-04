@@ -65,9 +65,15 @@ def register_artifacts(doc_ids: Iterable[str]) -> list[dict]:
                 "present": path.exists(),
             }
             if path.exists():
-                record = json.loads(path.read_text(encoding="utf-8"))
-                entry["http_status"] = record.get("http_status")
                 entry["sha256"] = sha256_file(path)
+                try:
+                    record = json.loads(path.read_text(encoding="utf-8"))
+                    entry["http_status"] = record.get("http_status")
+                except json.JSONDecodeError:
+                    # 损坏的存盘响应:字节哈希照登记(可审计),标 corrupt;
+                    # 后续 _load 解析失败 → 数据不可用 → extraction_present
+                    # 记阻断 —— 不许一个坏文件 crash 整批(评审 P1)
+                    entry["corrupt"] = True
             registry.append(entry)
     return registry
 

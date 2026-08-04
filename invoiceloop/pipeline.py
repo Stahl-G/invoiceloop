@@ -179,6 +179,7 @@ def run(
         doc_ids,
         understand=understand, agentic=agentic, vision_answers=vision_answers,
         ledger_sha256=ledger["sha256"], artifact_digest=artifact_digest,
+        ocr_blocked=frozenset(d for d in doc_ids if not ocr_ok[d]),
     )
     _write_json(out_dir / "gate_report.json", gate_report)
     emit("gates_evaluated",

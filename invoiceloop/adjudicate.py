@@ -302,46 +302,80 @@ def verify_bundle(bundle: Path) -> dict:
        同步改 MANIFEST 时,成员级抓不到,这一层抓
     3. 绑定级:每条裁决绑定的快照 id 必须等于包内快照 —— 攻击者连快照文件
        一起换时,裁决绑定抓
+
+    报告带 layers:每层独立 True/False/None —— v1 包没有快照层,
+    ok=true 不许掩盖「只过了成员级」的等级差异(评审 P2)。
+    信任根说明:三层全过证明「包自内洽且未被单点篡改」;包的真实性锚
+    在带外公布的本包 sha256 —— verify 不能自己当自己的信任根。
     """
     bundle = Path(bundle)
     failures: list[str] = []
+    notes: list[str] = []
+    layers: dict[str, bool | None] = {"members": True, "snapshot": None, "binding": None}
     members = 0
     try:
         zf = zipfile.ZipFile(bundle)
     except zipfile.BadZipFile as exc:
-        return {"ok": False, "failures": [f"不是合法的 zip/bundle:{exc}"], "members": 0}
+        return {"ok": False, "failures": [f"不是合法的 zip/bundle:{exc}"],
+                "members": 0, "layers": {"members": False, "snapshot": None,
+                                          "binding": None}, "notes": notes}
     with zf:
         names = set(zf.namelist())
         if "MANIFEST.sha256" not in names:
-            return {"ok": False, "failures": ["缺 MANIFEST.sha256"], "members": 0}
+            return {"ok": False, "failures": ["缺 MANIFEST.sha256"], "members": 0,
+                    "layers": {"members": False, "snapshot": None, "binding": None},
+                    "notes": notes}
+        try:
+            manifest_text = zf.read("MANIFEST.sha256").decode()
+        except zipfile.BadZipFile:
+            return {"ok": False, "failures": ["MANIFEST.sha256 成员损坏(CRC)"],
+                    "members": 0,
+                    "layers": {"members": False, "snapshot": None, "binding": None},
+                    "notes": notes}
         declared: dict[str, str] = {}
-        for line in zf.read("MANIFEST.sha256").decode().splitlines():
+        for line in manifest_text.splitlines():
             if line.strip():
                 digest, rel = line.split("  ", 1)
                 declared[rel] = digest
+        member_bytes: dict[str, bytes] = {}
         for rel, digest in declared.items():
             if rel not in names:
                 failures.append(f"缺成员:{rel}")
+                layers["members"] = False
                 continue
+            try:
+                data = zf.read(rel)
+            except zipfile.BadZipFile:
+                failures.append(f"成员损坏(CRC):{rel}")
+                layers["members"] = False
+                continue
+            member_bytes[rel] = data
             members += 1
-            if hashlib.sha256(zf.read(rel)).hexdigest() != digest:
+            if hashlib.sha256(data).hexdigest() != digest:
                 failures.append(f"哈希不符:{rel}")
+                layers["members"] = False
         extra = sorted(names - set(declared) - {"MANIFEST.sha256"})
         if extra:
             failures.append(f"未登记成员:{extra}")
+            layers["members"] = False
 
         if "review_snapshot.json" in names:
             from .snapshot import SNAPSHOT_COMPONENTS, snapshot_id_from_components
 
-            snap = json.loads(zf.read("review_snapshot.json"))
+            snap = json.loads(member_bytes.get("review_snapshot.json")
+                              or zf.read("review_snapshot.json"))
             recomputed = {
-                name: (hashlib.sha256(zf.read(name)).hexdigest() if name in names else None)
+                name: (hashlib.sha256(member_bytes[name]).hexdigest()
+                       if name in member_bytes else None)
                 for name in SNAPSHOT_COMPONENTS
             }
-            if snapshot_id_from_components(recomputed) != snap.get("review_snapshot_id"):
+            layers["snapshot"] = (
+                snapshot_id_from_components(recomputed) == snap.get("review_snapshot_id"))
+            if not layers["snapshot"]:
                 failures.append(
                     "review_snapshot 成分与快照 id 不符 —— 快照内工件被替换过")
             snapshot_id = snap.get("review_snapshot_id")
+            layers["binding"] = True
             if "adjudication_ledger.jsonl" in names:
                 seen_ids: set[str] = set()
                 for raw in zf.read("adjudication_ledger.jsonl").decode().splitlines():
@@ -355,10 +389,19 @@ def verify_bundle(bundle: Path) -> dict:
                         if decision_id in seen_ids:
                             failures.append(
                                 f"decision_id 重复:{decision_id} —— 账本完整性已破坏")
+                            layers["binding"] = False
                         seen_ids.add(decision_id)
                     if ("review_snapshot_id" in entry
                             and entry["review_snapshot_id"] != snapshot_id):
                         failures.append(
                             f"裁决 {entry.get('decision_id', entry.get('seq'))} "
                             f"绑定的快照与包内快照不符")
-    return {"ok": not failures, "failures": failures, "members": members}
+                        layers["binding"] = False
+        else:
+            notes.append("v1 形态的包:无 review_snapshot,校验深度止于成员级;"
+                         "v2 包(2026-08-03 之后)才有快照与绑定两层")
+        if layers["members"] and layers["snapshot"] and layers["binding"]:
+            notes.append("三层全过 = 包内自洽且未被单点篡改;包的真实性锚在"
+                         "带外公布的本包 sha256 —— verify 不是自己的信任根")
+    return {"ok": not failures, "failures": failures, "members": members,
+            "layers": layers, "notes": notes}

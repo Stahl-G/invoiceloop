@@ -484,3 +484,82 @@ class TestVerifyHardening:
         report = adjudicate.verify_bundle(bad)
         assert report["ok"] is False
         assert any("zip" in f for f in report["failures"])
+
+
+class TestVerifyLayers:
+    def test_v2_bundle_reports_all_layers_and_trust_root(self, run_dir):
+        _append(run_dir)
+        _render(run_dir)
+        report = adjudicate.verify_bundle(adjudicate.build_audit_bundle(run_dir))
+        assert report["ok"]
+        assert report["layers"] == {"members": True, "snapshot": True,
+                                    "binding": True}
+        assert any("信任根" in n or "带外" in n for n in report["notes"]), \
+            "三层全过也必须说清:真实性锚在带外哈希,verify 不是自己的根"
+
+    def test_v1_bundle_reports_member_only_depth(self, run_dir):
+        _append(run_dir)
+        _render(run_dir)
+        bundle = adjudicate.build_audit_bundle(run_dir)
+        # 从包里删掉 review_snapshot.json(模拟 v1 包)并重算 MANIFEST
+        import zipfile
+
+        with zipfile.ZipFile(bundle) as zf:
+            items = {i.filename: zf.read(i.filename) for i in zf.infolist()}
+        del items["review_snapshot.json"]
+        lines = [x for x in items["MANIFEST.sha256"].decode().splitlines()
+                 if "review_snapshot.json" not in x]
+        items["MANIFEST.sha256"] = ("\n".join(lines) + "\n").encode()
+        with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as zf:
+            for name, data in items.items():
+                zf.writestr(name, data)
+        report = adjudicate.verify_bundle(bundle)
+        assert report["ok"], "v1 包成员级应通过"
+        assert report["layers"]["members"] is True
+        assert report["layers"]["snapshot"] is None, \
+            "v1 包没有快照层 —— ok 不许掩盖深度差异(评审 P2)"
+        assert any("v1" in n for n in report["notes"])
+
+    def test_fully_consistent_forgery_passes_and_that_is_the_boundary(self, run_dir):
+        """钉死信任边界:攻击者把工件、MANIFEST、review_snapshot、裁决绑定
+        全部一致地重写(用项目自己的函数),verify 会过 —— 这不是 bug,
+        是「verify 不能自己当信任根」的边界,真实性锚在带外哈希。"""
+        import hashlib
+        import zipfile
+
+        from invoiceloop.snapshot import (SNAPSHOT_COMPONENTS,
+                                          snapshot_id_from_components)
+
+        _append(run_dir)
+        _render(run_dir)
+        bundle = adjudicate.build_audit_bundle(run_dir)
+        with zipfile.ZipFile(bundle) as zf:
+            items = {i.filename: zf.read(i.filename) for i in zf.infolist()}
+
+        # 协同伪造:改门禁报告 → 重算快照 → 重写裁决绑定 → 重算 MANIFEST
+        gate = json.loads(items["gate_report.json"])
+        gate["findings"] = []
+        items["gate_report.json"] = json.dumps(gate).encode()
+        new_sid = snapshot_id_from_components({
+            name: hashlib.sha256(items[name]).hexdigest()
+            for name in SNAPSHOT_COMPONENTS})
+        snap = json.loads(items["review_snapshot.json"])
+        snap["review_snapshot_id"] = new_sid
+        snap["components"]["gate_report.json"] = hashlib.sha256(
+            items["gate_report.json"]).hexdigest()
+        items["review_snapshot.json"] = json.dumps(snap).encode()
+        entries = [json.loads(x) for x in
+                   items["adjudication_ledger.jsonl"].decode().splitlines() if x]
+        for e in entries:
+            e["review_snapshot_id"] = new_sid
+        items["adjudication_ledger.jsonl"] = (
+            "".join(json.dumps(e) + "\n" for e in entries)).encode()
+        items["MANIFEST.sha256"] = "".join(
+            f"{hashlib.sha256(data).hexdigest()}  {name}\n"
+            for name, data in items.items() if name != "MANIFEST.sha256"
+        ).encode()
+        with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as zf:
+            for name, data in items.items():
+                zf.writestr(name, data)
+        report = adjudicate.verify_bundle(bundle)
+        assert report["ok"], "全一致的伪造会过 —— 这正是为什么要带外公布哈希"

@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 from pathlib import Path
@@ -190,6 +191,15 @@ def render_panel(
     snapshot_id = load_or_derive_snapshot(run_dir)["review_snapshot_id"]
     decisions = load_decisions(run_dir)
     slots = project(decisions)
+    # 账本自报的 sha256 必须自己重算比对 —— 只打印文件里写着的哈希,
+    # 等于让被改过的账本自己证明自己没改过(评审 P1)
+    ledger_check = "与声明一致"
+    recomputed = hashlib.sha256(
+        json.dumps({"claims": ledger["claims"]}, sort_keys=True,
+                   ensure_ascii=False).encode()
+    ).hexdigest()
+    if recomputed != ledger["sha256"]:
+        ledger_check = "⚠ 与文件自报不符 —— 账本被改过"
     orphans = [e for e in decisions if e.get("orphan")]
     rows_html = "\n".join(
         _row_html(r, spans_by_id, run_dir,
@@ -315,8 +325,9 @@ tr.blk td {{ background:#fdecea; }}
 
 <div class="footer">
 输入签名(§5.3):artifact_digest={artifact_digest}<br>
-field_ledger sha256={ledger['sha256']}<br>
+field_ledger sha256={ledger['sha256']}({ledger_check})<br>
 review_snapshot_id={snapshot_id}(人工裁决绑定的完整快照,不只是账本)<br>
+渲染时裁决账本 {len(decisions)} 条 —— 此数与账本文件行数不符的话,panel 是旧的,跑 render 重建<br>
 本 panel 由 Python 从冻结工件渲染;上面每个数字都可用同一份存盘证据零 API 重算。
 </div>
 </body></html>"""

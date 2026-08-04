@@ -1083,7 +1083,10 @@ class _Handler(BaseHTTPRequestHandler):
         # 而清单与快照记的是新文件的 sha(对抗复核 2026-08-03)
         ocr_mod.load_ocr.cache_clear()
         ocr_mod.doc_tokens.cache_clear()
-        doc_ids = dws.stored_docs()
+        from .ingest import discover
+
+        # 文档集 = input/pdfs ∪ raw:抽取失败的文档不许从 run 里隐身(评审 P1)
+        doc_ids = sorted(set(discover(self.bench.ws)) | set(dws.stored_docs()))
         if not doc_ids:
             raise _HttpError(400, "raw/ 里没有存盘响应 —— 先放 PDF 并勾选 DWS 抽取")
         fingerprint = build_input_manifest(doc_ids)["fingerprint"]
