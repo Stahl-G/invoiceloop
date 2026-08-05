@@ -382,7 +382,7 @@ def render_panel_from_run(run_dir: Path) -> Path:
     from .evidence import digest_registry
 
     manifest = _load("run_manifest.json")
-    return render_panel(
+    panel = render_panel(
         run_dir,
         support=_load("support_matrix.json"),
         gate_report=_load("gate_report.json"),
@@ -391,3 +391,8 @@ def render_panel_from_run(run_dir: Path) -> Path:
         artifact_digest=digest_registry(_load("artifact_registry.json")),
         out_of_calibration=manifest.get("out_of_calibration", False),
     )
+    # deliverable 与 panel 同为纯投影,同生命周期:裁决变了,两者一起重算
+    from .deliver import write_deliverable
+
+    write_deliverable(run_dir)
+    return panel

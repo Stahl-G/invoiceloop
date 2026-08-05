@@ -266,6 +266,12 @@ def run(
                  out_of_calibration=out_of_calibration)
     emit("panel_rendered")
 
+    # deliverable 与 panel 同为纯投影,run 时就生成(此时零裁决,
+    # 全部 pending —— 如实展示「还没开始复核」)
+    from .deliver import write_deliverable
+
+    write_deliverable(out_dir)
+
     (out_dir / "event_log.jsonl").write_text(
         "".join(json.dumps(e, ensure_ascii=False) + "\n" for e in events),
         encoding="utf-8",

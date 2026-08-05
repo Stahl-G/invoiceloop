@@ -289,6 +289,11 @@ def build_audit_bundle(run_dir: Path) -> Path:
         members: list[tuple[str, bytes]] = [
             (name, (run_dir / name).read_bytes()) for name in REQUIRED_ARTIFACTS
         ]
+        # deliverable.json 是可选派生物(2026-08-05 起的 run 才有;旧 run 没有
+        # 不阻断 —— 与 panel 同级,纯投影,收件人可从包内工件重算)
+        deliverable = run_dir / "deliverable.json"
+        if deliverable.exists():
+            members.append(("deliverable.json", deliverable.read_bytes()))
         for asset_dir in ("crops", "pages"):
             directory = run_dir / asset_dir
             if directory.exists():

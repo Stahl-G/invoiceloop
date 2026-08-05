@@ -117,6 +117,14 @@ _T = {
         "no_key": "DWS_API_KEY not set — local OCR only; missing extraction blocks per charter",
         "build_bundle": "Build audit bundle",
         "download": "Download audit_bundle.zip",
+        "doc_status": "Document release status",
+        "status_released": "released", "status_pending": "pending",
+        "status_blocked": "blocked",
+        "download_deliverable": "Download deliverable.json (final-value projection)",
+        "release_note": "released = every slot adjudicated (tier-1 fields require an explicit "
+                        "decision even when corroborated); pending = slots awaiting decision; "
+                        "blocked = a tier-1 field was rejected. unreviewed_corroborated slots "
+                        "are exported with values and labelled as such.",
         "verify_title": "Verify a bundle (offline)",
         "choose_zip": "Choose .zip",
         "verify_btn": "Verify",
@@ -191,6 +199,13 @@ _T = {
         "no_key": "未配置 DWS_API_KEY —— 只做本地 OCR;抽取缺失按宪章四阻断",
         "build_bundle": "打 audit bundle",
         "download": "下载 audit_bundle.zip",
+        "doc_status": "整单放行状态",
+        "status_released": "可放行", "status_pending": "待完成",
+        "status_blocked": "被阻断",
+        "download_deliverable": "下载 deliverable.json(最终值投影)",
+        "release_note": "可放行 = 全部槽位裁决完毕(关键字段即使多方印证也须显式裁决);"
+                        "待完成 = 仍有槽位未裁决;被阻断 = 有关键字段被拒。"
+                        "unreviewed_corroborated 槽照出值并如实标注「未逐个人看」。",
         "verify_title": "离线校验 bundle",
         "choose_zip": "选择 .zip",
         "verify_btn": "校验",
@@ -807,6 +822,27 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         bundle = ctx.dir / "audit_bundle.zip"
         download = (f'<p><a class="wb-btn" href="/download/{ctx.name}/audit_bundle.zip">'
                     f'{_esc(_t(lang, "download"))}</a></p>' if bundle.exists() else "")
+        # 整单放行状态 + 最终值投影(纯投影,读文件;没有就现场重算)
+        deliverable_path = ctx.dir / "deliverable.json"
+        if deliverable_path.exists():
+            deliverable = json.loads(deliverable_path.read_text(encoding="utf-8"))
+        else:
+            from .deliver import build_deliverable
+
+            deliverable = build_deliverable(ctx.dir)
+        by_status = deliverable["summary"]["by_status"]
+        status_parts = " ".join(
+            f'<span class="wb-stat"><b>{n}</b>{_esc(_t(lang, f"status_{k}"))}</span>'
+            for k, n in sorted(by_status.items()))
+        deliverable_dl = (
+            f'<p><a class="wb-btn" href="/download/{ctx.name}/deliverable.json">'
+            f'{_esc(_t(lang, "download_deliverable"))}</a></p>'
+            if deliverable_path.exists() else "")
+        release_html = (
+            f'<h2>{_esc(_t(lang, "doc_status"))}</h2>'
+            f'<div class="wb-report-stats">{status_parts}</div>'
+            f'{deliverable_dl}'
+            f'<p class="wb-label">{_esc(_t(lang, "release_note"))}</p>')
         verify_html = ""
         if verify_report is not None:
             if verify_report["ok"]:
@@ -817,6 +853,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                 verify_html = f'<div class="wb-verify-fail"><ul>{items}</ul></div>'
         body = f"""
 <h1>{_esc(_t(lang, 'deliver'))}</h1>
+{release_html}
 <form class="wb-form" method="post" action="/bundle">
 <input type="hidden" name="run" value="{_esc(ctx.name)}">
 <input type="hidden" name="lang" value="{_esc(lang)}">
@@ -1177,13 +1214,15 @@ class _Handler(BaseHTTPRequestHandler):
     def _download(self, path: str) -> None:
         rel = path[len("/download/"):]
         parts = rel.split("/")
-        if len(parts) != 2 or parts[1] != "audit_bundle.zip":
+        if len(parts) != 2 or parts[1] not in ("audit_bundle.zip", "deliverable.json"):
             raise _HttpError(404, "bad path")
         run = self.bench.get_run(parts[0])
-        bundle = (run or Path(".")) / "audit_bundle.zip"
-        if run is None or not bundle.exists():
-            raise _HttpError(404, "bundle 不存在 —— 先打 bundle")
-        self._send(200, bundle.read_bytes(), "application/zip")
+        target = (run or Path(".")) / parts[1]
+        if run is None or not target.exists():
+            raise _HttpError(404, f"{parts[1]} 不存在")
+        mime = ("application/zip" if parts[1].endswith(".zip")
+                else "application/json")
+        self._send(200, target.read_bytes(), mime)
 
 
 class _HttpError(Exception):
