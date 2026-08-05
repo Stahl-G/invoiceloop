@@ -29,23 +29,6 @@ def _write_json(path: Path, payload) -> None:
     )
 
 
-def _code_revision() -> str | None:
-    """当前代码的 git commit —— 门禁与规范化规则就是「策略」,策略的版本
-    就是代码版本(78 评 P4)。装在非 git 环境(如打包安装)则为 None,
-    如实记 null,不编造。"""
-    import subprocess
-
-    repo = Path(__file__).resolve().parent.parent
-    try:
-        out = subprocess.run(
-            ["git", "-C", str(repo), "rev-parse", "HEAD"],
-            capture_output=True, text=True, timeout=5,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    return out.stdout.strip() if out.returncode == 0 else None
-
-
 def build_drafts(
     doc_ids: list[str],
     understand: dict[str, dws.StoredResponse | None],
@@ -130,7 +113,7 @@ def run(
     # ---- ① 运行状态 + 输入指纹(重放与新 run 代数的依据)
     _write_json(out_dir / "run_manifest.json", {
         "invoiceloop_version": __version__,
-        "code_revision": _code_revision(),
+        "code_revision": snapshot._code_revision(),
         "docs": doc_ids,
         "n_docs": len(doc_ids),
         "render_crops": render_crops,

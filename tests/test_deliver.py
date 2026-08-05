@@ -57,9 +57,21 @@ def ws(tmp_path, monkeypatch):
     ocr.doc_tokens.cache_clear()
 
 
+def _claim_id(run_dir, field):
+    """槽位的 understand 冻结声明 id(accept 必须指向它,81 评 P0 后)。"""
+    ledger = json.loads((run_dir / "field_ledger.json").read_text())
+    return next(c["claim_id"] for c in ledger["claims"]
+                if c["doc_id"] == DOC and c["field"] == field
+                and c["drafted_by"] == "dws_understand")
+
+
 def _decide(run_dir, field, decision, **kw):
+    # 决策语义拆分后:接受声明必须带 claim_id;无声明槽的「页面上没有」
+    # 走 confirm_absent —— 两者不许再混用
     base = dict(claim_id=None, doc_id=DOC, field=field, decision=decision,
                 rationale="r", adjudicator="t", decided_at=DECIDED)
+    if decision == "accept":
+        base["claim_id"] = _claim_id(run_dir, field)
     base.update(kw)
     return adjudicate.append_adjudication(run_dir, **base)
 
@@ -78,6 +90,9 @@ class TestProjection:
             "无值槽需裁决(补录或确认缺失)"
         assert d["docs"][DOC]["status"] == "pending"
         assert (ws / "deliverable.json").exists(), "run 时就生成,如实展示零裁决"
+        # 真实人工负载(81 评 P1):10 槽里 7 个需裁决 + 2 个 TIER1 印证槽
+        # = 0.9 —— 与反事实分诊负载(0.7)是两回事,两个数字都要在
+        assert d["summary"]["decision_load_for_release"] == 0.9
 
     def test_accept_uses_claim_value(self, ws):
         _decide(ws, "total_gross", "accept")
@@ -105,8 +120,11 @@ class TestProjection:
     def test_release_after_full_adjudication(self, ws):
         d0 = deliver.build_deliverable(ws)
         for field, f in d0["docs"][DOC]["fields"].items():
-            if f["status"] in ("pending", "pending_tier1"):
+            if f["status"] == "pending_tier1":
                 _decide(ws, field, "accept")
+            elif f["status"] == "pending":
+                # 无声明槽:确认页面上没有(confirm_absent),不再借壳 accept
+                _decide(ws, field, "confirm_absent")
         doc = deliver.build_deliverable(ws)["docs"][DOC]
         assert doc["status"] == "released"
         seller = doc["fields"]["seller_name"]
@@ -149,9 +167,10 @@ class TestProjection:
             if f["status"] in ("pending", "pending_tier1"):
                 adjudicate.append_adjudication(
                     out2, claim_id=None, doc_id=DOC, field=field,
-                    decision="accept", rationale="r", adjudicator="t",
+                    decision="confirm_absent", rationale="r", adjudicator="t",
                     decided_at=DECIDED)
         doc = deliver.build_deliverable(out2)["docs"][DOC]
-        assert doc["status"] == "released"
+        assert doc["status"] == "released_with_caveats", \
+            "带文档级阻断的放行是单独一档,不许混进 released"
         assert "independent_ocr" in doc["release_caveats"], \
             "机检没跑过的放行不许看起来和机检全过的放行一样"

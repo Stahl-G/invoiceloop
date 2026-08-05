@@ -62,6 +62,7 @@ _T = {
         "sec_corroborated": "Corroborated — no machine flags, spot-check ({n})",
         "reviewed": "{x} / {y} reviewed",
         "accept": "Accept", "reject": "Reject", "correct": "Correct", "abstain": "Abstain",
+        "confirm_absent": "Confirm absent", "not_applicable": "N/A",
         "corrected_ph": "corrected value",
         "rationale_ph": "Issue / rationale (required) — write down what's wrong",
         "adjudicator_ph": "reviewer name",
@@ -120,6 +121,7 @@ _T = {
         "doc_status": "Document release status",
         "status_released": "released", "status_pending": "pending",
         "status_blocked": "blocked",
+        "status_released_with_caveats": "released w/ caveats",
         "download_deliverable": "Download deliverable.json (final-value projection)",
         "release_note": "released = every slot adjudicated (tier-1 fields require an explicit "
                         "decision even when corroborated); pending = slots awaiting decision; "
@@ -150,6 +152,7 @@ _T = {
         "sec_corroborated": "印证行 —— 机器未见异常,抽检性质 ({n})",
         "reviewed": "已复核 {x} / {y}",
         "accept": "接受", "reject": "拒绝", "correct": "修正", "abstain": "弃权",
+        "confirm_absent": "确认缺失", "not_applicable": "不适用",
         "corrected_ph": "修正值",
         "rationale_ph": "发现的问题 / 理由(必填)—— 把问题直接写在这里",
         "adjudicator_ph": "裁决人",
@@ -202,6 +205,7 @@ _T = {
         "doc_status": "整单放行状态",
         "status_released": "可放行", "status_pending": "待完成",
         "status_blocked": "被阻断",
+        "status_released_with_caveats": "放行(带披露)",
         "download_deliverable": "下载 deliverable.json(最终值投影)",
         "release_note": "可放行 = 全部槽位裁决完毕(关键字段即使多方印证也须显式裁决);"
                         "待完成 = 仍有槽位未裁决;被阻断 = 有关键字段被拒。"
@@ -341,7 +345,8 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 """
 
-_DECISIONS = ("accept", "reject", "correct", "abstain")
+_DECISIONS = ("accept", "confirm_absent", "not_applicable",
+              "reject", "correct", "abstain")
 
 #: 字段的人类名字 —— 复核者找的是「买方名称」,不是 buyer_name(2026-08-03
 #: 用户反馈:字段名又小又灰,不知道自己的任务是什么)
@@ -725,10 +730,15 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
             notes.append(f'<div class="wb-orphan">{_esc(_t(lang, "orphan_note", n=n_orphans))}</div>')
         if conflict:
             return f'<div class="wb-decide">{"".join(notes)}</div>'
+        # 决策集按槽位形状分(81 评 P0):有冻结声明 → accept/reject/correct/abstain;
+        # 无声明 → confirm_absent(页面上确实没有)/correct(补录)/
+        # not_applicable(不适用)/abstain —— 「确认没有」和「人看不懂」不许混
+        decisions_for_row = (_DECISIONS[:1] + _DECISIONS[3:]) if claim_id \
+            else (_DECISIONS[1:3] + _DECISIONS[4:])
         radios = "".join(
             f'<label class="wb-radio {d}"><input type="radio" name="decision" '
             f'value="{d}" required>{_esc(_t(lang, d))}</label>'
-            for d in _DECISIONS
+            for d in decisions_for_row
         )
         chips = "".join(
             f'<button type="button" class="wb-issue-chip" data-text="{_esc(c)}">{_esc(c)}</button>'

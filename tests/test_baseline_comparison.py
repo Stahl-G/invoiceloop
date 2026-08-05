@@ -16,12 +16,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from baseline_comparison import add_crossmode, summarise  # noqa: E402
+from baseline_comparison import (add_crossmode, add_confidence,  # noqa: E402
+                                 recall_at_budget, summarise)
 
 
-def _slot(doc, field, deviation, il_accept):
-    return {"doc_id": doc, "field": field, "tier1": True,
-            "deviation": deviation, "invoiceloop_accept": il_accept}
+def _slot(doc, field, deviation, il_accept, idx=0):
+    return {"doc_id": doc, "field": field, "tier1": True, "value_present": True,
+            "queue_idx": idx, "deviation": deviation,
+            "invoiceloop_accept": il_accept}
 
 
 SLOTS = [
@@ -92,3 +94,33 @@ class TestCrossmodeBaseline:
         assert slots[0]["crossmode_accept"] is True, \
             "归一化后相等($1,000.00 ≡ 1000.00)= 一致"
         assert slots[1]["crossmode_accept"] is False
+
+
+class TestConfidenceBaseline:
+    def test_confidence_accept_requires_value_and_threshold(self, tmp_path):
+        raw = tmp_path / "raw"
+        raw.mkdir()
+        (raw / "d1.understand.json").write_text(json.dumps(
+            {"body": {"output": {"metadata": {
+                "total_gross": {"confidence": 0.95},
+                "total_net": {"confidence": 0.40}}}}}))
+        slots = [_slot("d1", "total_gross", False, True, 0),
+                 _slot("d1", "total_net", False, True, 1)]
+        add_confidence(slots, raw)
+        assert slots[0]["confidence_accept"] is True
+        assert slots[1]["confidence_accept"] is False, "0.40 < 0.95 不许放行"
+        slots[0]["value_present"] = False
+        add_confidence(slots, raw)
+        assert slots[0]["confidence_accept"] is False, "没值不许放行"
+
+
+class TestRecallAtBudget:
+    def test_ordering_and_recall_math(self):
+        # 4 槽,2 偏差;分诊序前 50% 含 1 偏差 → recall@50% = 0.5
+        slots = [_slot("d1", "total_gross", True, False, 0),
+                 _slot("d1", "total_net", False, False, 1),
+                 _slot("d2", "total_gross", True, True, 2),
+                 _slot("d2", "total_net", False, True, 3)]
+        assert recall_at_budget(slots, "invoiceloop_accept", 0.5) == 0.5
+        assert recall_at_budget(slots, "invoiceloop_accept", 1.0) == 1.0
+        assert recall_at_budget(slots, "invoiceloop_accept", 0.0) == 0.0

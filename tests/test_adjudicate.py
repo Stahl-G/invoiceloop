@@ -137,7 +137,7 @@ class TestValidation:
 
     def test_doc_outside_run_is_refused(self, run_dir):
         with pytest.raises(ValueError, match="文档集合"):
-            _append(run_dir, claim_id=None, doc_id="doc-b")
+            _append(run_dir, claim_id=None, doc_id="doc-b", decision="abstain")
 
     def test_empty_decided_at_is_refused(self, run_dir):
         with pytest.raises(ValueError, match="decided_at"):
@@ -555,7 +555,7 @@ class TestVerifyLayers:
         report = adjudicate.verify_bundle(adjudicate.build_audit_bundle(run_dir))
         assert report["ok"]
         assert report["layers"] == {"members": True, "snapshot": True,
-                                    "binding": True}
+                                    "binding": True, "semantics": True}
         assert any("信任根" in n or "带外" in n for n in report["notes"]), \
             "三层全过也必须说清:真实性锚在带外哈希,verify 不是自己的根"
 

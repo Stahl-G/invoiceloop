@@ -35,7 +35,8 @@ from .review import load_decisions, project, target_id_for
 from .snapshot import load_or_derive_snapshot
 from . import __version__
 
-DECISIONS = ("accept", "reject", "correct", "abstain")
+DECISIONS = ("accept", "confirm_absent", "not_applicable",
+             "reject", "correct", "abstain")
 
 #: append 的读-改-写临界区(加载 → tip/supersede 校验 → seq 分配 → 追加)
 #: 必须串行:工作台是 ThreadingHTTPServer,两个并发 /decide 不打锁会
@@ -88,6 +89,19 @@ def append_adjudication(
         corrected_value = corrected_value.strip()
     elif corrected_value is not None:
         raise ValueError(f"{decision} 禁止携带 corrected_value —— 修正只能走 correct")
+    # 决策语义拆分(81 评 P0):「接受声明」「确认页面没有」「不适用」是三种
+    # 不同的东西,以前全塞在 accept 里,交付层分不出 缺失 与 人看不懂
+    if decision == "accept" and claim_id is None:
+        raise ValueError(
+            "accept 必须带 claim_id —— 接受的是哪条冻结声明必须指明;"
+            "要表达「页面上确实没有这个字段」用 confirm_absent,"
+            "「该文档不适用此字段」用 not_applicable"
+        )
+    if decision in ("confirm_absent", "not_applicable") and claim_id is not None:
+        raise ValueError(
+            f"{decision} 针对无声明的槽位;这个槽位有冻结声明 {claim_id},"
+            f"声明错了用 reject 或 correct"
+        )
     if field not in FIELDS:
         raise ValueError(f"field {field!r} 不是受评字段({sorted(FIELDS)} 之一)")
     if not (decided_at and str(decided_at).strip()):
@@ -131,6 +145,21 @@ def append_adjudication(
                 f"claim_id {claim_id} 属于 {claim['doc_id']}/{claim['field']},"
                 f"与提交的 {doc_id}/{field} 不一致 —— 三者必须精确一致"
             )
+        # 投影↔权威交叉检查(81 评 P0):support_matrix 不在快照成分内
+        # (可重建投影),但它若与冻结账本同槽位值不符,说明 run 之后有
+        # 工件被动过 —— 在被动过的证据上不记裁决,先查清
+        matrix_path = run_dir / "support_matrix.json"
+        if matrix_path.exists():
+            matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
+            row = next((r for r in matrix["rows"]
+                        if r["doc_id"] == doc_id and r["field"] == field), None)
+            if row is not None and row.get("claim_id") == claim_id \
+                    and row.get("value") != claim["value"]:
+                raise ValueError(
+                    f"support_matrix 该槽位的值 {row.get('value')!r} 与冻结声明 "
+                    f"{claim['value']!r} 不符 —— 投影与权威分叉,run 之后有工件"
+                    f"被改动过。先查清再裁决"
+                )
 
     target = target_id_for(snapshot_id, doc_id, field)
     # 临界区开始:加载 → tip/supersede 校验 → seq 分配 → 追加,全程持锁。
@@ -368,26 +397,29 @@ def verify_bundle(bundle: Path) -> dict:
     bundle = Path(bundle)
     failures: list[str] = []
     notes: list[str] = []
-    layers: dict[str, bool | None] = {"members": True, "snapshot": None, "binding": None}
+    layers: dict[str, bool | None] = {"members": True, "snapshot": None,
+                                        "binding": None, "semantics": None}
     members = 0
     try:
         zf = zipfile.ZipFile(bundle)
     except zipfile.BadZipFile as exc:
         return {"ok": False, "failures": [f"不是合法的 zip/bundle:{exc}"],
                 "members": 0, "layers": {"members": False, "snapshot": None,
-                                          "binding": None}, "notes": notes}
+                                          "binding": None, "semantics": None}, "notes": notes}
     with zf:
         names = set(zf.namelist())
         if "MANIFEST.sha256" not in names:
             return {"ok": False, "failures": ["缺 MANIFEST.sha256"], "members": 0,
-                    "layers": {"members": False, "snapshot": None, "binding": None},
+                    "layers": {"members": False, "snapshot": None, "binding": None,
+                            "semantics": None},
                     "notes": notes}
         try:
             manifest_text = zf.read("MANIFEST.sha256").decode()
         except zipfile.BadZipFile:
             return {"ok": False, "failures": ["MANIFEST.sha256 成员损坏(CRC)"],
                     "members": 0,
-                    "layers": {"members": False, "snapshot": None, "binding": None},
+                    "layers": {"members": False, "snapshot": None, "binding": None,
+                            "semantics": None},
                     "notes": notes}
         declared: dict[str, str] = {}
         for line in manifest_text.splitlines():
@@ -605,7 +637,82 @@ def verify_bundle(bundle: Path) -> dict:
         else:
             notes.append("v1 形态的包:无 review_snapshot,校验深度止于成员级;"
                          "v2 包(2026-08-03 之后)才有快照与绑定两层")
-        if layers["members"] and layers["snapshot"] and layers["binding"]:
+
+        # ---- 第 4 层 语义层(81 评 P0):投影成员(support_matrix/deliverable)
+        # 不在快照成分内 —— 改了它们,前三层全过。这一层把投影值与包内
+        # 权威(field_ledger / adjudication_ledger)交叉比对:接受值必须等于
+        # 冻结声明值,修正值必须等于裁决修正值
+        layers["semantics"] = None
+        try:
+            if "field_ledger.json" in member_bytes:
+                ledger_doc = json.loads(member_bytes["field_ledger.json"])
+                claim_values = {c.get("claim_id"): c.get("value")
+                                for c in ledger_doc.get("claims", [])}
+                layers["semantics"] = True
+                if "support_matrix.json" in member_bytes:
+                    matrix_doc = json.loads(member_bytes["support_matrix.json"])
+                    for row in matrix_doc.get("rows", []):
+                        cid = row.get("claim_id")
+                        if cid and cid in claim_values \
+                                and row.get("value") != claim_values[cid]:
+                            failures.append(
+                                f"support_matrix 行 {row.get('doc_id')}/"
+                                f"{row.get('field')} 的值与冻结声明 {cid} 不符 —— "
+                                f"投影被改过(前三层抓不到投影篡改)")
+                            layers["semantics"] = False
+                if "deliverable.json" in member_bytes:
+                    deliv = json.loads(member_bytes["deliverable.json"])
+                    decisions_by_id: dict[str, dict] = {}
+                    if "adjudication_ledger.jsonl" in member_bytes:
+                        for raw in (member_bytes["adjudication_ledger.jsonl"]
+                                    .decode().splitlines()):
+                            if raw.strip():
+                                entry = json.loads(raw)
+                                if entry.get("decision_id"):
+                                    decisions_by_id[entry["decision_id"]] = entry
+                    for doc_id, doc in deliv.get("docs", {}).items():
+                        for field_name, fslot in doc.get("fields", {}).items():
+                            status = fslot.get("status")
+                            decision = decisions_by_id.get(fslot.get("source") or "")
+                            if status == "accepted":
+                                cid = (decision or {}).get("claim_id")
+                                if decision is None or cid not in claim_values:
+                                    failures.append(
+                                        f"deliverable {doc_id}/{field_name} 的接受值"
+                                        f"找不到对应裁决与冻结声明")
+                                    layers["semantics"] = False
+                                elif fslot.get("value") != claim_values[cid]:
+                                    failures.append(
+                                        f"deliverable {doc_id}/{field_name} 的接受值"
+                                        f"与冻结声明 {cid} 不符 —— 投影与权威分叉")
+                                    layers["semantics"] = False
+                            elif status == "corrected":
+                                if decision is None or fslot.get("value") \
+                                        != decision.get("corrected_value"):
+                                    failures.append(
+                                        f"deliverable {doc_id}/{field_name} 的修正值"
+                                        f"与裁决 {fslot.get('source')} 不符")
+                                    layers["semantics"] = False
+                            elif status in ("rejected", "confirmed_absent",
+                                            "not_applicable", "abstained"):
+                                if fslot.get("value") is not None:
+                                    failures.append(
+                                        f"deliverable {doc_id}/{field_name} "
+                                        f"{status} 槽不许带值")
+                                    layers["semantics"] = False
+                            elif status == "accepted_unbound":
+                                failures.append(
+                                    f"deliverable {doc_id}/{field_name} 自标"
+                                    f"accepted_unbound —— 完整性已破坏")
+                                layers["semantics"] = False
+        except (json.JSONDecodeError, UnicodeDecodeError, KeyError, TypeError):
+            layers["semantics"] = False
+            failures.append("语义层:包内投影/账本成员不可解析")
+        if layers["members"] and layers["snapshot"] and layers["binding"] \
+                and layers["semantics"]:
+            notes.append("四层全过 = 包内自洽且未被单点篡改;包的真实性锚在"
+                         "带外公布的本包 sha256 —— verify 不是自己的信任根")
+        elif layers["members"] and layers["snapshot"] and layers["binding"]:
             notes.append("三层全过 = 包内自洽且未被单点篡改;包的真实性锚在"
                          "带外公布的本包 sha256 —— verify 不是自己的信任根")
     return {"ok": not failures, "failures": failures, "members": members,

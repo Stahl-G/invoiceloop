@@ -32,6 +32,23 @@ def _sha_or_none(path: Path) -> str | None:
     return sha256_file(path) if path.exists() else None
 
 
+def _code_revision() -> str | None:
+    """当前代码的 git commit —— 门禁与规范化规则就是「策略」,策略的版本
+    就是代码版本(78 评 P4)。装在非 git 环境(如打包安装)则为 None,
+    如实记 null,不编造。"""
+    import subprocess
+
+    repo = Path(__file__).resolve().parent.parent
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "HEAD"],
+            capture_output=True, text=True, timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return out.stdout.strip() if out.returncode == 0 else None
+
+
 def build_input_manifest(doc_ids: list[str], *, include_vision: bool = True) -> dict:
     """这批输入的内容清单 + 指纹。缺的成分记 null,不阻断
     (缺 DWS 响应是 extraction_present 门禁的事,不是清单的事)。
@@ -76,7 +93,11 @@ def build_input_manifest(doc_ids: list[str], *, include_vision: bool = True) -> 
             json.dumps(extraction_schema(), sort_keys=True).encode()
         ).hexdigest()
     manifest = {"layout": layout(), "schema_sha256": schema_sha256,
-                "vision_sha256": vision_sha256, "docs": docs}
+                "vision_sha256": vision_sha256, "docs": docs,
+                # 执行身份进指纹(81 评 Step 6):代码/策略变了,同输入也不许
+                # 重放旧 run —— 否则回答不了「这份发票是哪个 harness 版本
+                # 处理的」。docs-only 提交也会换代:保守方向,宁可新 run
+                "code_revision": _code_revision()}
     canonical = json.dumps(manifest, sort_keys=True, ensure_ascii=False).encode()
     manifest["fingerprint"] = hashlib.sha256(canonical).hexdigest()
     return manifest

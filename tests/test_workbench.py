@@ -124,12 +124,27 @@ def _req(port: int, method: str, path: str, body: bytes | None = None,
         data.decode("utf-8", errors="replace")
 
 
+def _claim_id_for(port: int, doc: str, field: str) -> str:
+    """从队列页表单里读出该槽位的 claim_id(冻结顺序不该被测试硬编码)。"""
+    status, _, text = _req(port, "GET", f"/queue?run={RUN}&filter=all")
+    assert status == 200
+    for m in re.finditer(
+            r'name="doc" value="([^"]+)">.*?name="field" value="([^"]+)">'
+            r'.*?name="claim_id" value="([^"]*)"', text, re.S):
+        if m.group(1) == doc and m.group(2) == field:
+            return m.group(3)
+    raise AssertionError(f"queue 页找不到 {doc}/{field} 的表单")
+
+
 def _decide(port: int, **over) -> tuple[int, dict, str]:
-    """POST /decide 的便捷封装:默认是一条合法的 accept,按字段覆盖。"""
-    form = {"run": RUN, "doc": DOC, "field": "total_gross", "claim_id": "",
+    """POST /decide 的便捷封装:默认是一条合法的 accept(claim_id 从队列页
+    表单现读 —— 81 评 P0 后 accept 必须指向冻结声明),按字段覆盖。"""
+    form = {"run": RUN, "doc": DOC, "field": "total_gross",
             "decision": "accept", "corrected_value": "",
             "rationale": "证据齐", "adjudicator": "alice", "supersedes": ""}
     form.update(over)
+    if "claim_id" not in form or form["claim_id"] is None:
+        form["claim_id"] = _claim_id_for(port, form["doc"], form["field"])
     return _req(port, "POST", "/decide", body=urlencode(form).encode(),
                 headers={"Content-Type": "application/x-www-form-urlencoded"})
 
