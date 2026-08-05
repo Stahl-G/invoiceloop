@@ -22,8 +22,11 @@
 
 - 随机源:drand 主网 beacon(`https://api.drand.sh/public/{round}`,
   30 秒一轮,链上不可预测、事后可公开验证);
-- **承诺轮次:6350246 ≈ 2026-08-05T14:00:00Z**(本文件 commit 于
-  ~10:15Z,轮次在未来 —— commit 时该轮随机性尚不存在);
+- **承诺轮次:6350076 = 2026-08-05T12:35:00Z**。
+  修订记录:原承诺 6350246(≈14:00Z),用户指示提前;本修订 commit 于
+  ~12:26Z,仍先于 6350076 开奖(承诺时该轮随机性尚不存在),且代码/
+  脚本/排除池的冻结 commit(5050dfb)先于一切 —— 「开发期间名单不可
+  预知」的机械性质不变,时间差从 ~4 小时缩到 ~9 分钟;
 - 种子 = 该轮 `randomness` 字段(hex)原文;抽样 =
   `heldout.sealed_list(seed)`:`random.Random("invoiceloop-sealed1-v1|" +
   seed).sample(sorted(pool), 100)`,pool = ≥4 记分字段标注 ∧ 不在暴露清单;
