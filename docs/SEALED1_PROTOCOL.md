@@ -8,7 +8,8 @@
 
 ## 0. 冻结对象(本文件 commit 时即冻结)
 
-- 产品代码:commit `___`(本文件同 commit 记录);
+- 产品代码:本文件的首次提交即冻结点
+  (`git log --diff-filter=A -- docs/SEALED1_PROTOCOL.md` 可查);
 - 评测脚本 sha256:
   - `scripts/heldout_metrics.py` = a486e82f…01d804
   - `scripts/baseline_comparison.py` = 5eb34dcb…c865eb
