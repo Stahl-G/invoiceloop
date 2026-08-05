@@ -41,7 +41,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from heldout_metrics import truth  # noqa: E402  (同一偏差口径,不复制)
 
 from invoiceloop import dws  # noqa: E402
-from invoiceloop.fields import FIELD_KINDS, TIER1, normalise  # noqa: E402
+from invoiceloop.eval_norm import eval_normalise as normalise
+from invoiceloop.fields import FIELD_KINDS, TIER1  # noqa: E402
 from invoiceloop.ocr import derisk_root  # noqa: E402
 
 

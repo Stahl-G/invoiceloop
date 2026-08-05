@@ -1,0 +1,11 @@
+{
+ "harness_id": "HAR-0001",
+ "parent_harness_id": null,
+ "status": "active",
+ "created_from_findings": [],
+ "note": "保守起点:与 2026-08-05 前 matrix.py 内联逻辑逐字节等价 —— 不自动放行任何软触发,TIER1 印证槽整单放行前必须显式人裁",
+ "components": {
+  "routing_policy.json": "见 routing_policy.json 的自描述 digest"
+ },
+ "schema_version": 1
+}

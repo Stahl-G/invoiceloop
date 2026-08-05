@@ -1,0 +1,6 @@
+{
+ "harness_id": "HAR-0001",
+ "version": 1,
+ "release_tier1_explicit": true,
+ "auto_accept_cohorts": []
+}

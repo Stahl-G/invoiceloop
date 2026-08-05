@@ -47,6 +47,14 @@ def build_deliverable(run_dir: Path) -> dict:
             blocking_by_doc.setdefault(f["doc_id"], []).append(f["gate_id"])
     snapshot_id = load_or_derive_snapshot(run_dir)["review_snapshot_id"]
     slots = project(load_decisions(run_dir))
+    # 本次 run 的策略(不是当前 active —— 晋升之后旧 run 的说法不许变);
+    # routing_report.json 自 2026-08-05 起是 run 工件,旧 run 没有 → 保守默认
+    routing_path = run_dir / "routing_report.json"
+    routing = json.loads(routing_path.read_text(encoding="utf-8")) \
+        if routing_path.exists() else None
+    tier1_explicit = ((routing or {}).get("policy") or {}) \
+        .get("release_tier1_explicit", True)
+    harness_id = (routing or {}).get("harness_id", "HAR-0001")
 
     docs: dict[str, dict] = {}
     for row in matrix["rows"]:
@@ -98,6 +106,13 @@ def build_deliverable(run_dir: Path) -> dict:
             # 缺这个键的只可能是手工构造/极旧的矩阵 —— 缺失按「需裁决」处理,
             # 交付层的默认方向永远是让人看,不是放行
             entry = {"value": row["value"], "status": "pending", "source": None}
+        elif row.get("route") == "auto_accept" and not tier1_explicit:
+            # 策略放行(v0.2 P0-6):系统自动接受必须显式记录为 policy_accept
+            # + 策略版本,不是伪造一条人工 accept;值仍只来自冻结 claim
+            claim = claims_by_id.get(row.get("claim_id") or "")
+            entry = {"value": claim["value"] if claim else None,
+                     "status": "policy_accepted",
+                     "source": f"policy:{harness_id}"}
         elif field in TIER1:
             # 印证槽也要显式裁决才放行 —— 关键字段在出口有差异(78 评 P2)
             entry = {"value": row["value"], "status": "pending_tier1",

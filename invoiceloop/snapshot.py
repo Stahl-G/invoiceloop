@@ -25,6 +25,7 @@ SNAPSHOT_COMPONENTS = (
     "evidence_span_registry.json",
     "field_ledger.json",
     "gate_report.json",
+    "routing_report.json",
 )
 
 
@@ -92,33 +93,52 @@ def build_input_manifest(doc_ids: list[str], *, include_vision: bool = True) -> 
         schema_sha256 = hashlib.sha256(
             json.dumps(extraction_schema(), sort_keys=True).encode()
         ).hexdigest()
+    from .harness import load_active
+
+    active = load_active(derisk_root())
     manifest = {"layout": layout(), "schema_sha256": schema_sha256,
                 "vision_sha256": vision_sha256, "docs": docs,
                 # 执行身份进指纹(81 评 Step 6):代码/策略变了,同输入也不许
                 # 重放旧 run —— 否则回答不了「这份发票是哪个 harness 版本
                 # 处理的」。docs-only 提交也会换代:保守方向,宁可新 run
-                "code_revision": _code_revision()}
+                "code_revision": _code_revision(),
+                # harness 身份进指纹(v0.2 P0-4):策略换代 = 新执行身份
+                "harness_id": active["harness_id"],
+                "harness_digest": active["policy_digest"]}
     canonical = json.dumps(manifest, sort_keys=True, ensure_ascii=False).encode()
     manifest["fingerprint"] = hashlib.sha256(canonical).hexdigest()
     return manifest
 
 
 def snapshot_id_from_components(components: dict[str, str | None]) -> str:
-    """成分哈希 → 快照 id。bundle verify 在 zip 内重算时也走这里。"""
+    """成分哈希 → 快照 id。bundle verify 在 zip 内重算时也走这里。
+
+    只哈希 components 里**存在**的键(按 SNAPSHOT_COMPONENTS 序):
+    routing_report.json 是 2026-08-05 才进成分表的 —— 旧 run/旧包没有它,
+    按旧成分集重算才能与旧快照 id 相符(旧 run 不可变,id 不许漂移)。
+    新 run 落了 routing_report.json 则进成分,删除它 → 快照对不上 → 阻断。
+    """
     h = hashlib.sha256()
     for name in SNAPSHOT_COMPONENTS:
-        h.update(f"{name}={components.get(name)}\n".encode())
+        if name in components:
+            h.update(f"{name}={components.get(name)}\n".encode())
     return h.hexdigest()
 
 
 def compute_review_snapshot(run_dir: Path) -> dict:
     """从 run 目录的工件字节推导复核快照。成分缺失记 null(v1 旧 run 没有
-    input_manifest.json,快照仍确定 —— 旧 run 不可变,推导结果不变)。"""
+    input_manifest.json,快照仍确定 —— 旧 run 不可变,推导结果不变);
+    routing_report.json 只在文件存在时进成分(见 snapshot_id_from_components)。"""
     run_dir = Path(run_dir)
     components = {}
     for name in SNAPSHOT_COMPONENTS:
         path = run_dir / name
-        components[name] = _sha_or_none(path) if path.exists() else None
+        if not path.exists():
+            if name == "routing_report.json":
+                continue  # 旧 run 无此工件:不进成分,不是记 null(见上)
+            components[name] = None
+        else:
+            components[name] = _sha_or_none(path)
     return {"review_snapshot_id": snapshot_id_from_components(components),
             "components": components}
 

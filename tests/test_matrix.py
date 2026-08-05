@@ -43,7 +43,7 @@ class TestApplicability:
             for i, f in enumerate(("total_net", "total_gross", "amount_due"), 1)
         ]
         report = _gates({})
-        out = matrix.build_matrix(["doc-a"], understand={"doc-a": u}, claims=claims,
+        out, _routing = matrix.build_matrix(["doc-a"], understand={"doc-a": u}, claims=claims,
                                   rejections=[], gate_report=report, vision_answers={})
         disputed = [r for r in out["rows"] if r["applicability"] == "label_convention_disputed"]
         assert {r["field"] for r in disputed} == {"total_net", "total_gross", "amount_due"}
@@ -55,7 +55,7 @@ class TestApplicability:
     def test_dispute_requires_admitted_values(self):
         """判据收紧:三个值都冻结被拒的文档不标争议 —— 争议要落在绑得上的证据上。"""
         u = make_response("doc-a", "understand", self.DISPUTED)
-        out = matrix.build_matrix(["doc-a"], understand={"doc-a": u}, claims=[],
+        out, _routing = matrix.build_matrix(["doc-a"], understand={"doc-a": u}, claims=[],
                                   rejections=[], gate_report=_gates({}), vision_answers={})
         assert all(r["applicability"] == "matches" for r in out["rows"])
 
@@ -72,7 +72,7 @@ class TestBlockingAttachment:
             "evidence_ref": "raw/x", "message": "agentic 不可用",
         }
         report = {"findings": [blocking_finding], "evaluations": _gates({})["evaluations"]}
-        out = matrix.build_matrix(["doc-a"], understand={"doc-a": u},
+        out, _routing = matrix.build_matrix(["doc-a"], understand={"doc-a": u},
                                   claims=_claims("doc-a", "total_gross"),
                                   rejections=[], gate_report=report, vision_answers={})
         assert all("GF-0001" in r["blocking_findings"] for r in out["rows"])
@@ -82,7 +82,7 @@ class TestBlockingAttachment:
 class TestStrength:
     def _build(self, claims, verdicts, rejections=(), data=None):
         u = make_response("doc-a", "understand", data or {"total_gross": "100.00"})
-        out = matrix.build_matrix(["doc-a"], understand={"doc-a": u}, claims=claims,
+        out, _routing = matrix.build_matrix(["doc-a"], understand={"doc-a": u}, claims=claims,
                                   rejections=list(rejections), gate_report=_gates(verdicts),
                                   vision_answers={})
         return next(r for r in out["rows"] if r["field"] == "total_gross")
@@ -129,7 +129,7 @@ class TestStrength:
         u = make_response("doc-a", "understand", {"total_gross": "9,999.00"})
         spans = [{"span_id": "ES-0007", "doc_id": "doc-a", "field": "total_gross",
                   "ocr_text": "100.00"}]
-        out = matrix.build_matrix(
+        out, _routing = matrix.build_matrix(
             ["doc-a"], understand={"doc-a": u}, claims=[],
             rejections=[{"reason": "binding", "doc_id": "doc-a", "field": "total_gross",
                          "value": "9,999.00", "drafted_by": "dws_understand", "coverage": 0.0}],
@@ -150,7 +150,7 @@ class TestTriage:
         u = make_response("doc-a", "understand", {"total_gross": "100.00"})
         claims = _claims("doc-a", "total_gross", spans=["ES-0001"])
         verdicts = {"arithmetic_consistency": "pass"}
-        out = matrix.build_matrix(["doc-a"], understand={"doc-a": u}, claims=claims,
+        out, _routing = matrix.build_matrix(["doc-a"], understand={"doc-a": u}, claims=claims,
                                   rejections=[], gate_report=_gates(verdicts), vision_answers={})
         ranks = [{"unsupported": 0, "single_source": 1, "corroborated": 2}[r["support_strength"]]
                  for r in out["rows"]]

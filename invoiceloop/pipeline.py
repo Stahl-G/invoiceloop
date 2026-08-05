@@ -12,7 +12,7 @@ import json
 import shutil
 from pathlib import Path
 
-from . import __version__, dws, evidence, freeze, gates, matrix, snapshot
+from . import __version__, dws, evidence, freeze, gates, harness, matrix, snapshot
 from .ocr import OcrUnavailable, derisk_root, layout, load_ocr, pdf_path
 
 
@@ -114,6 +114,7 @@ def run(
     _write_json(out_dir / "run_manifest.json", {
         "invoiceloop_version": __version__,
         "code_revision": snapshot._code_revision(),
+        "harness_id": harness.load_active(derisk_root())["harness_id"],
         "docs": doc_ids,
         "n_docs": len(doc_ids),
         "render_crops": render_crops,
@@ -227,19 +228,28 @@ def run(
          findings=len(gate_report["findings"]),
          blocking=sum(1 for f in gate_report["findings"] if f["blocking"]))
 
-    # ---- ④b 复核快照:人工裁决绑定的完整身份(不只是账本)
-    review_snapshot = snapshot.compute_review_snapshot(out_dir)
-    _write_json(out_dir / "review_snapshot.json", review_snapshot)
-    emit("review_snapshot", review_snapshot_id=review_snapshot["review_snapshot_id"])
+    # ---- ⑤ 支持矩阵 + 分诊路由(routing_report 进快照成分,必须先落盘)
+    from .harness import load_active
 
-    # ---- ⑤ 支持矩阵 + panel
-    support = matrix.build_matrix(
+    active = load_active(derisk_root())
+    support, routing_report = matrix.build_matrix(
         doc_ids,
         understand=understand, claims=result.claims, rejections=result.rejections,
         gate_report=gate_report, vision_answers=vision_answers,
         blocked_docs=frozenset(d for d in doc_ids if not ocr_ok[d]),
         spans=spans,
+        policy=active["policy"], harness_id=active["harness_id"],
     )
+    _write_json(out_dir / "routing_report.json", routing_report)
+    emit("routing_decided", harness_id=active["harness_id"],
+         policy_digest=routing_report["policy_digest"],
+         review=sum(1 for r in routing_report["routes"] if r["route"] != "auto_accept"))
+
+    # ---- ④b 复核快照:人工裁决绑定的完整身份(不只是账本)
+    review_snapshot = snapshot.compute_review_snapshot(out_dir)
+    _write_json(out_dir / "review_snapshot.json", review_snapshot)
+    emit("review_snapshot", review_snapshot_id=review_snapshot["review_snapshot_id"])
+
     _write_json(out_dir / "support_matrix.json", support)
     emit("matrix_built", **support["summary"])
 

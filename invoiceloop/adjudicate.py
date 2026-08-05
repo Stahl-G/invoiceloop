@@ -323,6 +323,11 @@ def build_audit_bundle(run_dir: Path) -> Path:
         deliverable = run_dir / "deliverable.json"
         if deliverable.exists():
             members.append(("deliverable.json", deliverable.read_bytes()))
+        # routing_report.json 同理(2026-08-05 起,进快照成分):旧 run 没有它,
+        # 旧快照的成分表也没有它,两处一致,不阻断
+        routing_report = run_dir / "routing_report.json"
+        if routing_report.exists():
+            members.append(("routing_report.json", routing_report.read_bytes()))
         for asset_dir in ("crops", "pages"):
             directory = run_dir / asset_dir
             if directory.exists():
@@ -467,10 +472,14 @@ def verify_bundle(bundle: Path) -> dict:
                 layers["snapshot"] = False
                 layers["binding"] = False
             if snap is not None:
+                # 按包内快照**记录的成分集**重算(不是当前 SNAPSHOT_COMPONENTS
+                # 常量):routing_report.json 2026-08-05 才进成分表,旧包按旧
+                # 成分集验;成分被记进快照却缺成员 → None ≠ 记录的 sha → 抓
+                recorded = snap.get("components") or {}
                 recomputed = {
                     name: (hashlib.sha256(member_bytes[name]).hexdigest()
                            if name in member_bytes else None)
-                    for name in SNAPSHOT_COMPONENTS
+                    for name in recorded
                 }
                 layers["snapshot"] = (
                     snapshot_id_from_components(recomputed) == snap.get("review_snapshot_id"))

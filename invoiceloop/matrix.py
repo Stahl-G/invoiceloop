@@ -43,8 +43,14 @@ def build_matrix(
     vision_answers: dict,
     blocked_docs: frozenset[str] = frozenset(),
     spans: list[dict] = (),
-) -> dict:
+    policy: dict | None = None,
+    harness_id: str = "HAR-0001",
+) -> tuple[dict, dict]:
     """从冻结账本 + 门禁报告 + 存盘证据组矩阵。纯函数,零 API,可重算。
+
+    返回 (support_matrix, routing_report)。分诊决定(哪槽要人看)由
+    routing.py 按 policy 产出 —— matrix 只消费结果,不再内联判据(P0-3)。
+    policy=None 时用包内 HAR-0001(保守默认)。
 
     blocked_docs: 因 OCR 缺失被流水线整体阻断的文档 —— 行上必须有字,
     不然"这份没查"和"查了没支持"看起来一样(宪章四)。
@@ -76,6 +82,7 @@ def build_matrix(
         cited_by_slot.setdefault((s["doc_id"], s["field"]), []).append(s["span_id"])
 
     rows: list[dict] = []
+    slot_facts: list[dict] = []  # 与 rows 平行:喂给 routing 的槽位事实
     for doc_id in doc_ids:
         u = understand.get(doc_id)
         evaluations = gate_report["evaluations"].get(doc_id, {})
@@ -164,14 +171,15 @@ def build_matrix(
 
             # 文档级阻断(响应缺失、门禁异常)属于这份文档的每一行 ——
             # 基础设施没跑,这份文档上没有任何一行算"查过了"
+            blocking_slot = bool(blocking_by_slot.get(slot))
+            blocking_doc = bool(blocking_by_doc.get(doc_id))
             blocking = blocking_by_slot.get(slot, []) + blocking_by_doc.get(doc_id, [])
-            requires = (
-                strength == "unsupported"
-                or any(v == "fail" for v in gate_verdicts.values())
-                or any(v == "warning" for v in gate_verdicts.values())
-                or applicability == "label_convention_disputed"
-                or bool(blocking)
-            )
+            slot_facts.append({
+                "doc_id": doc_id, "field": field_name,
+                "strength": strength, "gate_verdicts": gate_verdicts,
+                "applicability": applicability,
+                "slot_blocking": blocking_slot, "doc_blocked": blocking_doc,
+            })
 
             rows.append({
                 "doc_id": doc_id,
@@ -182,13 +190,30 @@ def build_matrix(
                 "source_tiers": tiers,
                 "applicability": applicability,
                 "limitations": limitations,
-                "requires_adjudication": requires,
+                "requires_adjudication": None,  # 由 routing 层在下方统一填充
                 "gate_verdicts": gate_verdicts,
                 "span_ids": emitted["span_ids"] if emitted else [],
                 "cited_span_ids": cited_by_slot.get(slot, []),
                 "rejections": slot_rejections,
                 "blocking_findings": [f["finding_id"] for f in blocking],
             })
+
+    # ---- 分诊路由:策略决定哪槽要人看(P0-3)。requires 与旧内联逻辑
+    # 逐字节等价由 routing.HAR-0001 默认策略保证 + heldout 零 diff 钉死
+    if policy is None:
+        from .harness import load_active
+
+        policy = load_active()["policy"]
+    from .routing import build_routing_report
+    from .fields import TIER1 as _T1
+
+    routing_report = build_routing_report(
+        slot_facts, policy, harness_id=harness_id,
+        tier_of=lambda f: "TIER1" if f in _T1 else "TIER2")
+    for row, routed in zip(rows, routing_report["routes"]):
+        row["requires_adjudication"] = routed["route"] != "auto_accept"
+        row["route"] = routed["route"]
+        row["reason_codes"] = routed["reason_codes"]
 
     rows.sort(key=lambda r: (
         STRENGTH_RANK[r["support_strength"]],
@@ -213,7 +238,7 @@ def build_matrix(
         "drafts_rejected": len(rejections),
         "rejected_by_drafter": _count_by(rejections, "drafted_by"),
     }
-    return {"rows": rows, "summary": summary}
+    return {"rows": rows, "summary": summary}, routing_report
 
 
 def _count_by(rows: list[dict], key: str) -> dict[str, int]:

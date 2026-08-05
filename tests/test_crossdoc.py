@@ -114,7 +114,7 @@ class TestGateIntegration:
 
         understand = {d: make_response(d, "understand", {
             "invoice_number": "INV-1", "seller_name": "Acme"}) for d in (DOC_A, DOC_B)}
-        matrix = build_matrix(
+        matrix, _routing = build_matrix(
             [DOC_A, DOC_B], understand=understand, claims=claims, rejections=[],
             gate_report=report, vision_answers={})
         flagged = [r for r in matrix["rows"] if r["field"] == "invoice_number"]

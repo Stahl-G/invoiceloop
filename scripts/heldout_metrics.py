@@ -19,7 +19,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from invoiceloop.fields import FIELD_KINDS, normalise
+from invoiceloop.eval_norm import eval_normalise as normalise
+from invoiceloop.fields import FIELD_KINDS
 from invoiceloop.ocr import derisk_root
 
 DOCILE_TO_FIELD = {

@@ -155,6 +155,38 @@ class TestProjection:
         report = adjudicate.verify_bundle(bundle)
         assert report["ok"], report["failures"]
 
+
+class TestPolicyAccept:
+    """v0.2 P0-6:策略放行必须显式记录为 policy_accept + 策略版本,
+    不是伪造一条人工 accept。"""
+
+    def test_policy_accepted_status(self, ws, monkeypatch):  # noqa: F811
+        # 在 run 之前写入 active 指针:HAR-0002 关闭 TIER1 显式裁决
+        root = ws.parent.parent
+        (root / "harnesses" / "HAR-0002").mkdir(parents=True)
+        (root / "harnesses" / "HAR-0002" / "routing_policy.json").write_text(
+            json.dumps({"harness_id": "HAR-0002", "version": 2,
+                        "release_tier1_explicit": False,
+                        "auto_accept_cohorts": []}))
+        (root / "improve").mkdir()
+        (root / "improve" / "active_harness.json").write_text(
+            json.dumps({"harness_id": "HAR-0002"}))
+        out2 = root / "runs" / "run-0002"
+        pipeline_run([DOC], out2, include_vision=False, out_of_calibration=True)
+        manifest = json.loads((out2 / "run_manifest.json").read_text())
+        assert manifest["harness_id"] == "HAR-0002"
+        d = deliver.build_deliverable(out2)
+        f = d["docs"][DOC]["fields"]["total_gross"]
+        assert f["status"] == "policy_accepted", \
+            "策略放行要显式记录,不许伪装成人工 accept"
+        assert f["value"] == "100.00", "值仍只来自冻结 claim"
+        assert f["source"] == "policy:HAR-0002"
+        pending = [k for k, v in d["docs"][DOC]["fields"].items()
+                   if v["status"] == "pending"]
+        assert pending, "未裁决的需裁决槽仍 pending —— 策略只动了 TIER1 显式规则"
+        assert d["docs"][DOC]["status"] == "pending", \
+            "还有 pending 槽,整单不许放行"
+
     def test_release_with_blocking_findings_carries_caveats(self, ws):
         """OCR 受阻的文档全部人裁完毕可以放行,但机检没跑过必须随交付物走。"""
         (ws.parent.parent / "ocr" / f"{DOC}.json").unlink()

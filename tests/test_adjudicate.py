@@ -604,7 +604,7 @@ class TestVerifyLayers:
         items["gate_report.json"] = json.dumps(gate).encode()
         new_sid = snapshot_id_from_components({
             name: hashlib.sha256(items[name]).hexdigest()
-            for name in SNAPSHOT_COMPONENTS})
+            for name in json.loads(items["review_snapshot.json"])["components"]})
         snap = json.loads(items["review_snapshot.json"])
         snap["review_snapshot_id"] = new_sid
         snap["components"]["gate_report.json"] = hashlib.sha256(
