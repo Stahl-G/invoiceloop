@@ -82,6 +82,19 @@ def _main() -> None:
     p_hoe.add_argument("--workspace", type=Path, required=True)
     p_hoe.add_argument("--budget", type=float, default=6000.0)
 
+    p_se = sub.add_parser("sealed", help="封箱留出集(docs/SEALED1_PROTOCOL.md)")
+    se_sub = p_se.add_subparsers(dest="sealed_command", required=True)
+    p_sep = se_sub.add_parser("plan", help="种子抽样并落盘名单(先于任何调用)")
+    p_sep.add_argument("--workspace", type=Path, required=True)
+    p_sep.add_argument("--seed", required=True,
+                       help="外部随机源的十六进制熵(drand 轮次 randomness)")
+    p_sep.add_argument("--seed-source", required=True,
+                       help="随机源承诺标识(协议文档 + 轮次)")
+    p_sep.add_argument("--n", type=int, default=100)
+    p_see = se_sub.add_parser("extract", help="按名单跑双模式,断点续跑,预算熔断")
+    p_see.add_argument("--workspace", type=Path, required=True)
+    p_see.add_argument("--budget", type=float, default=6000.0)
+
     p_imp = sub.add_parser("improve", help="改进控制面(v0.2 收窄版,全确定性零模型)")
     imp_sub = p_imp.add_subparsers(dest="improve_command", required=True)
     p_im = imp_sub.add_parser("mine", help="cohort 统计:找高频复核零修正")
@@ -228,6 +241,14 @@ def _main() -> None:
 
         if args.heldout_command == "plan":
             heldout.cmd_plan(args.workspace, args.n)
+        else:
+            heldout.cmd_extract(args.workspace, budget=args.budget)
+    elif args.command == "sealed":
+        from . import heldout
+
+        if args.sealed_command == "plan":
+            heldout.cmd_plan_sealed(args.workspace, seed_hex=args.seed,
+                                    seed_source=args.seed_source, n=args.n)
         else:
             heldout.cmd_extract(args.workspace, budget=args.budget)
     elif args.command == "improve":

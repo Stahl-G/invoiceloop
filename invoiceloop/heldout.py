@@ -105,6 +105,53 @@ def cmd_plan(workspace: Path, n: int = HELDOUT_N) -> list[str]:
     return ids
 
 
+# ------------------------------------------------------------------ SEALED-1
+
+def sealed_pool() -> tuple[str, ...]:
+    """SEALED-1 合格池:heldout_pool 再减 development_exposure_manifest
+    全量(高级裁决二:排除一切开发期暴露,不只是两份正式名单)。"""
+    manifest_path = (Path(__file__).resolve().parent.parent
+                     / "docs" / "development_exposure_manifest.json")
+    exposed = {e["doc_id"] for e in json.loads(
+        manifest_path.read_text(encoding="utf-8"))["doc_ids"]}
+    return tuple(d for d in heldout_pool() if d not in exposed)
+
+
+def sealed_list(seed_hex: str, n: int = HELDOUT_N) -> list[str]:
+    """种子随机抽样(高级裁决一):种子来自代码冻结后才存在的外部随机源
+    (drand beacon 指定轮次),开发期间名单不可预知。确定性:同种子同名单。"""
+    import random
+
+    pool = sorted(sealed_pool())
+    if len(pool) < n:
+        raise RuntimeError(f"封箱合格池只有 {len(pool)} 份,不足 {n}")
+    return sorted(random.Random(f"invoiceloop-sealed1-v1|{seed_hex}")
+                  .sample(pool, n))
+
+
+def cmd_plan_sealed(workspace: Path, *, seed_hex: str, seed_source: str,
+                    n: int = HELDOUT_N) -> list[str]:
+    """封箱名单落盘。seed_source 记录随机源承诺(协议文档 + 轮次)。"""
+    workspace = prepare_workspace(workspace)
+    ids = sealed_list(seed_hex, n)
+    payload = {
+        "n": n,
+        "pool_size": len(sealed_pool()),
+        "pool_min_fields": POOL_MIN_FIELDS,
+        "exclusion": "docs/development_exposure_manifest.json 全量补集",
+        "sampling": "seeded random.sample(sorted pool), "
+                    "seed=sha256 语境 invoiceloop-sealed1-v1",
+        "seed": seed_hex,
+        "seed_source": seed_source,
+        "doc_ids": ids,
+    }
+    (workspace / "doc_list.json").write_text(
+        json.dumps(payload, indent=1) + "\n", encoding="utf-8")
+    print(f"pool={payload['pool_size']}  sealed n={n}  seed={seed_hex[:16]}…")
+    print(f"名单已落盘:{workspace / 'doc_list.json'} —— 先提交,再调用")
+    return ids
+
+
 def _load_keys() -> list[str]:
     env = os.environ.get("DWS_API_KEYS", "")
     keys = [k.strip() for k in env.split(",") if k.strip()]

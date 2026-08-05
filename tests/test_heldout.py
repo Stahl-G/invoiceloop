@@ -108,3 +108,31 @@ class TestExtractDriver:
         summary = heldout.cmd_extract(ws, budget=6000)
         assert summary["failed"] == 1 and summary["done"] == 3
         assert summary["failures"][0]["http_status"] == 500
+
+
+@pytest.mark.skipif(not corpus_available(), reason="校准档案不在")
+class TestSealedList:
+    def test_deterministic_given_seed(self):
+        a = heldout.sealed_list("ab" * 32)
+        b = heldout.sealed_list("ab" * 32)
+        assert a == b and len(a) == 100 and len(set(a)) == 100
+        c = heldout.sealed_list("cd" * 32)
+        assert c != a, "换种子必须换名单"
+
+    def test_excludes_full_exposure_manifest(self):
+        import json as _json
+        from pathlib import Path as _P
+
+        manifest = _json.loads((_P("docs") / "development_exposure_manifest.json")
+                               .read_text())
+        exposed = {e["doc_id"] for e in manifest["doc_ids"]}
+        ids = heldout.sealed_list("ab" * 32)
+        assert not set(ids) & exposed, \
+            "封箱名单与暴露清单必须互斥(校准/旧留出/demo 样本全部排除)"
+        assert not set(ids) & set(heldout.heldout_list()), \
+            "与旧留出 100 互斥(暴露清单的子集,双保险)"
+
+    def test_pool_shrinks_by_exposure(self):
+        assert len(heldout.sealed_pool()) == \
+            len(heldout.heldout_pool()) - 100, \
+            "旧留出 100 从合格池中移除(校准 160 本就不在 heldout_pool)"
