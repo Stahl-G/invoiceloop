@@ -72,6 +72,8 @@ _T = {
         "corrected_ph": "corrected value",
         "rationale_ph": "Issue / rationale (required) — write down what's wrong",
         "reason_code_label": "Reason code (optional, feeds the improvement loop):",
+        "confidence_label": "Confidence (optional):",
+        "conf_high": "high", "conf_medium": "medium", "conf_low": "low",
         "adjudicator_ph": "reviewer name",
         "issue_chips": ["matches the page", "wrong value", "wrong location",
                         "illegible", "label-convention conflict", "not on page", "other"],
@@ -205,6 +207,8 @@ _T = {
         "corrected_ph": "修正值",
         "rationale_ph": "发现的问题 / 理由(必填)—— 把问题直接写在这里",
         "reason_code_label": "原因码(可选,喂给改进循环):",
+        "confidence_label": "把握度(可选):",
+        "conf_high": "高", "conf_medium": "中", "conf_low": "低",
         "adjudicator_ph": "裁决人",
         "issue_chips": ["与页面一致", "值不对", "位置不对", "看不清", "口径冲突", "页面上没有", "其他"],
         "accept_preset": "与页面一致",
@@ -934,7 +938,12 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
  placeholder="{_esc(_t(lang, 'rationale_ph'))}"></textarea>
 <div class="wb-issue-chips">{chips}</div>
 <div class="wb-decide-row"><label class="wb-label">{_esc(_t(lang, 'reason_code_label'))}
-<select name="reason_code" class="wb-reason">{reason_options}</select></label></div>
+<select name="reason_code" class="wb-reason">{reason_options}</select></label>
+<label class="wb-label">{_esc(_t(lang, 'confidence_label'))}
+<select name="reviewer_confidence" class="wb-reason">
+<option value=""></option><option value="high">{_esc(_t(lang, 'conf_high'))}</option>
+<option value="medium">{_esc(_t(lang, 'conf_medium'))}</option>
+<option value="low">{_esc(_t(lang, 'conf_low'))}</option></select></label></div>
 <div class="wb-decide-row">
 <input class="wb-adjudicator" type="text" name="adjudicator" required
  placeholder="{_esc(_t(lang, 'adjudicator_ph'))}" value="{_esc(adjudicator)}">
@@ -1504,6 +1513,7 @@ class _Handler(BaseHTTPRequestHandler):
             decided_at=decided_at,
             supersedes_decision_id=form.get("supersedes", [""])[0] or None,
             reason_code=form.get("reason_code", [""])[0] or None,
+            reviewer_confidence=form.get("reviewer_confidence", [""])[0] or None,
         )
         notice = "recorded" if result["panel_refreshed"] else "recorded_stale"
         cookies = [("wb_adjudicator", adjudicator)]
