@@ -771,3 +771,22 @@ class TestAdjudicatePage:
         assert "(无声明)" in text or "(no claim)" in text
         assert 'value="confirm_absent"' in text, \
             "无声明槽位的决策集与队列页一致:确认缺失/修正/不适用/弃权"
+
+    def test_quick_accept_button_on_claim_rows(self, workspace, server):
+        """一键快路(2026-08-05 用户实测反馈):有声明的槽给
+        「原值正确,接受并下一条」—— 预填 accept + 理由,一次点击。"""
+        _, _, text = _req(
+            server, "GET", f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross&lang=zh")
+        assert 'wb-quick-ok' in text, "有声明槽位必须有一键接受"
+        assert 'data-decision="accept"' in text
+        assert 'data-rationale="与页面一致"' in text
+
+    def test_quick_draft_button_on_rejected_rows(self, workspace, server):
+        """草稿被冻结拒的槽(无声明):快路 = correct 预填被拒草稿的值 ——
+        绑定失败是机械门槛,人看页面确认后对就是对人证成立。"""
+        _, _, text = _req(
+            server, "GET", f"/adjudicate?run={RUN}&doc={DOC}&field=total_net&lang=zh")
+        assert 'wb-quick-ok' in text, "被拒草稿槽位必须有「采用被拒草稿」快路"
+        assert 'data-decision="correct"' in text
+        assert 'data-value="10.00"' in text, "预填值 = 被拒草稿的值"
+        assert "采用被拒草稿" in text

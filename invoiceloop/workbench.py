@@ -76,6 +76,10 @@ _T = {
         "issue_chips": ["matches the page", "wrong value", "wrong location",
                         "illegible", "label-convention conflict", "not on page", "other"],
         "accept_preset": "matches the page",
+        "quick_accept": "✓ value is right — accept & next",
+        "quick_draft": "✓ draft is right — adopt “{value}” & next",
+        "quick_draft_rationale": "confirmed on page: rejected draft value is "
+                                 "correct (binding failed, human vouches)",
         "vision_suggest": "Vision suggestion",
         "vision_agree": "{a}/{n} readers agree",
         "vision_split": "readers disagree",
@@ -185,6 +189,9 @@ _T = {
         "adjudicator_ph": "裁决人",
         "issue_chips": ["与页面一致", "值不对", "位置不对", "看不清", "口径冲突", "页面上没有", "其他"],
         "accept_preset": "与页面一致",
+        "quick_accept": "✓ 原值正确 —— 接受,下一条",
+        "quick_draft": "✓ 原值正确 —— 采用被拒草稿「{value}」,下一条",
+        "quick_draft_rationale": "页面上确认被拒草稿的值正确(绑定失败,人证成立)",
         "vision_suggest": "读图建议",
         "vision_agree": "{a}/{n} 读者一致",
         "vision_split": "读者分歧",
@@ -324,11 +331,36 @@ document.addEventListener('change', function (e) {
   }
 });
 document.addEventListener('click', function (e) {
+  // 一键快路:人看了页面,点一下就完成「原值正确」并跳下一条。
+  // 预填决策/修正值/理由 → armed 置位 → requestSubmit(绕过二段确认:
+  // 按钮自己的文案就是确认语义)。仍是人逐槽点击,账本照记。
+  var quick = e.target.closest('.wb-quick-ok');
+  if (quick) {
+    var qform = quick.closest('form');
+    var qradio = qform.querySelector(
+      'input[name=decision][value="' + quick.dataset.decision + '"]');
+    if (!qradio) return;
+    qradio.checked = true;
+    qradio.dispatchEvent(new Event('change', { bubbles: true }));
+    if (quick.dataset.value) {
+      var qcorr = qform.querySelector('.wb-corr');
+      qcorr.disabled = false;
+      qcorr.value = quick.dataset.value;
+    }
+    var qta = qform.querySelector('.wb-rationale');
+    if (qta && !qta.value.trim()) qta.value = quick.dataset.rationale || '';
+    qform.dataset.armed = '1';
+    qform.requestSubmit();
+    return;
+  }
   var chip = e.target.closest('.wb-issue-chip');
   if (chip) {
     var form = chip.closest('form');
     var ta = form.querySelector('.wb-rationale');
-    ta.value = (ta.value ? ta.value.replace(/[;\s]+$/, '') + '; ' : '') + chip.dataset.text;
+    // 同一条不重复追加(连点两次不会再出「与页面一致; 与页面一致」)
+    if (ta.value.indexOf(chip.dataset.text) === -1) {
+      ta.value = (ta.value ? ta.value.replace(/[;\s]+$/, '') + '; ' : '') + chip.dataset.text;
+    }
     ta.focus();
     return;
   }
@@ -516,7 +548,8 @@ class Workbench:
 
     # ---- 骨架
     def page(self, lang: str, active: str, body: str, *,
-             run_name: str | None = None, notice: str = "", ooc: bool = False) -> str:
+             run_name: str | None = None, notice: str = "", ooc: bool = False,
+             compact: bool = False) -> str:
         # 导航永远指向一个真实存在的 run:消息页/404 页不传 run,
         # 也得给人回得去的路(2026-08-03 实测:404 页只剩上传 tab,出不来)
         nav_run = run_name
@@ -554,7 +587,7 @@ class Workbench:
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{_esc(_t(lang, 'brand'))}</title>
 <link rel="stylesheet" href="/assets.css">
-</head><body>
+</head><body{' class="wb-compact"' if compact else ''}>
 <div class="wb-topbar"><div class="wb-topbar-inner">
 <span class="wb-brand">{_esc(_t(lang, 'brand'))}</span>
 <nav class="wb-tabs">{''.join(tabs)}</nav>
@@ -790,6 +823,23 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         # not_applicable(不适用)/abstain —— 「确认没有」和「人看不懂」不许混
         decisions_for_row = (_DECISIONS[:1] + _DECISIONS[3:]) if claim_id \
             else (_DECISIONS[1:3] + _DECISIONS[4:])
+        # 一键快路(2026-08-05 用户实测):「原值正确」是复核的主流量,
+        # 不该要四次点击。有声明 → accept 预填;草稿被冻结拒 → correct
+        # 预填被拒草稿的值(冻结绑定是机械门槛,人看了页面说对就是对,
+        # 账本记 correct + 人工理由,诚实)。仍是人逐槽点击,不批量。
+        quick = ""
+        draft_value = next((r["value"] for r in row["rejections"]
+                            if r.get("value")), None)
+        if claim_id:
+            quick = (f'<button type="button" class="wb-quick-ok" '
+                     f'data-decision="accept" data-value="" '
+                     f'data-rationale="{_esc(_t(lang, "accept_preset"))}">'
+                     f'{_esc(_t(lang, "quick_accept"))}</button>')
+        elif draft_value:
+            quick = (f'<button type="button" class="wb-quick-ok" '
+                     f'data-decision="correct" data-value="{_esc(draft_value)}" '
+                     f'data-rationale="{_esc(_t(lang, "quick_draft_rationale"))}">'
+                     f'{_esc(_t(lang, "quick_draft", value=draft_value))}</button>')
         radios = "".join(
             f'<label class="wb-radio {d}"><input type="radio" name="decision" '
             f'value="{d}" required>{_esc(_t(lang, d))}</label>'
@@ -814,6 +864,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 <input type="hidden" name="claim_id" value="{_esc(claim_id)}">
 <input type="hidden" name="supersedes" value="{_esc(supersedes)}">
 <input type="hidden" name="lang" value="{_esc(lang)}">{next_input}
+{quick}
 <div class="wb-decide-row">{radios}
 <input class="wb-corr" type="text" name="corrected_value"
  placeholder="{_esc(_t(lang, 'corrected_ph'))}"></div>
@@ -869,7 +920,8 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 <div class="wb-footer">{_esc(_t(lang, 'snapshot'))}={_esc(ctx.snapshot_id)}</div>"""
         return self.page(lang, "queue", body, run_name=ctx.name,
                          notice=self._notice(lang, params),
-                         ooc=ctx.manifest.get("out_of_calibration", False))
+                         ooc=ctx.manifest.get("out_of_calibration", False),
+                         compact=True)
 
     def _page_column(self, lang: str, ctx: RunCtx, row: dict) -> str:
         """左栏:整页渲染 + bbox overlay(不重渲染图片,相对坐标 → CSS 百分比)。

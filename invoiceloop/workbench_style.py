@@ -977,4 +977,99 @@ a:hover { text-decoration: underline; }
 @media print {
     .wb-adj-nav, .wb-adj-link { display: none; }
 }
+
+/* ==========================================================================
+   裁决页紧凑模式(2026-08-05 用户实测:一屏放下一页发票 + 判定卡,不滚动)
+   只压空间,不动语义色与信息项 —— 所有内容仍在,只是不再浪费。
+   ========================================================================== */
+.wb-compact .wb-thesis {
+    padding: 3px 24px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+.wb-compact .wb-banner,
+.wb-compact .wb-notice {
+    padding: 5px 14px;
+    margin: 4px auto;
+    font-size: 12px;
+    line-height: 1.45;
+    max-width: var(--wb-max);
+    border-radius: var(--wb-radius-sm);
+    box-shadow: none;
+}
+.wb-compact .wb-main { padding: 8px 24px 64px; }
+.wb-compact .wb-adj { margin-top: 6px; gap: 14px; }
+.wb-compact .wb-adj-colhead { margin-bottom: 5px; }
+
+/* 左栏:整页高度压进视口 —— 图按视口高缩放,stage 收缩包裹图,
+   overlay 百分比相对 stage,任何缩放都对齐 */
+.wb-compact .wb-page-wrap { margin-bottom: 6px; text-align: center; }
+.wb-compact .wb-page-cap { margin-bottom: 3px; font-size: 11px; }
+.wb-compact .wb-page-stage { display: inline-block; }
+.wb-compact .wb-page {
+    width: auto;
+    max-width: 100%;
+    max-height: calc(100vh - 190px);
+    margin: 0 auto;
+}
+.wb-compact .wb-legend { margin-top: 3px; font-size: 11px; gap: 6px 12px; }
+
+/* 右栏:判定卡全面压缩 */
+.wb-compact .wb-adj-card { padding: 10px 14px; }
+.wb-compact .wb-row-head { margin-bottom: 4px; gap: 6px 10px; }
+.wb-compact .wb-task { font-size: 12.5px; margin: 2px 0; line-height: 1.45; }
+.wb-compact .wb-adj-verdict { padding: 7px 10px; margin: 5px 0; }
+.wb-compact .wb-adj-kv { margin: 3px 0; gap: 5px 9px; }
+.wb-compact .wb-gates { gap: 4px; margin: 5px 0; }
+.wb-compact .wb-gate { padding: 1px 7px; font-size: 10.5px; }
+.wb-compact .wb-badge { padding: 1px 8px; }
+.wb-compact .wb-evidence { margin: 5px 0; }
+.wb-compact .wb-evidence > summary { padding: 5px 10px; font-size: 12px; }
+.wb-compact .wb-evidence > div,
+.wb-compact .wb-evidence > section { padding: 6px 10px; font-size: 12px; }
+.wb-compact .wb-vision-suggest { padding: 3px 8px; font-size: 12px; margin: 3px 0; }
+
+/* 决策表单:一屏内收完 */
+.wb-compact .wb-decide { padding: 8px 12px; margin-top: 6px; }
+.wb-compact .wb-decide-row { margin: 5px 0; gap: 6px; }
+.wb-compact .wb-radio { padding: 4px 11px; font-size: 12px; }
+.wb-compact .wb-corr { padding: 5px 9px; min-width: 160px; font-size: 12.5px; }
+.wb-compact .wb-rationale {
+    min-height: 44px;
+    padding: 6px 10px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    margin: 5px 0;
+}
+.wb-compact .wb-issue-chips { gap: 5px; margin: 4px 0; }
+.wb-compact .wb-issue-chip { padding: 2px 9px; font-size: 11px; }
+.wb-compact .wb-adjudicator { padding: 4px 9px; min-width: 120px; font-size: 12px; }
+.wb-compact .wb-btn { padding: 5px 14px; font-size: 12.5px; }
+.wb-compact .wb-current, .wb-compact .wb-orphan, .wb-compact .wb-policy {
+    padding: 5px 10px; font-size: 12px; margin: 5px 0;
+}
+
+/* 底栏再薄一点 */
+.wb-compact .wb-adj-nav { padding: 6px 2px; margin-top: 8px; }
+.wb-compact .wb-nav-btn { padding: 5px 12px; font-size: 12.5px; }
+.wb-compact .wb-footer { display: none; }  /* 快照 id 在判定卡里已有,页脚让位 */
+
+/* 一键快路:主流量「原值正确」的显眼入口。蓝 = 人的 action(纪律:
+human-confirmed 不用绿) */
+.wb-quick-ok {
+    display: block;
+    width: 100%;
+    margin: 0 0 6px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--wb-action);
+    background: var(--wb-action-wash);
+    border: 1.5px solid var(--wb-action);
+    border-radius: var(--wb-radius-sm);
+    text-align: center;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.wb-quick-ok:hover { background: var(--wb-action); color: #fff; }
+.wb-compact .wb-quick-ok { padding: 5px 12px; font-size: 12.5px; margin-bottom: 4px; }
 """
