@@ -161,16 +161,37 @@ class TestPolicyAccept:
     不是伪造一条人工 accept。"""
 
     def test_policy_accepted_status(self, ws, monkeypatch):  # noqa: F811
-        # 在 run 之前写入 active 指针:HAR-0002 关闭 TIER1 显式裁决
+        # 在 run 之前把 HAR-0002(关闭 TIER1 显式裁决)晋升上链 ——
+        # 权威是 PROM 记录,指针只是它的投影(高级裁决五)
+        import hashlib
+
+        from invoiceloop import harness, improve
+
         root = ws.parent.parent
         (root / "harnesses" / "HAR-0002").mkdir(parents=True)
-        (root / "harnesses" / "HAR-0002" / "routing_policy.json").write_text(
+        policy_path = root / "harnesses" / "HAR-0002" / "routing_policy.json"
+        policy_path.write_text(
             json.dumps({"harness_id": "HAR-0002", "version": 2,
                         "release_tier1_explicit": False,
                         "auto_accept_cohorts": []}))
-        (root / "improve").mkdir()
-        (root / "improve" / "active_harness.json").write_text(
-            json.dumps({"harness_id": "HAR-0002"}))
+        builtin_sha = hashlib.sha256(
+            harness._builtin_policy_bytes()).hexdigest()
+        improve._append_promotion(root, {
+            "promotion_id": "PROM-0001",
+            "action": "promote",
+            "from_harness_id": "HAR-0001",
+            "from_policy_digest": builtin_sha,
+            "to_harness_id": "HAR-0002",
+            "to_policy_digest": hashlib.sha256(
+                policy_path.read_bytes()).hexdigest(),
+            "evaluation_digest": None,
+            "gate": "test_fixture",
+            "basis": "evo_replay_only",
+            "claim_limits": "测试夹具",
+            "approved_by": "test", "approved_at": "2026-08-05T00:00:00",
+            "rationale": "测试:policy_accepted 投影",
+            "rollback_harness_id": "HAR-0001",
+        })
         out2 = root / "runs" / "run-0002"
         pipeline_run([DOC], out2, include_vision=False, out_of_calibration=True)
         manifest = json.loads((out2 / "run_manifest.json").read_text())

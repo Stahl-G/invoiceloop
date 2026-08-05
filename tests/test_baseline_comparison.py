@@ -1,11 +1,12 @@
-"""三方基线比较(scripts/baseline_comparison.py)的度量数学钉死。
+"""四方基线比较(scripts/baseline_comparison.py)的度量数学钉死。
 
-钉的是 summarise() 的指标定义,不是留出集数字(那是研究路径,
-runs/heldout 不进仓库):
-- automation_coverage / silent_error_rate / review_load / routing_recall
-  的分母分子;
+钉的是指标定义与各系统独立打分,不是留出集数字(研究路径,runs/heldout
+不进仓库):
+- summarise() 的分母分子 + 错值/缺值拆报;
 - 文档级「整单放行」与文档静默失败;
-- 双模式一致基线:任一侧缺值都不许放行(「双缺=一致」在放行语境不成立)。
+- 各系统从自己的预测源取值(raw 响应 vs 冻结账本),deviation 不共用;
+- 置信度平局用固定 (doc_id, field) tie-break,不用 queue_idx;
+- 预算切入同 confidence 组时的 best/worst/expected。
 """
 
 from __future__ import annotations
@@ -14,29 +15,46 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from baseline_comparison import (add_crossmode, add_confidence,  # noqa: E402
-                                 recall_at_budget, summarise)
+from baseline_comparison import (recall_at_budget, recall_tie_range,  # noqa: E402
+                                 score_slots, summarise)
 
 
-def _slot(doc, field, deviation, il_accept, idx=0):
-    return {"doc_id": doc, "field": field, "tier1": True, "value_present": True,
-            "queue_idx": idx, "deviation": deviation,
-            "invoiceloop_accept": il_accept}
-
-
-SLOTS = [
-    _slot("d1", "total_gross", False, True),    # 对,放行
-    _slot("d1", "total_net", True, False),      # 错,拦下
-    _slot("d2", "total_gross", True, True),     # 错,放行 = 静默错误
-    _slot("d2", "total_net", False, True),      # 对,放行
-]
+def _slot(doc, field, *, raw_value, il_value, conf=None, ag="same",
+          il_accept=True, idx=0):
+    """raw/il 两侧的判定值分开给 —— 各系统偏差独立计算。"""
+    raw_dev = raw_value != "WANT"
+    il_dev = il_value != "WANT"
+    return {
+        "doc_id": doc, "field": field, "tier1": True, "queue_idx": idx,
+        "raw_value": raw_value, "confidence": conf,
+        "agentic_value": raw_value if ag == "same" else "OTHER",
+        "il_value": il_value,
+        "raw_all_accept": True,
+        "raw_nonnull_accept": raw_value is not None,
+        "confidence_accept": (raw_value is not None and conf is not None
+                              and conf >= 0.95),
+        "crossmode_accept": raw_value is not None and ag == "same",
+        "invoiceloop_accept": il_accept,
+        "raw_deviation": raw_dev, "raw_wrong": raw_value is not None and raw_dev,
+        "il_deviation": il_dev, "il_wrong": il_value is not None and il_dev,
+    }
 
 
 class TestSummarise:
+    SLOTS = [
+        _slot("d1", "total_gross", raw_value="WANT", il_value="WANT"),
+        _slot("d1", "total_net", raw_value="BAD", il_value="BAD",
+              il_accept=False),
+        _slot("d2", "total_gross", raw_value="BAD", il_value="BAD"),
+        _slot("d2", "total_net", raw_value="WANT", il_value="WANT"),
+    ]
+
     def test_metric_math(self):
-        m = summarise(SLOTS, "invoiceloop_accept")
+        m = summarise(self.SLOTS, "invoiceloop_accept", "il_deviation")
         assert m["slots"] == 4 and m["deviations"] == 2
         assert m["accepted"] == 3
         assert m["automation_coverage"] == 0.75
@@ -49,78 +67,99 @@ class TestSummarise:
             "d2 整单放行但含静默错误 —— 残余风险的诚实展示"
 
     def test_raw_accept_all_is_the_floor(self):
-        for s in SLOTS:
-            s["_raw"] = True
-        m = summarise(SLOTS, "_raw")
+        m = summarise(self.SLOTS, "raw_all_accept", "raw_deviation")
         assert m["field_silent_error_rate"] == 0.5
         assert m["routing_recall"] == 0.0
         assert m["doc_silent_failure_rate"] == 1.0
 
+    def test_wrong_missing_split(self):
+        """错值与缺值拆报:raw 全信口径把缺值也放进交付,占静默错误的一份;
+        有值才放行口径把缺值赶进人工,静默错误率下降但复核负载上升。"""
+        slots = [
+            _slot("d1", "total_gross", raw_value="WANT", il_value="WANT"),
+            _slot("d1", "total_net", raw_value="BAD", il_value="BAD"),
+            _slot("d2", "total_gross", raw_value=None, il_value=None),
+        ]
+        m_all = summarise(slots, "raw_all_accept", "raw_deviation")
+        assert m_all["field_silent_error_rate"] == 2 / 3
+        assert m_all["silent_wrong_rate"] == 1 / 3
+        assert m_all["silent_missing_rate"] == 1 / 3, "缺值照放是 raw 全信的静默错误"
+        m_nn = summarise(slots, "raw_nonnull_accept", "raw_deviation")
+        assert m_nn["field_silent_error_rate"] == 0.5
+        assert m_nn["silent_missing_rate"] == 0.0, "缺值进人工,不再算静默放行"
+        assert m_nn["review_load"] == pytest.approx(1 / 3)
 
-class TestCrossmodeBaseline:
-    def test_missing_on_either_side_is_not_accepted(self, tmp_path):
+
+class TestIndependentScoring:
+    def test_raw_value_ignores_freeze_outcome(self, tmp_path):
+        """高级裁决三的核心:DWS 返回了错误非空值但被冻结拒绝的槽,
+        raw-nonnull 口径必须仍算「DWS 有值」—— raw 系不借 InvoiceLoop
+        的冻结结果。构造:raw 有值 BAD;矩阵行无 claim(冻结拒了)。"""
+        run_dir = tmp_path / "run"
+        run_dir.mkdir()
         raw = tmp_path / "raw"
         raw.mkdir()
-        (raw / "d1.understand.json").write_text(json.dumps(
-            {"body": {"output": {"data": {"total_gross": "100.00"}}}}))
-        (raw / "d1.agentic.json").write_text(json.dumps(
-            {"body": {"output": {"data": {"total_gross": "100.00"}}}}))
-        (raw / "d2.understand.json").write_text(json.dumps(
-            {"body": {"output": {"data": {"total_gross": "100.00"}}}}))
-        (raw / "d2.agentic.json").write_text(json.dumps(
-            {"body": {"output": {"data": {}}}}))  # agentic 缺值
+        doc = "d1"
+        (raw / f"{doc}.understand.json").write_text(json.dumps(
+            {"body": {"output": {"data": {"total_gross": "999.00"},
+                                 "metadata": {"total_gross": {"confidence": 0.95}}}}}))
+        (raw / f"{doc}.agentic.json").write_text(json.dumps(
+            {"body": {"output": {"data": {"total_gross": "999.00"}}}}))
+        (run_dir / "support_matrix.json").write_text(json.dumps({"rows": [{
+            "doc_id": doc, "field": "total_gross", "value": None,
+            "claim_id": None,  # 冻结拒绝 → InvoiceLoop 无值
+            "requires_adjudication": True}]}))
 
-        slots = [_slot("d1", "total_gross", False, True),
-                 _slot("d2", "total_gross", False, True)]
-        add_crossmode(slots, raw)
-        assert slots[0]["crossmode_accept"] is True
-        assert slots[1]["crossmode_accept"] is False, \
-            "一侧缺值不算一致 —— 没值不能算有支持"
-
-    def test_disagreement_after_normalisation_is_not_accepted(self, tmp_path):
-        raw = tmp_path / "raw"
-        raw.mkdir()
-        for mode, value in (("understand", "$1,000.00"), ("agentic", "1000.00")):
-            (raw / f"d1.{mode}.json").write_text(json.dumps(
-                {"body": {"output": {"data": {"total_gross": value}}}}))
-        (raw / "d2.understand.json").write_text(json.dumps(
-            {"body": {"output": {"data": {"total_gross": "100.00"}}}}))
-        (raw / "d2.agentic.json").write_text(json.dumps(
-            {"body": {"output": {"data": {"total_gross": "100.01"}}}}))
-
-        slots = [_slot("d1", "total_gross", False, True),
-                 _slot("d2", "total_gross", False, True)]
-        add_crossmode(slots, raw)
-        assert slots[0]["crossmode_accept"] is True, \
-            "归一化后相等($1,000.00 ≡ 1000.00)= 一致"
-        assert slots[1]["crossmode_accept"] is False
+        import heldout_metrics
+        original_truth = heldout_metrics.truth
+        heldout_metrics.truth = lambda d: {"total_gross": "100.00"}
+        import baseline_comparison
+        baseline_comparison.truth = lambda d: {"total_gross": "100.00"}
+        try:
+            slots = score_slots(run_dir, raw)
+        finally:
+            heldout_metrics.truth = original_truth
+            baseline_comparison.truth = original_truth
+        (s,) = slots
+        assert s["raw_value"] is not None, "raw 的值来自 raw 响应,不是冻结结果"
+        assert s["raw_nonnull_accept"] is True, \
+            "DWS 有值(哪怕错、哪怕被冻结拒)raw-nonnull 就放行"
+        assert s["raw_deviation"] is True
+        assert s["il_value"] is None and s["il_deviation"] is True
+        assert s["invoiceloop_accept"] is False
 
 
-class TestConfidenceBaseline:
-    def test_confidence_accept_requires_value_and_threshold(self, tmp_path):
-        raw = tmp_path / "raw"
-        raw.mkdir()
-        (raw / "d1.understand.json").write_text(json.dumps(
-            {"body": {"output": {"metadata": {
-                "total_gross": {"confidence": 0.95},
-                "total_net": {"confidence": 0.40}}}}}))
-        slots = [_slot("d1", "total_gross", False, True, 0),
-                 _slot("d1", "total_net", False, True, 1)]
-        add_confidence(slots, raw)
-        assert slots[0]["confidence_accept"] is True
-        assert slots[1]["confidence_accept"] is False, "0.40 < 0.95 不许放行"
-        slots[0]["value_present"] = False
-        add_confidence(slots, raw)
-        assert slots[0]["confidence_accept"] is False, "没值不许放行"
+class TestConfidenceTieBreak:
+    def test_tie_broken_by_doc_field_not_queue(self):
+        """同 confidence 的平局用 (doc_id, field) 固定破 —— 与 queue_idx
+        (InvoiceLoop 分诊序)无关。"""
+        slots = [
+            _slot("b2", "total_net", raw_value="BAD", il_value="BAD",
+                  conf=0.95, idx=0),
+            _slot("a1", "total_gross", raw_value="WANT", il_value="WANT",
+                  conf=0.95, idx=1),
+            _slot("c3", "total_vat", raw_value="WANT", il_value="WANT",
+                  conf=0.40, idx=2),
+        ]
+        # budget 75% → 3 槽里看 2 个:0.40 先看,然后平局里 a1 在 b2 前
+        # (按 doc_id 字母序,与 queue_idx 相反)
+        r = recall_at_budget(slots, "confidence_accept", 0.67)
+        assert r == 0.0, "前 2 槽(0.40 档 + 平局中的 a1)都不含偏差"
+        r = recall_at_budget(slots, "confidence_accept", 1.0)
+        assert r == 1.0
 
-
-class TestRecallAtBudget:
-    def test_ordering_and_recall_math(self):
-        # 4 槽,2 偏差;分诊序前 50% 含 1 偏差 → recall@50% = 0.5
-        slots = [_slot("d1", "total_gross", True, False, 0),
-                 _slot("d1", "total_net", False, False, 1),
-                 _slot("d2", "total_gross", True, True, 2),
-                 _slot("d2", "total_net", False, True, 3)]
-        assert recall_at_budget(slots, "invoiceloop_accept", 0.5) == 0.5
-        assert recall_at_budget(slots, "invoiceloop_accept", 1.0) == 1.0
-        assert recall_at_budget(slots, "invoiceloop_accept", 0.0) == 0.0
+    def test_tie_range_reports_span_when_straddled(self):
+        slots = [
+            _slot("d1", "f1", raw_value="WANT", il_value="WANT", conf=0.40),
+            _slot("d2", "f2", raw_value="BAD", il_value="BAD", conf=0.95),
+            _slot("d3", "f3", raw_value="WANT", il_value="WANT", conf=0.95),
+            _slot("d4", "f4", raw_value="WANT", il_value="WANT", conf=0.95),
+        ]
+        tr = recall_tie_range(slots, 0.5)  # 看 2 槽:0.40 + 切入 0.95 同分组
+        assert tr["straddled"] is True
+        assert tr["best"] == 1.0, "同分组内偏差先看 = 全召回"
+        assert tr["worst"] == 0.0, "同分组内偏差后看 = 零召回"
+        assert 0.0 < tr["expected"] < 1.0
+        tr2 = recall_tie_range(slots, 0.25)  # 正好切在组边界
+        assert tr2["straddled"] is False
+        assert tr2["point"] == tr2["best"] == tr2["worst"]

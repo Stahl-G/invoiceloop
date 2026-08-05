@@ -171,6 +171,59 @@ class TestProjectionIsNotAuthority:
             "语义层必须重算路由并抓住伪造"
         assert any("路由" in f for f in report["failures"])
 
+    def test_coordinated_matrix_routing_tamper_caught(self, ws):
+        """83 评残余边界(高级裁决六钉死):同步改矩阵行事实(gate_verdicts
+        伪造成全 pass)+ routing_report 对应槽改 auto_accept + 重算快照
+        + 重算 MANIFEST。旧版语义层从矩阵行取事实,此攻击能过四层;
+        现在事实从 field_ledger + gate_report + raw 重建,矩阵行与权威
+        重建不符即被抓。"""
+        import hashlib
+        import zipfile
+
+        from invoiceloop.snapshot import snapshot_id_from_components
+
+        bundle = adjudicate.build_audit_bundle(ws)
+        with zipfile.ZipFile(bundle) as zf:
+            items = {i.filename: zf.read(i.filename)
+                     for i in zf.infolist() if i.filename != "MANIFEST.sha256"}
+        m = json.loads(items["support_matrix.json"])
+        rr = json.loads(items["routing_report.json"])
+        target = next(r for r in m["rows"] if r["route"] != "auto_accept")
+        key = (target["doc_id"], target["field"])
+        # 协调篡改:矩阵事实伪造成「全部门禁通过、双源印证」
+        target["gate_verdicts"] = {g: "pass" for g in target["gate_verdicts"]}
+        target["support_strength"] = "corroborated"
+        target["slot_blocking"] = False
+        target["doc_blocked"] = False
+        for route in rr["routes"]:
+            if route["doc_id"] == key[0] and route["field"] == key[1]:
+                route["route"] = "auto_accept"
+                route["reason_codes"] = ["CLEAN"]
+        items["support_matrix.json"] = json.dumps(
+            m, indent=1, ensure_ascii=False).encode() + b"\n"
+        items["routing_report.json"] = json.dumps(
+            rr, indent=1, ensure_ascii=False).encode() + b"\n"
+        snap = json.loads(items["review_snapshot.json"])
+        snap["components"]["routing_report.json"] = hashlib.sha256(
+            items["routing_report.json"]).hexdigest()
+        snap["review_snapshot_id"] = snapshot_id_from_components(
+            snap["components"])
+        items["review_snapshot.json"] = json.dumps(
+            snap, indent=1, ensure_ascii=False).encode()
+        manifest = "".join(
+            f"{hashlib.sha256(d).hexdigest()}  {n}\n" for n, d in items.items())
+        with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as zf:
+            for name, data in items.items():
+                zf.writestr(name, data)
+            zf.writestr("MANIFEST.sha256", manifest)
+        report = adjudicate.verify_bundle(bundle)
+        assert report["layers"]["members"] is True
+        assert report["layers"]["snapshot"] is True, "攻击者同步重算了快照"
+        assert report["layers"]["semantics"] is False, \
+            "协调篡改必须被抓:矩阵事实与权威工件(field_ledger/gate_report)" \
+            "重建不符"
+        assert not report["ok"]
+
 
 class TestDecisionSemantics:
     def test_accept_requires_claim(self, ws):

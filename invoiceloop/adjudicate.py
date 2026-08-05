@@ -744,12 +744,17 @@ def verify_bundle(bundle: Path) -> dict:
                                     f"deliverable {doc_id}/{field_name} 自标"
                                     f"accepted_unbound —— 完整性已破坏")
                                 layers["semantics"] = False
-                # routing_report 重算(评审裁决三):哈希进快照只能证明
-                # 「人当时看到这份路由」,证明不了路由是策略的正确执行 ——
-                # 从包内矩阵行的事实 + 嵌入策略重算,逐槽比对
+                # routing_report 重算(评审裁决三 + 高级裁决六):事实不从
+                # support_matrix 行取(那是投影 —— 同步改 matrix+
+                # routing_report+重算快照的协调篡改能过旧版四层,83 评残余
+                # 边界),而是从包内**权威**工件重建:field_ledger(冻结
+                # 声明)+ gate_report(门禁裁决)+ evidence/raw/*.understand.
+                # json(DWS 原始响应),用与 matrix 同一个
+                # derive_document_records(单一事实源,不存在第二份推导)。
                 if "routing_report.json" in member_bytes \
                         and "support_matrix.json" in member_bytes:
                     from .fields import TIER1 as _T1
+                    from .matrix import derive_document_records, facts_of
                     from .routing import policy_digest, route_slots
 
                     rr = json.loads(member_bytes["routing_report.json"])
@@ -762,26 +767,82 @@ def verify_bundle(bundle: Path) -> dict:
                                         " policy 不符 —— 摘要是后贴的")
                         layers["semantics"] = False
                     else:
-                        matrix_doc = json.loads(member_bytes["support_matrix.json"])
-                        facts = [{
-                            "doc_id": r["doc_id"], "field": r["field"],
-                            "strength": r["support_strength"],
-                            "gate_verdicts": r["gate_verdicts"],
-                            "applicability": r["applicability"],
-                            "slot_blocking": r.get("slot_blocking", False),
-                            "doc_blocked": r.get("doc_blocked", False),
-                        } for r in matrix_doc.get("rows", [])]
+                        ledger_doc = json.loads(member_bytes["field_ledger.json"])
+                        gate_doc = json.loads(member_bytes["gate_report.json"])
+                        run_manifest = json.loads(
+                            member_bytes["run_manifest.json"])
+                        derived: dict[str, dict] = {}
+                        for doc in run_manifest.get("docs", []):
+                            raw_member = f"evidence/raw/{doc}.understand.json"
+                            udata = None
+                            if raw_member in member_bytes:
+                                body = json.loads(
+                                    member_bytes[raw_member]).get("body") or {}
+                                output = (body.get("output") or {}) \
+                                    if isinstance(body, dict) else {}
+                                data = output.get("data") \
+                                    if isinstance(output, dict) else None
+                                udata = data if isinstance(data, dict) else None
+                            for rec in derive_document_records(
+                                    doc,
+                                    doc_claims=[
+                                        c for c in ledger_doc.get("claims", [])
+                                        if c["doc_id"] == doc],
+                                    doc_rejections=[],
+                                    gate_evaluations=gate_doc.get(
+                                        "evaluations", {}).get(doc, {}),
+                                    doc_blocking_findings=[
+                                        f for f in gate_doc.get("findings", [])
+                                        if f.get("blocking")
+                                        and f.get("doc_id") == doc],
+                                    understand_data=udata):
+                                derived[f"{doc}|{rec['field']}"] = rec
+                        matrix_doc = json.loads(
+                            member_bytes["support_matrix.json"])
+                        matrix_keys = {f"{r['doc_id']}|{r['field']}"
+                                       for r in matrix_doc.get("rows", [])}
+                        stored = {f"{r['doc_id']}|{r['field']}": r
+                                  for r in rr.get("routes", [])}
+                        # ① 槽集合三路一致(裁决六:缺行/多行也是篡改)
+                        if matrix_keys != set(derived) \
+                                or set(stored) != set(derived):
+                            failures.append(
+                                "槽集合不一致(权威重建 vs 矩阵行 vs 路由报告)"
+                                " —— 缺行/多行,包被改过")
+                            layers["semantics"] = False
+                        # ② 矩阵行事实 vs 权威重建(投影篡改:改矩阵事实骗路由)
+                        for row in matrix_doc.get("rows", []):
+                            key = f"{row['doc_id']}|{row['field']}"
+                            d = derived.get(key)
+                            if d is None:
+                                continue
+                            if row.get("support_strength") != d["support_strength"] \
+                                    or row.get("applicability") != d["applicability"] \
+                                    or row.get("gate_verdicts") \
+                                    != d["gate_verdicts"] \
+                                    or bool(row.get("slot_blocking")) \
+                                    != d["slot_blocking"] \
+                                    or bool(row.get("doc_blocked")) \
+                                    != d["doc_blocked"]:
+                                failures.append(
+                                    f"矩阵行 {key} 的事实与权威工件重建不符"
+                                    " —— 投影被改过(改矩阵事实骗路由)")
+                                layers["semantics"] = False
+                        # ③ 路由 = 嵌入策略对权威事实的正确执行(逐槽含心码)
                         recomputed = {
                             f"{r['doc_id']}|{r['field']}": r
                             for r in route_slots(
-                                facts, embedded,
-                                tier_of=lambda f: "TIER1" if f in _T1 else "TIER2")
+                                [facts_of(d) for d in derived.values()],
+                                embedded,
+                                tier_of=lambda f: "TIER1" if f in _T1
+                                else "TIER2")
                         }
-                        stored = {f"{r['doc_id']}|{r['field']}": r
-                                  for r in rr.get("routes", [])}
                         for key, want in stored.items():
                             got = recomputed.get(key)
-                            if got is None or got["route"] != want["route"]:
+                            if got is None \
+                                    or got["route"] != want["route"] \
+                                    or got.get("reason_codes") \
+                                    != want.get("reason_codes"):
                                 failures.append(
                                     f"routing_report 槽 {key} 的路由"
                                     f"({want['route']})与策略重算"

@@ -142,7 +142,8 @@ class TestProposeLint:
             finding="FIND-1", prediction="review load -2pp,critical +0")
         assert cand.name == "HAR-0002"
         manifest = json.loads((cand / "manifest.json").read_text())
-        assert manifest["status"] == "candidate"
+        assert "status" not in manifest, \
+            "manifest 只记出生事实,不当第二权威(高级裁决五)"
         assert manifest["parent_harness_id"] == "HAR-0001"
 
 
@@ -167,9 +168,12 @@ class TestEvaluatePromote:
                                  rationale="残余风险接受:cohort 仅 TIER2 软触发",
                                  approved_at=DECIDED)
         assert record["to_harness_id"] == "HAR-0002"
+        assert record["action"] == "promote"
+        assert record["gate"] == "eval_reexecuted"
         assert record["basis"] == "evo_replay_only", \
             "未经未见资格集的晋升必须如实标 demo activation(评审裁决五)"
-        assert record["candidate_policy_digest"]
+        assert record["to_policy_digest"]
+        assert record["from_policy_digest"]
         pointer = json.loads((ws / "improve" / "active_harness.json").read_text())
         assert pointer["harness_id"] == "HAR-0002"
 
@@ -208,3 +212,161 @@ class TestEvaluatePromote:
                               .read_text())
         assert manifest["harness_id"] == "HAR-0002", \
             "新 run 必须能回答「哪版 harness 处理的」"
+
+
+class TestPromoteGateAttacks:
+    """83 评 P0-1 + 高级裁决四的攻击链,逐条钉死。"""
+
+    def _candidate(self, ws):
+        improve.propose(ws, cohort={"id": "C1", "field": "seller_name",
+                                    "strength": "corroborated"},
+                        finding="FIND-1", prediction="review -1 slot")
+        return ws / "harnesses" / "HAR-0002" / "routing_policy.json"
+
+    def test_promote_without_eval_refused(self, ws):
+        """评审攻击链原样复现:propose → 手改 policy → 跳过 evaluate →
+        promote 必须拒。"""
+        policy_path = self._candidate(ws)
+        policy = json.loads(policy_path.read_text())
+        policy["release_tier1_explicit"] = False
+        policy_path.write_text(json.dumps(policy, indent=1) + "\n")
+        with pytest.raises(ValueError, match="未评测"):
+            improve.promote(ws, "HAR-0002", approved_by="y", rationale="r",
+                            approved_at=DECIDED)
+
+    def test_promote_after_policy_tamper_refused(self, ws):
+        """evaluate 之后把候选政策再改一个字节(哪怕 lint 仍过),promote
+        重算比对必须抓。"""
+        policy_path = self._candidate(ws)
+        improve.evaluate(ws, "HAR-0002")
+        policy = json.loads(policy_path.read_text())
+        policy["auto_accept_cohorts"].append(
+            {"id": "C2", "field": "buyer_name", "strength": "corroborated"})
+        policy_path.write_bytes(
+            (json.dumps(policy, indent=1, ensure_ascii=False) + "\n").encode())
+        with pytest.raises(ValueError, match="逐字节不符"):
+            improve.promote(ws, "HAR-0002", approved_by="y", rationale="r",
+                            approved_at=DECIDED)
+
+    def test_promote_after_input_tamper_refused(self, ws):
+        """evaluate 之后往裁决账本追加一条(输入身份变化),promote 必须拒。"""
+        self._candidate(ws)
+        improve.evaluate(ws, "HAR-0002")
+        run_dir = ws / "runs" / "run-0001"
+        adjudicate.append_adjudication(
+            run_dir, claim_id=_claim_id(run_dir, "total_gross"), doc_id=DOC,
+            field="total_gross", decision="accept", rationale="r",
+            adjudicator="t", decided_at=DECIDED)
+        with pytest.raises(ValueError, match="逐字节不符"):
+            improve.promote(ws, "HAR-0002", approved_by="y", rationale="r",
+                            approved_at=DECIDED)
+
+    def test_promote_with_zero_coverage_refused(self, ws):
+        """零受评槽的空评测不构成晋升依据。"""
+        self._candidate(ws)
+        improve.evaluate(ws, "HAR-0002")
+        # 手搓一个零覆盖 eval(名字骗不过重算,这里直接验零覆盖分支:
+        # 先把 runs 改名让重算得到零覆盖,与存盘一致)
+        for run in (ws / "runs").glob("run-*"):
+            run.rename(run.with_name(run.name.replace("run-", "archived-")))
+        improve.evaluate(ws, "HAR-0002")  # 零 run 的 eval,落盘与重算一致
+        with pytest.raises(ValueError, match="覆盖为零"):
+            improve.promote(ws, "HAR-0002", approved_by="y", rationale="r",
+                            approved_at=DECIDED)
+
+    def test_forged_pointer_refused(self, ws):
+        """83 评攻击:伪造 active_harness.json 指向无晋升记录的 harness。"""
+        from invoiceloop import harness
+
+        (ws / "harnesses" / "HAR-9999").mkdir(parents=True)
+        (ws / "harnesses" / "HAR-9999" / "routing_policy.json").write_text(
+            (ws / "harnesses" / "HAR-0002" / "routing_policy.json").read_text()
+            if (ws / "harnesses" / "HAR-0002").exists()
+            else json.dumps(harness._builtin_policy()))
+        (ws / "improve").mkdir(exist_ok=True)
+        (ws / "improve" / "active_harness.json").write_text(json.dumps(
+            {"harness_id": "HAR-9999", "promotion_id": "PROM-0009"}))
+        with pytest.raises(RuntimeError, match="伪造的指针"):
+            harness.load_active(ws)
+
+    def test_policy_tamper_after_promote_detected(self, ws):
+        """晋升后改政策文件,链重放必须拒(指针与记录都没动也没用)。"""
+        from invoiceloop import harness
+
+        self._candidate(ws)
+        improve.evaluate(ws, "HAR-0002")
+        improve.promote(ws, "HAR-0002", approved_by="y", rationale="r",
+                        approved_at=DECIDED)
+        policy_path = ws / "harnesses" / "HAR-0002" / "routing_policy.json"
+        policy = json.loads(policy_path.read_text())
+        policy["auto_accept_cohorts"].append({"id": "EVIL"})
+        policy_path.write_text(json.dumps(policy, indent=1) + "\n")
+        with pytest.raises(RuntimeError, match="被改过"):
+            harness.load_active(ws)
+
+    def test_hash_chain_gap_detected(self, ws):
+        """删掉链中间一条记录,文件名连续性校验必须拒。"""
+        from invoiceloop import harness
+
+        self._candidate(ws)
+        improve.evaluate(ws, "HAR-0002")
+        improve.promote(ws, "HAR-0002", approved_by="y", rationale="r",
+                        approved_at=DECIDED)
+        improve.rollback(ws, to_harness_id="HAR-0001", approved_by="y",
+                         rationale="演示", approved_at=DECIDED)
+        (ws / "improve" / "promotions" / "PROM-0001.json").unlink()
+        with pytest.raises(RuntimeError, match="不连续"):
+            harness.load_active(ws)
+
+    def test_rollback_to_never_active_refused(self, ws):
+        """「回滚」到从未活跃过的 harness = 绕门晋升,必须拒。"""
+        self._candidate(ws)  # HAR-0002 存在但从未晋升
+        with pytest.raises(ValueError, match="从未在晋升链上活跃过"):
+            improve.rollback(ws, to_harness_id="HAR-0002", approved_by="y",
+                             rationale="伪装回滚", approved_at=DECIDED)
+
+
+class TestMineQualityGate:
+    """83 评问题三:mining 只用合格反馈。"""
+
+    def test_superseded_events_counted_but_not_mined(self, ws):
+        run_dir = ws / "runs" / "run-0001"
+        first = adjudicate.append_adjudication(
+            run_dir, claim_id=_claim_id(run_dir, "total_gross"), doc_id=DOC,
+            field="total_gross", decision="accept", rationale="看错了",
+            adjudicator="t", decided_at=DECIDED,
+            reason_code="ROUTING_FALSE_POSITIVE", reviewer_confidence="high")
+        adjudicate.append_adjudication(
+            run_dir, claim_id=_claim_id(run_dir, "total_gross"), doc_id=DOC,
+            field="total_gross", decision="correct", rationale="重看后修正",
+            adjudicator="t", decided_at="2026-08-05T04:00:00",
+            corrected_value="101.00",
+            supersedes_decision_id=first["decision_id"],
+            reason_code="WRONG_VALUE", reviewer_confidence="high")
+        events = improve.compile_workspace(ws)
+        by_id = {e["decision_id"]: e for e in events}
+        assert by_id[first["decision_id"]]["superseded"] is True
+        report = improve.mine(ws)
+        assert report["buckets"]["all_events"] == 2
+        assert report["buckets"]["superseded"] == 1
+        assert report["buckets"]["qualified_for_mining"] == 1, \
+            "被顶替的事件留在账本分桶里,但不进 cohort 统计"
+        cohorts = {(c["field"]): c for c in report["cohorts"]}
+        assert cohorts["total_gross"]["corrected"] == 1
+        assert cohorts["total_gross"]["accepted"] == 0, \
+            "tip 是 correct,被顶替的 accept 不许进统计"
+
+    def test_non_actionable_events_not_mined(self, ws):
+        run_dir = ws / "runs" / "run-0001"
+        for _ in range(3):
+            pass
+        adjudicate.append_adjudication(
+            run_dir, claim_id=_claim_id(run_dir, "total_gross"), doc_id=DOC,
+            field="total_gross", decision="accept", rationale="r",
+            adjudicator="t", decided_at=DECIDED,
+            reason_code="ROUTING_FALSE_POSITIVE")  # 无把握度 → 不可行动
+        report = improve.mine(ws)
+        assert report["buckets"]["all_events"] == 1
+        assert report["buckets"]["qualified_for_mining"] == 0
+        assert report["cohorts"] == [], \
+            "不可行动事件不进 cohort —— 低收益候选不许建在没把握的记录上"

@@ -36,8 +36,11 @@ def compile_events(run_dir: Path) -> list[dict]:
         harness_id = json.loads(routing_path.read_text(encoding="utf-8"))["harness_id"]
 
     events = []
+    superseded_ids = {d.get("supersedes_decision_id") for d in decisions
+                      if d.get("supersedes_decision_id")}
     for i, d in enumerate(decisions, start=1):
         row = rows.get((d["doc_id"], d["field"]), {})
+        reason_codes = row.get("reason_codes", [])
         events.append({
             "feedback_id": f"FB-{i:06d}",
             "decision_id": d["decision_id"],
@@ -49,7 +52,7 @@ def compile_events(run_dir: Path) -> list[dict]:
             "tier": "TIER1" if d["field"] in TIER1 else "TIER2",
             "claim_id": d.get("claim_id"),
             "route": row.get("route"),
-            "route_reason_codes": row.get("reason_codes", []),
+            "route_reason_codes": reason_codes,
             "support_strength": row.get("support_strength"),
             "human_action": d["decision"],
             "reason_code": d.get("reason_code"),
@@ -60,6 +63,10 @@ def compile_events(run_dir: Path) -> list[dict]:
                 d.get("reason_code")
                 and d.get("reviewer_confidence") in ("high", "medium")
                 and d["decision"] != "abstain"),
+            # 反馈质量门(83 评问题三):被后续裁决顶替的事件不是当前真相;
+            # QA 抽查槽是随机探针,不能当「这条路由规则错了」的证据
+            "superseded": d["decision_id"] in superseded_ids,
+            "random_qa": any(str(c).startswith("QA_SAMPLE:") for c in reason_codes),
             "corrected_value": d.get("corrected_value"),
             "adjudicator": d.get("adjudicator"),
             "decided_at": d.get("decided_at"),

@@ -1,12 +1,23 @@
-"""Harness 加载:active 指针 → 策略 dict + 内容寻址 digest。
+"""Harness 加载:PROM 哈希链重放 → 策略 dict + 内容寻址 digest。
+
+权威关系(83 评 P0-2 + 高级裁决五):active harness 由**晋升记录哈希链**
+(`improve/promotions/PROM-*.json`)重放决定,`active_harness.json`
+只是缓存。每条 PROM 记录带 previous_promotion_digest(前一条文件字节
+sha256)与 from/to 双侧 policy digest;重放校验:文件名序号连续、
+记录 ID 与文件名一致、from 侧 harness+digest 等于当前重放状态、
+链 digest 连续、目标 policy 文件字节与 to_policy_digest 一致。
+缓存与重放不符、或无记录却有指针 —— 一律 fail closed。
+
+哈希链能检测孤立修改与操作事故;对抗「整体重写本地历史」的锚仍在
+带外(git tag / 公布的 digest)—— 与 bundle verify 同一诚实边界。
 
 默认 = 包内 HAR-0001(保守起点,与 2026-08-05 前的内联分诊逻辑等价)。
-workspace 有 improve/active_harness.json 时以它为准 —— 那是 promotion
-的唯一产物(写它只有 `improve promote` 一个入口,必须人名 + 理由)。
+写指针只有 `improve promote`/`rollback` 一个入口(必须人名 + 理由)。
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 from importlib import resources
 from pathlib import Path
@@ -16,23 +27,111 @@ from .routing import policy_digest
 DEFAULT_HARNESS = "HAR-0001"
 
 
+def _builtin_policy_bytes() -> bytes:
+    return (resources.files("invoiceloop") / "harnesses" / DEFAULT_HARNESS
+            / "routing_policy.json").read_bytes()
+
+
 def _builtin_policy() -> dict:
-    text = (resources.files("invoiceloop")
-            / "harnesses" / DEFAULT_HARNESS / "routing_policy.json").read_text()
-    return json.loads(text)
+    return json.loads(_builtin_policy_bytes())
+
+
+def _policy_bytes(root: Path, harness_id: str) -> bytes:
+    """workspace harnesses/ 里的 policy 字节;包内默认回退到包内文件。"""
+    path = Path(root) / "harnesses" / harness_id / "routing_policy.json"
+    if path.exists():
+        return path.read_bytes()
+    if harness_id == DEFAULT_HARNESS:
+        return _builtin_policy_bytes()
+    raise RuntimeError(
+        f"harness {harness_id} 没有 routing_policy.json —— "
+        f"晋升记录指向的策略必须落盘可查")
+
+
+def _replay_promotions(root: Path) -> tuple[str, bytes, list[dict]]:
+    """重放晋升哈希链,返回 (active_id, active_policy_bytes, records)。
+
+    任一环节不符即 RuntimeError(fail closed,不许静默回退)。
+    """
+    promotions_dir = Path(root) / "improve" / "promotions"
+    files = sorted(promotions_dir.glob("PROM-*.json")) \
+        if promotions_dir.exists() else []
+    current = DEFAULT_HARNESS
+    current_bytes = _builtin_policy_bytes()
+    prev_digest: str | None = None
+    records: list[dict] = []
+    for i, path in enumerate(files, start=1):
+        if path.stem != f"PROM-{i:04d}":
+            raise RuntimeError(
+                f"晋升记录文件名不连续:{path.name}(期望 PROM-{i:04d}.json)"
+                f" —— 链被插删,拒绝加载")
+        rec = json.loads(path.read_text(encoding="utf-8"))
+        if rec.get("promotion_id") != path.stem:
+            raise RuntimeError(
+                f"{path.name}:记录内 promotion_id={rec.get('promotion_id')}"
+                f" 与文件名不符 —— 拒绝加载")
+        if rec.get("previous_promotion_digest") != prev_digest:
+            raise RuntimeError(
+                f"{path.name}:previous_promotion_digest 与上一条文件字节不符"
+                f" —— 哈希链断裂,拒绝加载")
+        if rec.get("from_harness_id") != current:
+            raise RuntimeError(
+                f"{path.name}:from={rec.get('from_harness_id')},重放到这里 "
+                f"active 是 {current} —— 链断裂,拒绝加载")
+        from_sha = hashlib.sha256(current_bytes).hexdigest()
+        if rec.get("from_policy_digest") != from_sha:
+            raise RuntimeError(
+                f"{path.name}:from_policy_digest 与 {current} 的实际字节不符"
+                f" —— 政策文件被改过,拒绝加载")
+        target_bytes = _policy_bytes(root, rec["to_harness_id"])
+        if rec.get("to_policy_digest") != hashlib.sha256(target_bytes).hexdigest():
+            raise RuntimeError(
+                f"{path.name}:目标 {rec['to_harness_id']} 的 policy 字节与记录"
+                f"不符 —— 晋升后政策被改过,拒绝加载")
+        records.append(rec)
+        current = rec["to_harness_id"]
+        current_bytes = target_bytes
+        prev_digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    return current, current_bytes, records
 
 
 def load_active(root: Path | None = None) -> dict:
-    """{harness_id, policy, policy_digest}。root = workspace/语料根。"""
+    """{harness_id, policy, policy_digest, policy_sha256}。
+
+    root = workspace/语料根。policy_digest 是 canonical JSON 的内容寻址
+    (进执行指纹);policy_sha256 是文件字节 sha256(晋升链绑定用)。
+    """
     if root is not None:
-        pointer = Path(root) / "improve" / "active_harness.json"
+        root = Path(root)
+        active_id, active_bytes, records = _replay_promotions(root)
+        pointer = root / "improve" / "active_harness.json"
         if pointer.exists():
             rec = json.loads(pointer.read_text(encoding="utf-8"))
-            policy_path = (Path(root) / "harnesses" / rec["harness_id"]
-                           / "routing_policy.json")
-            policy = json.loads(policy_path.read_text(encoding="utf-8"))
-            return {"harness_id": rec["harness_id"], "policy": policy,
-                    "policy_digest": policy_digest(policy)}
-    policy = _builtin_policy()
+            if not records:
+                raise RuntimeError(
+                    "存在 active_harness.json 指针但没有任何晋升记录 —— "
+                    "指针是缓存不是权威,伪造的指针拒绝加载"
+                    "(要换 harness 走 improve promote/rollback)")
+            last = records[-1]
+            last_digest = hashlib.sha256(
+                (root / "improve" / "promotions"
+                 / f"{last['promotion_id']}.json").read_bytes()).hexdigest()
+            if rec.get("harness_id") != active_id \
+                    or rec.get("promotion_id") != last["promotion_id"] \
+                    or rec.get("promotion_digest") != last_digest:
+                raise RuntimeError(
+                    "active_harness.json 与晋升链重放结果不一致 —— "
+                    "指针是缓存不是权威,被手改过的指针拒绝加载")
+        elif records:
+            raise RuntimeError(
+                "有晋升记录但缺 active_harness.json 缓存 —— "
+                "状态不完整,拒绝猜测(重新 promote 或删 promotions/)")
+        policy = json.loads(active_bytes)
+        return {"harness_id": active_id, "policy": policy,
+                "policy_digest": policy_digest(policy),
+                "policy_sha256": hashlib.sha256(active_bytes).hexdigest()}
+    raw = _builtin_policy_bytes()
+    policy = json.loads(raw)
     return {"harness_id": DEFAULT_HARNESS, "policy": policy,
-            "policy_digest": policy_digest(policy)}
+            "policy_digest": policy_digest(policy),
+            "policy_sha256": hashlib.sha256(raw).hexdigest()}
