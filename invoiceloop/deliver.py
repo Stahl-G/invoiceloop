@@ -28,6 +28,13 @@ def build_deliverable(run_dir: Path) -> dict:
     """run 目录 → 最终交付投影。确定性:同工件同账本,任何机器重算同字节。"""
     run_dir = Path(run_dir)
     matrix = json.loads((run_dir / "support_matrix.json").read_text(encoding="utf-8"))
+    gate_report = json.loads((run_dir / "gate_report.json").read_text(encoding="utf-8"))
+    blocking_by_doc: dict[str, list[str]] = {}
+    for f in gate_report["findings"]:
+        # 只收文档级阻断(field=None:OCR 缺失、响应缺失、门禁异常 ——
+        # 机检基础设施没跑);字段级阻断是每槽的正常路由,人已逐槽裁过
+        if f["blocking"] and f.get("field") is None:
+            blocking_by_doc.setdefault(f["doc_id"], []).append(f["gate_id"])
     snapshot_id = load_or_derive_snapshot(run_dir)["review_snapshot_id"]
     slots = project(load_decisions(run_dir))
 
@@ -77,6 +84,11 @@ def build_deliverable(run_dir: Path) -> dict:
             doc["status"] = "pending"
         else:
             doc["status"] = "released"
+        # 带阻断发现(如独立 OCR 缺失)的文档即使全部人裁完毕,放行也必须
+        # 带说明 —— 机检没跑过这件事不许在交付物里消失
+        caveats = blocking_by_doc.get(doc_id)
+        if caveats and doc["status"] == "released":
+            doc["release_caveats"] = sorted(set(caveats))
 
     by_status: dict[str, int] = {}
     for doc in docs.values():

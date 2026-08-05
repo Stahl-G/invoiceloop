@@ -136,3 +136,22 @@ class TestProjection:
             assert "deliverable.json" in zf.namelist()
         report = adjudicate.verify_bundle(bundle)
         assert report["ok"], report["failures"]
+
+    def test_release_with_blocking_findings_carries_caveats(self, ws):
+        """OCR 受阻的文档全部人裁完毕可以放行,但机检没跑过必须随交付物走。"""
+        (ws.parent.parent / "ocr" / f"{DOC}.json").unlink()
+        ocr.load_ocr.cache_clear()  # 不清缓存,run-0002 会用 run-0001 读过的 OCR
+        ocr.doc_tokens.cache_clear()
+        out2 = ws.parent.parent / "runs" / "run-0002"
+        pipeline_run([DOC], out2, include_vision=False, out_of_calibration=True)
+        d0 = deliver.build_deliverable(out2)
+        for field, f in d0["docs"][DOC]["fields"].items():
+            if f["status"] in ("pending", "pending_tier1"):
+                adjudicate.append_adjudication(
+                    out2, claim_id=None, doc_id=DOC, field=field,
+                    decision="accept", rationale="r", adjudicator="t",
+                    decided_at=DECIDED)
+        doc = deliver.build_deliverable(out2)["docs"][DOC]
+        assert doc["status"] == "released"
+        assert "independent_ocr" in doc["release_caveats"], \
+            "机检没跑过的放行不许看起来和机检全过的放行一样"
