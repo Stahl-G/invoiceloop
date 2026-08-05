@@ -82,6 +82,30 @@ def _main() -> None:
     p_hoe.add_argument("--workspace", type=Path, required=True)
     p_hoe.add_argument("--budget", type=float, default=6000.0)
 
+    p_imp = sub.add_parser("improve", help="改进控制面(v0.2 收窄版,全确定性零模型)")
+    imp_sub = p_imp.add_subparsers(dest="improve_command", required=True)
+    p_im = imp_sub.add_parser("mine", help="cohort 统计:找高频复核零修正")
+    p_im.add_argument("--workspace", type=Path, required=True)
+    p_ip = imp_sub.add_parser("propose", help="生成候选 harness(只加一条 cohort)")
+    p_ip.add_argument("--workspace", type=Path, required=True)
+    p_ip.add_argument("--cohort-id", required=True)
+    p_ip.add_argument("--field", default=None)
+    p_ip.add_argument("--tier", default=None, choices=["TIER1", "TIER2"])
+    p_ip.add_argument("--strength", default=None,
+                      choices=["unsupported", "single_source", "corroborated"])
+    p_ip.add_argument("--finding", required=True, help="来源 finding id")
+    p_ip.add_argument("--prediction", required=True,
+                      help="预测合同:预计改什么指标、可能伤害什么")
+    p_ie = imp_sub.add_parser("evaluate", help="反事实重路由,与现状并排")
+    p_ie.add_argument("--workspace", type=Path, required=True)
+    p_ie.add_argument("--candidate", required=True)
+    p_pr = imp_sub.add_parser("promote", help="人工晋升(唯一写 active 的入口)")
+    p_pr.add_argument("--workspace", type=Path, required=True)
+    p_pr.add_argument("--candidate", required=True)
+    p_pr.add_argument("--approved-by", required=True)
+    p_pr.add_argument("--rationale", required=True)
+    p_pr.add_argument("--approved-at", required=True, help="ISO 时间,由人给出")
+
     args = parser.parse_args()
 
     if args.command == "doctor":
@@ -200,6 +224,37 @@ def _main() -> None:
             heldout.cmd_plan(args.workspace, args.n)
         else:
             heldout.cmd_extract(args.workspace, budget=args.budget)
+    elif args.command == "improve":
+        from . import improve
+
+        if args.improve_command == "mine":
+            report = improve.mine(args.workspace)
+            print(json.dumps({"events": report["events"],
+                              "cohorts": len(report["cohorts"]),
+                              "low_yield_candidates": report["low_yield_candidates"],
+                              "report": str(args.workspace / "improve" / "mine_report.json")},
+                             ensure_ascii=False, indent=1))
+        elif args.improve_command == "propose":
+            cohort = {"id": args.cohort_id}
+            if args.field:
+                cohort["field"] = args.field
+            if args.tier:
+                cohort["tier"] = args.tier
+            if args.strength:
+                cohort["strength"] = args.strength
+            cand = improve.propose(args.workspace, cohort=cohort,
+                                   finding=args.finding,
+                                   prediction=args.prediction)
+            print(f"候选已建:{cand}(status=candidate,未生效)")
+        elif args.improve_command == "evaluate":
+            result = improve.evaluate(args.workspace, args.candidate)
+            print(json.dumps(result, ensure_ascii=False, indent=1))
+        else:  # promote
+            record = improve.promote(
+                args.workspace, args.candidate,
+                approved_by=args.approved_by, rationale=args.rationale,
+                approved_at=args.approved_at)
+            print(json.dumps(record, ensure_ascii=False, indent=1))
 
 
 def main() -> None:

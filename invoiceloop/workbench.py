@@ -65,6 +65,7 @@ _T = {
         "confirm_absent": "Confirm absent", "not_applicable": "N/A",
         "corrected_ph": "corrected value",
         "rationale_ph": "Issue / rationale (required) — write down what's wrong",
+        "reason_code_label": "Reason code (optional, feeds the improvement loop):",
         "adjudicator_ph": "reviewer name",
         "issue_chips": ["matches the page", "wrong value", "wrong location",
                         "illegible", "label-convention conflict", "not on page", "other"],
@@ -155,6 +156,7 @@ _T = {
         "confirm_absent": "确认缺失", "not_applicable": "不适用",
         "corrected_ph": "修正值",
         "rationale_ph": "发现的问题 / 理由(必填)—— 把问题直接写在这里",
+        "reason_code_label": "原因码(可选,喂给改进循环):",
         "adjudicator_ph": "裁决人",
         "issue_chips": ["与页面一致", "值不对", "位置不对", "看不清", "口径冲突", "页面上没有", "其他"],
         "accept_preset": "与页面一致",
@@ -744,6 +746,10 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
             f'<button type="button" class="wb-issue-chip" data-text="{_esc(c)}">{_esc(c)}</button>'
             for c in _T[lang]["issue_chips"]
         )
+        from .feedback import REASON_CODES
+
+        reason_options = ('<option value=""></option>' + "".join(
+            f'<option value="{c}">{c}</option>' for c in REASON_CODES))
         return f"""<div class="wb-decide">{''.join(notes)}
 <form class="decide" method="post" action="/decide"
  data-accept-preset="{_esc(_t(lang, 'accept_preset'))}">
@@ -759,6 +765,8 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 <textarea class="wb-rationale" name="rationale" rows="2" required
  placeholder="{_esc(_t(lang, 'rationale_ph'))}"></textarea>
 <div class="wb-issue-chips">{chips}</div>
+<div class="wb-decide-row"><label class="wb-label">{_esc(_t(lang, 'reason_code_label'))}
+<select name="reason_code" class="wb-reason">{reason_options}</select></label></div>
 <div class="wb-decide-row">
 <input class="wb-adjudicator" type="text" name="adjudicator" required
  placeholder="{_esc(_t(lang, 'adjudicator_ph'))}" value="{_esc(adjudicator)}">
@@ -1086,6 +1094,7 @@ class _Handler(BaseHTTPRequestHandler):
             adjudicator=adjudicator,
             decided_at=decided_at,
             supersedes_decision_id=form.get("supersedes", [""])[0] or None,
+            reason_code=form.get("reason_code", [""])[0] or None,
         )
         notice = "recorded" if result["panel_refreshed"] else "recorded_stale"
         cookies = [("wb_adjudicator", adjudicator)]

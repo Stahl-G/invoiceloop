@@ -74,12 +74,21 @@ def append_adjudication(
     decided_at: str,
     corrected_value: str | None = None,
     supersedes_decision_id: str | None = None,
+    reason_code: str | None = None,
 ) -> dict:
     """追加一条裁决并 fsync。时间由调用方注入 —— 工件本身不读墙钟(可复算)。
 
     校验失败 → ValueError,一行都不写;写成功就是写成功(调用方做渲染,
-    渲染失败不回滚这里)。
+    渲染失败不回滚这里)。reason_code 可选(v0.2 反馈平面):人给,
+    系统不代填;给了必须在最小心码集内。
     """
+    run_dir = Path(run_dir)
+    if reason_code is not None:
+        from .feedback import REASON_CODES
+
+        if reason_code not in REASON_CODES:
+            raise ValueError(
+                f"reason_code {reason_code!r} 不在最小心码集 {REASON_CODES} 内")
     run_dir = Path(run_dir)
     if decision not in DECISIONS:
         raise ValueError(f"decision 必须是 {DECISIONS} 之一,收到 {decision!r}")
@@ -203,6 +212,8 @@ def append_adjudication(
                 "decided_at": decided_at,
                 "supersedes_decision_id": supersedes_decision_id,
             }
+            if reason_code is not None:
+                entry["reason_code"] = reason_code
             with (run_dir / "adjudication_ledger.jsonl").open("a", encoding="utf-8") as fh:
                 fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
                 fh.flush()
