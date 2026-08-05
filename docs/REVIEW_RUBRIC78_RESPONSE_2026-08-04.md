@@ -17,6 +17,13 @@
 TIER1 进入运行时策略 + 整单放行/阻断 + 裁决后最终 JSON/CSV 导出。
 改分诊口径、引入「整单放行」新概念 —— 与 C8 同级,先设计后实现。
 
+**→ 已实现(用户 2026-08-04 批准设计,dc501b0)**:`deliver.py` 纯投影
+deliverable.json —— 每槽最终值(correct→修正值 / accept→声明值 / reject→null /
+abstain→未决)+ 整单 released/pending/blocked;**TIER1 在放行层而非分诊层**:
+印证的关键字段也必须显式裁决才放行,分诊口径与校准数字零漂移。
+workbench 交付页有每文档状态与下载;bundle 带上 deliverable(可选成员,
+旧 run 不阻断);9 条测试钉死,含「裁决后 render 同步刷新」「弃权不许放行」。
+
 ## 用户决策项(不变)
 
 P0 资格书面确认(决定是否参赛的前提)、视频(rubric 给了分镜脚本,
