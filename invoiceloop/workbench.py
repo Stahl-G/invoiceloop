@@ -93,6 +93,10 @@ _T = {
         "why_gate_warn": "gate warning: {gates}",
         "why_qa": "random QA probe watching the auto-release policy — machine "
                   "checks all passed; a glance and “value is right” is enough",
+        "why_absent_qa": "expected-absent field spot-check — confirm the value "
+                         "is truly not on the page (one click if so)",
+        "quick_absent": "✓ not on the page — confirm absent & next",
+        "quick_absent_rationale": "checked the page — value is not there",
         "quick_draft_rationale": "confirmed on page: rejected draft value is "
                                  "correct (binding failed, human vouches)",
         "vision_suggest": "Vision suggestion",
@@ -218,6 +222,10 @@ _T = {
         "why_gate_warn": "门禁警告:{gates}",
         "why_qa": "随机抽检 —— 盯着自动放行政策的探针;机检全过,"
                   "扫一眼点「原值正确」即可,不用细审",
+        "why_absent_qa": "预期缺失字段的抽检 —— 确认页面上真没有即可,"
+                         "没有就点「确认缺失」一键过",
+        "quick_absent": "✓ 页面上没有 —— 确认缺失,下一条",
+        "quick_absent_rationale": "看过页面,确实没有这个值",
         "quick_draft_rationale": "页面上确认被拒草稿的值正确(绑定失败,人证成立)",
         "vision_suggest": "读图建议",
         "vision_agree": "{a}/{n} 读者一致",
@@ -888,6 +896,12 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                      f'data-decision="correct" data-value="{_esc(row["value"])}" '
                      f'data-rationale="{_esc(_t(lang, "quick_draft_rationale"))}">'
                      f'{_esc(_t(lang, "quick_dws", value=row["value"]))}</button>')
+        else:
+            # 无声明且无值(预期缺失抽检等):一键确认缺失
+            quick = (f'<button type="button" class="wb-quick-ok" '
+                     f'data-decision="confirm_absent" data-value="" '
+                     f'data-rationale="{_esc(_t(lang, "quick_absent_rationale"))}">'
+                     f'{_esc(_t(lang, "quick_absent"))}</button>')
         radios = "".join(
             f'<label class="wb-radio {d}"><input type="radio" name="decision" '
             f'value="{d}" required>{_esc(_t(lang, d))}</label>'
@@ -1127,6 +1141,8 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
             key, cls, kw = "why_gate_warn", "", {"gates": gates}
         elif first.startswith("QA_SAMPLE:"):
             key, cls, kw = "why_qa", "", {}
+        elif first.startswith("EXPECTED_ABSENT:"):
+            key, cls, kw = "why_absent_qa", "", {}
         else:
             return ""
         return (f'<div class="wb-why {cls}"><b>{_esc(_t(lang, "why_queue"))}</b>'

@@ -175,3 +175,75 @@ class TestDeterministicQaSampler:
         assert r["route"] == "review"
         assert "QA_SAMPLE:C1" in r["reason_codes"], \
             "刚晋升的 cohort 首批 20% 抽检 —— rate 1.0 时全部进队列"
+
+
+class TestAbsentExpectedCohort:
+    """政策词表第二类:预期缺失(2026-08-06 HITL 实测驱动)。
+
+    美国发票无 VAT,seller_vat_id 的 confirm_absent 是重复人工 ——
+    这类「页面上没有」由 absent_expected cohort 接走:门禁记
+    expected_absent(非 pass,缺值事实照记),路由 auto_absent,
+    QA 抽样盯着缺席是否成立。HAR-0001 无此 cohort,行为不变。
+    """
+
+    def _slot(self, field="seller_vat_id", absent=True, **over):
+        verdicts = {g: "unavailable" for g in (
+            "extraction_present", "field_wellformed", "arithmetic_consistency",
+            "citation_holds", "cross_mode_agreement", "visual_corroboration")}
+        verdicts["extraction_present"] = "expected_absent" if absent else "pass"
+        s = {"doc_id": "d1", "field": field, "strength": "unsupported",
+             "gate_verdicts": verdicts, "applicability": "matches",
+             "slot_blocking": False, "doc_blocked": False}
+        s.update(over)
+        return s
+
+    def _policy(self, qa_rate=0.0):
+        return {"harness_id": "HAR-T", "release_tier1_explicit": False,
+                "absent_expected_cohorts": [
+                    {"id": "AE1", "field": "seller_vat_id"}],
+                "qa": {"seed": "t", "absent_expected_rate": qa_rate}}
+
+    def test_auto_absent_route(self):
+        from invoiceloop.routing import route_slots
+
+        routes = route_slots([self._slot()], self._policy(), tier_of=_tier)
+        (r,) = routes
+        assert r["route"] == "auto_absent"
+        assert r["reason_codes"] == ["EXPECTED_ABSENT:seller_vat_id"]
+
+    def test_qa_sample_goes_to_review(self):
+        from invoiceloop.routing import route_slots
+
+        routes = route_slots([self._slot()], self._policy(qa_rate=1.0),
+                             tier_of=_tier)
+        assert routes[0]["route"] == "review"
+        assert "QA_SAMPLE:expected_absent" in routes[0]["reason_codes"]
+
+    def test_other_fields_unaffected(self):
+        from invoiceloop.routing import route_slots
+
+        # total_gross 不在 cohort:expected_absent verdict 不会出现,
+        # 缺值仍走 fail → hard → review(验证 gates 层只改 cohort 字段)
+        s = self._slot(field="total_gross")
+        s["gate_verdicts"]["extraction_present"] = "fail"
+        routes = route_slots([s], self._policy(), tier_of=_tier)
+        assert routes[0]["route"] == "review"
+
+    def test_infra_block_still_wins(self):
+        from invoiceloop.routing import route_slots
+
+        routes = route_slots([self._slot(doc_blocked=True)],
+                             self._policy(), tier_of=_tier)
+        assert routes[0]["route"] == "block", \
+            "文档级基础设施阻断不可被预期缺失放松(硬阻断纪律)"
+
+    def test_apply_absent_expected_transform(self):
+        from invoiceloop.routing import apply_absent_expected
+
+        facts = [self._slot(absent=False)]
+        facts[0]["gate_verdicts"]["extraction_present"] = "fail"
+        out = apply_absent_expected(facts, self._policy())
+        assert out[0]["gate_verdicts"]["extraction_present"] == "expected_absent"
+        out2 = apply_absent_expected(facts, {"harness_id": "H"})
+        assert out2[0]["gate_verdicts"]["extraction_present"] == "fail", \
+            "没有 cohort 的策略不动任何事实(零行为变化)"

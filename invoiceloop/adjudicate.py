@@ -739,6 +739,32 @@ def verify_bundle(bundle: Path) -> dict:
                                         f"deliverable {doc_id}/{field_name} "
                                         f"{status} 槽不许带值")
                                     layers["semantics"] = False
+                            elif status == "policy_confirmed_absent":
+                                if fslot.get("value") is not None \
+                                        or not str(fslot.get("source") or ""
+                                                   ).startswith("policy:"):
+                                    failures.append(
+                                        f"deliverable {doc_id}/{field_name} "
+                                        f"policy_confirmed_absent 必须空值且"
+                                        f"来源是 policy: —— 政策缺失被篡改")
+                                    layers["semantics"] = False
+                            elif status in ("policy_accepted",
+                                            "unreviewed_corroborated"):
+                                # 政策/印证放行的值也必须等于冻结声明 ——
+                                # 「机器放的」不等于「可以脱离账本」
+                                slot_claim = next(
+                                    (c for c in ledger_doc.get("claims", [])
+                                     if c["doc_id"] == doc_id
+                                     and c["field"] == field_name
+                                     and c["drafted_by"] == "dws_understand"),
+                                    None)
+                                if slot_claim is None \
+                                        or fslot.get("value") \
+                                        != slot_claim.get("value"):
+                                    failures.append(
+                                        f"deliverable {doc_id}/{field_name} "
+                                        f"{status} 的值与冻结声明不符")
+                                    layers["semantics"] = False
                             elif status == "accepted_unbound":
                                 failures.append(
                                     f"deliverable {doc_id}/{field_name} 自标"

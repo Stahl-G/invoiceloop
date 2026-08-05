@@ -218,12 +218,18 @@ def run(
     if dup_groups:
         emit("cross_document_duplicates", groups=len(dup_groups),
              docs=sorted({d["doc_id"] for g in dup_groups for d in g["docs"]}))
+    from .harness import load_active
+
+    active = load_active(derisk_root())
     gate_report = gates.run_gates(
         doc_ids,
         understand=understand, agentic=agentic, vision_answers=vision_answers,
         ledger_sha256=ledger["sha256"], artifact_digest=artifact_digest,
         ocr_blocked=frozenset(d for d in doc_ids if not ocr_ok[d]),
         duplicate_groups=dup_groups,
+        absent_expected=frozenset(
+            c["field"] for c in active["policy"].get("absent_expected_cohorts", [])
+            if c.get("field")),
     )
     _write_json(out_dir / "gate_report.json", gate_report)
     emit("gates_evaluated",

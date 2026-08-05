@@ -370,3 +370,53 @@ class TestMineQualityGate:
         assert report["buckets"]["qualified_for_mining"] == 0
         assert report["cohorts"] == [], \
             "不可行动事件不进 cohort —— 低收益候选不许建在没把握的记录上"
+
+
+class TestAbsentExpectedLoop:
+    """预期缺失 cohort 的完整闭环(2026-08-06 HITL 实测驱动):
+    人反复 confirm_absent 的字段 → absent_expected cohort → 门禁记
+    expected_absent → 路由 auto_absent → 交付 policy_confirmed_absent。"""
+
+    def test_full_loop(self, ws):
+        from invoiceloop import deliver
+
+        cand = improve.propose(
+            ws, cohort={"id": "AE1", "field": "seller_vat_id"},
+            finding="FIND-AE:seller_vat_id 的确认缺失占满队列(美国发票无 VAT)",
+            prediction="seller_vat_id 缺值槽出队", kind="absent_expected")
+        result = improve.evaluate(ws, "HAR-0002")
+        assert result["review_load_candidate"] \
+            <= result["review_load_baseline"], "预期缺失只许减负载"
+        improve.promote(ws, "HAR-0002", approved_by="y",
+                        rationale="人反复确认缺失 = 预期缺失;QA 20% 盯着",
+                        approved_at=DECIDED)
+        pipeline_run([DOC], ws / "runs" / "run-0002", include_vision=False,
+                     out_of_calibration=True)
+        gate = json.loads((ws / "runs" / "run-0002" / "gate_report.json")
+                          .read_text())
+        verdict = gate["evaluations"][DOC]["seller_vat_id"]["extraction_present"]
+        assert verdict == "expected_absent", \
+            "缺值事实照记(不是 pass),后果从阻断降级"
+        finding = next(f for f in gate["findings"]
+                       if f["field"] == "seller_vat_id")
+        assert finding["blocking"] is False
+        routing = json.loads((ws / "runs" / "run-0002" / "routing_report.json")
+                             .read_text())
+        route = next(r for r in routing["routes"]
+                     if r["field"] == "seller_vat_id")
+        assert route["route"] in ("auto_absent", "review"), route
+        if route["route"] == "review":
+            assert "QA_SAMPLE:expected_absent" in route["reason_codes"], \
+                "预期缺失进人工只许是 QA 抽检"
+        d = deliver.build_deliverable(ws / "runs" / "run-0002")
+        slot = d["docs"][DOC]["fields"]["seller_vat_id"]
+        if route["route"] == "auto_absent":
+            assert slot["status"] == "policy_confirmed_absent"
+            assert slot["value"] is None
+            assert slot["source"] == "policy:HAR-0002"
+
+    def test_lint_guards_absent_whitelist(self, ws):
+        with pytest.raises(ValueError, match="白名单外特征"):
+            improve.propose(ws, cohort={"id": "AE1", "field": "seller_vat_id",
+                                        "doc_id": "046e0c49"},
+                            finding="F", prediction="p", kind="absent_expected")

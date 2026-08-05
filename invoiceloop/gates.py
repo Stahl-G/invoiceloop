@@ -181,6 +181,7 @@ def run_gates(
     artifact_digest: str,
     ocr_blocked: frozenset[str] = frozenset(),
     duplicate_groups: list[dict] | None = None,
+    absent_expected: frozenset[str] = frozenset(),
 ) -> dict:
     """门禁事务(§5.3):绑定确切工件哈希后运行;签名对不上则拒绝执行由调用方检查。
 
@@ -190,6 +191,10 @@ def run_gates(
     duplicate_groups:crossdoc.duplicate_groups 的产出 —— 跨文档查重(C8)。
     不是第七道门(六门叙事不变):它是文档集维度的检查,只在涉案文档的
     invoice_number 行盖 fail 裁决 + 记 non-blocking finding,人裁,不进错误率。
+    absent_expected:策略声明「预期缺失」的字段(改进层 absent_expected
+    cohort 的字段集,来自 policy 不是代码)—— 缺值不再是阻断发现:
+    裁决记 expected_absent,finding 降为 info 级非阻断。缺值的**事实**
+    照记(verdict 不是 pass),只是后果从「必须人裁」变成「政策确认缺失」。
     返回 gate_report:evaluations(每 doc×field×gate 的裁决)+ findings + 输入签名。
     """
     acc = GateAccumulator()
@@ -220,7 +225,8 @@ def run_gates(
             evaluations[doc_id] = per_field
             continue
         try:
-            _evaluate_doc(doc_id, u, a, vision_answers, acc, per_field)
+            _evaluate_doc(doc_id, u, a, vision_answers, acc, per_field,
+                          absent_expected=absent_expected)
         except Exception as exc:  # noqa: BLE001 —— 门禁自己出错也是阻断发现
             # 宪章四:一个门禁崩在一份文档上,不许带垮整批,也不许假装评过
             acc.add(Finding(
@@ -277,6 +283,7 @@ def _evaluate_doc(
     vision_answers: dict[str, dict[tuple[str, str], dict]],
     acc: GateAccumulator,
     per_field: dict[str, dict[str, str]],
+    absent_expected: frozenset[str] = frozenset(),
 ) -> None:
     """评估一份文档的六个门禁;异常由 run_gates 记成阻断发现。"""
     if a is None:
@@ -299,9 +306,19 @@ def _evaluate_doc(
         value = u.data.get(field_name)
         present = value is not None and str(value).strip() != ""
 
-        # ---- extraction_present(C7):缺值是阻断发现,带修复路由
+        # ---- extraction_present(C7):缺值是阻断发现,带修复路由;
+        # 策略声明为预期缺失的字段除外(absent_expected cohort,来自 policy)
         if present:
             verdicts["extraction_present"] = PASS
+        elif field_name in absent_expected:
+            verdicts["extraction_present"] = "expected_absent"
+            acc.add(Finding(
+                "extraction_present", doc_id, field_name, "info", "non_blocking",
+                "none", "策略声明的预期缺失字段(如美国发票无 VAT);"
+                        "QA 抽检盯着这批缺席是否真的成立",
+                f"doc:{doc_id}/field:{field_name}",
+                "DWS 未返回该字段的值(策略:预期缺失)",
+            ))
         else:
             verdicts["extraction_present"] = FAIL
             acc.add(Finding(
