@@ -13,8 +13,14 @@
   人工确认 = 蓝,确定性通过 = 绿,阻断 = 红,不可用 = 灰。
 
 路由契约(tests/test_workbench.py 以此为准):
-    GET  / /queue /report /upload /deliver /files/<run>/<rel> /download/<run>/audit_bundle.zip
+    GET  / /queue /adjudicate /report /upload /deliver /files/<run>/<rel> /download/<run>/audit_bundle.zip
     POST /decide /upload?filename= /ingest /bundle /verify(原始字节)
+
+/adjudicate 是 Gradescope 风格的单槽裁决页:左栏整页渲染 + bbox 高亮
+overlay(冻结绑定绿实线 / DWS 引用紫虚线),右栏判定卡 + 决策表单(与队列页
+同一套表单字段、同一个 /decide 端点),底栏按分诊序导航上一条/下一条未裁决。
+表单多带一个 hidden next=adjudicate:提交后服务器推进到队列序里下一个未裁决
+槽位;不带该字段的提交(队列页)仍跳回队列锚点 —— 两条路的裁决语义一字不差。
 """
 
 from __future__ import annotations
@@ -142,6 +148,25 @@ _T = {
         "error_title": "Blocked",
         "runs": "runs",
         "no_runs": "No runs yet — upload invoices to start.",
+        # ---- Gradescope 风格裁决页(左页面证据 / 右判定卡 / 底栏导航) ----
+        "open_adj": "Adjudicate →",
+        "page_view": "Page evidence",
+        "legend_bind": "frozen binding (span_ids)",
+        "legend_cited": "DWS citation (cited_span_ids)",
+        "no_page": "No rendered page for this document — use the evidence "
+                   "crops on the right.",
+        "prev_pending": "← previous undecided",
+        "next_pending": "next undecided →",
+        "none_pending": "no more undecided",
+        "queue_pos": "slot {x} / {n} · {y} decided",
+        "judgement": "InvoiceLoop assessment",
+        "frozen_value": "Frozen value",
+        "no_claim": "(no claim)",
+        "src_tiers": "sources",
+        "applicability": "applicability",
+        "policy_note": "Not flagged for required adjudication — if you don't "
+                       "decide, delivery exports it as policy_accepted / "
+                       "unreviewed_corroborated. Spot-checks welcome.",
     },
     "zh": {
         "brand": "InvoiceLoop 工作台",
@@ -226,6 +251,23 @@ _T = {
         "error_title": "阻断",
         "runs": "run 列表",
         "no_runs": "还没有 run —— 先上传发票。",
+        # ---- Gradescope 风格裁决页(左页面证据 / 右判定卡 / 底栏导航) ----
+        "open_adj": "去裁决 →",
+        "page_view": "页面证据",
+        "legend_bind": "冻结绑定(span_ids)",
+        "legend_cited": "DWS 引用(cited_span_ids)",
+        "no_page": "本文档没有整页渲染 —— 用右侧的证据裁剪图复核。",
+        "prev_pending": "← 上一条未裁决",
+        "next_pending": "下一条未裁决 →",
+        "none_pending": "没有未裁决的了",
+        "queue_pos": "第 {x} / {n} 条 · 已裁决 {y}",
+        "judgement": "InvoiceLoop 判定",
+        "frozen_value": "冻结值",
+        "no_claim": "(无声明)",
+        "src_tiers": "来源",
+        "applicability": "口径",
+        "policy_note": "不在必须裁决之列 —— 不裁决的话,交付时按 "
+                       "policy_accepted / 未复核印证导出。欢迎抽检。",
     },
 }
 
@@ -583,6 +625,28 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
             text += _esc(params.get("run", [""])[0])
         return text
 
+    def _gates_html(self, lang: str, row: dict) -> str:
+        """六道门禁逐项 chip,悬停一句话解释(gateinfo.tooltip 给文案)。"""
+        return "".join(
+            f'<span class="wb-gate {v}" title="{_esc(_gate_tooltip(g, v, lang))}">'
+            f'{_GATE_SHORT.get(g, (g, g))[0 if lang == "en" else 1]}:'
+            f'{_VERDICT.get(v, (v, v))[0 if lang == "en" else 1]}</span>'
+            for g, v in sorted(row["gate_verdicts"].items())
+        )
+
+    def _status_chip(self, lang: str, tip: dict | None, conflict: bool) -> str:
+        """裁决状态 chip:冲突 / 已裁决(蓝,human-confirmed)/ 待复核(灰)。"""
+        if conflict:
+            return f'<span class="wb-status conflict">{_esc(_t(lang, "conflict_note"))}</span>'
+        if tip:
+            label = _esc(_t(lang, tip["decision"]))
+            corr = (f' → “{_esc(tip["corrected_value"])}”'
+                    if tip["decision"] == "correct" else "")
+            return (f'<span class="wb-status {tip["decision"]}" '
+                    f'title="{_esc(tip["decision_id"])} · {_esc(tip["adjudicator"])} · '
+                    f'{_esc(tip["decided_at"])}">{label}{corr}</span>')
+        return f'<span class="wb-status pending">{_esc(_t(lang, "pending"))}</span>'
+
     def row_card(self, lang: str, ctx: RunCtx, row: dict, tip: dict | None,
                  adjudicator: str) -> str:
         doc, field = row["doc_id"], row["field"]
@@ -592,26 +656,13 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         anchor = f"row-{doc}-{field}"
 
         strength = row["support_strength"]
-        gates = "".join(
-            f'<span class="wb-gate {v}" title="{_esc(_gate_tooltip(g, v, lang))}">'
-            f'{_GATE_SHORT.get(g, (g, g))[0 if lang == "en" else 1]}:'
-            f'{_VERDICT.get(v, (v, v))[0 if lang == "en" else 1]}</span>'
-            for g, v in sorted(row["gate_verdicts"].items())
-        )
+        gates = self._gates_html(lang, row)
         value = row["value"]
         value_html = (f'<span class="wb-value none">{_esc(_t(lang, "no_value"))}</span>'
                       if value in (None, "") else f'<span class="wb-value">{_esc(value)}</span>')
-        if conflict:
-            status = f'<span class="wb-status conflict">{_esc(_t(lang, "conflict_note"))}</span>'
-        elif tip:
-            label = _esc(_t(lang, tip["decision"]))
-            corr = (f' → “{_esc(tip["corrected_value"])}”'
-                    if tip["decision"] == "correct" else "")
-            status = (f'<span class="wb-status {tip["decision"]}" '
-                      f'title="{_esc(tip["decision_id"])} · {_esc(tip["adjudicator"])} · '
-                      f'{_esc(tip["decided_at"])}">{label}{corr}</span>')
-        else:
-            status = f'<span class="wb-status pending">{_esc(_t(lang, "pending"))}</span>'
+        status = self._status_chip(lang, tip, conflict)
+        adj_href = (f"/adjudicate?run={_esc(ctx.name)}&doc={urllib.parse.quote(doc)}"
+                    f"&field={urllib.parse.quote(field)}&lang={lang}")
 
         label = _FIELD_LABEL[lang].get(field, field)
         task = (_t(lang, "task_no_value", label=label) if value in (None, "")
@@ -624,6 +675,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 <span class="wb-badge {strength}">{_esc(_STRENGTH_LABEL[lang][strength])}</span>
 <span class="wb-gates">{gates}</span>
 {status}
+<a class="wb-adj-link" href="{adj_href}">{_esc(_t(lang, "open_adj"))}</a>
 </div>
 <div class="wb-task">{_esc(task)}</div>
 {self._vision_suggest(lang, ctx, row)}
@@ -717,7 +769,8 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                 f"</summary>{inner}</details>")
 
     def _decide_form(self, lang: str, ctx: RunCtx, row: dict, tip: dict | None,
-                     conflict: bool, n_orphans: int, adjudicator: str) -> str:
+                     conflict: bool, n_orphans: int, adjudicator: str,
+                     next_hint: str = "") -> str:
         doc, field = row["doc_id"], row["field"]
         claim_id = ctx.claim_by_slot.get((doc, field), "")
         supersedes = tip["decision_id"] if tip else ""
@@ -750,6 +803,8 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 
         reason_options = ('<option value=""></option>' + "".join(
             f'<option value="{c}">{c}</option>' for c in REASON_CODES))
+        next_input = (f'<input type="hidden" name="next" value="{_esc(next_hint)}">'
+                      if next_hint else "")
         return f"""<div class="wb-decide">{''.join(notes)}
 <form class="decide" method="post" action="/decide"
  data-accept-preset="{_esc(_t(lang, 'accept_preset'))}">
@@ -758,7 +813,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 <input type="hidden" name="field" value="{_esc(field)}">
 <input type="hidden" name="claim_id" value="{_esc(claim_id)}">
 <input type="hidden" name="supersedes" value="{_esc(supersedes)}">
-<input type="hidden" name="lang" value="{_esc(lang)}">
+<input type="hidden" name="lang" value="{_esc(lang)}">{next_input}
 <div class="wb-decide-row">{radios}
 <input class="wb-corr" type="text" name="corrected_value"
  placeholder="{_esc(_t(lang, 'corrected_ph'))}"></div>
@@ -773,6 +828,181 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 <button type="submit" class="wb-btn" data-confirm="{_esc(_t(lang, 'confirm'))}">
 {_esc(_t(lang, 'submit'))}</button></div>
 </form></div>"""
+
+    # ---- Gradescope 风格单槽裁决页
+    @staticmethod
+    def _queue_order(ctx: RunCtx) -> list[dict]:
+        """复核队列序(分诊序):需要裁决的行在前,印证行(抽检)在后,
+        组内保矩阵原序 —— 与队列页的分节呈现严格一致,两处不许各排各的。"""
+        rows = ctx.matrix["rows"]
+        return ([r for r in rows if r["requires_adjudication"]]
+                + [r for r in rows if not r["requires_adjudication"]])
+
+    @staticmethod
+    def _decided(ctx: RunCtx, row: dict) -> bool:
+        return bool((ctx.slot(row["doc_id"], row["field"]) or {}).get("tip"))
+
+    def adjudicate_page(self, lang: str, run_dir: Path, params: dict) -> str:
+        ctx = RunCtx(run_dir)
+        doc = params.get("doc", [""])[0]
+        field = params.get("field", [""])[0]
+        row = next((r for r in ctx.matrix["rows"]
+                    if r["doc_id"] == doc and r["field"] == field), None)
+        if row is None:
+            raise _HttpError(404, f"槽位不存在:{doc}/{field}", run=ctx.name)
+        ordered = self._queue_order(ctx)
+        idx = next(i for i, r in enumerate(ordered)
+                   if r["doc_id"] == doc and r["field"] == field)
+        slot = ctx.slot(doc, field)
+        tip = slot["tip"] if slot else None
+        conflict = bool(slot and slot["conflict"])
+        orphans = [o for o in ctx.orphans
+                   if o["doc_id"] == doc and o["field"] == field]
+        adjudicator = params.get("adjudicator", [""])[0]
+        body = f"""
+<div class="wb-adj">
+<div class="wb-adj-left">{self._page_column(lang, ctx, row)}</div>
+<div class="wb-adj-right">{self._judgement_card(lang, ctx, row, tip, conflict,
+                                                 len(orphans), adjudicator)}</div>
+</div>
+{self._adj_nav(lang, ctx, ordered, idx)}
+<div class="wb-footer">{_esc(_t(lang, 'snapshot'))}={_esc(ctx.snapshot_id)}</div>"""
+        return self.page(lang, "queue", body, run_name=ctx.name,
+                         notice=self._notice(lang, params),
+                         ooc=ctx.manifest.get("out_of_calibration", False))
+
+    def _page_column(self, lang: str, ctx: RunCtx, row: dict) -> str:
+        """左栏:整页渲染 + bbox overlay(不重渲染图片,相对坐标 → CSS 百分比)。
+
+        两类框两种颜色:span_ids = 冻结绑定(机检确定性,绿实线);
+        cited_span_ids = DWS 指向(advisory,紫虚线)—— 颜色纪律与全站一致,
+        图例注明。span 落在哪页就渲染哪页;没有 span 就渲染第 1 页给人自己找。
+        """
+        doc = row["doc_id"]
+        containing = [ctx.spans_by_id[s] for s in row["span_ids"]
+                      if s in ctx.spans_by_id]
+        cited = [ctx.spans_by_id[s] for s in row.get("cited_span_ids", [])
+                 if s in ctx.spans_by_id and s not in row["span_ids"]]
+        page_nos = sorted({s["page"] for s in containing + cited
+                           if s.get("bbox_rel")}) or [1]
+        blocks = []
+        for page_no in page_nos:
+            img = ctx.dir / "pages" / f"{doc}-{page_no}.png"
+            if not img.is_file():
+                continue
+            src = f"/files/{ctx.name}/pages/{urllib.parse.quote(img.name)}"
+            overlays = []
+            for spans, cls in ((containing, "wb-hl-bind"), (cited, "wb-hl-cited")):
+                for s in spans:
+                    rect = s.get("bbox_rel")
+                    if not rect or s.get("page") != page_no:
+                        continue
+                    x0, y0, x1, y1 = rect
+                    style = (f"left:{x0 * 100:.3f}%;top:{y0 * 100:.3f}%;"
+                             f"width:{max(x1 - x0, 0.0) * 100:.3f}%;"
+                             f"height:{max(y1 - y0, 0.0) * 100:.3f}%")
+                    overlays.append(
+                        f'<div class="wb-hl {cls}" style="{style}" '
+                        f'title="{_esc(s["span_id"])} · '
+                        f'{_esc(s.get("printed_label", ""))}"></div>')
+            blocks.append(
+                f'<figure class="wb-page-wrap"><figcaption class="wb-page-cap">'
+                f'{_esc(doc[:8])} · p{page_no}</figcaption>'
+                f'<div class="wb-page-stage">'
+                f'<img class="wb-page" src="{src}" alt="{_esc(doc)} p{page_no}">'
+                f'{"".join(overlays)}</div></figure>')
+        legend_items = []
+        if containing:
+            legend_items.append(
+                f'<span class="wb-legend-item"><span class="wb-legend-swatch bind">'
+                f'</span>{_esc(_t(lang, "legend_bind"))}</span>')
+        if cited:
+            legend_items.append(
+                f'<span class="wb-legend-item"><span class="wb-legend-swatch cited">'
+                f'</span>{_esc(_t(lang, "legend_cited"))}</span>')
+        legend = (f'<div class="wb-legend">{"".join(legend_items)}</div>'
+                  if legend_items else "")
+        if not blocks:
+            return (f'<h2 class="wb-adj-colhead">{_esc(_t(lang, "page_view"))}</h2>'
+                    f'<div class="wb-banner">{_esc(_t(lang, "no_page"))}</div>')
+        return (f'<h2 class="wb-adj-colhead">{_esc(_t(lang, "page_view"))}</h2>'
+                f'{"".join(blocks)}{legend}')
+
+    def _judgement_card(self, lang: str, ctx: RunCtx, row: dict,
+                        tip: dict | None, conflict: bool, n_orphans: int,
+                        adjudicator: str) -> str:
+        """右栏判定卡:字段、冻结值(或「无声明」)、支持强度、六道门禁、
+        来源层 / 口径、状态与来源、证据与限制、决策表单(与队列页同一套)。"""
+        doc, field = row["doc_id"], row["field"]
+        claim_id = ctx.claim_by_slot.get((doc, field), "")
+        value = row["value"]
+        if not claim_id:
+            value_html = (f'<span class="wb-value none">'
+                          f'{_esc(_t(lang, "no_claim"))}</span>')
+        elif value in (None, ""):
+            value_html = (f'<span class="wb-value none">'
+                          f'{_esc(_t(lang, "no_value"))}</span>')
+        else:
+            value_html = f'<span class="wb-value">{_esc(value)}</span>'
+        strength = row["support_strength"]
+        label = _FIELD_LABEL[lang].get(field, field)
+        task = (_t(lang, "task_no_value", label=label) if value in (None, "")
+                else _t(lang, "task_with_value", label=label, value=value))
+        tiers = " · ".join(row.get("source_tiers") or []) or "—"
+        applicability = row.get("applicability") or "—"
+        policy = ""
+        if not tip and not conflict and not row["requires_adjudication"]:
+            policy = f'<div class="wb-policy">{_esc(_t(lang, "policy_note"))}</div>'
+        return f"""<div class="wb-adj-card">
+<div class="wb-row-head">
+<span class="wb-doc" title="{_esc(doc)}">{_esc(doc[:8])}</span>
+<span class="wb-field">{_esc(label)}<span class="wb-raw">{_esc(field)}</span></span>
+{self._status_chip(lang, tip, conflict)}
+</div>
+<div class="wb-task">{_esc(task)}</div>
+<div class="wb-adj-verdict">
+<h2 class="wb-adj-colhead">{_esc(_t(lang, 'judgement'))}</h2>
+<div class="wb-adj-kv"><span class="wb-adj-k">{_esc(_t(lang, 'frozen_value'))}</span>
+{value_html}</div>
+<div class="wb-adj-kv"><span class="wb-badge {strength}">{_esc(_STRENGTH_LABEL[lang][strength])}</span>
+<span class="wb-label">{_esc(_t(lang, 'src_tiers'))}: {_esc(tiers)} ·
+{_esc(_t(lang, 'applicability'))}: {_esc(applicability)}</span></div>
+<div class="wb-gates">{self._gates_html(lang, row)}</div>
+{policy}
+</div>
+{self._vision_suggest(lang, ctx, row)}
+{self._evidence(lang, ctx, row)}
+{self._decide_form(lang, ctx, row, tip, conflict, n_orphans, adjudicator,
+                   next_hint="adjudicate")}
+</div>"""
+
+    def _adj_nav(self, lang: str, ctx: RunCtx, ordered: list[dict],
+                 idx: int) -> str:
+        """底栏:上一条 / 下一条未裁决(按分诊序)+ 队列进度 + 回队列锚点。"""
+        row = ordered[idx]
+        doc, field = row["doc_id"], row["field"]
+        prev_r = next((r for r in reversed(ordered[:idx])
+                       if not self._decided(ctx, r)), None)
+        next_r = next((r for r in ordered[idx + 1:]
+                       if not self._decided(ctx, r)), None)
+        decided = sum(1 for r in ordered if self._decided(ctx, r))
+
+        def _btn(target: dict | None, key: str) -> str:
+            if target is None:
+                return (f'<span class="wb-nav-btn disabled">'
+                        f'{_esc(_t(lang, "none_pending"))}</span>')
+            href = (f"/adjudicate?run={_esc(ctx.name)}"
+                    f"&doc={urllib.parse.quote(target['doc_id'])}"
+                    f"&field={urllib.parse.quote(target['field'])}&lang={lang}")
+            return f'<a class="wb-nav-btn" href="{href}">{_esc(_t(lang, key))}</a>'
+
+        back = (f"/queue?run={_esc(ctx.name)}&lang={lang}"
+                f"#row-{urllib.parse.quote(doc)}-{urllib.parse.quote(field)}")
+        progress = _esc(_t(lang, "queue_pos", x=idx + 1, n=len(ordered), y=decided))
+        return (f'<div class="wb-adj-nav">{_btn(prev_r, "prev_pending")}'
+                f'<span class="wb-adj-progress">{progress} · '
+                f'<a href="{back}">{_esc(_t(lang, "back"))}</a></span>'
+                f'{_btn(next_r, "next_pending")}</div>')
 
     # ---- 交付报告
     def report_page(self, lang: str, run_dir: Path, params: dict) -> str:
@@ -1016,6 +1246,11 @@ class _Handler(BaseHTTPRequestHandler):
             if method == "GET" and path == "/report":
                 run = self._require_run(params)
                 return self._html(200, self.bench.report_page(lang, run, params), set_cookies)
+            if method == "GET" and path == "/adjudicate":
+                params.setdefault("adjudicator", [self._adjudicator()])
+                run = self._require_run(params)
+                return self._html(200, self.bench.adjudicate_page(lang, run, params),
+                                  set_cookies)
             if method == "GET" and path == "/upload":
                 import os
                 return self._html(200, self.bench.upload_page(
@@ -1098,8 +1333,30 @@ class _Handler(BaseHTTPRequestHandler):
         )
         notice = "recorded" if result["panel_refreshed"] else "recorded_stale"
         cookies = [("wb_adjudicator", adjudicator)]
-        anchor = f"#row-{form.get('doc', [''])[0]}-{form.get('field', [''])[0]}"
-        self._redirect(f"/queue?run={run_name}&lang={lang}&notice={notice}{anchor}", cookies)
+        if form.get("next", [""])[0] == "adjudicate":
+            # 裁决页提交:推进到分诊序里的下一个未裁决槽位;没有了就回队列。
+            # 裁决本身一字未差 —— 只是落点不同(Gradescope 式流水作业)
+            loc = self._next_adjudicate_url(
+                run, form.get("doc", [""])[0], form.get("field", [""])[0],
+                lang, notice)
+        else:
+            anchor = f"#row-{form.get('doc', [''])[0]}-{form.get('field', [''])[0]}"
+            loc = f"/queue?run={run_name}&lang={lang}&notice={notice}{anchor}"
+        self._redirect(loc, cookies)
+
+    def _next_adjudicate_url(self, run: Path, doc: str, field: str,
+                             lang: str, notice: str) -> str:
+        ctx = RunCtx(run)
+        ordered = Workbench._queue_order(ctx)
+        idx = next((i for i, r in enumerate(ordered)
+                    if r["doc_id"] == doc and r["field"] == field), -1)
+        following = ordered[idx + 1:] if idx >= 0 else ordered
+        nxt = next((r for r in following if not Workbench._decided(ctx, r)), None)
+        if nxt is None:
+            return f"/queue?run={ctx.name}&lang={lang}&notice={notice}"
+        return (f"/adjudicate?run={ctx.name}&doc={urllib.parse.quote(nxt['doc_id'])}"
+                f"&field={urllib.parse.quote(nxt['field'])}&lang={lang}"
+                f"&notice={notice}")
 
     def _upload(self, params: dict) -> None:
         filename = Path(params.get("filename", [""])[0]).name

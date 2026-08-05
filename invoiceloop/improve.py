@@ -136,6 +136,39 @@ def lint_policy(parent: dict, candidate: dict) -> list[str]:
     return violations
 
 
+def _scaffold_candidate(workspace: Path, candidate: dict, *,
+                        finding: str, prediction: str,
+                        provenance: str) -> Path:
+    """写 harnesses/HAR-NNNN/{routing_policy,manifest}.json。返回候选目录。"""
+    from .harness import load_active
+
+    workspace = Path(workspace)
+    active = load_active(workspace)
+    harnesses = workspace / "harnesses"
+    existing = sorted(p.name for p in harnesses.glob("HAR-*")) \
+        if harnesses.exists() else []
+    # 包内 HAR-0001 不在 workspace 里,也算已占用
+    seq = max([int(h.split("-")[1]) for h in existing] + [1]) + 1
+    cand_id = f"HAR-{seq:04d}"
+    cand_dir = harnesses / cand_id
+    cand_dir.mkdir(parents=True)
+    candidate["harness_id"] = cand_id
+    candidate["version"] = active["policy"].get("version", 1) + 1
+    (cand_dir / "routing_policy.json").write_text(
+        json.dumps(candidate, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    (cand_dir / "manifest.json").write_text(json.dumps({
+        "harness_id": cand_id,
+        "parent_harness_id": active["harness_id"],
+        "provenance": provenance,
+        "created_from_findings": [finding],
+        "prediction": prediction,
+        "policy_digest": policy_digest(candidate),
+        # manifest 只记出生事实,创建后不可改(高级裁决五):active/rollback
+        # 状态全部从 PROM 链投影,这里没有 status 字段 —— 不当第二权威
+    }, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    return cand_dir
+
+
 def propose(workspace: Path, *, cohort: dict, finding: str,
             prediction: str) -> Path:
     """从 active 策略派生候选 harness(只加一条 cohort)。返回候选目录。"""
@@ -150,29 +183,24 @@ def propose(workspace: Path, *, cohort: dict, finding: str,
     violations = lint_policy(parent, candidate)
     if violations:
         raise ValueError(f"候选 diff 审查未过:{violations}")
+    return _scaffold_candidate(workspace, candidate, finding=finding,
+                               prediction=prediction,
+                               provenance="machine_proposed")
 
-    harnesses = workspace / "harnesses"
-    existing = sorted(p.name for p in harnesses.glob("HAR-*")) \
-        if harnesses.exists() else []
-    # 包内 HAR-0001 不在 workspace 里,也算已占用
-    seq = max([int(h.split("-")[1]) for h in existing] + [1]) + 1
-    cand_id = f"HAR-{seq:04d}"
-    cand_dir = harnesses / cand_id
-    cand_dir.mkdir(parents=True)
-    candidate["harness_id"] = cand_id
-    candidate["version"] = parent.get("version", 1) + 1
-    (cand_dir / "routing_policy.json").write_text(
-        json.dumps(candidate, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
-    (cand_dir / "manifest.json").write_text(json.dumps({
-        "harness_id": cand_id,
-        "parent_harness_id": active["harness_id"],
-        "created_from_findings": [finding],
-        "prediction": prediction,
-        "policy_digest": policy_digest(candidate),
-        # manifest 只记出生事实,创建后不可改(高级裁决五):active/rollback
-        # 状态全部从 PROM 链投影,这里没有 status 字段 —— 不当第二权威
-    }, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
-    return cand_dir
+
+def register_policy(workspace: Path, *, overrides: dict, finding: str,
+                    prediction: str) -> Path:
+    """人类署名候选:owner 决策直接给出政策覆盖(如放行规则),不走 cohort
+    白名单 —— lint 防的是机器提议越界;人类候选的约束是署名 + promote 的
+    评测重算门(两者一个不少)。provenance=human_authored 写进出生事实。"""
+    from .harness import load_active
+
+    workspace = Path(workspace)
+    active = load_active(workspace)
+    candidate = {**active["policy"], **overrides}
+    return _scaffold_candidate(workspace, candidate, finding=finding,
+                               prediction=prediction,
+                               provenance="human_authored")
 
 
 # ------------------------------------------------------------------ evaluate
@@ -228,9 +256,12 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
                         / "routing_policy.json")
     cand_policy_bytes = cand_policy_path.read_bytes()
     cand_policy = json.loads(cand_policy_bytes)
-    violations = lint_policy(active["policy"], cand_policy)
-    if violations:
-        raise ValueError(f"候选 diff 审查未过:{violations}")
+    cand_manifest = json.loads(
+        (cand_policy_path.parent / "manifest.json").read_text(encoding="utf-8"))
+    if cand_manifest.get("provenance") != "human_authored":
+        violations = lint_policy(active["policy"], cand_policy)
+        if violations:
+            raise ValueError(f"候选 diff 审查未过:{violations}")
 
     runs = sorted((workspace / "runs").glob("run-*"))
     comparisons = []
@@ -410,11 +441,14 @@ def promote(workspace: Path, candidate_id: str, *, approved_by: str,
     if not evaluation["runs"] or not evaluation["evaluated_slots"]:
         raise ValueError(
             "评测覆盖为零(没有有效 run / 没有受评槽)—— 空评测不构成晋升依据")
-    violations = lint_policy(active["policy"], cand_policy)
-    if violations:
-        raise ValueError(f"候选 diff 审查未过:{violations}")
-    # manifest 是出生事实(创建后不可改):身份与谱系必须与文件一致
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("provenance") != "human_authored":
+        # 机器提议的候选:cohort 白名单 lint 是硬边界;人类署名候选的
+        # 约束是署名 + 上面的评测重算门(一个不少)
+        violations = lint_policy(active["policy"], cand_policy)
+        if violations:
+            raise ValueError(f"候选 diff 审查未过:{violations}")
+    # manifest 是出生事实(创建后不可改):身份与谱系必须与文件一致
     if manifest.get("harness_id") != candidate_id:
         raise ValueError("manifest 的 harness_id 与目录名不符 —— 候选身份存疑")
     if manifest.get("parent_harness_id") != active["harness_id"]:

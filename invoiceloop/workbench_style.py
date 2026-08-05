@@ -816,4 +816,165 @@ a:hover { text-decoration: underline; }
     font-size: 13.5px;
     color: var(--wb-ink-soft);
 }
+
+/* ==========================================================================
+   Gradescope 风格裁决页:左整页证据 / 右判定卡 / 底栏导航
+   ========================================================================== */
+.wb-adj {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: 18px;
+    align-items: start;
+    margin-top: 14px;
+}
+.wb-adj-left, .wb-adj-right { min-width: 0; }
+.wb-adj-colhead {
+    font-family: var(--wb-font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--wb-faint);
+    margin: 0 0 10px;
+}
+.wb-adj-card {
+    background: var(--wb-surface);
+    border: 1px solid var(--wb-line-soft);
+    border-radius: var(--wb-radius);
+    box-shadow: var(--wb-shadow);
+    padding: 18px 22px;
+}
+.wb-adj-verdict {
+    border: 1px solid var(--wb-line-soft);
+    border-radius: var(--wb-radius-sm);
+    background: var(--wb-paper);
+    padding: 12px 14px;
+    margin: 10px 0;
+}
+.wb-adj-kv {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px 12px;
+    margin: 6px 0;
+}
+.wb-adj-k {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--wb-muted);
+}
+/* 策略放行提示:紫 wash —— 机器策略不是人工裁决,也不是确定性通过 */
+.wb-policy {
+    border: 1px solid var(--wb-advisory-line);
+    background: var(--wb-advisory-wash);
+    color: var(--wb-advisory);
+    border-radius: var(--wb-radius-sm);
+    padding: 9px 13px;
+    font-size: 12.5px;
+    margin: 8px 0 0;
+}
+
+/* 左栏:整页渲染 + bbox overlay(相对坐标 → CSS 百分比,不重渲染图片) */
+.wb-page-wrap { margin: 0 0 14px; }
+.wb-page-cap {
+    font-family: var(--wb-font-mono);
+    font-size: 11.5px;
+    color: var(--wb-muted);
+    margin-bottom: 5px;
+}
+.wb-page-stage {
+    position: relative;
+    border: 1px solid var(--wb-line);
+    border-radius: var(--wb-radius-sm);
+    overflow: hidden;
+    background: var(--wb-surface);
+    line-height: 0;  /* img 基线缝隙 */
+}
+.wb-page { display: block; width: 100%; height: auto; }
+/* 高亮框:对比要足(投影可见)—— 3px 描边 + 半透明填充 + 外描影。
+   冻结绑定 = 确定性机检结果 → 绿实线;DWS 引用 = advisory → 紫虚线。 */
+.wb-hl { position: absolute; border-radius: 2px; }
+.wb-hl-bind {
+    border: 3px solid var(--wb-pass);
+    background: rgba(44, 122, 75, 0.18);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.65);
+}
+.wb-hl-cited {
+    border: 3px dashed var(--wb-advisory);
+    background: rgba(109, 75, 196, 0.20);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.65);
+}
+.wb-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    font-size: 12px;
+    color: var(--wb-muted);
+}
+.wb-legend-swatch {
+    display: inline-block;
+    width: 16px;
+    height: 11px;
+    margin-right: 6px;
+    vertical-align: -1px;
+    border-radius: 2px;
+}
+.wb-legend-swatch.bind {
+    border: 3px solid var(--wb-pass);
+    background: rgba(44, 122, 75, 0.18);
+}
+.wb-legend-swatch.cited {
+    border: 3px dashed var(--wb-advisory);
+    background: rgba(109, 75, 196, 0.20);
+}
+
+/* 底栏:上一条 / 下一条未裁决 + 进度,sticky 贴底 */
+.wb-adj-nav {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    background: var(--wb-paper);
+    border-top: 1px solid var(--wb-line-soft);
+    padding: 12px 2px;
+    margin-top: 18px;
+}
+.wb-nav-btn {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--wb-action);
+    background: var(--wb-surface);
+    border: 1px solid var(--wb-action-line);
+    border-radius: 8px;
+    padding: 8px 16px;
+    white-space: nowrap;
+    text-decoration: none;
+}
+.wb-nav-btn:hover { border-color: var(--wb-action); text-decoration: none; }
+.wb-nav-btn.disabled {
+    color: var(--wb-faint);
+    border-color: var(--wb-line-soft);
+    background: transparent;
+    cursor: default;
+}
+.wb-adj-progress { font-size: 13px; color: var(--wb-muted); }
+
+/* 队列行上的裁决页入口 */
+.wb-adj-link {
+    margin-left: auto;
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+    .wb-adj { grid-template-columns: 1fr; }
+    .wb-adj-nav { flex-wrap: wrap; }
+}
+@media print {
+    .wb-adj-nav, .wb-adj-link { display: none; }
+}
 """

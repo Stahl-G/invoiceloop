@@ -619,3 +619,155 @@ class TestVisionSuggest:
             "读图值原样进 HTML 就是 XSS —— data-value 与显示值都必须转义"
         assert "&lt;script&gt;" in text, \
             "转义后的值必须真的渲染出来,否则这条断言守的是一块没有输出的页面"
+
+
+# ---------------------------------------------------- Gradescope 风格裁决页(契约,先测试后实现)
+
+def _queue_order(workspace: Path) -> list[dict]:
+    """分诊序:需要裁决在前、印证行在后,组内保矩阵原序(与 workbench 同序)。"""
+    rows = json.loads(
+        (workspace / "runs" / RUN / "support_matrix.json").read_text())["rows"]
+    return ([r for r in rows if r["requires_adjudication"]]
+            + [r for r in rows if not r["requires_adjudication"]])
+
+
+def _inject_spans(workspace: Path) -> None:
+    """给 total_gross 行造两类 span(冻结绑定 + DWS 引用)与一页假渲染图,
+    让 overlay 有东西可画 —— fixture 的 DWS 记录本来不带 source_bboxes。"""
+    run = workspace / "runs" / RUN
+    reg = json.loads((run / "evidence_span_registry.json").read_text())
+    reg.append({"span_id": "ES-T001", "doc_id": DOC, "field": "total_gross",
+                "page": 1, "bbox_rel": [0.10, 0.20, 0.30, 0.35],
+                "ocr_text": "Total 100.00", "printed_label": "Total",
+                "source": "dws_source_bbox", "crop": None})
+    reg.append({"span_id": "ES-T002", "doc_id": DOC, "field": "total_gross",
+                "page": 1, "bbox_rel": [0.40, 0.50, 0.60, 0.65],
+                "ocr_text": "100.00", "printed_label": "Total",
+                "source": "dws_source_bbox", "crop": None})
+    (run / "evidence_span_registry.json").write_text(
+        json.dumps(reg), encoding="utf-8")
+    matrix = json.loads((run / "support_matrix.json").read_text())
+    for row in matrix["rows"]:
+        if row["doc_id"] == DOC and row["field"] == "total_gross":
+            row["span_ids"] = ["ES-T001"]
+            row["cited_span_ids"] = ["ES-T002"]
+    (run / "support_matrix.json").write_text(
+        json.dumps(matrix), encoding="utf-8")
+    (run / "pages").mkdir(exist_ok=True)
+    (run / "pages" / f"{DOC}-1.png").write_bytes(b"\x89PNG fake")
+
+
+class TestAdjudicatePage:
+    """/adjudicate 单槽裁决页:左整页 + overlay,右判定卡 + 表单,底栏导航。
+
+    钉死的契约(布局可演进,这些不许松):
+    - 决策表单与队列页同一套字段名、同一个 /decide 端点 —— 裁决语义唯一;
+    - span bbox 以绝对定位 overlay div 呈现,不重渲染图片;
+    - 冻结绑定(span_ids)与 DWS 引用(cited_span_ids)两类框可区分且有图例;
+    - 底栏按分诊序导航上一条/下一条未裁决,进度是真实计数。
+    """
+
+    def test_two_column_structure_and_same_form_contract(self, workspace, server):
+        status, _, text = _req(
+            server, "GET", f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross")
+        assert status == 200
+        assert 'class="wb-adj"' in text, "双栏容器必须在"
+        assert "wb-adj-left" in text and "wb-adj-right" in text
+        assert "wb-adj-card" in text, "右栏判定卡"
+        assert "wb-adj-nav" in text, "底栏导航"
+        assert 'action="/decide"' in text and 'name="rationale"' in text \
+            and 'name="decision"' in text and 'name="claim_id"' in text, \
+            "表单字段名与端点与队列页完全一致 —— 裁决语义唯一入口"
+        assert 'name="next" value="adjudicate"' in text, \
+            "裁决页表单带 next 标记,提交后服务器推进到下一条未裁决"
+
+    def test_overlay_divs_for_both_span_kinds(self, workspace, server):
+        _inject_spans(workspace)
+        _, _, text = _req(
+            server, "GET",
+            f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross&lang=zh")
+        assert "/files/%s/pages/%s-1.png" % (RUN, DOC) in text, \
+            "左栏引用整页渲染图(现有图片端点,不重渲染)"
+        bind = re.search(r'class="wb-hl wb-hl-bind" style="([^"]+)"', text)
+        cited = re.search(r'class="wb-hl wb-hl-cited" style="([^"]+)"', text)
+        assert bind and cited, "两类框都要画:冻结绑定 + DWS 引用"
+        assert "left:10.000%" in bind.group(1) and "top:20.000%" in bind.group(1), \
+            "相对坐标 → CSS 百分比"
+        assert "width:20.000%" in bind.group(1)
+        assert "left:40.000%" in cited.group(1)
+        assert "冻结绑定" in text and "DWS 引用" in text, "图例注明两类框"
+
+    def test_overlay_legend_english(self, workspace, server):
+        _inject_spans(workspace)
+        _, _, text = _req(
+            server, "GET",
+            f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross&lang=en")
+        assert "frozen binding (span_ids)" in text
+        assert "DWS citation (cited_span_ids)" in text
+
+    def test_nav_progress_and_prev_next(self, workspace, server):
+        ordered = _queue_order(workspace)
+        cur = ordered[1]  # 取第二条:前后都有未裁决,两个方向都测得到
+        _, _, text = _req(
+            server, "GET",
+            f"/adjudicate?run={RUN}&doc={cur['doc_id']}&field={cur['field']}"
+            f"&lang=zh")
+        assert f"第 2 / {len(ordered)} 条 · 已裁决 0" in text, \
+            "进度是真实计数:当前位次 / 总数 / 已裁决"
+        assert "上一条未裁决" in text and "下一条未裁决" in text
+        assert f"doc={ordered[0]['doc_id']}&field={ordered[0]['field']}" in text, \
+            "上一条按分诊序指向当前之前的未裁决槽位"
+        assert f"doc={ordered[2]['doc_id']}&field={ordered[2]['field']}" in text, \
+            "下一条按分诊序指向当前之后的未裁决槽位"
+        s, _, _ = _decide(server)  # 裁掉 total_gross
+        assert s == 303
+        _, _, text2 = _req(
+            server, "GET",
+            f"/adjudicate?run={RUN}&doc={cur['doc_id']}&field={cur['field']}"
+            f"&lang=zh")
+        assert "已裁决 1" in text2, "裁决后底栏进度照实加一"
+
+    def test_decide_from_adjudicate_advances_to_next_pending(
+            self, workspace, server):
+        # amount_due 是分诊序队首(需要裁决组),裁它之后必有下一条
+        status, headers, _ = _decide(server, field="amount_due",
+                                     decision="confirm_absent",
+                                     rationale="页面上确实没有",
+                                     next="adjudicate")
+        assert status == 303
+        loc = headers.get("location", "")
+        assert "notice=recorded" in loc
+        assert loc.startswith("/adjudicate?"), \
+            "裁决页提交后推进到下一条未裁决,不是跳回队列"
+        assert "field=buyer_name" in loc, "推进到分诊序里的下一条"
+        assert "field=amount_due" not in loc, "推进到的不是刚裁掉的槽位"
+        entries = _ledger(workspace)
+        assert len(entries) == 1 and entries[0]["decision"] == "confirm_absent", \
+            "推进只是落点不同,裁决本身一字未差"
+
+    def test_decide_last_pending_falls_back_to_queue(self, workspace, server):
+        # total_gross 是分诊序末尾(印证组),其后没有未裁决 → 落回队列
+        status, headers, _ = _decide(server, next="adjudicate")
+        assert status == 303
+        loc = headers.get("location", "")
+        assert loc.startswith("/queue?") and "notice=recorded" in loc
+
+    def test_decide_from_queue_still_redirects_to_queue(self, workspace, server):
+        status, headers, _ = _decide(server)
+        assert status == 303
+        assert headers.get("location", "").startswith("/queue?"), \
+            "不带 next 的提交(队列页)维持原行为:跳回队列锚点"
+
+    def test_unknown_slot_is_404_with_way_back(self, workspace, server):
+        status, _, text = _req(
+            server, "GET", f"/adjudicate?run={RUN}&doc={DOC}&field=no_such")
+        assert status == 404
+        assert f"/queue?run={RUN}" in text, "404 也要给回队列的路"
+
+    def test_no_claim_slot_shows_no_claim_and_absent_options(
+            self, workspace, server):
+        _, _, text = _req(
+            server, "GET", f"/adjudicate?run={RUN}&doc={DOC}&field=buyer_name")
+        assert "(无声明)" in text or "(no claim)" in text
+        assert 'value="confirm_absent"' in text, \
+            "无声明槽位的决策集与队列页一致:确认缺失/修正/不适用/弃权"
