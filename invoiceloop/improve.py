@@ -342,6 +342,11 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
         gate = json.loads(
             (run_dir / "gate_report.json").read_text(encoding="utf-8"))
         raw_root = Path(run_manifest.get("derisk_root") or workspace) / "raw"
+        # 预期缺失变换要作用在两层(同一策略语义,run 时由 run_gates 一次完成):
+        # verdict fail → expected_absent(apply_absent_expected)+ 对应的
+        # blocking finding 撤销(候选策略下它是 info 级非阻断)
+        absent_fields = {c.get("field") for c in
+                         (cand_policy.get("absent_expected_cohorts") or [])}
         facts = []
         for doc in run_manifest.get("docs", []):
             udata = None
@@ -354,15 +359,19 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
                 udata = data if isinstance(data, dict) else None
             from .matrix import derive_document_records, facts_of
 
+            blocking = [
+                f for f in gate.get("findings", [])
+                if f.get("blocking") and f.get("doc_id") == doc
+                and not (absent_fields
+                         and f.get("gate_id") == "extraction_present"
+                         and f.get("field") in absent_fields)]
             facts.extend(facts_of(r) for r in derive_document_records(
                 doc,
                 doc_claims=[c for c in ledger.get("claims", [])
                             if c["doc_id"] == doc],
                 doc_rejections=[],
                 gate_evaluations=gate.get("evaluations", {}).get(doc, {}),
-                doc_blocking_findings=[
-                    f for f in gate.get("findings", [])
-                    if f.get("blocking") and f.get("doc_id") == doc],
+                doc_blocking_findings=blocking,
                 understand_data=udata))
         routing_path = run_dir / "routing_report.json"
         if routing_path.exists():
@@ -379,18 +388,19 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
             }
         cand_routes = route_slots(apply_absent_expected(facts, cand_policy),
                                   cand_policy, tier_of=_tier_of)
+        auto = ("auto_accept", "auto_absent")
         relaxed = []
         for r in cand_routes:
             key = r["doc_id"] + "|" + r["field"]
-            if base_routes.get(key) != "auto_accept" and r["route"] == "auto_accept":
+            if base_routes.get(key) not in auto and r["route"] in auto:
                 relaxed.append(key)
         comparisons.append({
             **_run_input_identity(run_dir),
             "slots": len(facts),
             "baseline_review": sum(1 for v in base_routes.values()
-                                   if v != "auto_accept"),
+                                   if v not in auto),
             "candidate_review": sum(1 for r in cand_routes
-                                    if r["route"] != "auto_accept"),
+                                    if r["route"] not in auto),
             "relaxed_slots": sorted(relaxed),
         })
     total_slots = sum(c["slots"] for c in comparisons)
