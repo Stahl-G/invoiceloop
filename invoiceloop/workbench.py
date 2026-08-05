@@ -580,7 +580,7 @@ class Workbench:
     # ---- 骨架
     def page(self, lang: str, active: str, body: str, *,
              run_name: str | None = None, notice: str = "", ooc: bool = False,
-             compact: bool = False) -> str:
+             compact: bool = False, keep_params: dict | None = None) -> str:
         # 导航永远指向一个真实存在的 run:消息页/404 页不传 run,
         # 也得给人回得去的路(2026-08-03 实测:404 页只剩上传 tab,出不来)
         nav_run = run_name
@@ -603,6 +603,15 @@ class Workbench:
             tabs.append(f'<a class="wb-tab{" active" if active == "upload" else ""}" '
                         f'href="/upload?lang={lang}">{_esc(_t(lang, "upload"))}</a>')
         other = "zh" if lang == "en" else "en"
+        # 语言切换必须保留当前查询参数(run/doc/field/…),裸 ?lang= 会把
+        # 裁决页切成空槽 404(2026-08-06 用户实测)
+        if keep_params is not None:
+            q = {k: v[0] for k, v in keep_params.items()
+                 if k != "lang" and v}
+            q["lang"] = other
+            lang_href = "?" + urllib.parse.urlencode(q)
+        else:
+            lang_href = f"?lang={other}"
         notice_html = f'<div class="wb-notice">{_esc(notice)}</div>' if notice else ""
         ooc_html = f'<div class="wb-banner">{_esc(_t(lang, "ooc"))}</div>' if ooc else ""
         runs_nav = ""
@@ -623,7 +632,7 @@ class Workbench:
 <span class="wb-brand">{_esc(_t(lang, 'brand'))}</span>
 <nav class="wb-tabs">{''.join(tabs)}</nav>
 {runs_nav}
-<span class="wb-lang"><a href="?lang={other}">{"中文" if other == "zh" else "EN"}</a></span>
+<span class="wb-lang"><a href="{lang_href}">{"中文" if other == "zh" else "EN"}</a></span>
 </div></div>
 <div class="wb-thesis">{_esc(_t(lang, 'thesis'))}</div>
 {notice_html}{ooc_html}
@@ -678,7 +687,8 @@ class Workbench:
 field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__version__}</div>"""
         notice = self._notice(lang, params)
         return self.page(lang, "queue", body, run_name=ctx.name, notice=notice,
-                         ooc=ctx.manifest.get("out_of_calibration", False))
+                         ooc=ctx.manifest.get("out_of_calibration", False),
+                         keep_params=params)
 
     def _notice(self, lang: str, params: dict) -> str:
         code = params.get("notice", [""])[0]
@@ -963,7 +973,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         return self.page(lang, "queue", body, run_name=ctx.name,
                          notice=self._notice(lang, params),
                          ooc=ctx.manifest.get("out_of_calibration", False),
-                         compact=True)
+                         compact=True, keep_params=params)
 
     def _page_column(self, lang: str, ctx: RunCtx, row: dict,
                      page: int | None = None) -> str:
@@ -1185,7 +1195,8 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 <div class="wb-footer">{_esc(_t(lang, 'snapshot'))}={_esc(ctx.snapshot_id)}</div>"""
         return self.page(lang, "report", body, run_name=ctx.name,
                          notice=self._notice(lang, params),
-                         ooc=ctx.manifest.get("out_of_calibration", False))
+                         ooc=ctx.manifest.get("out_of_calibration", False),
+                         keep_params=params)
 
     # ---- 上传
     def upload_page(self, lang: str, params: dict, has_key: bool) -> str:
@@ -1260,7 +1271,8 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 <div id="wb-verify-result">{verify_html}</div>
 <div class="wb-footer">{_esc(_t(lang, 'snapshot'))}={_esc(ctx.snapshot_id)}</div>"""
         return self.page(lang, "deliver", body, run_name=ctx.name,
-                         notice=self._notice(lang, params))
+                         notice=self._notice(lang, params),
+                         keep_params=params)
 
     def verify_fragment(self, report: dict) -> str:
         if report["ok"]:

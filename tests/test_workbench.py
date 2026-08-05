@@ -839,3 +839,15 @@ class TestAdjudicatePage:
         assert "OCR" in wb._why_html("zh", row2)
         row3 = {"requires_adjudication": False, "reason_codes": ["CLEAN"]}
         assert wb._why_html("zh", row3) == "", "不在队列里的槽没有入队原因块"
+
+    def test_lang_toggle_preserves_query_params(self, workspace, server):
+        """语言切换不许丢 run/doc/field —— 裸 ?lang= 会把裁决页切成
+        空槽 404(2026-08-06 用户实测)。"""
+        _, _, text = _req(
+            server, "GET", f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross&lang=zh")
+        m = re.search(r'class="wb-lang"><a href="([^"]+)"', text)
+        assert m, "语言切换链接必须在"
+        href = m.group(1)
+        assert f"run={RUN}" in href and f"doc={DOC}" in href \
+            and "field=total_gross" in href and "lang=en" in href, \
+            f"切换链接必须保留当前槽位参数,实际:{href}"
