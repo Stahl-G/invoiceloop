@@ -824,3 +824,18 @@ class TestAdjudicatePage:
             assert 'form class="decide"' in text or "form class=\"decide\"" in text
             assert 'name="decision"' in text, \
                 "采用按钮所在页必须有可预填的裁决表单"
+
+    def test_why_block_skips_clean_placeholder(self, workspace, server):
+        """reason_codes 里 CLEAN 是占位不是原因 —— QA_SAMPLE 槽的
+        「为什么在队列里」必须说是抽检,不许因为 CLEAN 在前就不显示
+        (2026-08-06 用户实测:全绿票被问,卡片却没解释)。"""
+        from invoiceloop.workbench import Workbench
+        wb = Workbench.__new__(Workbench)
+        row = {"requires_adjudication": True,
+               "reason_codes": ["CLEAN", "QA_SAMPLE:policy_accepted_tier1"]}
+        html = wb._why_html("zh", row)
+        assert "随机抽检" in html, "CLEAN 占位不许吞掉 QA_SAMPLE 的入队原因"
+        row2 = {"requires_adjudication": True, "reason_codes": ["INFRA_BLOCKED"]}
+        assert "OCR" in wb._why_html("zh", row2)
+        row3 = {"requires_adjudication": False, "reason_codes": ["CLEAN"]}
+        assert wb._why_html("zh", row3) == "", "不在队列里的槽没有入队原因块"

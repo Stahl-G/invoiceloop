@@ -91,7 +91,8 @@ _T = {
                         "counted as an error",
         "why_gate_fail": "gate failed: {gates}",
         "why_gate_warn": "gate warning: {gates}",
-        "why_qa": "random QA sample — probe watching the auto-release policy",
+        "why_qa": "random QA probe watching the auto-release policy — machine "
+                  "checks all passed; a glance and “value is right” is enough",
         "quick_draft_rationale": "confirmed on page: rejected draft value is "
                                  "correct (binding failed, human vouches)",
         "vision_suggest": "Vision suggestion",
@@ -215,7 +216,8 @@ _T = {
                         "人来定性,不算任何错误",
         "why_gate_fail": "门禁未过:{gates}",
         "why_gate_warn": "门禁警告:{gates}",
-        "why_qa": "随机抽检 —— 盯着自动放行政策质量的探针",
+        "why_qa": "随机抽检 —— 盯着自动放行政策的探针;机检全过,"
+                  "扫一眼点「原值正确」即可,不用细审",
         "quick_draft_rationale": "页面上确认被拒草稿的值正确(绑定失败,人证成立)",
         "vision_suggest": "读图建议",
         "vision_agree": "{a}/{n} 读者一致",
@@ -1094,7 +1096,9 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         if not row.get("requires_adjudication"):
             return ""
         codes = row.get("reason_codes") or []
-        first = codes[0] if codes else ""
+        # CLEAN 只是「没毛病」的占位,不是入队原因 —— QA_SAMPLE 等真原因
+        # 常排在它后面,跳过占位找第一个实义码
+        first = next((c for c in codes if c != "CLEAN"), "")
         if first == "INFRA_BLOCKED":
             key, cls, kw = "why_infra", "blocked", {}
         elif first == "SLOT_BLOCKING":
