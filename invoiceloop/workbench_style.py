@@ -1072,4 +1072,43 @@ human-confirmed 不用绿) */
 }
 .wb-quick-ok:hover { background: var(--wb-action); color: #fff; }
 .wb-compact .wb-quick-ok { padding: 5px 12px; font-size: 12.5px; margin-bottom: 4px; }
+
+/* 页码切换(多页文档):小签,不占行高 */
+.wb-page-tabs { display: inline-flex; gap: 4px; margin-left: 10px; }
+.wb-page-tab {
+    font-family: var(--wb-font-mono);
+    font-size: 11px;
+    color: var(--wb-muted);
+    background: var(--wb-surface);
+    border: 1px solid var(--wb-line);
+    border-radius: 5px;
+    padding: 1px 8px;
+    text-decoration: none;
+}
+.wb-page-tab:hover { border-color: var(--wb-ink); text-decoration: none; }
+.wb-page-tab.active {
+    color: var(--wb-action);
+    border-color: var(--wb-action-line);
+    background: var(--wb-action-wash);
+}
+
+/* 入队原因:判定卡顶部,一眼可见;阻断级用红,其余用中性面 */
+.wb-why {
+    border: 1px solid var(--wb-line);
+    background: var(--wb-surface);
+    border-radius: var(--wb-radius-sm);
+    padding: 7px 11px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--wb-ink-soft);
+    margin: 6px 0;
+}
+.wb-why b { color: var(--wb-ink); margin-right: 8px; }
+.wb-why.blocked {
+    border-color: var(--wb-block-line);
+    background: var(--wb-block-wash);
+    color: var(--wb-block);
+}
+.wb-why.blocked b { color: var(--wb-block); }
+.wb-compact .wb-why { padding: 5px 10px; font-size: 12px; margin: 4px 0; }
 """

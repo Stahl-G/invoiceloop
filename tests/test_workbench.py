@@ -790,3 +790,37 @@ class TestAdjudicatePage:
         assert 'data-decision="correct"' in text
         assert 'data-value="10.00"' in text, "预填值 = 被拒草稿的值"
         assert "采用被拒草稿" in text
+
+    def test_multipage_doc_has_page_tabs(self, workspace, server):
+        """多页文档:页码切换签必须出现,?page=2 必须真的换页
+        (2026-08-05 用户实测:003cc916 两页,第二页够不着)。"""
+        import subprocess
+        run_dir = workspace / "runs" / RUN
+        pages = run_dir / "pages"
+        pages.mkdir(exist_ok=True)
+        # 造第二页占位(内容不限,存在性驱动页签)
+        if not (pages / f"{DOC}-1.png").exists():
+            (pages / f"{DOC}-1.png").write_bytes(b"\x89PNG")
+        (pages / f"{DOC}-2.png").write_bytes(b"\x89PNG")
+        _, _, text = _req(
+            server, "GET", f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross&lang=zh")
+        assert 'wb-page-tab' in text, "多页文档必须有页码签"
+        assert f"{DOC}-1.png" in text
+        _, _, text2 = _req(
+            server, "GET",
+            f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross&lang=zh&page=2")
+        assert f'class="wb-page" src="/files/{RUN}/pages/{DOC}-2.png"' in text2, \
+            "?page=2 左栏主图必须换到第二页"
+        assert f'class="wb-page" src="/files/{RUN}/pages/{DOC}-1.png"' not in text2
+
+    def test_adopt_button_scope_on_adjudicate_page(self, workspace, server):
+        """裁决页上的「采用建议」必须找得到同页表单(JS 作用域契约:
+        按钮在 .wb-adj-card 里,不在 .wb-row 里 —— 2026-08-05 实测
+        点了没反应,handler 只认队列页结构)。"""
+        _, _, text = _req(
+            server, "GET", f"/adjudicate?run={RUN}&doc={DOC}&field=total_net&lang=zh")
+        if "wb-vs-adopt" in text:
+            assert 'class="wb-adj-card"' in text
+            assert 'form class="decide"' in text or "form class=\"decide\"" in text
+            assert 'name="decision"' in text, \
+                "采用按钮所在页必须有可预填的裁决表单"

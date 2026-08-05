@@ -78,6 +78,20 @@ _T = {
         "accept_preset": "matches the page",
         "quick_accept": "✓ value is right — accept & next",
         "quick_draft": "✓ draft is right — adopt “{value}” & next",
+        "quick_dws": "✓ value is right — adopt DWS read “{value}” & next",
+        "why_queue": "why this is in your queue",
+        "why_infra": "independent OCR unavailable for this document — machine "
+                     "checks never ran here; “not checked” ≠ “checked clean”, "
+                     "so every slot is human-reviewed",
+        "why_slot": "blocking finding on this slot — resolve it before release",
+        "why_unsupported": "no bindable claim — look on the page; if the value "
+                           "is there, correct and enter it",
+        "why_disputed": "label-convention dispute (paper Gross/Net reads "
+                        "opposite to EN 16931) — human classifies, never "
+                        "counted as an error",
+        "why_gate_fail": "gate failed: {gates}",
+        "why_gate_warn": "gate warning: {gates}",
+        "why_qa": "random QA sample — probe watching the auto-release policy",
         "quick_draft_rationale": "confirmed on page: rejected draft value is "
                                  "correct (binding failed, human vouches)",
         "vision_suggest": "Vision suggestion",
@@ -191,6 +205,17 @@ _T = {
         "accept_preset": "与页面一致",
         "quick_accept": "✓ 原值正确 —— 接受,下一条",
         "quick_draft": "✓ 原值正确 —— 采用被拒草稿「{value}」,下一条",
+        "quick_dws": "✓ 原值正确 —— 采用 DWS 读到「{value}」,下一条",
+        "why_queue": "为什么在我的队列里",
+        "why_infra": "本文档独立 OCR 缺失/受阻,机检没覆盖它 —— 「没查过」不等于"
+                     "「查过没问题」,所以每槽都要人工",
+        "why_slot": "这一槽有阻断级发现 —— 解决之前不许放行",
+        "why_unsupported": "没有可绑定的声明值 —— 页面上找,有就「修正」补录",
+        "why_disputed": "口径争议(纸面 Gross/Net 与 EN 16931 方向相反)—— "
+                        "人来定性,不算任何错误",
+        "why_gate_fail": "门禁未过:{gates}",
+        "why_gate_warn": "门禁警告:{gates}",
+        "why_qa": "随机抽检 —— 盯着自动放行政策质量的探针",
         "quick_draft_rationale": "页面上确认被拒草稿的值正确(绑定失败,人证成立)",
         "vision_suggest": "读图建议",
         "vision_agree": "{a}/{n} 读者一致",
@@ -367,16 +392,20 @@ document.addEventListener('click', function (e) {
   // 读图「采用建议」:只预填表单 —— 人不点提交,账本一个字不进(宪章)
   var btn = e.target.closest('.wb-vs-adopt');
   if (!btn) return;
-  var row = btn.closest('.wb-row');
-  var form2 = row.querySelector('form.decide');
+  // 队列页按钮在 .wb-row 里;单槽裁决页在 .wb-adj-card 里 —— 两处都能用
+  var scope = btn.closest('.wb-row') || btn.closest('.wb-adj-card');
+  if (!scope) return;
+  var form2 = scope.querySelector('form.decide');
+  if (!form2) return;
   var value = btn.dataset.value;
   var ta2 = form2.querySelector('.wb-rationale');
   if (ta2 && !ta2.value.trim()) ta2.value = btn.dataset.rationale || '';
-  var rowValue = row.querySelector('.wb-value');
+  var rowValue = scope.querySelector('.wb-value');
   var same = rowValue && !rowValue.classList.contains('none') &&
              rowValue.textContent.trim() === value;
   var radio = form2.querySelector(
     'input[name=decision][value="' + (same ? 'accept' : 'correct') + '"]');
+  if (!radio) return;
   radio.checked = true;
   radio.dispatchEvent(new Event('change', { bubbles: true }));
   if (!same) form2.querySelector('.wb-corr').value = value;
@@ -840,6 +869,13 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                      f'data-decision="correct" data-value="{_esc(draft_value)}" '
                      f'data-rationale="{_esc(_t(lang, "quick_draft_rationale"))}">'
                      f'{_esc(_t(lang, "quick_draft", value=draft_value))}</button>')
+        elif row.get("value") not in (None, ""):
+            # 无声明也没走到冻结(如 OCR 受阻、草稿被排除),但 DWS 读到了值
+            # —— 人看页面确认后采用该值,账本记 correct + 人证理由
+            quick = (f'<button type="button" class="wb-quick-ok" '
+                     f'data-decision="correct" data-value="{_esc(row["value"])}" '
+                     f'data-rationale="{_esc(_t(lang, "quick_draft_rationale"))}">'
+                     f'{_esc(_t(lang, "quick_dws", value=row["value"]))}</button>')
         radios = "".join(
             f'<label class="wb-radio {d}"><input type="radio" name="decision" '
             f'value="{d}" required>{_esc(_t(lang, d))}</label>'
@@ -910,9 +946,13 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         orphans = [o for o in ctx.orphans
                    if o["doc_id"] == doc and o["field"] == field]
         adjudicator = params.get("adjudicator", [""])[0]
+        try:
+            page_no = int(params.get("page", [""])[0])
+        except ValueError:
+            page_no = None
         body = f"""
 <div class="wb-adj">
-<div class="wb-adj-left">{self._page_column(lang, ctx, row)}</div>
+<div class="wb-adj-left">{self._page_column(lang, ctx, row, page_no)}</div>
 <div class="wb-adj-right">{self._judgement_card(lang, ctx, row, tip, conflict,
                                                  len(orphans), adjudicator)}</div>
 </div>
@@ -923,31 +963,48 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                          ooc=ctx.manifest.get("out_of_calibration", False),
                          compact=True)
 
-    def _page_column(self, lang: str, ctx: RunCtx, row: dict) -> str:
+    def _page_column(self, lang: str, ctx: RunCtx, row: dict,
+                     page: int | None = None) -> str:
         """左栏:整页渲染 + bbox overlay(不重渲染图片,相对坐标 → CSS 百分比)。
 
         两类框两种颜色:span_ids = 冻结绑定(机检确定性,绿实线);
         cited_span_ids = DWS 指向(advisory,紫虚线)—— 颜色纪律与全站一致,
-        图例注明。span 落在哪页就渲染哪页;没有 span 就渲染第 1 页给人自己找。
+        图例注明。多页文档给页码切换(服务器端 ?page=,零 JS 依赖):
+        默认落在 span 所在页,没有 span 就第 1 页。
         """
         doc = row["doc_id"]
         containing = [ctx.spans_by_id[s] for s in row["span_ids"]
                       if s in ctx.spans_by_id]
         cited = [ctx.spans_by_id[s] for s in row.get("cited_span_ids", [])
                  if s in ctx.spans_by_id and s not in row["span_ids"]]
-        page_nos = sorted({s["page"] for s in containing + cited
-                           if s.get("bbox_rel")}) or [1]
+        pages_dir = ctx.dir / "pages"
+        available = sorted(
+            int(p.stem.rsplit("-", 1)[1])
+            for p in pages_dir.glob(f"{doc}-*.png")
+            if p.stem.rsplit("-", 1)[1].isdigit()) if pages_dir.is_dir() else []
+        span_pages = sorted({s["page"] for s in containing + cited
+                             if s.get("bbox_rel")})
+        current = page if page in available else (
+            span_pages[0] if span_pages else (available[0] if available else 1))
+        tabs = ""
+        if len(available) > 1:
+            links = []
+            for n in available:
+                cls = "wb-page-tab active" if n == current else "wb-page-tab"
+                links.append(
+                    f'<a class="{cls}" href="/adjudicate?run={_esc(ctx.name)}'
+                    f'&doc={_esc(doc)}&field={_esc(row["field"])}'
+                    f'&lang={_esc(lang)}&page={n}">p{n}</a>')
+            tabs = f'<div class="wb-page-tabs">{"".join(links)}</div>'
         blocks = []
-        for page_no in page_nos:
-            img = ctx.dir / "pages" / f"{doc}-{page_no}.png"
-            if not img.is_file():
-                continue
+        img = pages_dir / f"{doc}-{current}.png"
+        if img.is_file():
             src = f"/files/{ctx.name}/pages/{urllib.parse.quote(img.name)}"
             overlays = []
             for spans, cls in ((containing, "wb-hl-bind"), (cited, "wb-hl-cited")):
                 for s in spans:
                     rect = s.get("bbox_rel")
-                    if not rect or s.get("page") != page_no:
+                    if not rect or s.get("page") != current:
                         continue
                     x0, y0, x1, y1 = rect
                     style = (f"left:{x0 * 100:.3f}%;top:{y0 * 100:.3f}%;"
@@ -959,9 +1016,9 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                         f'{_esc(s.get("printed_label", ""))}"></div>')
             blocks.append(
                 f'<figure class="wb-page-wrap"><figcaption class="wb-page-cap">'
-                f'{_esc(doc[:8])} · p{page_no}</figcaption>'
+                f'{_esc(doc[:8])} · p{current}{tabs}</figcaption>'
                 f'<div class="wb-page-stage">'
-                f'<img class="wb-page" src="{src}" alt="{_esc(doc)} p{page_no}">'
+                f'<img class="wb-page" src="{src}" alt="{_esc(doc)} p{current}">'
                 f'{"".join(overlays)}</div></figure>')
         legend_items = []
         if containing:
@@ -1005,6 +1062,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         policy = ""
         if not tip and not conflict and not row["requires_adjudication"]:
             policy = f'<div class="wb-policy">{_esc(_t(lang, "policy_note"))}</div>'
+        why = self._why_html(lang, row)
         return f"""<div class="wb-adj-card">
 <div class="wb-row-head">
 <span class="wb-doc" title="{_esc(doc)}">{_esc(doc[:8])}</span>
@@ -1012,6 +1070,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 {self._status_chip(lang, tip, conflict)}
 </div>
 <div class="wb-task">{_esc(task)}</div>
+{why}
 <div class="wb-adj-verdict">
 <h2 class="wb-adj-colhead">{_esc(_t(lang, 'judgement'))}</h2>
 <div class="wb-adj-kv"><span class="wb-adj-k">{_esc(_t(lang, 'frozen_value'))}</span>
@@ -1027,6 +1086,37 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 {self._decide_form(lang, ctx, row, tip, conflict, n_orphans, adjudicator,
                    next_hint="adjudicate")}
 </div>"""
+
+    def _why_html(self, lang: str, row: dict) -> str:
+        """「为什么在队列里」—— 入队原因放在判定卡顶部显眼处(2026-08-05
+        用户实测:全绿 chips + 小字限制 = 以为系统让自己白审)。
+        门禁绿只代表「在 DWS 数据上自洽」,不代表独立核查覆盖过。"""
+        if not row.get("requires_adjudication"):
+            return ""
+        codes = row.get("reason_codes") or []
+        first = codes[0] if codes else ""
+        if first == "INFRA_BLOCKED":
+            key, cls, kw = "why_infra", "blocked", {}
+        elif first == "SLOT_BLOCKING":
+            key, cls, kw = "why_slot", "blocked", {}
+        elif first == "UNSUPPORTED":
+            key, cls, kw = "why_unsupported", "", {}
+        elif first == "LABEL_CONVENTION_DISPUTED":
+            key, cls, kw = "why_disputed", "", {}
+        elif first.startswith("GATE_FAIL:"):
+            gates = ", ".join(c.split(":", 1)[1] for c in codes
+                              if c.startswith("GATE_FAIL:"))
+            key, cls, kw = "why_gate_fail", "blocked", {"gates": gates}
+        elif first.startswith("GATE_WARNING:"):
+            gates = ", ".join(c.split(":", 1)[1] for c in codes
+                              if c.startswith("GATE_WARNING:"))
+            key, cls, kw = "why_gate_warn", "", {"gates": gates}
+        elif first.startswith("QA_SAMPLE:"):
+            key, cls, kw = "why_qa", "", {}
+        else:
+            return ""
+        return (f'<div class="wb-why {cls}"><b>{_esc(_t(lang, "why_queue"))}</b>'
+                f'{_esc(_t(lang, key, **kw))}</div>')
 
     def _adj_nav(self, lang: str, ctx: RunCtx, ordered: list[dict],
                  idx: int) -> str:
