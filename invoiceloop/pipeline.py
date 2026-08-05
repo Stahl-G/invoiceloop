@@ -126,7 +126,9 @@ def run(
     })
     input_manifest = snapshot.build_input_manifest(doc_ids, include_vision=include_vision)
     _write_json(out_dir / "input_manifest.json", input_manifest)
-    emit("run_started", n_docs=len(doc_ids), fingerprint=input_manifest["fingerprint"])
+    emit("run_started", n_docs=len(doc_ids),
+         fingerprint=input_manifest["fingerprint"],
+         execution_fingerprint=input_manifest["execution_fingerprint"])
 
     # ---- ② 抽取事务:工件注册 + 证据片段 + 声明图
     artifacts = evidence.register_artifacts(doc_ids)

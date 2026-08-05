@@ -53,6 +53,13 @@ def compile_events(run_dir: Path) -> list[dict]:
             "support_strength": row.get("support_strength"),
             "human_action": d["decision"],
             "reason_code": d.get("reason_code"),
+            "reviewer_confidence": d.get("reviewer_confidence"),
+            # 反馈可用性(v0.2 §5.2):只有 高/中把握 + 非弃权 + 给了心码
+            # 的事件才可作改进标签;其余是业务裁决,不是改进证据
+            "actionable": bool(
+                d.get("reason_code")
+                and d.get("reviewer_confidence") in ("high", "medium")
+                and d["decision"] != "abstain"),
             "corrected_value": d.get("corrected_value"),
             "adjudicator": d.get("adjudicator"),
             "decided_at": d.get("decided_at"),

@@ -75,12 +75,14 @@ def append_adjudication(
     corrected_value: str | None = None,
     supersedes_decision_id: str | None = None,
     reason_code: str | None = None,
+    reviewer_confidence: str | None = None,
 ) -> dict:
     """追加一条裁决并 fsync。时间由调用方注入 —— 工件本身不读墙钟(可复算)。
 
     校验失败 → ValueError,一行都不写;写成功就是写成功(调用方做渲染,
-    渲染失败不回滚这里)。reason_code 可选(v0.2 反馈平面):人给,
-    系统不代填;给了必须在最小心码集内。
+    渲染失败不回滚这里)。reason_code/reviewer_confidence 可选(v0.2 反馈
+    平面):人给,系统不代填;组合必须自洽(确认缺失的决策不能挂
+    WRONG_VALUE 之类的心码 —— 错误监督会污染 mining)。
     """
     run_dir = Path(run_dir)
     if reason_code is not None:
@@ -89,6 +91,21 @@ def append_adjudication(
         if reason_code not in REASON_CODES:
             raise ValueError(
                 f"reason_code {reason_code!r} 不在最小心码集 {REASON_CODES} 内")
+        # 组合自洽(评审裁决六):心码与决策类型不许互相矛盾
+        combo = {
+            "CONFIRMED_ABSENT": {"confirm_absent"},
+            "NOT_APPLICABLE": {"not_applicable"},
+            "WRONG_VALUE": {"correct", "reject"},
+            "ROUTING_FALSE_POSITIVE": {"accept", "confirm_absent"},
+        }
+        allowed = combo.get(reason_code)
+        if allowed is not None and decision not in allowed:
+            raise ValueError(
+                f"reason_code {reason_code} 只能搭配 {sorted(allowed)},"
+                f"收到 {decision} —— 点错的心码会把错误监督喂给 mining")
+    if reviewer_confidence is not None \
+            and reviewer_confidence not in ("high", "medium", "low"):
+        raise ValueError("reviewer_confidence 必须是 high/medium/low")
     run_dir = Path(run_dir)
     if decision not in DECISIONS:
         raise ValueError(f"decision 必须是 {DECISIONS} 之一,收到 {decision!r}")
@@ -214,6 +231,8 @@ def append_adjudication(
             }
             if reason_code is not None:
                 entry["reason_code"] = reason_code
+            if reviewer_confidence is not None:
+                entry["reviewer_confidence"] = reviewer_confidence
             with (run_dir / "adjudication_ledger.jsonl").open("a", encoding="utf-8") as fh:
                 fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
                 fh.flush()
@@ -724,6 +743,50 @@ def verify_bundle(bundle: Path) -> dict:
                                 failures.append(
                                     f"deliverable {doc_id}/{field_name} 自标"
                                     f"accepted_unbound —— 完整性已破坏")
+                                layers["semantics"] = False
+                # routing_report 重算(评审裁决三):哈希进快照只能证明
+                # 「人当时看到这份路由」,证明不了路由是策略的正确执行 ——
+                # 从包内矩阵行的事实 + 嵌入策略重算,逐槽比对
+                if "routing_report.json" in member_bytes \
+                        and "support_matrix.json" in member_bytes:
+                    from .fields import TIER1 as _T1
+                    from .routing import policy_digest, route_slots
+
+                    rr = json.loads(member_bytes["routing_report.json"])
+                    embedded = rr.get("policy")
+                    if embedded is None:
+                        failures.append("routing_report 缺嵌入 policy")
+                        layers["semantics"] = False
+                    elif policy_digest(embedded) != rr.get("policy_digest"):
+                        failures.append("routing_report 的 policy_digest 与嵌入"
+                                        " policy 不符 —— 摘要是后贴的")
+                        layers["semantics"] = False
+                    else:
+                        matrix_doc = json.loads(member_bytes["support_matrix.json"])
+                        facts = [{
+                            "doc_id": r["doc_id"], "field": r["field"],
+                            "strength": r["support_strength"],
+                            "gate_verdicts": r["gate_verdicts"],
+                            "applicability": r["applicability"],
+                            "slot_blocking": r.get("slot_blocking", False),
+                            "doc_blocked": r.get("doc_blocked", False),
+                        } for r in matrix_doc.get("rows", [])]
+                        recomputed = {
+                            f"{r['doc_id']}|{r['field']}": r
+                            for r in route_slots(
+                                facts, embedded,
+                                tier_of=lambda f: "TIER1" if f in _T1 else "TIER2")
+                        }
+                        stored = {f"{r['doc_id']}|{r['field']}": r
+                                  for r in rr.get("routes", [])}
+                        for key, want in stored.items():
+                            got = recomputed.get(key)
+                            if got is None or got["route"] != want["route"]:
+                                failures.append(
+                                    f"routing_report 槽 {key} 的路由"
+                                    f"({want['route']})与策略重算"
+                                    f"({(got or {}).get('route')})不符 —— "
+                                    f"路由不是所嵌策略的正确执行")
                                 layers["semantics"] = False
         except (json.JSONDecodeError, UnicodeDecodeError, KeyError, TypeError):
             layers["semantics"] = False

@@ -255,6 +255,8 @@ def promote(workspace: Path, candidate_id: str, *, approved_by: str,
     manifest_path = cand_dir / "manifest.json"
     if not manifest_path.exists():
         raise ValueError(f"候选 {candidate_id} 不存在({cand_dir})")
+    import hashlib
+
     from .harness import load_active
 
     active = load_active(workspace)
@@ -262,10 +264,21 @@ def promote(workspace: Path, candidate_id: str, *, approved_by: str,
     promotions_dir = improve_dir / "promotions"
     promotions_dir.mkdir(parents=True, exist_ok=True)
     seq = len(list(promotions_dir.glob("PROM-*.json"))) + 1
+    cand_policy_bytes = (cand_dir / "routing_policy.json").read_bytes()
+    eval_path = improve_dir / f"eval_{candidate_id}.json"
     record = {
         "promotion_id": f"PROM-{seq:04d}",
         "from_harness_id": active["harness_id"],
         "to_harness_id": candidate_id,
+        "candidate_policy_digest": hashlib.sha256(cand_policy_bytes).hexdigest(),
+        "baseline_policy_digest": active["policy_digest"],
+        "eval_result_digest": hashlib.sha256(eval_path.read_bytes()).hexdigest()
+        if eval_path.exists() else None,
+        # 命名诚实(评审裁决五):没有未见资格集(PROMOTION set)的晋升
+        # 只是 demo activation;「在未见数据上安全减负」不许这么声称
+        "basis": "evo_replay_only",
+        "claim_limits": "未经未见资格集评测 —— 公开口径仅限「实现了有界改进机制」,"
+                        "不得声称「在未见数据上减少人工」",
         "approved_by": approved_by.strip(),
         "approved_at": approved_at.strip(),
         "rationale": rationale.strip(),
@@ -281,3 +294,32 @@ def promote(workspace: Path, candidate_id: str, *, approved_by: str,
         {"harness_id": candidate_id, "promotion_id": record["promotion_id"]},
         indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     return record
+
+
+def rollback(workspace: Path, *, to_harness_id: str, approved_by: str,
+             rationale: str, approved_at: str) -> dict:
+    """回滚 = 新的 PROM 记录(append-only;评审裁决七:active 指针只是投影,
+    权威是晋升记录链;回滚也必须署名,不许直接改指针)。
+
+    回滚目标是包内默认(HAR-0001)时先把它物化进 workspace harnesses/,
+    promote 才有候选可读。
+    """
+    from .harness import DEFAULT_HARNESS, _builtin_policy
+
+    workspace = Path(workspace)
+    target = workspace / "harnesses" / to_harness_id
+    if not target.exists():
+        if to_harness_id != DEFAULT_HARNESS:
+            raise ValueError(f"回滚目标 {to_harness_id} 不在 workspace harnesses/")
+        target.mkdir(parents=True)
+        policy = _builtin_policy()
+        (target / "routing_policy.json").write_text(
+            json.dumps(policy, indent=1, ensure_ascii=False) + "\n",
+            encoding="utf-8")
+        (target / "manifest.json").write_text(json.dumps({
+            "harness_id": to_harness_id, "parent_harness_id": None,
+            "status": "candidate", "note": "回滚目标:包内默认策略的物化副本",
+            "policy_digest": policy_digest(policy),
+        }, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    return promote(workspace, to_harness_id, approved_by=approved_by,
+                   rationale=f"ROLLBACK:{rationale}", approved_at=approved_at)

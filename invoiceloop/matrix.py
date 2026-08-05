@@ -196,6 +196,10 @@ def build_matrix(
                 "cited_span_ids": cited_by_slot.get(slot, []),
                 "rejections": slot_rejections,
                 "blocking_findings": [f["finding_id"] for f in blocking],
+                # 阻断分级随行落盘:verify 要凭行内事实重算 routing
+                # (裁决三),光靠 blocking_findings 分不出文档级/槽位级
+                "slot_blocking": blocking_slot,
+                "doc_blocked": blocking_doc,
             })
 
     # ---- 分诊路由:策略决定哪槽要人看(P0-3)。requires 与旧内联逻辑

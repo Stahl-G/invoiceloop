@@ -47,6 +47,23 @@ def _matches_cohort(slot: dict, cohort: dict, tier_of) -> bool:
     return True
 
 
+def _qa_hit(policy: dict, doc_id: str, field: str, kind: str) -> bool:
+    """确定性 QA 抽样(评审裁决四):哈希采样,不是随机数 ——
+
+    同 seed + harness + doc + field 永远同一结果;不受遍历顺序影响;
+    seed 与 sampler 版本嵌在 policy 里,verify 可重算,「同输入同字节」不破。
+    没有采样器的 review_probability 是虚假的倾向分 —— 这个函数就是它。
+    """
+    qa = policy.get("qa") or {}
+    rate = float(qa.get(f"{kind}_rate", 0.0))
+    if rate <= 0.0:
+        return False
+    key = (f"{qa.get('seed', '')}|{policy.get('harness_id', '')}"
+           f"|{doc_id}|{field}|qa-hash-v1")
+    digest = hashlib.sha256(key.encode()).digest()
+    return int.from_bytes(digest[:8], "big") / 2**64 < rate
+
+
 def route_slots(slots: list[dict], policy: dict, *, tier_of) -> list[dict]:
     """槽位事实 → 路由决定。输入 slots 的键:
 
@@ -56,6 +73,8 @@ def route_slots(slots: list[dict], policy: dict, *, tier_of) -> list[dict]:
     输出每槽 {doc_id, field, route, reason_codes}。
     HAR-0001(auto_accept_cohorts 为空)与 matrix 原逻辑逐字节等价:
     requires_adjudication ⟺ route != "auto_accept"。
+    QA 抽样只命中两类自动放行槽:policy_accepted TIER1(5%)与
+    cohort 放松槽(首批 20%)—— HAR-0001 两者皆空,零影响。
     """
     cohorts = policy.get("auto_accept_cohorts") or []
     out = []
@@ -71,11 +90,23 @@ def route_slots(slots: list[dict], policy: dict, *, tier_of) -> list[dict]:
             cohort = next((c for c in cohorts
                            if _matches_cohort(s, c, tier_of)), None)
             if cohort is not None:
-                route = "auto_accept"
-                codes = [f"POLICY_ACCEPT:{cohort.get('id', '?')}"]
+                cid = cohort.get("id", "?")
+                if _qa_hit(policy, s["doc_id"], s["field"], "cohort_relax"):
+                    route = "review"
+                    codes = [f"POLICY_ACCEPT:{cid}", f"QA_SAMPLE:{cid}"]
+                else:
+                    route = "auto_accept"
+                    codes = [f"POLICY_ACCEPT:{cid}"]
             elif warns:
                 route = "review"
                 codes = [f"GATE_WARNING:{g}" for g in warns]
+            elif (not policy.get("release_tier1_explicit", True)
+                    and tier_of(s["field"]) == "TIER1"
+                    and _qa_hit(policy, s["doc_id"], s["field"],
+                                "policy_accepted_tier1")):
+                # 策略放行的 TIER1 槽按 5% 抽检进人工队列
+                route = "review"
+                codes = ["CLEAN", "QA_SAMPLE:policy_accepted_tier1"]
             else:
                 route, codes = "auto_accept", ["CLEAN"]
         elif s["slot_blocking"]:

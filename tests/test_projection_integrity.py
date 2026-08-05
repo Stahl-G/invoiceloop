@@ -131,6 +131,46 @@ class TestProjectionIsNotAuthority:
             "语义层必须抓住投影值与冻结声明分叉"
         assert not report["ok"]
 
+    def test_verify_recomputes_routing_report(self, ws):
+        """评审裁决三:伪造 routing_report(某槽 review→auto_accept)+
+        同步重算快照 —— 成员级与快照级全过,语义层必须抓住
+        「路由不是所嵌策略的正确执行」。"""
+        import hashlib
+        import zipfile
+
+        from invoiceloop.snapshot import snapshot_id_from_components
+
+        bundle = adjudicate.build_audit_bundle(ws)
+        with zipfile.ZipFile(bundle) as zf:
+            items = {i.filename: zf.read(i.filename)
+                     for i in zf.infolist() if i.filename != "MANIFEST.sha256"}
+        rr = json.loads(items["routing_report.json"])
+        target = next(r for r in rr["routes"] if r["route"] != "auto_accept")
+        target["route"] = "auto_accept"
+        target["reason_codes"] = ["POLICY_ACCEPT:FORGED"]
+        items["routing_report.json"] = json.dumps(
+            rr, indent=1, ensure_ascii=False).encode() + b"\n"
+        # 攻击者同步重算快照(routing_report 是快照成分)
+        snap = json.loads(items["review_snapshot.json"])
+        snap["components"]["routing_report.json"] = hashlib.sha256(
+            items["routing_report.json"]).hexdigest()
+        snap["review_snapshot_id"] = snapshot_id_from_components(
+            snap["components"])
+        items["review_snapshot.json"] = json.dumps(
+            snap, indent=1, ensure_ascii=False).encode()
+        manifest = "".join(
+            f"{hashlib.sha256(d).hexdigest()}  {n}\n" for n, d in items.items())
+        with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as zf:
+            for name, data in items.items():
+                zf.writestr(name, data)
+            zf.writestr("MANIFEST.sha256", manifest)
+        report = adjudicate.verify_bundle(bundle)
+        assert report["layers"]["members"] is True
+        assert report["layers"]["snapshot"] is True, "攻击者同步重算了快照"
+        assert report["layers"]["semantics"] is False, \
+            "语义层必须重算路由并抓住伪造"
+        assert any("路由" in f for f in report["failures"])
+
 
 class TestDecisionSemantics:
     def test_accept_requires_claim(self, ws):

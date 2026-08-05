@@ -116,3 +116,62 @@ class TestSnapshotIntegration:
             {"id": "C1", "field": "seller_name", "strength": "corroborated"}]}
         assert policy_digest(HAR1) != policy_digest(relaxed)
         assert policy_digest(HAR1) == policy_digest(dict(HAR1)), "确定性"
+
+
+class TestDeterministicQaSampler:
+    """评审裁决四:hash 抽样,确定性,不破「同输入同字节」。"""
+
+    def _policy(self, rate, **over):
+        return {**HAR1,
+                "release_tier1_explicit": False,
+                "qa": {"seed": "s", "policy_accepted_tier1_rate": rate,
+                       "cohort_relax_rate": rate},
+                **over}
+
+    def test_same_inputs_same_selection(self):
+        from invoiceloop.routing import _qa_hit
+
+        p = self._policy(0.5)
+        assert _qa_hit(p, "doc-a", "total_gross", "policy_accepted_tier1") \
+            == _qa_hit(p, "doc-a", "total_gross", "policy_accepted_tier1")
+        # 不同文档采样结果应有差异(不强求某一具体值,验证确实随输入变化)
+        results = {_qa_hit(p, f"doc-{i}", "total_gross",
+                           "policy_accepted_tier1") for i in range(20)}
+        assert len(results) == 2, "rate 0.5 下 20 个文档应既有中又有不中"
+
+    def test_rate_zero_selects_nothing(self):
+        from invoiceloop.routing import _qa_hit
+
+        p = self._policy(0.0)
+        assert not any(_qa_hit(p, f"doc-{i}", "total_gross",
+                               "policy_accepted_tier1") for i in range(50))
+
+    def test_rate_one_selects_everything(self):
+        from invoiceloop.routing import _qa_hit
+
+        p = self._policy(1.0)
+        assert all(_qa_hit(p, f"doc-{i}", "total_gross",
+                           "policy_accepted_tier1") for i in range(50))
+
+    def test_har0001_selects_nothing(self):
+        """HAR-0001:tier1_explicit=true 且 cohorts 为空 —— QA 零命中,
+        行为守恒(与旧内联判据逐字节等价)不破。"""
+        from invoiceloop.harness import load_active
+
+        policy = load_active()["policy"]
+        slots = [_slot(field="total_gross"), _slot(field="seller_name")]
+        routes = route_slots(slots, policy, tier_of=_tier)
+        assert all(not any(c.startswith("QA_SAMPLE")
+                           for c in r["reason_codes"]) for r in routes)
+
+    def test_relaxed_cohort_gets_qa_sampled(self):
+        policy = {**self._policy(1.0),
+                  "auto_accept_cohorts": [
+                      {"id": "C1", "field": "seller_name",
+                       "strength": "corroborated"}]}
+        s = _slot(field="seller_name",
+                  verdicts={"visual_corroboration": "warning"})
+        (r,) = route_slots([s], policy, tier_of=_tier)
+        assert r["route"] == "review"
+        assert "QA_SAMPLE:C1" in r["reason_codes"], \
+            "刚晋升的 cohort 首批 20% 抽检 —— rate 1.0 时全部进队列"

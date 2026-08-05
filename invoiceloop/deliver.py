@@ -55,6 +55,12 @@ def build_deliverable(run_dir: Path) -> dict:
     tier1_explicit = ((routing or {}).get("policy") or {}) \
         .get("release_tier1_explicit", True)
     harness_id = (routing or {}).get("harness_id", "HAR-0001")
+    # route/requires 以 routing_report(快照成分)为准,不以 matrix 行为准 ——
+    # matrix 是投影;改了投影行不许改变交付语义(评审裁决三)
+    routes_by_slot = {
+        (r["doc_id"], r["field"]): r["route"]
+        for r in (routing or {}).get("routes", [])
+    }
 
     docs: dict[str, dict] = {}
     for row in matrix["rows"]:
@@ -102,24 +108,30 @@ def build_deliverable(run_dir: Path) -> dict:
             else:  # abstain:人也无法判定 —— 未决,不许带着它放行
                 entry = {"value": None, "status": "abstained",
                          "source": tip["decision_id"]}
-        elif row.get("requires_adjudication", True):
-            # 缺这个键的只可能是手工构造/极旧的矩阵 —— 缺失按「需裁决」处理,
-            # 交付层的默认方向永远是让人看,不是放行
-            entry = {"value": row["value"], "status": "pending", "source": None}
-        elif row.get("route") == "auto_accept" and not tier1_explicit:
-            # 策略放行(v0.2 P0-6):系统自动接受必须显式记录为 policy_accept
-            # + 策略版本,不是伪造一条人工 accept;值仍只来自冻结 claim
-            claim = claims_by_id.get(row.get("claim_id") or "")
-            entry = {"value": claim["value"] if claim else None,
-                     "status": "policy_accepted",
-                     "source": f"policy:{harness_id}"}
-        elif field in TIER1:
-            # 印证槽也要显式裁决才放行 —— 关键字段在出口有差异(78 评 P2)
-            entry = {"value": row["value"], "status": "pending_tier1",
-                     "source": None}
         else:
-            entry = {"value": row["value"],
-                     "status": "unreviewed_corroborated", "source": None}
+            route = routes_by_slot.get((doc_id, field))
+            requires = (route != "auto_accept") if route is not None \
+                else row.get("requires_adjudication", True)
+            if requires:
+                # 缺这个键的只可能是手工构造/极旧的矩阵 —— 缺失按「需裁决」
+                # 处理,交付层的默认方向永远是让人看,不是放行
+                entry = {"value": row["value"], "status": "pending",
+                         "source": None}
+            elif route == "auto_accept" and not tier1_explicit:
+                # 策略放行(v0.2 P0-6):系统自动接受必须显式记录为
+                # policy_accept + 策略版本,不是伪造一条人工 accept;
+                # 值仍只来自冻结 claim
+                claim = claims_by_id.get(row.get("claim_id") or "")
+                entry = {"value": claim["value"] if claim else None,
+                         "status": "policy_accepted",
+                         "source": f"policy:{harness_id}"}
+            elif field in TIER1:
+                # 印证槽也要显式裁决才放行 —— 关键字段在出口有差异(78 评 P2)
+                entry = {"value": row["value"], "status": "pending_tier1",
+                         "source": None}
+            else:
+                entry = {"value": row["value"],
+                         "status": "unreviewed_corroborated", "source": None}
         doc["fields"][field] = entry
 
     for doc_id, doc in docs.items():

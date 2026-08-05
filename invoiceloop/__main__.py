@@ -105,6 +105,12 @@ def _main() -> None:
     p_pr.add_argument("--approved-by", required=True)
     p_pr.add_argument("--rationale", required=True)
     p_pr.add_argument("--approved-at", required=True, help="ISO 时间,由人给出")
+    p_rb = imp_sub.add_parser("rollback", help="回滚到既有 harness(新 PROM 记录,append-only)")
+    p_rb.add_argument("--workspace", type=Path, required=True)
+    p_rb.add_argument("--to", required=True, help="回滚目标 harness id")
+    p_rb.add_argument("--approved-by", required=True)
+    p_rb.add_argument("--rationale", required=True)
+    p_rb.add_argument("--approved-at", required=True, help="ISO 时间,由人给出")
 
     args = parser.parse_args()
 
@@ -138,7 +144,7 @@ def _main() -> None:
             # 指纹必须在 --docs/--doc-ids 截断之后算 —— 否则「5 份文档的 run」
             # 会被当成「全部文档的 run」重放
             fingerprint = snapshot.build_input_manifest(
-                doc_ids, include_vision=not args.no_vision)["fingerprint"]
+                doc_ids, include_vision=not args.no_vision)["execution_fingerprint"]
             runs_dir = args.workspace / "runs"
             if not args.new_run:
                 replayed = snapshot.find_run_by_fingerprint(runs_dir, fingerprint)
@@ -156,8 +162,8 @@ def _main() -> None:
             print(json.dumps({
                 "replayed": True,
                 "run_dir": str(replayed),
-                "note": "输入指纹与既有 run 一致,重放不重跑;"
-                        "输入变化或 --new-run 才开新 run(旧 run 永远原样保留)",
+                "note": "执行指纹(输入+代码+harness)与既有 run 一致,重放不重跑;"
+                        "输入或 harness 变化或 --new-run 才开新 run(旧 run 永远原样保留)",
             }, ensure_ascii=False, indent=1))
             return
         paths = run(doc_ids, out_dir, render_crops=args.crops,
@@ -249,6 +255,12 @@ def _main() -> None:
         elif args.improve_command == "evaluate":
             result = improve.evaluate(args.workspace, args.candidate)
             print(json.dumps(result, ensure_ascii=False, indent=1))
+        elif args.improve_command == "rollback":
+            record = improve.rollback(
+                args.workspace, to_harness_id=args.to,
+                approved_by=args.approved_by, rationale=args.rationale,
+                approved_at=args.approved_at)
+            print(json.dumps(record, ensure_ascii=False, indent=1))
         else:  # promote
             record = improve.promote(
                 args.workspace, args.candidate,

@@ -1165,7 +1165,7 @@ class _Handler(BaseHTTPRequestHandler):
         doc_ids = sorted(set(discover(self.bench.ws)) | set(dws.stored_docs()))
         if not doc_ids:
             raise _HttpError(400, "raw/ 里没有存盘响应 —— 先放 PDF 并勾选 DWS 抽取")
-        fingerprint = build_input_manifest(doc_ids)["fingerprint"]
+        fingerprint = build_input_manifest(doc_ids)["execution_fingerprint"]
         existing = find_run_by_fingerprint(self.bench.ws / "runs", fingerprint)
         if existing is not None:
             return self._redirect(f"/queue?run={existing.name}&lang={lang}&notice=replayed")

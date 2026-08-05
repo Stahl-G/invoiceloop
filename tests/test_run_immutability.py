@@ -164,10 +164,10 @@ class TestWorkspaceGenerations:
         (runs / "run-0001").mkdir(parents=True)
         (runs / "run-0001" / "input_manifest.json").write_text(
             json.dumps(manifest), encoding="utf-8")
-        assert find_run_by_fingerprint(runs, manifest["fingerprint"]) is None, \
+        assert find_run_by_fingerprint(runs, manifest["execution_fingerprint"]) is None, \
             "没有 event_log 的半拉子 run(跑到一半崩了)不许被重放"
         (runs / "run-0001" / "event_log.jsonl").write_text("", encoding="utf-8")
-        assert find_run_by_fingerprint(runs, manifest["fingerprint"]) is not None
+        assert find_run_by_fingerprint(runs, manifest["execution_fingerprint"]) is not None
         assert find_run_by_fingerprint(runs, "0" * 64) is None
 
     def test_find_by_fingerprint_rejects_changed_snapshot_component(self, workspace):
@@ -175,12 +175,12 @@ class TestWorkspaceGenerations:
         run([DOC], out, include_vision=False, out_of_calibration=True)
         manifest = json.loads((out / "input_manifest.json").read_text())
         assert find_run_by_fingerprint(
-            workspace / "runs", manifest["fingerprint"]
+            workspace / "runs", manifest["execution_fingerprint"]
         ) == out
 
         (out / "gate_report.json").write_text(json.dumps({"findings": []}))
         assert find_run_by_fingerprint(
-            workspace / "runs", manifest["fingerprint"]
+            workspace / "runs", manifest["execution_fingerprint"]
         ) is None, "同输入但快照成分被改过时不得重放"
 
     def test_docs_slice_precedes_fingerprint(self, workspace, monkeypatch, capsys):

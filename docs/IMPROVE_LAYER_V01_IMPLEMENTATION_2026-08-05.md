@@ -29,6 +29,16 @@
 document touch **100%**、decision_load_for_release **82.3%**。
 **「41%」是 TIER1-only 反事实子集口径,不是 R0** —— 对外叙事按实测。
 
+## P0-6 的语义立场(架构裁决一的答复)
+
+HAR-0001 保留 `release_tier1_explicit: true` —— 「TIER1 印证槽整单放行前
+必须显式人裁」是 78 评后**人批准的策略**(防止伪人工审批),不是实现偷懒。
+评委裁决要求无冲突 TIER1 自动 policy_accept,是把「静默进交付物」换成
+「带策略版本的显式 policy_accept 进交付物」 —— 后者的诚实度收益成立,
+但作为 R1 候选走完整评测+晋升,不是开工即默认。
+PROM 记录带 `basis: evo_replay_only`:没有未见资格集的晋升只是
+demo activation,公开口径不许说「在未见数据上减少人工」。
+
 ## 闭环演示(全 CLI,实测通过)
 
 ```bash

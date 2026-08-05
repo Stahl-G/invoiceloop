@@ -82,6 +82,28 @@ class TestFeedbackAndMine:
                 field="buyer_name", decision="abstain", rationale="r",
                 adjudicator="t", decided_at=DECIDED, reason_code="MADE_UP")
 
+    def test_reason_decision_combo_is_checked(self, ws):
+        """评审裁决六:CONFIRMED_ABSENT 心码不能挂在 accept 上 —— 点错的
+        心码会把错误监督喂给 mining。"""
+        with pytest.raises(ValueError, match="只能搭配"):
+            adjudicate.append_adjudication(
+                ws / "runs" / "run-0001",
+                claim_id=_claim_id(ws / "runs" / "run-0001", "total_gross"),
+                doc_id=DOC, field="total_gross", decision="accept",
+                rationale="r", adjudicator="t", decided_at=DECIDED,
+                reason_code="CONFIRMED_ABSENT")
+
+    def test_actionable_requires_confidence_and_code(self, ws):
+        run_dir = ws / "runs" / "run-0001"
+        adjudicate.append_adjudication(
+            run_dir, claim_id=_claim_id(run_dir, "total_gross"), doc_id=DOC,
+            field="total_gross", decision="accept", rationale="r",
+            adjudicator="t", decided_at=DECIDED,
+            reason_code="ROUTING_FALSE_POSITIVE")  # 没给把握度 → 不可行动
+        (e,) = improve.compile_workspace(ws)
+        assert e["actionable"] is False, \
+            "无 reviewer_confidence 的事件不作改进标签(业务裁决仍有效)"
+
     def test_mine_report_flags_low_yield_cohorts(self, ws):
         run_dir = ws / "runs" / "run-0001"
         # 三个槽各 accept 一次(零修正)→ 对应 cohort 进低收益候选
@@ -145,17 +167,36 @@ class TestEvaluatePromote:
                                  rationale="残余风险接受:cohort 仅 TIER2 软触发",
                                  approved_at=DECIDED)
         assert record["to_harness_id"] == "HAR-0002"
+        assert record["basis"] == "evo_replay_only", \
+            "未经未见资格集的晋升必须如实标 demo activation(评审裁决五)"
+        assert record["candidate_policy_digest"]
         pointer = json.loads((ws / "improve" / "active_harness.json").read_text())
         assert pointer["harness_id"] == "HAR-0002"
 
-        # 同输入重跑:指纹含 harness digest,晋升后不许重放 run-0001
+        # 回滚 = 新 PROM 记录,回到 HAR-0001(包内默认自动物化)
+        rb = improve.rollback(ws, to_harness_id="HAR-0001", approved_by="y",
+                              rationale="演示回滚", approved_at=DECIDED)
+        assert rb["to_harness_id"] == "HAR-0001"
+        pointer = json.loads((ws / "improve" / "active_harness.json").read_text())
+        assert pointer["harness_id"] == "HAR-0001"
+        # 回滚后再晋升回去,供后续新 run 测试
+        improve.promote(ws, "HAR-0002", approved_by="y",
+                        rationale="回滚演示完毕,复晋升", approved_at=DECIDED)
+
+        # 同输入重跑:输入指纹不变(同一份证据 —— 配对评测靠它证明),
+        # 执行指纹必须变(harness 换代不许重放旧 run)—— 两个身份各司其职
         from invoiceloop.snapshot import build_input_manifest, find_run_by_fingerprint
 
-        fp1 = json.loads((ws / "runs" / "run-0001" / "input_manifest.json")
-                         .read_text())["fingerprint"]
-        fp2 = build_input_manifest([DOC], include_vision=False)["fingerprint"]
-        assert fp1 != fp2, "harness 换代必须改指纹"
-        assert find_run_by_fingerprint(ws / "runs", fp2) is None
+        old_manifest = json.loads((ws / "runs" / "run-0001" / "input_manifest.json")
+                                  .read_text())
+        new_manifest = build_input_manifest([DOC], include_vision=False)
+        assert old_manifest["fingerprint"] == new_manifest["fingerprint"], \
+            "同输入 → 同输入指纹(baseline/candidate 配对就靠它证明)"
+        assert old_manifest["execution_fingerprint"] \
+            != new_manifest["execution_fingerprint"], \
+            "harness 换代 → 执行指纹必须变"
+        assert find_run_by_fingerprint(
+            ws / "runs", new_manifest["execution_fingerprint"]) is None
 
         # 新 run 绑 HAR-0002
         pipeline_run([DOC], ws / "runs" / "run-0002", include_vision=False,

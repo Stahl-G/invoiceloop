@@ -2,5 +2,11 @@
  "harness_id": "HAR-0001",
  "version": 1,
  "release_tier1_explicit": true,
- "auto_accept_cohorts": []
+ "auto_accept_cohorts": [],
+ "qa": {
+  "seed": "invoiceloop-qa-v1",
+  "policy_accepted_tier1_rate": 0.05,
+  "cohort_relax_rate": 0.20,
+  "note": "哈希抽样,确定性;HAR-0001 下两类目标都为空(tier1_explicit=true 且 cohorts 为空),零行为影响"
+ }
 }
