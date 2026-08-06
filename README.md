@@ -63,11 +63,12 @@
 - **为什么两模式恒调、不做动态降档(默认路径)**:双模式分歧本身是六道门禁之一
   (cross_mode_agreement),省掉 agentic 就等于拆掉这道门 ——
   成本是信号的一部分,不是浪费。密封评测 / heldout / demo **必须**走默认双模式。
-- **L1 自适应(opt-in)**:`ingest --adaptive` 先跑 understand,仅当 TIER1 缺值 /
-  算术失败 / 形态失败时才 escalate 整份 agentic;干净文档跳过二次抽取,
-  `cross_mode` 记 unavailable 且**不**整文档阻断。attempt 元数据在
-  `attempts/{doc}/manifest.json`;执行指纹含 adaptive 分量,不与双模式 run 撞车。
-  自适应效果需 paired live 验证,improve 反事实重路由评不了调用顺序。
+- **L1 自适应(opt-in,不推荐)**:`ingest --adaptive` 先跑 understand,仅当
+  TIER1 缺值 / 算术失败 / 形态失败时才 escalate 整份 agentic。
+  **2026-08-06 在 88 份未见文档上实测:只省 2.3% 调用,被跳过的「干净」文档上
+  失去的 cross_mode 分歧槽有真值时 understand 全错(4/4)** —— 见
+  `docs/L1_ADAPTIVE_MEASURED_2026-08-06.md`。密封/留出抽取遇 `adaptive.json`
+  硬拒;默认路径与评测仍双模式全跑。
 
 ## 它不做什么
 

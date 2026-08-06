@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .fields import TIER1
+from .fields import FIELD_KINDS, TIER1
 from .gates import _c1_c3, _wellformed_failure
 
 ATTEMPTS_DIR = "attempts"
@@ -33,6 +33,10 @@ def diagnose_risk(understand_data: dict[str, Any] | None) -> list[str]:
     for check_id in sorted(failed):
         reasons.append(f"arithmetic:{check_id}")
     for field, value in sorted(understand_data.items()):
+        # DWS 常回 invoice_type/currency/seller_country 等非受评键;
+        # FIELD_KINDS 外字段一律忽略(2026-08-06:漏守卫 → KeyError 必崩)
+        if field not in FIELD_KINDS:
+            continue
         if not _present(value):
             continue
         bad = _wellformed_failure(field, value)

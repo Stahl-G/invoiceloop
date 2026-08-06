@@ -187,6 +187,14 @@ def _cost_of(record: dict) -> float:
 def cmd_extract(workspace: Path, *, budget: float = 6000.0) -> dict:
     """按名单跑 understand + agentic,断点续跑,余额换 key,预算熔断。"""
     workspace = Path(workspace)
+    from .adaptive import is_workspace_adaptive
+
+    if is_workspace_adaptive(workspace):
+        raise RuntimeError(
+            f"{workspace} 存在 adaptive.json —— sealed/heldout 抽取必须双模式全跑,"
+            f"删掉 adaptive.json(及 attempts/)后再 extract;"
+            f"见 docs/L1_ADAPTIVE_MEASURED_2026-08-06.md"
+        )
     doc_ids = json.loads((workspace / "doc_list.json").read_text())["doc_ids"]
     _, derisk_schema, dws_extract = _derisk_imports()
     dws_extract.RAW_DIR = workspace / "raw"  # 新响应进工作区,不污染校准档案

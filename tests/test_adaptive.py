@@ -9,6 +9,23 @@ from invoiceloop import adaptive, gates
 from tests.conftest import make_response, pin_corpus
 
 
+def test_diagnose_risk_tolerates_extra_dws_keys():
+    """真实 DWS 响应含 invoice_type/currency 等非受评键 —— 不得 KeyError。"""
+    data = {
+        "invoice_number": "INV-1", "issue_date": "2024-01-01",
+        "due_date": "2024-01-31", "seller_name": "A", "seller_vat_id": "DE1",
+        "buyer_name": "B",
+        "total_net": "100.00", "total_vat": "20.00",
+        "total_gross": "120.00", "amount_due": "120.00",
+        # 真实存盘几乎必有的旁路键(2026-08-06 实测 100/100 含 invoice_type)
+        "invoice_type": "INVOICE",
+        "currency": "USD",
+        "seller_country": "US",
+        "buyer_country": "US",
+    }
+    assert adaptive.diagnose_risk(data) == []
+
+
 def test_diagnose_risk_clean_vs_missing_tier1():
     clean = {
         "invoice_number": "INV-1", "issue_date": "2024-01-01",

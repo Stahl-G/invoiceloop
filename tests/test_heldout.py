@@ -109,6 +109,14 @@ class TestExtractDriver:
         assert summary["failed"] == 1 and summary["done"] == 3
         assert summary["failures"][0]["http_status"] == 500
 
+    def test_adaptive_workspace_refused(self, tmp_path, monkeypatch):
+        """密封/留出抽取不得在 adaptive workspace 上跑(会拆掉双模式门)。"""
+        monkeypatch.setenv("DWS_API_KEYS", "k1")
+        ws = _workspace(tmp_path, docs=("d1",))
+        (ws / "adaptive.json").write_text('{"adaptive": true}\n')
+        with pytest.raises(RuntimeError, match="adaptive.json"):
+            heldout.cmd_extract(ws, budget=6000)
+
 
 @pytest.mark.skipif(not corpus_available(), reason="校准档案不在")
 class TestSealedList:
