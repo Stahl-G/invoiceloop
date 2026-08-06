@@ -154,7 +154,7 @@ class TestFeedbackAndMine:
 
 class TestProposeLint:
     def test_whitelist_violation_rejected(self, ws):
-        with pytest.raises(ValueError, match="白名单外特征"):
+        with pytest.raises(ValueError, match="doc_id"):
             improve.propose(ws, cohort={"id": "C1", "doc_id": "046e0c49"},
                             finding="FIND-1", prediction="p")
 
@@ -619,7 +619,7 @@ class TestAbsentExpectedLoop:
             assert slot["source"] == "policy:HAR-0002"
 
     def test_lint_guards_absent_whitelist(self, ws):
-        with pytest.raises(ValueError, match="白名单外特征"):
+        with pytest.raises(ValueError, match="doc_id"):
             improve.propose(ws, cohort={"id": "AE1", "field": "seller_vat_id",
                                         "doc_id": "046e0c49"},
                             finding="F", prediction="p", kind="absent_expected")

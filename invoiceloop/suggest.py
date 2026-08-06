@@ -36,8 +36,20 @@ _COHORT_ACTIONS = ("auto_accept", "absent_expected", "revoke")
 #: 增删字段 / 加 required / 改 type 由 improve.lint_schema 挡在提案之前。
 _SCHEMA_ACTIONS = ("schema_description",)
 ACTIONS = _COHORT_ACTIONS + _SCHEMA_ACTIONS
-#: cohort 只许引用通用特征 —— 与 improve._COHORT_KEYS 同源,不许放宽
+#: cohort 只许引用通用特征 —— 与 improve._COHORT_KEYS 同源,不许放宽。
+#: **按动作分开**:absent_expected 是字段级规则(「这个字段在这类发票上
+#: 本来就没有」是字段的属性,与证据强度、TIER 无关),improve._ABSENT_KEYS
+#: 只认 field。2026-08-06 之前两类共用一张表,于是模型给 absent_expected
+#: 配上 tier/strength,人在工作台点「采纳」必被 lint 拒 ——
+#: **草稿在构造上就不可能被采纳**。校验层要和下游同一口径,否则它放行的
+#: 东西下游照样拒,人白点一次。
 _ALLOWED_COHORT_KEYS = ("field", "tier", "strength")
+_ALLOWED_ABSENT_KEYS = ("field",)
+
+
+def _cohort_keys_for(action: str) -> tuple[str, ...]:
+    return (_ALLOWED_ABSENT_KEYS if action == "absent_expected"
+            else _ALLOWED_COHORT_KEYS)
 #: description 上限 —— 提示词是发给 DWS 的,不是让模型写小作文的地方
 _MAX_DESCRIPTION = 400
 
@@ -156,11 +168,31 @@ def validate(raw: dict, notes: list[dict]) -> tuple[list[dict], list[str]]:
             if not isinstance(cohort, dict) or not cohort:
                 dropped.append(f"{label}:没有 cohort")
                 continue
-            bad = [k for k in cohort if k not in _ALLOWED_COHORT_KEYS]
-            if bad:
-                dropped.append(f"{label}:cohort 出现非白名单键 {bad} —— "
-                               f"单文档特征不许进策略")
+            # 两种「多余的键」必须分开处理,合并处理会开后门:
+            #   1. 压根不在策略词表里的(doc_id、具体金额、发票号)——
+            #      **整条丢弃**。这是反硬编码纪律,剪掉再放行等于绕过它;
+            #   2. 在词表里、但这个动作用不上的(absent_expected 配了
+            #      tier/strength)—— 剪掉即可。形状用错不是内容有问题,
+            #      丢整条 = 一条有出处的建议因为多写两个字被扔了。
+            outside = [k for k in cohort if k not in _ALLOWED_COHORT_KEYS]
+            if outside:
+                dropped.append(
+                    f"{label}:cohort 出现非白名单键 {outside} —— "
+                    f"单文档特征不许进策略")
                 continue
+            allowed = _cohort_keys_for(action)
+            extra = [k for k in cohort if k not in allowed]
+            if extra:
+                cohort = {k: v for k, v in cohort.items() if k in allowed}
+                if not cohort:
+                    dropped.append(
+                        f"{label}:去掉 {action} 用不上的特征"
+                        f"({'、'.join(extra)})之后就空了 —— 没有可路由的东西")
+                    continue
+                dropped.append(
+                    f"{label}:已剪掉 {action} 用不上的特征"
+                    f"({'、'.join(extra)}),建议保留;它是字段级规则,只认 "
+                    f"{'、'.join(allowed)}")
             entry = {"kind": "cohort", "cohort": cohort}
 
         cites = [c for c in (s.get("cites") or [])

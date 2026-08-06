@@ -204,6 +204,20 @@ def lint_schema(parent: dict, candidate: dict) -> list[str]:
     return violations
 
 
+def _names(keys) -> str:
+    """键名列表 → 人能读的一串。Python 的 list/tuple repr 直接进报错页面,
+    读起来像内部转储(`['strength', 'tier'] —— 只许 ('id', 'field')`)。"""
+    return "、".join(sorted(keys))
+
+
+def refusal_text(violations: list[str], *, subject: str = "这个候选") -> str:
+    """违规列表 → 给人看的一段话。列表 repr 不进用户界面。"""
+    if len(violations) == 1:
+        return f"{subject}没能通过审查:{violations[0]}"
+    body = "\n".join(f"· {v}" for v in violations)
+    return f"{subject}没能通过审查,有 {len(violations)} 处:\n{body}"
+
+
 def lint_policy(parent: dict, candidate: dict) -> list[str]:
     """候选策略 diff 审查。返回违规列表(空 = 通过)。只允许给
     auto_accept_cohorts / absent_expected_cohorts 加条目,
@@ -230,8 +244,8 @@ def lint_policy(parent: dict, candidate: dict) -> list[str]:
     for cohort in candidate.get("auto_accept_cohorts", []):
         if set(cohort) - set(_COHORT_KEYS):
             violations.append(
-                f"cohort 含白名单外特征 {sorted(set(cohort) - set(_COHORT_KEYS))}"
-                f" —— 只许 {_COHORT_KEYS}")
+                f"自动放行 cohort 带了 {_names(set(cohort) - set(_COHORT_KEYS))}"
+                f",这几个不能进策略;它只认 {_names(_COHORT_KEYS)}")
             continue
         if cohort.get("id") in parent_ids:
             continue  # 既有条目,不动
@@ -248,8 +262,10 @@ def lint_policy(parent: dict, candidate: dict) -> list[str]:
     for cohort in candidate.get("absent_expected_cohorts", []):
         if set(cohort) - set(_ABSENT_KEYS):
             violations.append(
-                f"预期缺失 cohort 含白名单外特征 "
-                f"{sorted(set(cohort) - set(_ABSENT_KEYS))} —— 只许 {_ABSENT_KEYS}")
+                f"预期缺失 cohort 带了 {_names(set(cohort) - set(_ABSENT_KEYS))}"
+                f" —— 它是字段级规则:「这个字段在这类发票上本来就没有」"
+                f"是字段的属性,与证据强度、TIER 无关,所以只认 "
+                f"{_names(_ABSENT_KEYS)}。去掉那几个再采纳。")
             continue
         if cohort.get("id") in absent_parent_ids:
             continue
@@ -319,7 +335,7 @@ def propose_schema(workspace: Path, *, field: str, description: str,
     props[field] = {**props[field], "description": description}
     violations = lint_schema(active["schema"], parent_schema)
     if violations:
-        raise ValueError(f"schema diff 审查未过:{violations}")
+        raise ValueError(refusal_text(violations, subject="这个字段描述改动"))
     # 策略不变,只换 schema
     return _scaffold_candidate(
         workspace, dict(active["policy"]),
@@ -355,7 +371,7 @@ def propose(workspace: Path, *, cohort: dict, finding: str,
         raise ValueError(f"未知 cohort 类型 {kind!r}")
     violations = lint_policy(parent, candidate)
     if violations:
-        raise ValueError(f"候选 diff 审查未过:{violations}")
+        raise ValueError(refusal_text(violations))
     return _scaffold_candidate(workspace, candidate, finding=finding,
                                prediction=prediction,
                                provenance="machine_proposed")
@@ -445,7 +461,7 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
     if cand_manifest.get("provenance") != "human_authored":
         violations = lint_policy(active["policy"], cand_policy)
         if violations:
-            raise ValueError(f"候选 diff 审查未过:{violations}")
+            raise ValueError(refusal_text(violations))
 
     runs = sorted((workspace / "runs").glob("run-*"))
     comparisons = []
@@ -672,7 +688,7 @@ def _evaluate_reextract(workspace: Path, candidate_id: str, *,
     parent_schema = active["schema"]
     violations = lint_schema(parent_schema, cand_schema)
     if violations:
-        raise ValueError(f"schema diff 审查未过:{violations}")
+        raise ValueError(refusal_text(violations, subject="这个字段描述改动"))
 
     sample_ids = _sample_doc_ids(workspace, sample_n)
     if not sample_ids:
@@ -1069,7 +1085,7 @@ def promote(workspace: Path, candidate_id: str, *, approved_by: str,
         # 约束是署名 + 上面的评测重算门(一个不少)
         violations = lint_policy(active["policy"], cand_policy)
         if violations:
-            raise ValueError(f"候选 diff 审查未过:{violations}")
+            raise ValueError(refusal_text(violations))
     # manifest 是出生事实(创建后不可改):身份与谱系必须与文件一致
     if manifest.get("harness_id") != candidate_id:
         raise ValueError("manifest 的 harness_id 与目录名不符 —— 候选身份存疑")

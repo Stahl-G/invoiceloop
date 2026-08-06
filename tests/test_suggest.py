@@ -203,3 +203,77 @@ class TestBudget:
         assert suggest._budget() == 1024, "地板价:给太小等于必然截断"
         monkeypatch.setenv("INVOICELOOP_SUGGEST_MAX_TOKENS", "不是数字")
         assert suggest._budget() == suggest._MAX_TOKENS, "手滑不许把调用打崩"
+
+
+class TestPerActionCohortShape:
+    """回归:absent_expected 是字段级规则,给它配 tier/strength 会被下游拒。
+
+    实测(2026-08-06,用户在工作台点「采纳」时命中):模型给
+    absent_expected 配了 tier=TIER1 strength=unsupported,校验层放行,
+    improve.lint_policy 拒绝 —— 草稿在构造上就不可能被采纳。
+    """
+
+    def _absent(self, cohort) -> dict:
+        return {"suggestions": [{
+            "action": "absent_expected", "cohort": cohort,
+            "finding": "f", "prediction": "p", "confidence": "high",
+            "cites": [0]}]}
+
+    def test_tier_and_strength_are_trimmed_not_thrown_away(self):
+        kept, dropped = suggest.validate(
+            self._absent({"field": "total_vat", "tier": "TIER1",
+                          "strength": "unsupported"}), NOTES)
+        assert kept, "有出处的建议不该因为多写两个键就被整条扔掉"
+        assert kept[0]["cohort"] == {"field": "total_vat"}
+        assert dropped and "已剪掉" in dropped[0], "剪了什么要说出来"
+
+    def test_trimmed_cohort_passes_the_downstream_linter(self):
+        """校验层放行的东西,improve 的 linter 必须也认 —— 这是本回归的要点。"""
+        from invoiceloop.improve import lint_policy
+
+        kept, _ = suggest.validate(
+            self._absent({"field": "total_vat", "tier": "TIER1",
+                          "strength": "unsupported"}), NOTES)
+        parent = {"absent_expected_cohorts": []}
+        candidate = {"absent_expected_cohorts": [
+            {"id": "AC-X", **kept[0]["cohort"]}]}
+        assert lint_policy(parent, candidate) == []
+
+    def test_auto_accept_keeps_tier_and_strength(self):
+        kept, dropped = suggest.validate({"suggestions": [{
+            "action": "auto_accept",
+            "cohort": {"field": "total_gross", "tier": "TIER1",
+                       "strength": "corroborated"},
+            "finding": "f", "prediction": "p", "confidence": "high",
+            "cites": [0]}]}, NOTES)
+        assert dropped == [] and kept[0]["cohort"]["tier"] == "TIER1"
+
+    def test_doc_id_is_dropped_whole_never_trimmed(self):
+        """单文档特征必须整条丢弃 —— 剪掉再放行等于绕过反硬编码纪律。"""
+        kept, dropped = suggest.validate(
+            self._absent({"field": "total_vat", "doc_id": "d1"}), NOTES)
+        assert kept == [], "不许把 doc_id 剪掉然后把建议留下"
+        assert "非白名单键" in dropped[0]
+
+
+class TestReadableRefusals:
+    """报错是给人看的,不是 Python repr 的转储。"""
+
+    def test_key_lists_are_not_python_reprs(self):
+        from invoiceloop.improve import lint_policy
+
+        v = lint_policy({"absent_expected_cohorts": []},
+                        {"absent_expected_cohorts": [
+                            {"id": "X", "field": "total_vat",
+                             "tier": "TIER1", "strength": "unsupported"}]})
+        assert v and "['" not in v[0] and "('" not in v[0], \
+            f"报错里不许出现 list/tuple 字面量:{v[0]!r}"
+        assert "strength、tier" in v[0]
+
+    def test_refusal_text_reads_as_a_sentence(self):
+        from invoiceloop.improve import refusal_text
+
+        one = refusal_text(["字段不对"])
+        assert one == "这个候选没能通过审查:字段不对"
+        many = refusal_text(["A", "B"], subject="这个字段描述改动")
+        assert "有 2 处" in many and "· A" in many and "['" not in many
