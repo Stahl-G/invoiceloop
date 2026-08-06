@@ -16,6 +16,9 @@ dev = ["pytest>=8"]
 # 研究路径(heldout 驱动、校准复算、run --out 读 dws-derisk 存盘证据)
 # 没有额外 PyPI 依赖,但需要 sibling 校准档案 ~/Developer/dws-derisk(见 README)。
 research = []
+# 封缄验签(verify 第五层的密码学部分):缺省时签名层记 None 并注明未验证,
+# 不静默判过(宪章四)
+seal = ["asn1crypto>=3", "cryptography>=42"]
 
 [project.scripts]
 invoiceloop = "invoiceloop.__main__:main"

@@ -771,3 +771,106 @@ class TestAdjudicatePage:
         assert "(无声明)" in text or "(no claim)" in text
         assert 'value="confirm_absent"' in text, \
             "无声明槽位的决策集与队列页一致:确认缺失/修正/不适用/弃权"
+
+    def test_quick_accept_button_on_claim_rows(self, workspace, server):
+        """一键快路(2026-08-05 用户实测反馈):有声明的槽给
+        「原值正确,接受并下一条」—— 预填 accept + 理由,一次点击。"""
+        _, _, text = _req(
+            server, "GET", f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross&lang=zh")
+        assert 'wb-quick-ok' in text, "有声明槽位必须有一键接受"
+        assert 'data-decision="accept"' in text
+        assert 'data-rationale="与页面一致"' in text
+
+    def test_quick_draft_button_on_rejected_rows(self, workspace, server):
+        """草稿被冻结拒的槽(无声明):快路 = correct 预填被拒草稿的值 ——
+        绑定失败是机械门槛,人看页面确认后对就是对人证成立。"""
+        _, _, text = _req(
+            server, "GET", f"/adjudicate?run={RUN}&doc={DOC}&field=total_net&lang=zh")
+        assert 'wb-quick-ok' in text, "被拒草稿槽位必须有「采用被拒草稿」快路"
+        assert 'data-decision="correct"' in text
+        assert 'data-value="10.00"' in text, "预填值 = 被拒草稿的值"
+        assert "采用被拒草稿" in text
+
+    def test_multipage_doc_has_page_tabs(self, workspace, server):
+        """多页文档:页码切换签必须出现,?page=2 必须真的换页
+        (2026-08-05 用户实测:003cc916 两页,第二页够不着)。"""
+        import subprocess
+        run_dir = workspace / "runs" / RUN
+        pages = run_dir / "pages"
+        pages.mkdir(exist_ok=True)
+        # 造第二页占位(内容不限,存在性驱动页签)
+        if not (pages / f"{DOC}-1.png").exists():
+            (pages / f"{DOC}-1.png").write_bytes(b"\x89PNG")
+        (pages / f"{DOC}-2.png").write_bytes(b"\x89PNG")
+        _, _, text = _req(
+            server, "GET", f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross&lang=zh")
+        assert 'wb-page-tab' in text, "多页文档必须有页码签"
+        assert f"{DOC}-1.png" in text
+        _, _, text2 = _req(
+            server, "GET",
+            f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross&lang=zh&page=2")
+        assert f'class="wb-page" src="/files/{RUN}/pages/{DOC}-2.png"' in text2, \
+            "?page=2 左栏主图必须换到第二页"
+        assert f'class="wb-page" src="/files/{RUN}/pages/{DOC}-1.png"' not in text2
+
+    def test_adopt_button_scope_on_adjudicate_page(self, workspace, server):
+        """裁决页上的「采用建议」必须找得到同页表单(JS 作用域契约:
+        按钮在 .wb-adj-card 里,不在 .wb-row 里 —— 2026-08-05 实测
+        点了没反应,handler 只认队列页结构)。"""
+        _, _, text = _req(
+            server, "GET", f"/adjudicate?run={RUN}&doc={DOC}&field=total_net&lang=zh")
+        if "wb-vs-adopt" in text:
+            assert 'class="wb-adj-card"' in text
+            assert 'form class="decide"' in text or "form class=\"decide\"" in text
+            assert 'name="decision"' in text, \
+                "采用按钮所在页必须有可预填的裁决表单"
+
+    def test_why_block_skips_clean_placeholder(self, workspace, server):
+        """reason_codes 里 CLEAN 是占位不是原因 —— QA_SAMPLE 槽的
+        「为什么在队列里」必须说是抽检,不许因为 CLEAN 在前就不显示
+        (2026-08-06 用户实测:全绿票被问,卡片却没解释)。"""
+        from invoiceloop.workbench import Workbench
+        wb = Workbench.__new__(Workbench)
+        row = {"requires_adjudication": True,
+               "reason_codes": ["CLEAN", "QA_SAMPLE:policy_accepted_tier1"]}
+        html = wb._why_html("zh", row)
+        assert "随机抽检" in html, "CLEAN 占位不许吞掉 QA_SAMPLE 的入队原因"
+        row2 = {"requires_adjudication": True, "reason_codes": ["INFRA_BLOCKED"]}
+        assert "OCR" in wb._why_html("zh", row2)
+        row3 = {"requires_adjudication": False, "reason_codes": ["CLEAN"]}
+        assert wb._why_html("zh", row3) == "", "不在队列里的槽没有入队原因块"
+
+    def test_lang_toggle_preserves_query_params(self, workspace, server):
+        """语言切换不许丢 run/doc/field —— 裸 ?lang= 会把裁决页切成
+        空槽 404(2026-08-06 用户实测)。"""
+        _, _, text = _req(
+            server, "GET", f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross&lang=zh")
+        m = re.search(r'class="wb-lang"><a href="([^"]+)"', text)
+        assert m, "语言切换链接必须在"
+        href = m.group(1)
+        assert f"run={RUN}" in href and f"doc={DOC}" in href \
+            and "field=total_gross" in href and "lang=en" in href, \
+            f"切换链接必须保留当前槽位参数,实际:{href}"
+
+
+class TestQueueSearch:
+    def test_search_filters_by_doc_and_field(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&q={DOC[:6]}&lang=zh")
+        assert DOC[:8] in text
+        _, _, text2 = _req(server, "GET", f"/queue?run={RUN}&q=total_gross&lang=zh")
+        assert "total_gross" in text2
+        _, _, text3 = _req(server, "GET", f"/queue?run={RUN}&q=zzz-no-match&lang=zh")
+        assert "total_gross" not in text3, "搜不到就空,不许退回全量"
+        # 搜索状态在 chip 链接里保持(翻 filter 不丢搜索词)
+        _, _, text4 = _req(server, "GET", f"/queue?run={RUN}&q={DOC[:6]}&lang=zh")
+        assert f"q={DOC[:6]}" in text4
+
+    def test_adjudicate_evidence_collapsed_queue_open(self, workspace, server):
+        """证据区:队列页默认摊开(2026-08-03 反馈),裁决页默认收起
+        (2026-08-06 反馈)—— 两处场景各自默认。"""
+        _, _, queue_text = _req(server, "GET", f"/queue?run={RUN}&filter=all")
+        assert '<details class="wb-evidence" open>' in queue_text
+        _, _, adj_text = _req(
+            server, "GET", f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross")
+        assert '<details class="wb-evidence">' in adj_text
+        assert '<details class="wb-evidence" open>' not in adj_text

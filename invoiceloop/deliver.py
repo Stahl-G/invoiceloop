@@ -110,13 +110,20 @@ def build_deliverable(run_dir: Path) -> dict:
                          "source": tip["decision_id"]}
         else:
             route = routes_by_slot.get((doc_id, field))
-            requires = (route != "auto_accept") if route is not None \
+            requires = (route not in ("auto_accept", "auto_absent")) \
+                if route is not None \
                 else row.get("requires_adjudication", True)
             if requires:
                 # 缺这个键的只可能是手工构造/极旧的矩阵 —— 缺失按「需裁决」
                 # 处理,交付层的默认方向永远是让人看,不是放行
                 entry = {"value": row["value"], "status": "pending",
                          "source": None}
+            elif route == "auto_absent":
+                # 政策确认缺失(absent_expected cohort):显式记录策略版本,
+                # 不是伪造一条人工 confirm_absent;QA 抽检盯着缺席是否成立
+                entry = {"value": None,
+                         "status": "policy_confirmed_absent",
+                         "source": f"policy:{harness_id}"}
             elif route == "auto_accept" and not tier1_explicit:
                 # 策略放行(v0.2 P0-6):系统自动接受必须显式记录为
                 # policy_accept + 策略版本,不是伪造一条人工 accept;

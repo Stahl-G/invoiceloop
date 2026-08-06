@@ -555,7 +555,9 @@ class TestVerifyLayers:
         report = adjudicate.verify_bundle(adjudicate.build_audit_bundle(run_dir))
         assert report["ok"]
         assert report["layers"] == {"members": True, "snapshot": True,
-                                    "binding": True, "semantics": True}
+                                    "binding": True, "semantics": True,
+                                    "signature": None}, \
+            "未封缄包:四层全过,签名层记 None(不是失败)"
         assert any("信任根" in n or "带外" in n for n in report["notes"]), \
             "三层全过也必须说清:真实性锚在带外哈希,verify 不是自己的根"
 

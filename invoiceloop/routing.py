@@ -17,7 +17,7 @@ from __future__ import annotations
 import hashlib
 import json
 
-ROUTES = ("auto_accept", "review", "block", "escalate")
+ROUTES = ("auto_accept", "auto_absent", "review", "block", "escalate")
 
 #: 软触发:gate warning 级。cohort 只许放松这些;fail/unsupported/阻断/争议
 #: 是硬阻断(v0.2 §11.2),cohort 匹配中了也不放行
@@ -64,6 +64,25 @@ def _qa_hit(policy: dict, doc_id: str, field: str, kind: str) -> bool:
     return int.from_bytes(digest[:8], "big") / 2**64 < rate
 
 
+def apply_absent_expected(facts: list[dict], policy: dict) -> list[dict]:
+    """把策略的 absent_expected cohort 作用到槽位事实上(extraction_present
+    fail → expected_absent)。run 时这是 run_gates 在 gate_report 里直接
+    写的;反事实评测(evaluate)拿旧 gate_report 重放时需要同一变换 ——
+    两处同一函数,不许各写一份。"""
+    fields = {c.get("field")
+              for c in (policy.get("absent_expected_cohorts") or [])}
+    if not fields:
+        return facts
+    out = []
+    for s in facts:
+        if s["field"] in fields \
+                and s["gate_verdicts"].get("extraction_present") == "fail":
+            s = {**s, "gate_verdicts": {
+                **s["gate_verdicts"], "extraction_present": "expected_absent"}}
+        out.append(s)
+    return out
+
+
 def route_slots(slots: list[dict], policy: dict, *, tier_of) -> list[dict]:
     """槽位事实 → 路由决定。输入 slots 的键:
 
@@ -86,6 +105,19 @@ def route_slots(slots: list[dict], policy: dict, *, tier_of) -> list[dict]:
 
         if s["doc_blocked"]:
             route, codes = "block", ["INFRA_BLOCKED"]
+        elif (s["gate_verdicts"].get("extraction_present") == "expected_absent"
+                and not fails and not s["slot_blocking"]):
+            # 预期缺失(absent_expected cohort,政策词表第二类):
+            # 缺值的事实已在门禁层照记(verdict=expected_absent,非 pass),
+            # 这里给的是后果 —— 政策确认缺失,不进人工队列;
+            # QA 抽样(默认 20%)盯着「缺席是否真的成立」
+            if _qa_hit(policy, s["doc_id"], s["field"], "absent_expected"):
+                route = "review"
+                codes = [f"EXPECTED_ABSENT:{s['field']}",
+                         f"QA_SAMPLE:expected_absent"]
+            else:
+                route = "auto_absent"
+                codes = [f"EXPECTED_ABSENT:{s['field']}"]
         elif not hard:
             cohort = next((c for c in cohorts
                            if _matches_cohort(s, c, tier_of)), None)

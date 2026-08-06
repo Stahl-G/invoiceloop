@@ -21,6 +21,8 @@ from .routing import policy_digest
 
 #: cohort 允许的特征键(linter 白名单;其余一律拒)
 _COHORT_KEYS = ("id", "field", "tier", "strength")
+#: 预期缺失 cohort 的词表更窄:只有 field 有意义(缺失没有 strength)
+_ABSENT_KEYS = ("id", "field")
 _STRENGTHS = ("unsupported", "single_source", "corroborated")
 
 _SELECTION_BIAS_WARNING = (
@@ -89,6 +91,24 @@ def mine(workspace: Path) -> dict:
     low_yield = [c for c in cohorts.values()
                  if c["reviewed"] >= 3 and c["corrected"] == 0
                  and c["rejected"] == 0]
+    # 预期缺失候选(2026-08-06 HITL 实测发现:美国发票无 VAT,
+    # seller_vat_id 的 confirm_absent 占了整整一类人工 —— 这类重复
+    # 「页面上没有」的确认应该由 absent_expected cohort 接走):
+    # 某字段的合格事件里 confirm_absent/not_applicable ≥3 且占 ≥80%
+    by_field: dict[str, dict] = {}
+    for e in qualified:
+        f = by_field.setdefault(e["field"], {"field": e["field"], "total": 0,
+                                             "absentish": 0})
+        f["total"] += 1
+        if e["human_action"] in ("confirm_absent", "not_applicable"):
+            f["absentish"] += 1
+    absence_candidates = [
+        {**f, "share": f["absentish"] / f["total"],
+         "suggested": {"kind": "absent_expected",
+                       "cohort": {"field": f["field"]}}}
+        for f in by_field.values()
+        if f["absentish"] >= 3 and f["absentish"] / f["total"] >= 0.8
+    ]
     report = {
         "warning": _SELECTION_BIAS_WARNING,
         "events": len(events),
@@ -97,6 +117,8 @@ def mine(workspace: Path) -> dict:
                           key=lambda c: (-c["reviewed"], c["field"])),
         "low_yield_candidates": sorted(low_yield,
                                        key=lambda c: -c["reviewed"]),
+        "absence_candidates": sorted(absence_candidates,
+                                     key=lambda c: -c["absentish"]),
     }
     out_dir = Path(workspace) / "improve"
     out_dir.mkdir(exist_ok=True)
@@ -109,11 +131,24 @@ def mine(workspace: Path) -> dict:
 
 def lint_policy(parent: dict, candidate: dict) -> list[str]:
     """候选策略 diff 审查。返回违规列表(空 = 通过)。只允许给
-    auto_accept_cohorts 加条目,且条目只引用通用特征。"""
+    auto_accept_cohorts / absent_expected_cohorts 加条目,
+    且条目只引用各自白名单内的通用特征。"""
     violations = []
     for key in set(parent) | set(candidate):
-        if key in ("auto_accept_cohorts", "harness_id", "version"):
+        if key in ("auto_accept_cohorts", "absent_expected_cohorts",
+                   "harness_id", "version"):
             continue  # cohorts 单独查;harness_id/version 是身份字段,必然变
+        if key == "qa":
+            # 唯一允许的 qa 变化:新增 absent_expected_rate(预期缺失的
+            # 抽检探针率)—— 其余键一律不许动
+            pq, cq = parent.get("qa") or {}, candidate.get("qa") or {}
+            changed = {k for k in set(pq) | set(cq)
+                       if pq.get(k) != cq.get(k)}
+            if changed - {"absent_expected_rate"}:
+                violations.append(
+                    f"候选改了 qa 的 {sorted(changed - {'absent_expected_rate'})}"
+                    " —— 只许新增 absent_expected_rate")
+            continue
         if parent.get(key) != candidate.get(key):
             violations.append(f"候选改了 {key} —— 第一版只允许加 cohorts")
     parent_ids = {c.get("id") for c in parent.get("auto_accept_cohorts", [])}
@@ -133,6 +168,21 @@ def lint_policy(parent: dict, candidate: dict) -> list[str]:
             violations.append(f"cohort tier {cohort['tier']!r} 非法")
         if cohort.get("strength") and cohort["strength"] not in _STRENGTHS:
             violations.append(f"cohort strength {cohort['strength']!r} 非法")
+    absent_parent_ids = {c.get("id")
+                         for c in parent.get("absent_expected_cohorts", [])}
+    for cohort in candidate.get("absent_expected_cohorts", []):
+        if set(cohort) - set(_ABSENT_KEYS):
+            violations.append(
+                f"预期缺失 cohort 含白名单外特征 "
+                f"{sorted(set(cohort) - set(_ABSENT_KEYS))} —— 只许 {_ABSENT_KEYS}")
+            continue
+        if cohort.get("id") in absent_parent_ids:
+            continue
+        if not cohort.get("id"):
+            violations.append("预期缺失 cohort 缺 id")
+        if cohort.get("field") not in FIELDS:
+            violations.append(
+                f"预期缺失 cohort field {cohort.get('field')!r} 不是受评字段")
     return violations
 
 
@@ -170,16 +220,31 @@ def _scaffold_candidate(workspace: Path, candidate: dict, *,
 
 
 def propose(workspace: Path, *, cohort: dict, finding: str,
-            prediction: str) -> Path:
-    """从 active 策略派生候选 harness(只加一条 cohort)。返回候选目录。"""
+            prediction: str, kind: str = "auto_accept") -> Path:
+    """从 active 策略派生候选 harness(只加一条 cohort)。返回候选目录。
+
+    kind = "auto_accept"(软触发放松)| "absent_expected"(预期缺失 ——
+    人反复 confirm_absent 的字段,缺失本身被政策确认;QA 抽检盯着)。
+    """
     from .harness import load_active
 
     workspace = Path(workspace)
     active = load_active(workspace)
     parent = active["policy"]
-    candidate = {**parent,
-                 "auto_accept_cohorts": parent.get("auto_accept_cohorts", [])
-                 + [cohort]}
+    if kind == "absent_expected":
+        candidate = {**parent,
+                     "absent_expected_cohorts":
+                     parent.get("absent_expected_cohorts", []) + [cohort]}
+        # 预期缺失必须带 QA 探针(缺席是否成立要持续观测)
+        qa = dict(candidate.get("qa") or {})
+        qa.setdefault("absent_expected_rate", 0.20)
+        candidate["qa"] = qa
+    elif kind == "auto_accept":
+        candidate = {**parent,
+                     "auto_accept_cohorts": parent.get("auto_accept_cohorts", [])
+                     + [cohort]}
+    else:
+        raise ValueError(f"未知 cohort 类型 {kind!r}")
     violations = lint_policy(parent, candidate)
     if violations:
         raise ValueError(f"候选 diff 审查未过:{violations}")
@@ -248,7 +313,7 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
     比对存盘 eval,而不是信任一个可编辑的文件(高级裁决四)。
     """
     from .harness import load_active
-    from .routing import route_slots
+    from .routing import apply_absent_expected, route_slots
 
     workspace = Path(workspace)
     active = load_active(workspace)
@@ -277,6 +342,11 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
         gate = json.loads(
             (run_dir / "gate_report.json").read_text(encoding="utf-8"))
         raw_root = Path(run_manifest.get("derisk_root") or workspace) / "raw"
+        # 预期缺失变换要作用在两层(同一策略语义,run 时由 run_gates 一次完成):
+        # verdict fail → expected_absent(apply_absent_expected)+ 对应的
+        # blocking finding 撤销(候选策略下它是 info 级非阻断)
+        absent_fields = {c.get("field") for c in
+                         (cand_policy.get("absent_expected_cohorts") or [])}
         facts = []
         for doc in run_manifest.get("docs", []):
             udata = None
@@ -289,15 +359,19 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
                 udata = data if isinstance(data, dict) else None
             from .matrix import derive_document_records, facts_of
 
+            blocking = [
+                f for f in gate.get("findings", [])
+                if f.get("blocking") and f.get("doc_id") == doc
+                and not (absent_fields
+                         and f.get("gate_id") == "extraction_present"
+                         and f.get("field") in absent_fields)]
             facts.extend(facts_of(r) for r in derive_document_records(
                 doc,
                 doc_claims=[c for c in ledger.get("claims", [])
                             if c["doc_id"] == doc],
                 doc_rejections=[],
                 gate_evaluations=gate.get("evaluations", {}).get(doc, {}),
-                doc_blocking_findings=[
-                    f for f in gate.get("findings", [])
-                    if f.get("blocking") and f.get("doc_id") == doc],
+                doc_blocking_findings=blocking,
                 understand_data=udata))
         routing_path = run_dir / "routing_report.json"
         if routing_path.exists():
@@ -312,19 +386,21 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
                     "review" if r.get("requires_adjudication") else "auto_accept"
                 for r in matrix["rows"]
             }
-        cand_routes = route_slots(facts, cand_policy, tier_of=_tier_of)
+        cand_routes = route_slots(apply_absent_expected(facts, cand_policy),
+                                  cand_policy, tier_of=_tier_of)
+        auto = ("auto_accept", "auto_absent")
         relaxed = []
         for r in cand_routes:
             key = r["doc_id"] + "|" + r["field"]
-            if base_routes.get(key) != "auto_accept" and r["route"] == "auto_accept":
+            if base_routes.get(key) not in auto and r["route"] in auto:
                 relaxed.append(key)
         comparisons.append({
             **_run_input_identity(run_dir),
             "slots": len(facts),
             "baseline_review": sum(1 for v in base_routes.values()
-                                   if v != "auto_accept"),
+                                   if v not in auto),
             "candidate_review": sum(1 for r in cand_routes
-                                    if r["route"] != "auto_accept"),
+                                    if r["route"] not in auto),
             "relaxed_slots": sorted(relaxed),
         })
     total_slots = sum(c["slots"] for c in comparisons)

@@ -55,8 +55,11 @@ def _main() -> None:
     p_bun = sub.add_parser("bundle", help="打 audit_bundle.zip(全量自包含)")
     p_bun.add_argument("--run", type=Path, required=True)
 
-    p_ver = sub.add_parser("verify", help="离线校验 audit bundle(三层:成员/快照/绑定)")
+    p_ver = sub.add_parser("verify", help="离线校验 audit bundle(成员/快照/绑定/语义/签名)")
     p_ver.add_argument("bundle", type=Path)
+
+    p_seal = sub.add_parser("seal", help="DWS 签名封缄 audit bundle(需 NUTRIENT_API_KEY)")
+    p_seal.add_argument("--run", type=Path, required=True)
 
     p_wb = sub.add_parser("workbench", help="H1 复核工作台:本地 loopback Web 应用(127.0.0.1)")
     p_wb.add_argument("--workspace", type=Path, required=True)
@@ -223,6 +226,10 @@ def _main() -> None:
         report = verify_bundle(args.bundle)
         print(json.dumps(report, ensure_ascii=False, indent=1))
         raise SystemExit(0 if report["ok"] else 1)
+    elif args.command == "seal":
+        from .seal import seal_run
+
+        print(seal_run(args.run))
     elif args.command == "workbench":
         from .workbench import cmd_workbench
 

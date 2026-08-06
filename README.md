@@ -2,9 +2,67 @@
 
 **发票抽取的支持关系,不是发票抽取的正确性。**
 
+> **One-line pitch (EN):** InvoiceLoop turns Nutrient DWS invoice extraction
+> into a verifiable support matrix — every field is bound to page evidence,
+> checked by deterministic gates, and routed to a human only when the
+> machine cannot vouch for it — with a tamper-evident audit trail and a
+> guarded improvement loop that safely reduces review load over time.
+> *(English quickstart: see [安装 / Install](#安装).)*
+
 每个抽出的字段带一条可机械验证的支持关系:它绑定到页面上哪块区域、
 那块区域的独立 OCR 说了什么、旁边印的标签是什么、六个确定性门禁各自的裁决、
 以及在哪里说不准。
+
+## 谁在用,错一个字段代价是什么
+
+第一用户是 **AP(应付账款)记账员**:他们今天的动作是逐张发票、逐个
+关键字段肉眼核对后再入 ERP。InvoiceLoop 替代的不是"看发票",而是
+**"确认那些机器已经能担保的字段"** —— 人只看机器担保不了的部分。
+
+关键字段错了不是小事,是钱和合规:
+
+- `total_gross` / `amount_due` 错 → **错付**(多付或少付,事后追回成本
+  远高于事前拦截);
+- `invoice_number` 错或重复 → **重复付款**(同一张票付两次,AP 最常见的
+  资金损失之一,跨文档查重 C8 抓的就是它);
+- `seller_vat_id` 错 → **税务申报问题**(抵扣凭证上的税号错,审计时
+  整批要回退);
+- `seller_name` / `buyer_name` 错(买卖双方抽反,实测案例)→ **付款
+  对象错误**,比金额错更难追。
+
+第二用户是**审计人员**:交付物里的每个值都能回答"凭什么信它",
+而且这个回答可以被离线重算(四层 verify + 带外 sha256 锚)。
+
+## 落地路径:deliverable.json 怎么进 ERP/AP
+
+每个 run 产出 `deliverable.json` —— 逐字段 `{value, status, source}`,
+整单 `{released / released_with_caveats / pending / blocked}`:
+
+- **released / released_with_caveats** → 下游 AP/ERP 直接入账
+  (status 为 accepted/corrected/policy_accepted 的字段带值;
+  confirmed_absent/policy_confirmed_absent 显式为空);
+- **pending / blocked** → 留在复核队列,不落下游;
+- 集成形态是**单文件契约 + 本地服务**:零 SDK 依赖,ERP 侧定时拉取
+  workspace 的 deliverable.json,或一个 webhook 适配器转发
+  (workbench 是 stdlib http.server,嵌进任何内网);
+- `source` 字段让每个进 ERP 的值可追溯到冻结声明 / 人工裁决 /
+  策略版本 —— 审计问询时不用再翻发票。
+
+人工负载实测(SEALED-1,100 份封箱集):放行决策负载从 82.9% 降到
+64.2%(HAR-0002,取消无冲突 TIER1 强制确认),安全性同证据配对无劣化;
+改进循环(absent_expected cohort 等)继续把重复确认转成策略。
+
+## 成本与延迟(实测,非估算)
+
+- **DWS credits**:understand 均值 ≈20/次、agentic ≈31/次;
+  100 份封箱集 200 次调用实耗 4,953 credits(≈49.5/份,双模式);
+- **延迟**(750 份存盘响应的 `processingTimeMs` 实测):
+  understand 中位 **9.1s**(p95 31.6s),agentic 中位 **11.9s**
+  (p95 35.5s),两模式串行 ≈ **21s/份**;本地门禁/冻结/矩阵为毫秒级,
+  不构成瓶颈;
+- **为什么两模式恒调、不做动态降档**:双模式分歧本身是六道门禁之一
+  (cross_mode_agreement),省掉 agentic 就等于拆掉这道门 —— 
+  成本是信号的一部分,不是浪费。
 
 ## 它不做什么
 
@@ -27,16 +85,49 @@ BriefLoop 架构参考 v0.6.1 §3.6 支持充分性栈。该栈在 BriefLoop 中
 
 ## 状态
 
-M0–M4 全部落地,且已经过一轮完整验证(2026-08-02,
-**总录:`docs/VERIFICATION_2026-08-02.md`**):
+M0–M4 全部落地,两轮外部验证完成:
 
-- **留出集实验**:100 份未参与设计的文档,H1–H6 预注册判据全过
-  (分诊 lift 3.04× > 1.5 线)—— 分诊优于随机不再是校准集轶事,§8 限定一退役
-- **人类验收**:GOAL.md 证伪终点五任务通过(warm 版),抓出并修复一个
-  真实呈现缺陷;两条真人裁决入账,首个 audit bundle 打出
-- **测试套件全绿**:第六轮错位事故 454 行回归、对拍 dws-derisk 的搬运保真、
-  跨进程确定性 byte-compare、分诊集中度实测(本投影 4.10×,复现校准 4.2×)。
-  产品路径在 clean clone 上可跑;依赖校准档案的研究测试在缺数据时自动跳过
+- **SEALED-1 封箱评测(2026-08-05,`docs/SEALED1_RESULTS.md`)**:
+  drand 信标播种的 100 份真未见集,分诊 lift 4.03×(线 1.5),H1–H4/H7 过,
+  H5/H6 未过线照登不调判据;证据包 sha256 带外公布;
+- **验证轮(2026-08-02,`docs/VERIFICATION_2026-08-02.md`)**:
+  旧留出集 H1–H6 全过(lift 3.04×),人类验收五任务通过;
+- **改进层在环**:routing 策略版本化(Harness),人工晋升带 PROM 哈希链,
+  无冲突 TIER1 策略放行实测放行决策负载 −18.7pp(SEALED-1 第二臂);
+- **测试套件 370 全绿**:第六轮错位事故 454 行回归、对拍 dws-derisk
+  搬运保真、攻击链回归(promote 绕评/伪造指针/协调篡改全部钉死)。
+
+## English
+
+**What it is.** InvoiceLoop is a verification and review layer on top of
+Nutrient DWS invoice extraction. It does not claim extraction is correct —
+it makes every extracted field answerable: which page region it binds to,
+what an independent OCR says about that region, what six deterministic
+gates found, and where the machine admits it does not know. Fields the
+machine cannot vouch for go to a focused human queue; everything is
+recorded in an append-only, hash-chained audit trail that verifies offline
+(four layers, single-byte tamper-evident).
+
+**Why it matters.** Wrong `total_gross`/`amount_due` = mispayment; wrong or
+duplicated `invoice_number` = paying twice; wrong `seller_vat_id` = tax
+filing exposure. InvoiceLoop routes those risks to humans and lets the
+rest flow — measured on a drand-seeded sealed set of 100 unseen invoices
+(docs/SEALED1_RESULTS.md).
+
+**Quickstart (zero API, self-contained):**
+
+```bash
+pip install -e ".[dev]" && python3 -m invoiceloop doctor
+python3 -m invoiceloop demo --out demo-ws
+python3 -m invoiceloop workbench --workspace demo-ws   # http://127.0.0.1:8765
+```
+
+Numbers you can recompute: triage lift 4.03× on the sealed set
+(pre-registered thresholds), TIER1 silent-error 9.62% vs 21.91% for a
+confidence-threshold baseline at a fixed operating point
+(table: docs/BASELINE_COMPARISON_SEALED1.md), decision load
+for release 82.9% → 64.2% under the promoted HAR-0002 policy — all from
+stored evidence, no API calls needed to verify.
 
 ## 安装
 
