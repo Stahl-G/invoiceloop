@@ -17,6 +17,11 @@ cohort(seller_vat_id、total_vat,均由 mine 从裁决事件独立发现,人工
 
 ## 数字(88 份未人工文档 × 10 字段 = 880 槽)
 
+**复核负载口径**:`route not in (auto_accept, auto_absent)` —— 与
+`deliver` / `matrix.in_human_queue` / `safety_metrics` 同定义;
+**不含** `auto_absent`(政策确认缺席不算待人工)。勿与
+`requires_adjudication`(含 auto_absent 的兼容字段)混淆。
+
 | 策略 | 复核负载 | 文档触达 | auto_absent 静默缺席错 | auto_accept 静默错值 |
 |---|---|---|---|---|
 | HAR-0001(保守基线) | 63.7% | 88/88 | — | 49/272 (18.0%) |

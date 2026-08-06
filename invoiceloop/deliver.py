@@ -167,6 +167,22 @@ def build_deliverable(run_dir: Path) -> dict:
     n_decide = sum(
         1 for row in matrix["rows"]
         if row.get("requires_adjudication", True) or row["field"] in TIER1)
+    # 字段级人工队列直方图(deliver 口径:route ∉ auto_accept|auto_absent)
+    per_doc_queue: dict[str, int] = {d: 0 for d in docs}
+    for row in matrix["rows"]:
+        in_q = row.get("in_human_queue")
+        if in_q is None:
+            in_q = row.get("route") not in ("auto_accept", "auto_absent") \
+                if row.get("route") is not None \
+                else row.get("requires_adjudication", True)
+        if in_q:
+            per_doc_queue[row["doc_id"]] = per_doc_queue.get(row["doc_id"], 0) + 1
+    counts = sorted(per_doc_queue.values())
+    histogram: dict[str, int] = {}
+    for n in counts:
+        key = str(n)
+        histogram[key] = histogram.get(key, 0) + 1
+    median = counts[len(counts) // 2] if counts else 0
     return {
         "run": run_dir.name,
         "review_snapshot_id": snapshot_id,
@@ -175,10 +191,17 @@ def build_deliverable(run_dir: Path) -> dict:
             "docs": len(docs), "by_status": by_status,
             "slots": n_slots,
             "decision_load_for_release": n_decide / max(n_slots, 1),
+            "fields_in_human_queue_histogram": dict(sorted(
+                histogram.items(), key=lambda kv: int(kv[0]))),
+            "median_fields_in_human_queue": median,
+            "mean_fields_in_human_queue":
+                (sum(counts) / len(counts)) if counts else 0.0,
         },
         "note": ("纯投影:最终值只来自 field_ledger 与裁决账本(support_matrix "
                  "不参与取值);unreviewed_corroborated = 多方印证但未逐个人看的 "
-                 "TIER2 槽,如实标注;残余风险见 panel 校准限定"),
+                 "TIER2 槽,如实标注;残余风险见 panel 校准限定;"
+                 "字段级人工队列用 in_human_queue(不含 auto_absent),"
+                 "勿把文档级 pending 当成「机器一点忙没帮上」"),
     }
 
 

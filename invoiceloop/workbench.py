@@ -783,8 +783,12 @@ class Workbench:
         # 假错误」(2026-08-03 用户实测原话)。印证行仍在(机器不设免审通道 —
         # 六轮实验发现最危险的错恰是看起来全对的错),但标明是抽检性质。
         groups = (
-            ("sec_required", [(r, t) for r, t in filt_rows if r["requires_adjudication"]]),
-            ("sec_corroborated", [(r, t) for r, t in filt_rows if not r["requires_adjudication"]]),
+            ("sec_required", [(r, t) for r, t in filt_rows
+                              if r.get("in_human_queue",
+                                       r["requires_adjudication"])]),
+            ("sec_corroborated", [(r, t) for r, t in filt_rows
+                                 if not r.get("in_human_queue",
+                                              r["requires_adjudication"])]),
         )
         cards = []
         for key, items in groups:
@@ -1097,8 +1101,10 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         """复核队列序(分诊序):需要裁决的行在前,印证行(抽检)在后,
         组内保矩阵原序 —— 与队列页的分节呈现严格一致,两处不许各排各的。"""
         rows = ctx.matrix["rows"]
-        return ([r for r in rows if r["requires_adjudication"]]
-                + [r for r in rows if not r["requires_adjudication"]])
+        return ([r for r in rows if r.get("in_human_queue",
+                                          r["requires_adjudication"])]
+                + [r for r in rows if not r.get("in_human_queue",
+                                                r["requires_adjudication"])])
 
     @staticmethod
     def _decided(ctx: RunCtx, row: dict) -> bool:
@@ -1235,7 +1241,8 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         tiers = " · ".join(row.get("source_tiers") or []) or "—"
         applicability = row.get("applicability") or "—"
         policy = ""
-        if not tip and not conflict and not row["requires_adjudication"]:
+        if not tip and not conflict and not row.get(
+                "in_human_queue", row["requires_adjudication"]):
             policy = f'<div class="wb-policy">{_esc(_t(lang, "policy_note"))}</div>'
         why = self._why_html(lang, row)
         return f"""<div class="wb-adj-card">
@@ -1266,7 +1273,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         """「为什么在队列里」—— 入队原因放在判定卡顶部显眼处(2026-08-05
         用户实测:全绿 chips + 小字限制 = 以为系统让自己白审)。
         门禁绿只代表「在 DWS 数据上自洽」,不代表独立核查覆盖过。"""
-        if not row.get("requires_adjudication"):
+        if not row.get("in_human_queue", row.get("requires_adjudication")):
             return ""
         codes = row.get("reason_codes") or []
         # CLEAN 只是「没毛病」的占位,不是入队原因 —— QA_SAMPLE 等真原因

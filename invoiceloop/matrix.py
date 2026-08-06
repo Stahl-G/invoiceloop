@@ -277,13 +277,17 @@ def build_matrix(
         slot_facts, policy, harness_id=harness_id,
         tier_of=lambda f: "TIER1" if f in _T1 else "TIER2")
     for row, routed in zip(rows, routing_report["routes"]):
+        # requires_adjudication:兼容字段(route != auto_accept),含 auto_absent;
+        # 历史工件与 improve 旧 run 推断依赖它 —— 勿改语义、勿用于对外口径。
+        # in_human_queue:交付/面板口径(route not in auto_accept|auto_absent)。
         row["requires_adjudication"] = routed["route"] != "auto_accept"
+        row["in_human_queue"] = routed["route"] not in ("auto_accept", "auto_absent")
         row["route"] = routed["route"]
         row["reason_codes"] = routed["reason_codes"]
 
     rows.sort(key=lambda r: (
         STRENGTH_RANK[r["support_strength"]],
-        not r["requires_adjudication"],
+        not r["in_human_queue"],
         r["doc_id"],
         r["field"],
     ))
@@ -295,7 +299,11 @@ def build_matrix(
             s: sum(1 for r in rows if r["support_strength"] == s)
             for s in ("unsupported", "single_source", "corroborated")
         },
+        # 兼容计数(含 auto_absent);对外叙事用 human_queue
         "requires_adjudication": sum(1 for r in rows if r["requires_adjudication"]),
+        "human_queue": sum(1 for r in rows if r["in_human_queue"]),
+        "machine_decided": sum(1 for r in rows if r["route"] == "auto_accept"),
+        "machine_absent": sum(1 for r in rows if r["route"] == "auto_absent"),
         "applicability_disputed": sum(
             1 for r in rows if r["applicability"] == "label_convention_disputed"
         ),

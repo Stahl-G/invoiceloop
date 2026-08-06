@@ -325,7 +325,9 @@ tr.blk td {{ background:#fdecea; }}
 <div class="stat"><b style="color:var(--bad)">{s['by_strength']['unsupported']}</b>无支持</div>
 <div class="stat"><b style="color:var(--warn)">{s['by_strength']['single_source']}</b>单一来源</div>
 <div class="stat"><b style="color:var(--ok)">{s['by_strength']['corroborated']}</b>多方印证</div>
-<div class="stat"><b>{s['requires_adjudication']}</b>需人工裁决</div>
+<div class="stat"><b>{s.get('human_queue', s['requires_adjudication'])}</b>待人工</div>
+<div class="stat"><b>{s.get('machine_decided', '—')}</b>机器已定</div>
+<div class="stat"><b>{s.get('machine_absent', '—')}</b>政策确认缺席</div>
 <div class="stat"><b>{s['applicability_disputed']}</b>口径争议(不进错误率)</div>
 <div class="stat"><b>{s['blocking_findings']}</b>阻断发现</div>
 <div class="stat"><b>{s['drafts_rejected']}</b>草稿被冻结事务拒绝</div>
