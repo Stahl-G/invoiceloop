@@ -488,6 +488,47 @@ class TestAcceptPreset:
         assert '>与页面一致</button>' in text
 
 
+class TestQuickPathCarriesReasonCode:
+    """快路按钮自带心码(2026-08-06):按钮文案本来就是一次语义选择,
+    再用下拉问一遍是同一件事问两遍(run-0002 心码填写率 8/123 → 挖掘臂
+    合格事件 0)。纪律:只在一对一时带,含糊的留空,不代人选。"""
+
+    def test_accept_splits_into_plain_and_false_positive(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=zh")
+        assert 'data-decision="accept" data-value="" data-reason=""' in text, \
+            "「该拦,我确认没问题」不带心码 —— 词表里没有「路由判对了」,"\
+            "它也不构成放松规则的证据"
+        assert 'data-reason="ROUTING_FALSE_POSITIVE"' in text, \
+            "「白拦了」要能一键说出来 —— 这是挖掘低收益 cohort 唯一的信号"
+        assert "不该进队列" in text
+
+    def test_every_quick_button_declares_a_reason_slot(self, workspace, server):
+        """每个快路按钮都要显式带 data-reason(可以为空)—— 漏掉属性和
+        「故意留空」在 HTML 上必须区分得开,否则 JS 分不出来。"""
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=zh&filter=all")
+        buttons = re.findall(r'<button[^>]*class="wb-quick-ok[^"]*"[^>]*>', text)
+        assert buttons, "队列页应有快路按钮"
+        assert all("data-reason=" in b for b in buttons), \
+            [b for b in buttons if "data-reason=" not in b]
+
+    def test_js_writes_button_reason_and_one_to_one_prefill(self, workspace, server):
+        _, _, js = _req(server, "GET", "/assets.js")
+        assert "dataset.reason" in js, "快路必须把按钮上的心码写进下拉"
+        assert "CONFIRMED_ABSENT" in js and "NOT_APPLICABLE" in js, \
+            "决策唯一确定的心码要自动预填(combo 表就是这么规定的)"
+
+    def test_false_positive_button_records_reason_code(self, workspace, server):
+        status, _, _ = _decide(server, reason_code="ROUTING_FALSE_POSITIVE")
+        assert status == 303
+        entry = _ledger(workspace)[0]
+        assert entry["reason_code"] == "ROUTING_FALSE_POSITIVE"
+
+    def test_confidence_is_now_opt_in_for_doubt(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=zh")
+        assert "只在没把握时填" in text, \
+            "把握度改成存疑标注 —— 未填不再取消挖掘资格,主动标低才出局"
+
+
 class TestQueueSections:
     """队列必须区分「需要裁决」与「印证行(抽检)」—— 混在一起,
     用户会以为全绿行也要复审 = 假错误(2026-08-03 实测原话)。"""

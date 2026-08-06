@@ -57,11 +57,19 @@ def compile_events(run_dir: Path) -> list[dict]:
             "human_action": d["decision"],
             "reason_code": d.get("reason_code"),
             "reviewer_confidence": d.get("reviewer_confidence"),
-            # 反馈可用性(v0.2 §5.2):只有 高/中把握 + 非弃权 + 给了心码
-            # 的事件才可作改进标签;其余是业务裁决,不是改进证据
+            # 反馈可用性(v0.2 §5.2;2026-08-06 修订):心码 + 非弃权 +
+            # 人没有**主动**标「没把握」。
+            #
+            # 原判据要求 reviewer_confidence ∈ {high, medium}。run-0002 实测
+            # 填写率 3/123,mine 的合格事件 0 —— 整条挖掘臂从未点火。改判据
+            # 的依据是不对称性:主动标 low 是真信息;未填**不等于**有把握,
+            # 而自评把握度从未被验证与正确率相关(run-0002 反例:被试在未标
+            # 低把握的情况下填进形状可疑的税号)。同一个风险已由 QA 探针
+            # 测量式守卫(cohort 放松 20%、policy_accepted TIER1 5%),
+            # 不靠自评。心码仍是硬要求 —— 没有心码就没有监督标签。
             "actionable": bool(
                 d.get("reason_code")
-                and d.get("reviewer_confidence") in ("high", "medium")
+                and d.get("reviewer_confidence") != "low"
                 and d["decision"] != "abstain"),
             # 反馈质量门(83 评问题三):被后续裁决顶替的事件不是当前真相;
             # QA 抽查槽是随机探针,不能当「这条路由规则错了」的证据

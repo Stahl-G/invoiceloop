@@ -1095,6 +1095,16 @@ human-confirmed 不用绿) */
 }
 .wb-quick-ok:hover { background: var(--wb-action); color: #fff; }
 .wb-compact .wb-quick-ok { padding: 5px 12px; font-size: 12.5px; margin-bottom: 4px; }
+/* 「而且这条不该进队列」:同样是一键,但它是次要分支 —— 弱化成描边,
+   免得和主快路抢眼;两个按钮长得一样会让人随手点错,而点错的心码
+   正是会喂给 mining 的那个字段 */
+.wb-quick-fp {
+    font-weight: 500;
+    color: var(--wb-muted);
+    background: transparent;
+    border-color: var(--wb-line);
+}
+.wb-quick-fp:hover { background: var(--wb-muted); color: #fff; }
 
 /* 页码切换(多页文档):小签,不占行高 */
 .wb-page-tabs { display: inline-flex; gap: 4px; margin-left: 10px; }

@@ -73,13 +73,16 @@ _T = {
         "corrected_ph": "corrected value",
         "rationale_ph": "Issue / rationale (required) — write down what's wrong",
         "reason_code_label": "Reason code (optional, feeds the improvement loop):",
-        "confidence_label": "Confidence (optional):",
+        "confidence_label": "Flag doubt (only if unsure):",
         "conf_high": "high", "conf_medium": "medium", "conf_low": "low",
         "adjudicator_ph": "reviewer name",
         "issue_chips": ["matches the page", "wrong value", "wrong location",
                         "illegible", "label-convention conflict", "not on page", "other"],
         "accept_preset": "matches the page",
         "quick_accept": "✓ value is right — accept & next",
+        "quick_accept_fp": "✓ right — and this slot did not need review",
+        "quick_fp_rationale": "matches the page; this queue rule was a "
+                              "false positive",
         "quick_draft": "✓ draft is right — adopt “{value}” & next",
         "quick_dws": "✓ value is right — adopt DWS read “{value}” & next",
         "why_queue": "why this is in your queue",
@@ -209,12 +212,14 @@ _T = {
         "corrected_ph": "修正值",
         "rationale_ph": "发现的问题 / 理由(必填)—— 把问题直接写在这里",
         "reason_code_label": "原因码(可选,喂给改进循环):",
-        "confidence_label": "把握度(可选):",
+        "confidence_label": "标注存疑(只在没把握时填):",
         "conf_high": "高", "conf_medium": "中", "conf_low": "低",
         "adjudicator_ph": "裁决人",
         "issue_chips": ["与页面一致", "值不对", "位置不对", "看不清", "口径冲突", "页面上没有", "其他"],
         "accept_preset": "与页面一致",
         "quick_accept": "✓ 原值正确 —— 接受,下一条",
+        "quick_accept_fp": "✓ 原值正确,而且这条不该进队列",
+        "quick_fp_rationale": "与页面一致;这条路由是误报",
         "quick_draft": "✓ 原值正确 —— 采用被拒草稿「{value}」,下一条",
         "quick_dws": "✓ 原值正确 —— 采用 DWS 读到「{value}」,下一条",
         "why_queue": "为什么在我的队列里",
@@ -370,6 +375,17 @@ document.addEventListener('change', function (e) {
     if (e.target.value === 'accept' && !ta.value.trim()) ta.value = preset;
     else if (e.target.value !== 'accept' && ta.value === preset) ta.value = '';
   }
+  // 一对一心码:adjudicate 的 combo 表规定 CONFIRMED_ABSENT 只能配
+  // confirm_absent、NOT_APPLICABLE 只能配 not_applicable —— 决策已经唯一
+  // 确定了心码,不必再问一遍。只在空着或还挂着另一个自动码时改动,人手填
+  // 的一律不碰;切走时清掉,免得把不合法组合提上去(服务端会 400)。
+  var rc = form.querySelector('select[name=reason_code]');
+  if (rc) {
+    var auto = { confirm_absent: 'CONFIRMED_ABSENT',
+                 not_applicable: 'NOT_APPLICABLE' };
+    var isAuto = rc.value === 'CONFIRMED_ABSENT' || rc.value === 'NOT_APPLICABLE';
+    if (!rc.value || isAuto) rc.value = auto[e.target.value] || '';
+  }
 });
 document.addEventListener('click', function (e) {
   // 一键快路:人看了页面,点一下就完成「原值正确」并跳下一条。
@@ -390,6 +406,10 @@ document.addEventListener('click', function (e) {
     }
     var qta = qform.querySelector('.wb-rationale');
     if (qta && !qta.value.trim()) qta.value = quick.dataset.rationale || '';
+    // 按钮自带的心码最后写,盖过上面 change 事件的一对一预填 ——
+    // 「不该进队列」那一支要的是 ROUTING_FALSE_POSITIVE,不是决策推出来的码
+    var qrc = qform.querySelector('select[name=reason_code]');
+    if (qrc) qrc.value = quick.dataset.reason || '';
     qform.dataset.armed = '1';
     qform.requestSubmit();
     return;
@@ -917,30 +937,53 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         # 不该要四次点击。有声明 → accept 预填;草稿被冻结拒 → correct
         # 预填被拒草稿的值(冻结绑定是机械门槛,人看了页面说对就是对,
         # 账本记 correct + 人工理由,诚实)。仍是人逐槽点击,不批量。
+        # 快路按钮**自带心码**(2026-08-06):按钮的文案本来就是一次语义
+        # 选择,人已经做过了;系统丢掉再用下拉问一遍,是同一件事问两遍
+        # (run-0002:93% 的裁决走预设理由,心码填写率 8/123)。
+        # 纪律:只在按钮语义与心码**一对一**时带,含糊的一律留空 ——
+        # 代填心码就是伪造监督信号(GOAL.md「不在没有依据下让数字变好看」)。
         quick = ""
         draft_value = next((r["value"] for r in row["rejections"]
                             if r.get("value")), None)
         if claim_id:
+            # accept 有两种互斥含义,只有人知道是哪种:
+            #   「该拦,我确认没问题」→ 无心码(词表里没有「路由判对了」,
+            #     而它也不构成放松规则的证据);
+            #   「白拦了」→ ROUTING_FALSE_POSITIVE,这是挖掘低收益 cohort
+            #     唯一需要的信号。所以拆成两个按钮,不是多加一个表单字段。
             quick = (f'<button type="button" class="wb-quick-ok" '
-                     f'data-decision="accept" data-value="" '
+                     f'data-decision="accept" data-value="" data-reason="" '
                      f'data-rationale="{_esc(_t(lang, "accept_preset"))}">'
-                     f'{_esc(_t(lang, "quick_accept"))}</button>')
+                     f'{_esc(_t(lang, "quick_accept"))}</button>'
+                     f'<button type="button" class="wb-quick-ok wb-quick-fp" '
+                     f'data-decision="accept" data-value="" '
+                     f'data-reason="ROUTING_FALSE_POSITIVE" '
+                     f'data-rationale="{_esc(_t(lang, "quick_fp_rationale"))}">'
+                     f'{_esc(_t(lang, "quick_accept_fp"))}</button>')
         elif draft_value:
+            # 值对、冻结绑定没接住 —— 这正是 BAD_SOURCE_BINDING 的定义
             quick = (f'<button type="button" class="wb-quick-ok" '
                      f'data-decision="correct" data-value="{_esc(draft_value)}" '
+                     f'data-reason="BAD_SOURCE_BINDING" '
                      f'data-rationale="{_esc(_t(lang, "quick_draft_rationale"))}">'
                      f'{_esc(_t(lang, "quick_draft", value=draft_value))}</button>')
         elif row.get("value") not in (None, ""):
             # 无声明也没走到冻结(如 OCR 受阻、草稿被排除),但 DWS 读到了值
-            # —— 人看页面确认后采用该值,账本记 correct + 人证理由
+            # —— 人看页面确认后采用该值,账本记 correct + 人证理由。
+            # 心码留空:这一支既可能是绑定失败,也可能是 OCR 阻断导致门禁
+            # unavailable,两者诊断不同,机器分不出来就不替人选。
             quick = (f'<button type="button" class="wb-quick-ok" '
                      f'data-decision="correct" data-value="{_esc(row["value"])}" '
+                     f'data-reason="" '
                      f'data-rationale="{_esc(_t(lang, "quick_draft_rationale"))}">'
                      f'{_esc(_t(lang, "quick_dws", value=row["value"]))}</button>')
         else:
-            # 无声明且无值(预期缺失抽检等):一键确认缺失
+            # 无声明且无值(预期缺失抽检等):一键确认缺失。
+            # CONFIRMED_ABSENT 与 confirm_absent 在 adjudicate 的 combo 表里
+            # 就是一对一,再问一遍等于让人把刚点的东西重打一遍
             quick = (f'<button type="button" class="wb-quick-ok" '
                      f'data-decision="confirm_absent" data-value="" '
+                     f'data-reason="CONFIRMED_ABSENT" '
                      f'data-rationale="{_esc(_t(lang, "quick_absent_rationale"))}">'
                      f'{_esc(_t(lang, "quick_absent"))}</button>')
         radios = "".join(
