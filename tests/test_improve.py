@@ -399,6 +399,48 @@ class TestMineQualityGate:
         assert report["cohorts"] == [], \
             "不可行动事件不进 cohort —— 低收益候选不许建在没有监督标签的记录上"
 
+    def test_overturned_auto_accept_is_reported_even_from_a_qa_probe(self, ws):
+        """策略自动放行、人推翻 —— 撤销该 cohort 的证据。
+
+        与放松线索不对称:一条就报,不设频次门槛,QA 探针抓到的也算数
+        (探针存在的理由就是抓这个)。
+        """
+        run_dir = ws / "runs" / "run-0001"
+        matrix = json.loads((run_dir / "support_matrix.json").read_text("utf-8"))
+        row = next(r for r in matrix["rows"] if r["field"] == "total_gross")
+        row["route"] = "auto_accept"
+        row["reason_codes"] = ["CLEAN", "QA_SAMPLE:policy_accepted_tier1"]
+        (run_dir / "support_matrix.json").write_text(
+            json.dumps(matrix, ensure_ascii=False), encoding="utf-8")
+        adjudicate.append_adjudication(
+            run_dir, claim_id=_claim_id(run_dir, "total_gross"), doc_id=DOC,
+            field="total_gross", decision="reject",
+            rationale="页面上印的是 Fed. I.D.,不是 VAT 号",
+            adjudicator="t", decided_at=DECIDED,
+            reason_code="WRONG_FIELD_MAPPING")
+        report = improve.mine(ws)
+        (o,) = report["overturned_auto_accepts"]
+        assert o["field"] == "total_gross" and o["human_action"] == "reject"
+        assert o["random_qa"] is True, "QA 探针抓到的推翻照样进撤销信号"
+        assert o["rationale"].startswith("页面上印的是")
+        assert report["low_yield_candidates"] == [], \
+            "推翻不是放松线索 —— 不许混进候选"
+
+    def test_reviewed_slot_overturn_is_not_a_revocation_signal(self, ws):
+        """route=review 的槽被 correct 是正常工作,不是策略出错。"""
+        run_dir = ws / "runs" / "run-0001"
+        matrix = json.loads((run_dir / "support_matrix.json").read_text("utf-8"))
+        row = next(r for r in matrix["rows"] if r["field"] == "total_gross")
+        row["route"] = "review"
+        (run_dir / "support_matrix.json").write_text(
+            json.dumps(matrix, ensure_ascii=False), encoding="utf-8")
+        adjudicate.append_adjudication(
+            run_dir, claim_id=_claim_id(run_dir, "total_gross"), doc_id=DOC,
+            field="total_gross", decision="correct", corrected_value="1.00",
+            rationale="值不对", adjudicator="t", decided_at=DECIDED,
+            reason_code="WRONG_VALUE")
+        assert improve.mine(ws)["overturned_auto_accepts"] == []
+
     def test_rationale_reaches_the_cohort_verbatim(self, ws):
         """复核者手打的话必须能被改进层看到 —— 2026-08-06 之前它停在
         裁决账本里,反馈事件根本不带这个字段。原文透传,不解析。"""

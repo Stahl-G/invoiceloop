@@ -1106,6 +1106,44 @@ human-confirmed 不用绿) */
 }
 .wb-quick-fp:hover { background: var(--wb-muted); color: #fff; }
 
+/* 改进循环页:原话是主体,模型草稿必须看起来像草稿 —— 它和系统发现
+   长得一样,人就会当成系统发现,那正是这一层最该避免的事 */
+.wb-improve { max-width: 860px; }
+.wb-imp-intro { color: var(--wb-muted); font-size: 13px; line-height: 1.6; }
+.wb-imp-h { font-size: 14px; margin: 22px 0 8px; }
+.wb-imp-danger { color: #a3341f; }
+.wb-imp-empty { color: var(--wb-muted); font-size: 13px; }
+.wb-imp-cohort, .wb-imp-sug, .wb-imp-overturn, .wb-imp-cand {
+    border: 1px solid var(--wb-line);
+    border-radius: var(--wb-radius-sm);
+    padding: 10px 12px;
+    margin: 0 0 8px;
+    font-size: 13px;
+}
+.wb-imp-overturn { border-color: #a3341f; background: rgba(163, 52, 31, 0.05); }
+.wb-imp-sug { border-style: dashed; }
+.wb-imp-notes { margin: 6px 0 0; padding-left: 18px; line-height: 1.65; }
+.wb-imp-note { margin: 4px 0; line-height: 1.6; }
+.wb-imp-meta { color: var(--wb-muted); font-size: 12px; }
+.wb-imp-tag {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    background: var(--wb-line);
+    color: var(--wb-muted);
+}
+.wb-imp-tag.advisory { background: rgba(163, 52, 31, 0.12); color: #a3341f; }
+.wb-imp-cmd {
+    margin: 6px 0 0;
+    padding: 8px 10px;
+    background: var(--wb-line-soft);
+    border-radius: var(--wb-radius-sm);
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
 /* 页码切换(多页文档):小签,不占行高 */
 .wb-page-tabs { display: inline-flex; gap: 4px; margin-left: 10px; }
 .wb-page-tab {

@@ -538,6 +538,69 @@ class TestQuickPathCarriesReasonCode:
             "把握度改成存疑标注 —— 未填不再取消挖掘资格,主动标低才出局"
 
 
+class TestImprovePage:
+    """改进循环页:只读。原话是主体,模型草稿必须看起来像草稿。"""
+
+    def _mine(self, workspace):
+        from invoiceloop import improve
+        return improve.mine(workspace)
+
+    def test_page_renders_without_any_improve_artifacts(self, workspace, server):
+        """还没跑过 mine 也要能打开 —— 空页面比 500 有用。"""
+        status, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert status == 200
+        assert "改进循环" in text
+        assert "没有模型草稿" in text
+
+    def test_reviewer_notes_reach_the_page(self, workspace, server):
+        _decide(server, rationale="页面右下角还有一个小写的 total",
+                reason_code="ROUTING_FALSE_POSITIVE")
+        self._mine(workspace)
+        _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert "页面右下角还有一个小写的 total" in text, \
+            "复核者原话必须出现在改进页上 —— 这一页就是为了让人读它"
+
+    def test_page_writes_nothing(self, workspace, server):
+        """唯一写 active 的入口是 improve promote —— 网页上不许有按钮
+        能改策略,只给可复制的命令。"""
+        self._mine(workspace)
+        _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert 'action="/improve"' not in text
+        assert "improve propose" in text or "还没有复核笔记" in text
+
+    def test_model_draft_is_marked_advisory_with_its_citations(
+            self, workspace, server):
+        self._mine(workspace)
+        (workspace / "improve" / "suggestions.json").write_text(json.dumps({
+            "advisory": True, "model": "m", "note_count": 1,
+            "suggestions": [{
+                "action": "absent_expected", "cohort": {"field": "seller_vat_id"},
+                "finding": "美国发票普遍无 VAT", "prediction": "少一类重复确认",
+                "confidence": "medium", "cites": [0],
+                "cited_notes": [{"doc_id": "d1", "rationale": "页面上没有"}]}],
+            "dropped": ["suggestion[1]:引用为空或越界 —— 没出处的建议不收"],
+        }, ensure_ascii=False), encoding="utf-8")
+        _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert "advisory" in text, "模型草稿要打上 advisory 标"
+        assert "页面上没有" in text, "草稿要挂着它读的原话,人才能核"
+        assert "没出处的建议不收" in text, "被丢弃的草稿也要看得见"
+
+    def test_overturned_auto_accept_is_shown_first(self, workspace, server):
+        run_dir = workspace / "runs" / RUN
+        matrix = json.loads((run_dir / "support_matrix.json").read_text("utf-8"))
+        row = next(r for r in matrix["rows"] if r["field"] == "total_gross")
+        row["route"] = "auto_accept"
+        (run_dir / "support_matrix.json").write_text(
+            json.dumps(matrix, ensure_ascii=False), encoding="utf-8")
+        _decide(server, decision="reject", rationale="Fed. I.D. 不是 VAT 号",
+                reason_code="WRONG_FIELD_MAPPING")
+        self._mine(workspace)
+        _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert "自动放行被人推翻" in text
+        assert text.index("自动放行被人推翻") < text.index("复核者原话"), \
+            "收紧信号排在放松线索前面 —— 安全方向优先"
+
+
 class TestQueueSections:
     """队列必须区分「需要裁决」与「印证行(抽检)」—— 混在一起,
     用户会以为全绿行也要复审 = 假错误(2026-08-03 实测原话)。"""

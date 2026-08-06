@@ -126,12 +126,31 @@ def mine(workspace: Path) -> dict:
         for f in by_field.values()
         if f["absentish"] >= 3 and f["absentish"] / f["total"] >= 0.8
     ]
+    # 撤销信号(2026-08-06):被策略自动放行、又被人推翻的槽。
+    # **方向与上面两类相反** —— low_yield/absence 是放松的线索,这一类是
+    # 收紧的证据,所以不进 candidates,单列。判据只要一条:auto_* 路由 +
+    # 人给了 correct/reject。一条就报,不设频次门槛 —— 放松要证据、
+    # 收紧要及时,两边不对称是故意的(安全方向优先,宪章四)。
+    # 事件已过合格门(非 QA 探针会被排除),所以这里额外把 QA 探针也算上:
+    # 抽检抓到的推翻正是探针存在的理由,不能因为它是随机抽的就不算数。
+    overturned = [
+        {"field": e["field"], "doc_id": e["doc_id"], "route": e.get("route"),
+         "human_action": e["human_action"], "reason_code": e.get("reason_code"),
+         "rationale": (e.get("rationale") or "").strip(),
+         "random_qa": e["random_qa"], "harness_id": e["harness_id"]}
+        for e in events
+        if str(e.get("route") or "").startswith("auto_")
+        and e["human_action"] in ("correct", "reject")
+        and not e["superseded"]
+    ]
     report = {
         "warning": _SELECTION_BIAS_WARNING,
         "events": len(events),
         "buckets": buckets,
         "cohorts": sorted(cohorts.values(),
                           key=lambda c: (-c["reviewed"], c["field"])),
+        "overturned_auto_accepts": sorted(
+            overturned, key=lambda o: (o["field"], o["doc_id"])),
         "low_yield_candidates": sorted(low_yield,
                                        key=lambda c: -c["reviewed"]),
         "absence_candidates": sorted(absence_candidates,

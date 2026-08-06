@@ -64,6 +64,26 @@ _T = {
         "queue": "Review queue", "report": "Delivery report",
         "search_ph": "doc id or field…", "search_btn": "Search",
         "upload": "Upload", "deliver": "Deliver & verify",
+        "improve": "Improvement loop",
+        "imp_intro": "What reviewers actually wrote, grouped by cohort. "
+                     "Candidates are leads, not authorisations — you write "
+                     "the proposal, evaluate re-routes it counterfactually, "
+                     "and only a human promotes it.",
+        "imp_overturn": "Auto-accepts a human overturned (tightening signal)",
+        "imp_overturn_none": "None — no policy-released slot has been "
+                             "overturned in this workspace.",
+        "imp_absence": "Expected-absence candidates",
+        "imp_low_yield": "Low-yield candidates (high review, zero correction)",
+        "imp_notes": "Reviewer's own words",
+        "imp_no_notes": "No reviewer notes yet — run a review round first.",
+        "imp_model": "Model draft (advisory — a human decides)",
+        "imp_model_none": "No model draft. Run `invoiceloop suggest "
+                          "--workspace <ws>` to have a model read the notes "
+                          "above and draft proposals.",
+        "imp_cites": "reads",
+        "imp_dropped": "Drafts rejected by the validator",
+        "imp_cmd": "Proposal command (copy, edit, run — nothing is written "
+                   "from this page)",
         "all": "All", "pending": "Pending", "done": "Decided",
         "sec_required": "Needs adjudication ({n})",
         "sec_corroborated": "Corroborated — no machine flags, spot-check ({n})",
@@ -203,6 +223,22 @@ _T = {
         "queue": "复核队列", "report": "交付报告",
         "search_ph": "发票号 / 字段名…", "search_btn": "搜索",
         "upload": "上传", "deliver": "交付与验证",
+        "improve": "改进循环",
+        "imp_intro": "复核者到底写了什么,按 cohort 归堆。候选是线索,"
+                     "不是授权 —— 提案由你写,evaluate 做反事实重路由,"
+                     "promote 只有人能点。",
+        "imp_overturn": "自动放行被人推翻(收紧信号)",
+        "imp_overturn_none": "无 —— 本 workspace 还没有策略放行的槽被推翻。",
+        "imp_absence": "预期缺失候选",
+        "imp_low_yield": "低收益候选(高频复核、零修正)",
+        "imp_notes": "复核者原话",
+        "imp_no_notes": "还没有复核笔记 —— 先跑一轮复核。",
+        "imp_model": "模型草稿(顾问性质,人决定)",
+        "imp_model_none": "没有模型草稿。跑 `invoiceloop suggest "
+                          "--workspace <ws>` 让模型读上面这些原话出提案草稿。",
+        "imp_cites": "读的是",
+        "imp_dropped": "被校验层丢弃的草稿",
+        "imp_cmd": "提案命令(复制、改、自己跑 —— 本页不写任何东西)",
         "all": "全部", "pending": "待复核", "done": "已裁决",
         "sec_required": "需要裁决 ({n})",
         "sec_corroborated": "印证行 —— 机器未见异常,抽检性质 ({n})",
@@ -632,6 +668,7 @@ class Workbench:
                 ("queue", f"/queue?run={nav_run}"),
                 ("report", f"/report?run={nav_run}"),
                 ("deliver", f"/deliver?run={nav_run}"),
+                ("improve", f"/improve?run={nav_run}"),
                 ("upload", "/upload"),
             ):
                 cls = "wb-tab active" if key == active else "wb-tab"
@@ -1280,6 +1317,111 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                 f'<a href="{back}">{_esc(_t(lang, "back"))}</a></span>'
                 f'{_btn(next_r, "next_pending")}</div>')
 
+    # ---- 改进循环:把复核者原话与(可选的)模型草稿摆在一起给人读
+    def improve_page(self, lang: str, run_dir: Path, params: dict) -> str:
+        """**只读页。** 它不写候选、不晋升、不调模型 —— 页面底部给的是
+        一条可复制的 propose 命令。理由:唯一写 active 的入口必须是
+        `improve promote`(v0.2 §12),网页上一个按钮就能改策略,等于
+        把那道人工闸门做成摆设。模型草稿标成 advisory,并挂着它读的原话。
+        """
+        import json as _json
+
+        ctx = RunCtx(run_dir)
+        ws = self.ws
+        report_path = ws / "improve" / "mine_report.json"
+        sug_path = ws / "improve" / "suggestions.json"
+        report = (_json.loads(report_path.read_text(encoding="utf-8"))
+                  if report_path.exists() else {})
+        parts = [f'<p class="wb-imp-intro">{_esc(_t(lang, "imp_intro"))}</p>']
+
+        # 收紧信号排最前:它是安全方向,放松线索可以等,这个不能
+        overturns = report.get("overturned_auto_accepts") or []
+        parts.append(f'<h3 class="wb-imp-h wb-imp-danger">'
+                     f'{_esc(_t(lang, "imp_overturn"))}</h3>')
+        if overturns:
+            for o in overturns:
+                qa = ' <span class="wb-imp-tag">QA</span>' if o.get("random_qa") else ""
+                parts.append(
+                    f'<div class="wb-imp-overturn"><b>{_esc(o["field"])}</b>{qa} '
+                    f'· {_esc(o["doc_id"])} · {_esc(o["human_action"])}'
+                    f'({_esc(str(o.get("reason_code") or "—"))})'
+                    f'<div class="wb-imp-note">{_esc(o.get("rationale") or "")}</div>'
+                    f'</div>')
+        else:
+            parts.append(f'<p class="wb-imp-empty">'
+                         f'{_esc(_t(lang, "imp_overturn_none"))}</p>')
+
+        for key, items, count_key in (
+            ("imp_absence", report.get("absence_candidates") or [], "absentish"),
+            ("imp_low_yield", report.get("low_yield_candidates") or [], "reviewed"),
+        ):
+            parts.append(f'<h3 class="wb-imp-h">{_esc(_t(lang, key))}</h3>')
+            if not items:
+                parts.append(f'<p class="wb-imp-empty">—</p>')
+            for c in items:
+                parts.append(
+                    f'<div class="wb-imp-cand"><b>{_esc(c["field"])}</b> '
+                    f'· n={c.get(count_key)}</div>')
+
+        # 复核者原话 —— 本页的主体。模型有没有草稿都要能读到人写的东西
+        parts.append(f'<h3 class="wb-imp-h">{_esc(_t(lang, "imp_notes"))}</h3>')
+        any_note = False
+        for c in report.get("cohorts") or []:
+            notes = c.get("notes") or []
+            if not notes:
+                continue
+            any_note = True
+            head = (f'{c["field"]} · {c.get("support_strength")} · '
+                    f'{c.get("route")} · n={c["reviewed"]}')
+            body = "".join(
+                f'<li><span class="wb-imp-meta">{_esc(n.get("decision") or "")}'
+                f' / {_esc(str(n.get("reason_code") or "—"))}</span> '
+                f'{_esc(n["rationale"])}</li>' for n in notes)
+            parts.append(f'<div class="wb-imp-cohort"><b>{_esc(head)}</b>'
+                         f'<ul class="wb-imp-notes">{body}</ul></div>')
+        if not any_note:
+            parts.append(f'<p class="wb-imp-empty">'
+                         f'{_esc(_t(lang, "imp_no_notes"))}</p>')
+
+        parts.append(f'<h3 class="wb-imp-h">{_esc(_t(lang, "imp_model"))}</h3>')
+        if sug_path.exists():
+            sug = _json.loads(sug_path.read_text(encoding="utf-8"))
+            for s in sug.get("suggestions") or []:
+                cohort = " ".join(f"{k}={v}" for k, v in s["cohort"].items())
+                cited = "".join(
+                    f'<li>{_esc(n.get("rationale", ""))}</li>'
+                    for n in s.get("cited_notes") or [])
+                cmd = (f'python3 -m invoiceloop improve propose '
+                       f'--workspace {ws} --cohort-id <起个名> '
+                       + " ".join(f"--{k} {v}" for k, v in s["cohort"].items())
+                       + ' --finding "<改写成你自己的判断>" '
+                         '--prediction "<预计改什么指标、可能伤害什么>"')
+                parts.append(
+                    f'<div class="wb-imp-sug"><div class="wb-imp-sug-head">'
+                    f'<span class="wb-imp-tag advisory">advisory</span> '
+                    f'<b>{_esc(s["action"])}</b> · {_esc(cohort)} · '
+                    f'{_esc(s["confidence"])}</div>'
+                    f'<div class="wb-imp-note">{_esc(s["finding"])}</div>'
+                    f'<div class="wb-imp-note">{_esc(s["prediction"])}</div>'
+                    f'<div class="wb-imp-meta">{_esc(_t(lang, "imp_cites"))}:</div>'
+                    f'<ul class="wb-imp-notes">{cited}</ul>'
+                    f'<div class="wb-imp-meta">{_esc(_t(lang, "imp_cmd"))}</div>'
+                    f'<pre class="wb-imp-cmd">{_esc(cmd)}</pre></div>')
+            if sug.get("dropped"):
+                dropped = "".join(f'<li>{_esc(d)}</li>' for d in sug["dropped"])
+                parts.append(f'<div class="wb-imp-meta">'
+                             f'{_esc(_t(lang, "imp_dropped"))}</div>'
+                             f'<ul class="wb-imp-notes">{dropped}</ul>')
+        else:
+            parts.append(f'<p class="wb-imp-empty">'
+                         f'{_esc(_t(lang, "imp_model_none"))}</p>')
+        body = (f'<div class="wb-improve"><h2>{_esc(_t(lang, "improve"))}</h2>'
+                + "".join(parts) + "</div>")
+        return self.page(lang, "improve", body, run_name=ctx.name,
+                         notice=self._notice(lang, params),
+                         ooc=ctx.manifest.get("out_of_calibration", False),
+                         keep_params=params)
+
     # ---- 交付报告
     def report_page(self, lang: str, run_dir: Path, params: dict) -> str:
         ctx = RunCtx(run_dir)
@@ -1524,6 +1666,10 @@ class _Handler(BaseHTTPRequestHandler):
             if method == "GET" and path == "/report":
                 run = self._require_run(params)
                 return self._html(200, self.bench.report_page(lang, run, params), set_cookies)
+            if method == "GET" and path == "/improve":
+                run = self._require_run(params)
+                return self._html(200, self.bench.improve_page(lang, run, params),
+                                  set_cookies)
             if method == "GET" and path == "/adjudicate":
                 params.setdefault("adjudicator", [self._adjudicator()])
                 run = self._require_run(params)
