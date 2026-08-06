@@ -851,3 +851,16 @@ class TestAdjudicatePage:
         assert f"run={RUN}" in href and f"doc={DOC}" in href \
             and "field=total_gross" in href and "lang=en" in href, \
             f"切换链接必须保留当前槽位参数,实际:{href}"
+
+
+class TestQueueSearch:
+    def test_search_filters_by_doc_and_field(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&q={DOC[:6]}&lang=zh")
+        assert DOC[:8] in text
+        _, _, text2 = _req(server, "GET", f"/queue?run={RUN}&q=total_gross&lang=zh")
+        assert "total_gross" in text2
+        _, _, text3 = _req(server, "GET", f"/queue?run={RUN}&q=zzz-no-match&lang=zh")
+        assert "total_gross" not in text3, "搜不到就空,不许退回全量"
+        # 搜索状态在 chip 链接里保持(翻 filter 不丢搜索词)
+        _, _, text4 = _req(server, "GET", f"/queue?run={RUN}&q={DOC[:6]}&lang=zh")
+        assert f"q={DOC[:6]}" in text4

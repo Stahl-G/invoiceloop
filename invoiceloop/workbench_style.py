@@ -179,7 +179,29 @@ a:hover { text-decoration: underline; }
     flex-wrap: wrap;
     gap: 8px;
     margin: 14px 0 18px;
+    align-items: center;
 }
+/* 搜索框:与 chips 同行,服务器端过滤 */
+.wb-search { display: inline-flex; gap: 6px; margin-left: auto; }
+.wb-search input[type="search"] {
+    font-size: 13px;
+    color: var(--wb-ink);
+    background: var(--wb-surface);
+    border: 1px solid var(--wb-line);
+    border-radius: var(--wb-radius-sm);
+    padding: 5px 11px;
+    min-width: 200px;
+}
+.wb-search-btn {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--wb-action);
+    background: var(--wb-action-wash);
+    border: 1px solid var(--wb-action-line);
+    border-radius: var(--wb-radius-sm);
+    padding: 5px 13px;
+}
+.wb-search-btn:hover { border-color: var(--wb-action); }
 .wb-chip {
     font-size: 12.5px;
     font-weight: 500;

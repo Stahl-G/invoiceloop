@@ -62,6 +62,7 @@ _T = {
         "thesis": "Extraction correctness is untrustworthy; support is verifiable. "
                   "You decide — the system shows evidence, not verdicts.",
         "queue": "Review queue", "report": "Delivery report",
+        "search_ph": "doc id or field…", "search_btn": "Search",
         "upload": "Upload", "deliver": "Deliver & verify",
         "all": "All", "pending": "Pending", "done": "Decided",
         "sec_required": "Needs adjudication ({n})",
@@ -197,6 +198,7 @@ _T = {
         "brand": "InvoiceLoop 工作台",
         "thesis": "抽取的正确性不可信,支持关系可验证。你裁决,系统只给证据,不给判决。",
         "queue": "复核队列", "report": "交付报告",
+        "search_ph": "发票号 / 字段名…", "search_btn": "搜索",
         "upload": "上传", "deliver": "交付与验证",
         "all": "全部", "pending": "待复核", "done": "已裁决",
         "sec_required": "需要裁决 ({n})",
@@ -658,6 +660,7 @@ class Workbench:
         rows = ctx.matrix["rows"]
         decided = sum(1 for r in rows if (ctx.slot(r["doc_id"], r["field"]) or {}).get("tip"))
         filter_ = params.get("filter", ["all"])[0]
+        query = params.get("q", [""])[0].strip().lower()
         filt_rows = []
         for r in rows:
             tip = (ctx.slot(r["doc_id"], r["field"]) or {}).get("tip")
@@ -665,14 +668,29 @@ class Workbench:
                 continue
             if filter_ == "done" and not tip:
                 continue
+            # 搜索框(2026-08-06 用户实测):doc_id 前缀/子串或字段名,
+            # 大小写不敏感 —— 「找不到那张发票」不该靠翻页
+            if query and query not in r["doc_id"].lower() \
+                    and query not in r["field"].lower():
+                continue
             filt_rows.append((r, tip))
         n_pending = sum(1 for r in rows if not (ctx.slot(r["doc_id"], r["field"]) or {}).get("tip"))
+        q_param = f"&q={urllib.parse.quote(query)}" if query else ""
         chips = " ".join(
             f'<a class="wb-chip{" active" if filter_ == k else ""}" '
-            f'href="/queue?run={ctx.name}&filter={k}&lang={lang}">{_esc(_t(lang, k))}'
+            f'href="/queue?run={ctx.name}&filter={k}&lang={lang}{q_param}">'
+            f'{_esc(_t(lang, k))}'
             f'{"(" + str(n_pending) + ")" if k == "pending" else ""}</a>'
             for k in ("all", "pending", "done")
         )
+        search = (f'<form class="wb-search" method="get" action="/queue">'
+                  f'<input type="hidden" name="run" value="{_esc(ctx.name)}">'
+                  f'<input type="hidden" name="filter" value="{_esc(filter_)}">'
+                  f'<input type="hidden" name="lang" value="{_esc(lang)}">'
+                  f'<input type="search" name="q" value="{_esc(query)}" '
+                  f'placeholder="{_esc(_t(lang, "search_ph"))}">'
+                  f'<button type="submit" class="wb-search-btn">'
+                  f'{_esc(_t(lang, "search_btn"))}</button></form>')
         adjudicator = params.get("adjudicator", [""])[0]
         # 分节呈现:矩阵本来就知道哪些行「需要裁决」、哪些是多方印证。
         # 不分节,印证行和待裁决行混在一起,用户会以为「全绿的也要我复审 =
@@ -693,7 +711,7 @@ class Workbench:
 <div class="wb-progress" title="{_esc(_t(lang, 'reviewed', x=decided, y=len(rows)))}">
 <div class="wb-progress-bar" style="width:{pct}%"></div></div>
 <p>{_esc(_t(lang, 'reviewed', x=decided, y=len(rows)))}</p>
-<div class="wb-filters">{chips}</div>
+<div class="wb-filters">{chips}{search}</div>
 {''.join(cards)}
 <div class="wb-footer">{_esc(_t(lang, 'snapshot'))}={_esc(ctx.snapshot_id)}<br>
 field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__version__}</div>"""
