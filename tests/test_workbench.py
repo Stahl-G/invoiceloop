@@ -566,7 +566,7 @@ class TestImprovePage:
         self._mine(workspace)
         _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
         assert 'action="/improve"' not in text
-        assert "improve propose" in text or "还没有复核笔记" in text
+        assert "还没写过复核意见" in text
 
     def test_model_draft_is_marked_advisory_with_its_citations(
             self, workspace, server):
@@ -596,8 +596,9 @@ class TestImprovePage:
                 reason_code="WRONG_FIELD_MAPPING")
         self._mine(workspace)
         _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
-        assert "自动放行被人推翻" in text
-        assert text.index("自动放行被人推翻") < text.index("复核者原话"), \
+        assert "被你推翻了" in text, "推翻记录必须出现"
+        assert "Fed. I.D. 不是 VAT 号" in text, "你写的原话要摆出来"
+        assert text.index("被你推翻了") < text.index("你写过的全部意见"), \
             "收紧信号排在放松线索前面 —— 安全方向优先"
 
 
@@ -1066,10 +1067,12 @@ class TestImproveLoopPage:
                                                            server):
         self._adopt(server)
         _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
-        assert "HAR-0002" in text and "复核负载" in text
-        # 无真值的 workspace:不许显示「Gate 全过」(宪章四:没跑 ≠ 通过)
-        assert "安全门没跑" in text
-        assert "Gate 全过" not in text
+        assert "需要你过目的字段" in text, "试算结果必须摆出来"
+        # 无真值的 workspace:不许显示「安全检查通过」(宪章四:没跑 ≠ 通过)
+        assert "安全检查没跑" in text
+        assert "安全检查通过" not in text
+        # 工程标识不在正文里,收进技术细节折叠区
+        assert "技术细节" in text and "HAR-0002" in text
 
     def test_schema_candidate_is_not_auto_evaluated(self, workspace, server):
         """schema 候选要真重抽才评得了,那要花钱 —— 不许替人按下去。"""
@@ -1082,7 +1085,7 @@ class TestImproveLoopPage:
                 / "extraction_schema.json").exists()
         assert not (workspace / "improve" / "eval_HAR-0002.json").exists()
         _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
-        assert "消耗 credits" in text, "要花钱的那一步必须先说清再让人点"
+        assert "会产生费用" in text, "要花钱的那一步必须先说清再让人点"
 
     def test_stale_lineage_candidate_gets_no_promote_button(self, workspace,
                                                             server):
@@ -1099,8 +1102,8 @@ class TestImproveLoopPage:
             "approved_by": "alice", "rationale": "r",
             "approved_at": "2026-08-06T12:00:00Z"})
         _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
-        assert "谱系对不上当前 active" in text, \
-            "HAR-0003 的 parent 已经不是 active 了,必须说出来"
+        assert "基于一版更早的规则" in text, \
+            "HAR-0003 的上游已经不是当前规则了,必须说人话讲清楚"
         _, _, tail = text.partition("HAR-0003")
         assert "/improve/promote" not in tail, \
             "注定被拒的操作不该给按钮 —— 让人填完表单再吃 400 是坏交互"
@@ -1155,13 +1158,13 @@ class TestModelDraftRendering:
             "finding": "f", "prediction": "p", "confidence": "high",
             "cites": [0], "cited_notes": [{"rationale": "推翻过一次"}]}])
         _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
-        assert "撤销不是候选类型" in text
+        assert "收回一条已经生效的规则" in text
         assert 'action="/improve/adopt"' not in text
 
     def test_rejected_drafts_are_shown_not_swallowed(self, workspace, server):
         self._write(workspace, [], dropped=["suggestion[0]:引用为空 —— 不收"])
         _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
-        assert "被校验层丢弃的草稿" in text and "引用为空" in text
+        assert "被挡下的 AI 建议" in text and "引用为空" in text
 
     def test_draft_text_is_escaped(self, workspace, server):
         """模型输出直接进 HTML 就是 XSS —— 和人写的 rationale 同一条纪律。"""

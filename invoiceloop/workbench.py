@@ -28,6 +28,8 @@ from __future__ import annotations
 import html
 import json
 import re
+
+from . import plainwords as _pw
 import urllib.parse
 from datetime import datetime, timezone
 from http.cookies import SimpleCookie
@@ -84,7 +86,39 @@ _T = {
         "imp_dropped": "Drafts rejected by the validator",
         "imp_cmd": "Proposal command (copy, edit, run — nothing is written "
                    "from this page)",
-        "imp_adopt": "Adopt as candidate",
+        "imp_lead": "Every note you wrote while reviewing has been read. "
+                    "Below are the rule changes proposed from them — none "
+                    "takes effect until you say so, and you can always say no.",
+        "imp_alert_h": "Worth your attention: something released "
+                       "automatically, which you then overturned",
+        "imp_alert_body": "These are cases the system judged safe to handle "
+                          "without you, and you corrected or rejected on "
+                          "review. This is the most important kind of record "
+                          "— it means a rule is too loose.",
+        "imp_sug_h": "The AI read your notes and proposed this",
+        "imp_sug_sub": "Read {n} notes you wrote, proposed {m} changes. The "
+                       "AI decides nothing; every proposal must name which "
+                       "of your notes it rests on.",
+        "imp_ai": "AI proposal",
+        "imp_conf": "Confidence",
+        "imp_why": "Why",
+        "imp_then": "What changes if you accept",
+        "imp_your_words": "Your own words",
+        "imp_notes_sub": "These are the AI's only input. It sees nothing "
+                         "else, and may not propose anything uncited.",
+        "imp_tech": "Technical detail",
+        "imp_rewrite": "Rewrite these in your own words "
+                       "(yours is what the ledger records)",
+        "imp_carried": "carried over",
+        "imp_eval_h": "Trial run (replayed over invoices you already reviewed)",
+        "imp_cand_schema": "Reword the extraction hint so this field is found "
+                           "more often",
+        "imp_cand_unknown": "A rule change (see technical detail)",
+        "imp_reextract_warn": "This change alters what the extraction service "
+                              "is told, so a replay cannot measure it — a "
+                              "batch must actually be re-extracted, which "
+                              "costs money. You set the size and the cap.",
+        "imp_adopt": "Adopt as a pending change",
         "imp_adopt_hint": "Adopting writes a candidate harness and evaluates "
                           "it. It does not change the active harness — "
                           "promotion is a separate, signed step below.",
@@ -99,28 +133,28 @@ _T = {
         "imp_finding": "Finding",
         "imp_prediction": "Prediction (say what this could damage)",
         "imp_new_desc": "New field description (sent to DWS)",
-        "imp_candidates": "Candidates and promotion",
+        "imp_candidates": "Waiting on your decision",
         "imp_no_candidates": "No candidate yet. Adopt a draft above, or run "
                              "`improve propose` on the command line.",
         "imp_active": "active",
         "imp_eval_none": "Not evaluated — a candidate cannot be promoted "
                          "until it has been.",
-        "imp_eval_run": "Evaluate (counterfactual, no API)",
-        "imp_eval_reextract": "Evaluate by re-extraction (spends credits)",
-        "imp_sample": "Sample docs",
-        "imp_budget": "Credit ceiling",
-        "imp_gate_ok": "Gates pass — promotable",
-        "imp_gate_no": "Gates refuse promotion",
-        "imp_promote": "Promote to active harness",
+        "imp_eval_run": "Try it (free)",
+        "imp_eval_reextract": "Re-extract a batch to try it (costs money)",
+        "imp_sample": "How many invoices to try on",
+        "imp_budget": "Spending cap",
+        "imp_gate_ok": "Safety checks pass — may take effect",
+        "imp_gate_no": "Safety checks fail — this cannot take effect",
+        "imp_promote": "I agree — make it effective",
         "imp_promote_hint": "Promotion changes how every future invoice is "
                             "routed. Your name and reason go into the "
                             "promotion ledger, permanently.",
         "imp_approved_by": "Your name",
         "imp_rationale": "Reason (what residual risk are you accepting?)",
         "imp_approved_at": "Decided at (ISO 8601)",
-        "imp_load": "Review load",
-        "imp_silent_absent": "Silent absence errors",
-        "imp_silent_wrong": "Silent wrong values",
+        "imp_load": "Fields you have to look at",
+        "imp_silent_absent": "Treated a value that was on the page as absent",
+        "imp_silent_wrong": "Let a mis-copied value through",
         "imp_basis": "Evidence basis",
         "imp_unscored": "No ground truth in this workspace — safety unscored, "
                         "so the gates cannot vouch for this candidate.",
@@ -290,57 +324,85 @@ _T = {
         "imp_overturn_none": "无 —— 本 workspace 还没有策略放行的槽被推翻。",
         "imp_absence": "预期缺失候选",
         "imp_low_yield": "低收益候选(高频复核、零修正)",
-        "imp_notes": "复核者原话",
-        "imp_no_notes": "还没有复核笔记 —— 先跑一轮复核。",
+        "imp_notes": "你写过的全部意见",
+        "imp_no_notes": "你还没写过复核意见。先去复核队列过一轮,这里就会有内容。",
         "imp_model": "模型草稿(顾问性质,人决定)",
         "imp_model_none": "没有模型草稿。跑 `invoiceloop suggest "
                           "--workspace <ws>` 让模型读上面这些原话出提案草稿。",
         "imp_cites": "读的是",
-        "imp_dropped": "被校验层丢弃的草稿",
+        "imp_dropped": "被挡下的 AI 建议(没出处或越权)",
         "imp_cmd": "提案命令(复制、改、自己跑)",
-        "imp_adopt": "采纳为候选",
-        "imp_adopt_hint": "采纳只会写出一个候选 harness 并评测它,"
-                          "**不改变当前 active** —— 晋升是下面单独的、要署名的一步。",
-        "imp_adopt_schema_hint": "采纳只会写出候选。schema 候选无法用反事实重放评测 "
-                                 "—— 它需要真的重抽,会消耗 credits,由你在下面授权。",
+        "imp_lead": "你复核发票时写下的每一条意见,系统都读过了。"
+                    "下面是据此提出的规则改动 —— 每一条都要你点头才会生效,"
+                    "你随时可以不同意。",
+        "imp_alert_h": "需要你注意:系统自动放过的,被你推翻了",
+        "imp_alert_body": "下面这些是系统当时判断「不用麻烦人」、"
+                          "而你复核时改掉或驳回了的。这类记录最要紧 —— "
+                          "它说明规则放得太松了。",
+        "imp_sug_h": "AI 读完你的意见,提了这些建议",
+        "imp_sug_sub": "读了你写的 {n} 条意见,提出 {m} 条建议。"
+                       "AI 没有决定权,它只能提;每条都必须说出依据的是你哪句话。",
+        "imp_ai": "AI 建议",
+        "imp_conf": "把握",
+        "imp_why": "为什么这么建议",
+        "imp_then": "采纳后会怎样",
+        "imp_your_words": "你当时是这么写的",
+        "imp_notes_sub": "这些是 AI 唯一的依据。它读不到别的东西,"
+                         "也不许提没有出处的建议。",
+        "imp_tech": "技术细节",
+        "imp_rewrite": "我想改写这两段话(会记进账本的是你的版本)",
+        "imp_carried": "上一轮携带",
+        "imp_eval_h": "试算结果(拿你已经复核过的发票重放一遍)",
+        "imp_cand_schema": "改进抽取说明,让系统更容易找到这个字段",
+        "imp_cand_unknown": "一条规则改动(看技术细节)",
+        "imp_reextract_warn": "这条改动动的是发给抽取服务的说明,"
+                              "光靠重放算不出效果 —— 必须真的重抽一批发票,"
+                              "会产生费用。份数和上限由你定。",
+        "imp_adopt": "采纳,做成待定改动",
+        "imp_adopt_hint": "采纳只是把它变成一条「待定改动」并试算一遍,"
+                          "现在的规则一点都不会变。要不要真的生效,"
+                          "在下面单独决定,而且要签你的名字。",
+        "imp_adopt_schema_hint": "采纳只是把它变成一条「待定改动」,现在的规则"
+                                 "不会变。这一类改动动的是发给抽取服务的说明,"
+                                 "要看效果必须真的重抽一批发票,费用由你在下面授权。",
         "imp_words": "你的话(模型草稿只是起点 —— 签字的是你,用你自己的说法写)",
         "imp_cohort_id": "候选 cohort 名",
-        "imp_finding": "发现",
-        "imp_prediction": "预测(写清可能伤害什么)",
-        "imp_new_desc": "新的字段描述(会发给 DWS)",
-        "imp_candidates": "候选与晋升",
-        "imp_no_candidates": "还没有候选。在上面采纳一条草稿,"
-                             "或者用命令行跑 `improve propose`。",
+        "imp_finding": "用你自己的话说,这是怎么回事",
+        "imp_prediction": "你预计它会带来什么(包括可能的坏处)",
+        "imp_new_desc": "新的说明(这段话会发给抽取服务)",
+        "imp_candidates": "等你拍板的改动",
+        "imp_no_candidates": "还没有待定改动。在上面采纳一条 AI 建议,它就会出现在这里。",
         "imp_active": "当前 active",
-        "imp_eval_none": "未评测 —— 没评过的候选不许晋升。",
-        "imp_eval_run": "评测(反事实重放,零 API)",
-        "imp_eval_reextract": "重抽评测(消耗 credits)",
-        "imp_sample": "抽样份数",
-        "imp_budget": "credits 上限",
-        "imp_gate_ok": "Gate 全过 —— 可晋升",
-        "imp_gate_no": "Gate 拒绝晋升",
-        "imp_promote": "晋升为 active harness",
-        "imp_promote_hint": "晋升会改变之后每一张发票的路由方式。"
-                            "你的署名与理由会永久写进晋升账本。",
-        "imp_approved_by": "你的署名",
-        "imp_rationale": "理由(你接受了什么残余风险?)",
-        "imp_approved_at": "决定时间(ISO 8601)",
-        "imp_load": "复核负载",
-        "imp_silent_absent": "静默缺席错",
-        "imp_silent_wrong": "静默错值",
+        "imp_eval_none": "还没试算过。没试算过的改动不许生效 —— 先看看它会带来什么。",
+        "imp_eval_run": "试算一下(不花钱)",
+        "imp_eval_reextract": "重抽一批来试算(会产生费用)",
+        "imp_sample": "抽多少张发票来试",
+        "imp_budget": "费用上限",
+        "imp_gate_ok": "安全检查通过 —— 可以生效",
+        "imp_gate_no": "安全检查不通过,这条不能生效",
+        "imp_promote": "我同意,从现在起生效",
+        "imp_promote_hint": "同意之后,之后每一张发票都按新规则处理。"
+                            "你的名字和理由会永久留在账本里,可以随时查到"
+                            "是谁在什么时候基于什么理由做的这个决定。",
+        "imp_approved_by": "你的名字",
+        "imp_rationale": "你为什么同意?(写清你接受了什么风险)",
+        "imp_approved_at": "决定时间",
+        "imp_load": "需要你过目的字段",
+        "imp_silent_absent": "把单据上真有的值当成了「没有」",
+        "imp_silent_wrong": "把抄错的值直接放过了",
         "imp_basis": "证据基底",
-        "imp_unscored": "本 workspace 没有真值 —— 安全性未计分,"
-                        "门禁无法为这个候选背书。",
+        "imp_unscored": "这批发票没有标准答案可比对,所以「会不会漏值、"
+                        "会不会放过错值」这两行没法算 —— 不是零,是不知道。",
         "imp_schema_changed": "改动了抽取 schema",
-        "imp_revoke_manual": "撤销不是候选类型,一键做不到。"
-                             "要收紧就走 `improve rollback`(回到已知策略),"
-                             "或者人工改策略后重新 propose。",
-        "imp_gate_unrun": "安全门没跑(本 workspace 没有真值)—— "
-                          "门禁没有拒绝它,但也没有为它背书。"
-                          "静默错升没升、负载升没升,这里都不知道。",
-        "imp_lineage_bad": "谱系对不上当前 active —— 这个候选是从别的 harness "
-                           "派生的(通常是已经晋升过的旧候选)。"
-                           "promote 会拒;要用它就从当前 active 重新 propose。",
+        "imp_revoke_manual": "这条建议是要「收回一条已经生效的规则」。"
+                             "这件事没有一键按钮 —— 收紧要么退回上一版规则,"
+                             "要么人工改完再走一遍这个流程。请找管理员处理。",
+        "imp_gate_unrun": "安全检查没跑 —— 这批发票没有标准答案可比对。"
+                          "系统没有拒绝这条改动,但也没有为它背书:"
+                          "它会不会多漏几个值、会不会反而更费事,这里不知道。",
+        "imp_lineage_bad": "这条改动是基于一版更早的规则做的,现在的规则已经"
+                           "不是那一版了 —— 直接生效会覆盖掉中间的改动。"
+                           "要用它,请照现在的规则重新采纳一次。",
         "all": "全部", "pending": "待复核", "done": "已裁决",
         "sec_required": "需要裁决 ({n})",
         "sec_corroborated": "印证行 —— 机器未见异常,抽检性质 ({n})",
@@ -481,6 +543,11 @@ def _dws_key() -> str | None:
 
 def _esc(x) -> str:
     return html.escape("" if x is None else str(x), quote=True)
+
+
+def _json_compact(obj) -> str:
+    """技术细节折叠区里的一行 JSON(不换行,不缩进)。"""
+    return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
 
 
 _JS = r"""
@@ -1439,10 +1506,15 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 
     # ---- 改进循环:把复核者原话与(可选的)模型草稿摆在一起给人读
     def improve_page(self, lang: str, run_dir: Path, params: dict) -> str:
-        """**只读页。** 它不写候选、不晋升、不调模型 —— 页面底部给的是
-        一条可复制的 propose 命令。理由:唯一写 active 的入口必须是
-        `improve promote`(v0.2 §12),网页上一个按钮就能改策略,等于
-        把那道人工闸门做成摆设。模型草稿标成 advisory,并挂着它读的原话。
+        """**只读页 + 三个写入口。** 面向不写代码的应付会计(AP)。
+
+        版式是叙事顺序,不是数据结构顺序:
+        「你复核时发现了什么」→「AI 据此建议改什么」→「等你拍板的改动」。
+        工程标识(harness id、digest、cohort 键、路由词)一律收进每张卡
+        底部的「技术细节」折叠区 —— 不删,因为它们是可复算的前提;
+        不摆在最前,因为它们不是 AP 要读的东西(plainwords.py 首段)。
+
+        写入口的分级摩擦不变:采纳/试算只写候选,晋升要署名。
         """
         import json as _json
 
@@ -1452,72 +1524,60 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         sug_path = ws / "improve" / "suggestions.json"
         report = (_json.loads(report_path.read_text(encoding="utf-8"))
                   if report_path.exists() else {})
-        parts = [f'<p class="wb-imp-intro">{_esc(_t(lang, "imp_intro"))}</p>']
+        parts = [f'<p class="wb-imp-lead">{_esc(_t(lang, "imp_lead"))}</p>']
 
-        # 收紧信号排最前:它是安全方向,放松线索可以等,这个不能
+        # ---- 一、需要你注意:系统放过了,你把它推翻了(安全方向,排最前)
         overturns = report.get("overturned_auto_accepts") or []
-        parts.append(f'<h3 class="wb-imp-h wb-imp-danger">'
-                     f'{_esc(_t(lang, "imp_overturn"))}</h3>')
         if overturns:
-            for o in overturns:
-                qa = ' <span class="wb-imp-tag">QA</span>' if o.get("random_qa") else ""
-                parts.append(
-                    f'<div class="wb-imp-overturn"><b>{_esc(o["field"])}</b>{qa} '
-                    f'· {_esc(o["doc_id"])} · {_esc(o["human_action"])}'
-                    f'({_esc(str(o.get("reason_code") or "—"))})'
-                    f'<div class="wb-imp-note">{_esc(o.get("rationale") or "")}</div>'
-                    f'</div>')
-        else:
-            parts.append(f'<p class="wb-imp-empty">'
-                         f'{_esc(_t(lang, "imp_overturn_none"))}</p>')
+            rows = "".join(
+                f'<li><b>{_esc(_pw.field(o["field"], lang))}</b> — '
+                f'{_esc(_pw.decision(o["human_action"], lang))}'
+                f'({_esc(_pw.reason(o.get("reason_code"), lang))})'
+                f'<div class="wb-imp-quote">'
+                f'{_esc(_pw.quote(o.get("rationale") or "", lang)[0])}'
+                f'</div></li>'
+                for o in overturns)
+            parts.append(
+                f'<section class="wb-imp-alert">'
+                f'<h3>{_esc(_t(lang, "imp_alert_h"))}</h3>'
+                f'<p>{_esc(_t(lang, "imp_alert_body"))}</p>'
+                f'<ul class="wb-imp-plainlist">{rows}</ul></section>')
 
-        for key, items, count_key in (
-            ("imp_absence", report.get("absence_candidates") or [], "absentish"),
-            ("imp_low_yield", report.get("low_yield_candidates") or [], "reviewed"),
-        ):
-            parts.append(f'<h3 class="wb-imp-h">{_esc(_t(lang, key))}</h3>')
-            if not items:
-                parts.append(f'<p class="wb-imp-empty">—</p>')
-            for c in items:
-                parts.append(
-                    f'<div class="wb-imp-cand"><b>{_esc(c["field"])}</b> '
-                    f'· n={c.get(count_key)}</div>')
-
-        # 复核者原话 —— 本页的主体。模型有没有草稿都要能读到人写的东西
-        parts.append(f'<h3 class="wb-imp-h">{_esc(_t(lang, "imp_notes"))}</h3>')
-        any_note = False
-        for c in report.get("cohorts") or []:
-            notes = c.get("notes") or []
-            if not notes:
-                continue
-            any_note = True
-            head = (f'{c["field"]} · {c.get("support_strength")} · '
-                    f'{c.get("route")} · n={c["reviewed"]}')
-            body = "".join(
-                f'<li><span class="wb-imp-meta">{_esc(n.get("decision") or "")}'
-                f' / {_esc(str(n.get("reason_code") or "—"))}</span> '
-                f'{_esc(n["rationale"])}</li>' for n in notes)
-            parts.append(f'<div class="wb-imp-cohort"><b>{_esc(head)}</b>'
-                         f'<ul class="wb-imp-notes">{body}</ul></div>')
-        if not any_note:
-            parts.append(f'<p class="wb-imp-empty">'
-                         f'{_esc(_t(lang, "imp_no_notes"))}</p>')
-
-        parts.append(f'<h3 class="wb-imp-h">{_esc(_t(lang, "imp_model"))}</h3>')
+        # ---- 二、AI 读了你的话,提出这些建议
+        drafts, dropped = [], []
         if sug_path.exists():
             sug = _json.loads(sug_path.read_text(encoding="utf-8"))
-            for i, s in enumerate(sug.get("suggestions") or []):
+            drafts = sug.get("suggestions") or []
+            dropped = sug.get("dropped") or []
+        note_total = sum(len(c.get("notes") or [])
+                         for c in report.get("cohorts") or [])
+        parts.append(f'<h3 class="wb-imp-h">{_esc(_t(lang, "imp_sug_h"))}</h3>')
+        if drafts:
+            parts.append(
+                f'<p class="wb-imp-sub">'
+                f'{_esc(_t(lang, "imp_sug_sub").format(n=note_total, m=len(drafts)))}'
+                f'</p>')
+            for i, s in enumerate(drafts):
                 parts.append(self._suggestion_html(lang, ctx, i, s))
-            if sug.get("dropped"):
-                dropped = "".join(f'<li>{_esc(d)}</li>' for d in sug["dropped"])
-                parts.append(f'<div class="wb-imp-meta">'
-                             f'{_esc(_t(lang, "imp_dropped"))}</div>'
-                             f'<ul class="wb-imp-notes">{dropped}</ul>')
         else:
             parts.append(f'<p class="wb-imp-empty">'
                          f'{_esc(_t(lang, "imp_model_none"))}</p>')
+        # 被挡下的草稿**独立于**留下的草稿显示 —— 全被挡下时更该看见:
+        # 那说明 AI 提了一堆没出处或越权的东西,是关于它可信度的重要信息。
+        # (先前写在 if drafts 分支里,恰好把最该看见的情形吞掉了)
+        if dropped:
+            items = "".join(f'<li>{_esc(d)}</li>' for d in dropped)
+            parts.append(
+                f'<details class="wb-imp-tech"><summary>'
+                f'{_esc(_t(lang, "imp_dropped"))}({len(dropped)})</summary>'
+                f'<ul class="wb-imp-plainlist">{items}</ul></details>')
 
+        # ---- 三、等你拍板
         parts.append(self._candidates_html(lang, ctx))
+
+        # ---- 四、你自己写的话(原始材料,折叠;AI 的建议都是从这里来的)
+        parts.append(self._notes_html(lang, report))
+
         body = (f'<div class="wb-improve"><h2>{_esc(_t(lang, "improve"))}</h2>'
                 + "".join(parts) + "</div>")
         return self.page(lang, "improve", body, run_name=ctx.name,
@@ -1525,43 +1585,98 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                          ooc=ctx.manifest.get("out_of_calibration", False),
                          keep_params=params)
 
+    def _notes_html(self, lang: str, report: dict) -> str:
+        """复核者原话,按字段归堆。默认折叠 —— 它是**出处**,不是待办。"""
+        blocks, total = [], 0
+        for c in report.get("cohorts") or []:
+            notes = c.get("notes") or []
+            if not notes:
+                continue
+            total += len(notes)
+            items = "".join(
+                f'<li>{_esc(_pw.decision(n.get("decision"), lang))}'
+                f'({_esc(_pw.reason(n.get("reason_code"), lang))}):'
+                f'{_esc(_pw.quote(n["rationale"], lang)[0])}'
+                + (f' <span class="wb-imp-carry">'
+                   f'{_esc(_t(lang, "imp_carried"))}</span>'
+                   if _pw.quote(n["rationale"], lang)[1] else "")
+                + '</li>' for n in notes)
+            blocks.append(
+                f'<div class="wb-imp-notegroup"><b>'
+                f'{_esc(_pw.field(c["field"], lang))}</b> · '
+                f'{_esc(_pw.invoices(c["reviewed"], lang))}'
+                f'<ul class="wb-imp-plainlist">{items}</ul></div>')
+        if not blocks:
+            return (f'<h3 class="wb-imp-h">{_esc(_t(lang, "imp_notes"))}</h3>'
+                    f'<p class="wb-imp-empty">'
+                    f'{_esc(_t(lang, "imp_no_notes"))}</p>')
+        return (f'<details class="wb-imp-notes-box"><summary>'
+                f'{_esc(_t(lang, "imp_notes"))}({total})</summary>'
+                f'<p class="wb-imp-sub">{_esc(_t(lang, "imp_notes_sub"))}</p>'
+                + "".join(blocks) + "</details>")
+
+    def _quote_list(self, lang: str, notes: list) -> tuple[str, int]:
+        """引用原话列表 —— 剥掉携带溯源前缀,携带的另标一个小签。
+
+        复核者要看见的是他自己写的那句话,不是 `[replay run-0002 HD-0009]`。
+        原文在工件里一个字没动(plainwords.quote 只服务展示层)。
+        """
+        # 同一句话说了 9 遍就合并成「…… ×9」—— 逐条列出只是噪音,
+        # 而「9 次都这么写」恰恰是这条建议的分量所在,合并反而更清楚
+        counts: dict[tuple[str, bool], int] = {}
+        for n in notes:
+            key = _pw.quote(n.get("rationale", ""), lang)
+            counts[key] = counts.get(key, 0) + 1
+        items = []
+        for (text, carried), n in counts.items():
+            mark = (f' <span class="wb-imp-carry">'
+                    f'{_esc(_t(lang, "imp_carried"))}</span>' if carried else "")
+            times = (f' <b>×{n}</b>' if n > 1 else "")
+            items.append(f'<li>{_esc(text)}{times}{mark}</li>')
+        return "".join(items), len(notes)
+
     def _suggestion_html(self, lang: str, ctx: RunCtx, idx: int,
                          s: dict) -> str:
-        """一条模型草稿 + 采纳表单。
+        """一条 AI 建议 = 一句话标题 + 为什么 + 会怎样 + 你写的原话 + 采纳表单。
 
-        采纳表单里 finding/prediction 是**可编辑的文本框**,预填模型的话。
-        这是刻意的:签字的人要用自己的说法写,晋升账本里留下的应该是人的
-        判断,不是模型的措辞被人点了一下。`kind` 由 suggest.validate 打好。
+        finding/prediction 是**可编辑文本框**,预填 AI 的话:签字的人要用
+        自己的说法写,晋升账本里留下的应该是人的判断。
         """
-        cited = "".join(f'<li>{_esc(n.get("rationale", ""))}</li>'
-                        for n in s.get("cited_notes") or [])
         kind = s.get("kind") or ("schema" if s.get("action") ==
                                  "schema_description" else "cohort")
-        if kind == "schema":
-            head = f'{s["action"]} · {s.get("field", "")}'
-        else:
-            head = (f'{s["action"]} · '
-                    + " ".join(f"{k}={v}"
-                               for k, v in (s.get("cohort") or {}).items()))
-        common = (
-            f'<div class="wb-imp-sug-head">'
-            f'<span class="wb-imp-tag advisory">advisory</span> '
-            f'<b>{_esc(head)}</b> · {_esc(s.get("confidence", ""))}</div>'
-            f'<div class="wb-imp-note">{_esc(s.get("finding", ""))}</div>'
-            f'<div class="wb-imp-note">{_esc(s.get("prediction", ""))}</div>'
-            f'<div class="wb-imp-meta">{_esc(_t(lang, "imp_cites"))}:</div>'
-            f'<ul class="wb-imp-notes">{cited}</ul>')
+        target = _pw.field(
+            s.get("field") if kind == "schema"
+            else (s.get("cohort") or {}).get("field"), lang)
+        title = _pw.headline(s["action"], target, lang)
+        quotes, n_quotes = self._quote_list(lang, s.get("cited_notes") or [])
+
+        head = (
+            f'<div class="wb-imp-sug-title">{_esc(title)}</div>'
+            f'<div class="wb-imp-badges">'
+            f'<span class="wb-imp-tag advisory">{_esc(_t(lang, "imp_ai"))}</span>'
+            f'<span class="wb-imp-tag">{_esc(_t(lang, "imp_conf"))}:'
+            f'{_esc(_pw.confidence(s.get("confidence"), lang))}</span></div>'
+            f'<div class="wb-imp-why"><span class="wb-imp-k">'
+            f'{_esc(_t(lang, "imp_why"))}</span>{_esc(s.get("finding", ""))}</div>'
+            f'<div class="wb-imp-why"><span class="wb-imp-k">'
+            f'{_esc(_t(lang, "imp_then"))}</span>{_esc(s.get("prediction", ""))}</div>'
+            f'<details class="wb-imp-quotes"><summary>'
+            f'{_esc(_t(lang, "imp_your_words"))}({n_quotes})</summary>'
+            f'<ul class="wb-imp-plainlist">{quotes}</ul></details>')
 
         hidden = (f'<input type="hidden" name="run" value="{_esc(ctx.name)}">'
                   f'<input type="hidden" name="lang" value="{_esc(lang)}">')
+        # 两段话上面已经原样显示过了 —— 编辑框收进折叠区,免得同一段话
+        # 在一屏里出现两遍。折叠内容照样随表单提交,预填的仍是 AI 的话。
         words = (
-            f'<div class="wb-imp-meta">{_esc(_t(lang, "imp_words"))}</div>'
+            f'<details class="wb-imp-edit"><summary>'
+            f'{_esc(_t(lang, "imp_rewrite"))}</summary>'
             f'<label class="wb-imp-lbl">{_esc(_t(lang, "imp_finding"))}'
-            f'<textarea name="finding" rows="2" required>'
+            f'<textarea name="finding" rows="3" required>'
             f'{_esc(s.get("finding", ""))}</textarea></label>'
             f'<label class="wb-imp-lbl">{_esc(_t(lang, "imp_prediction"))}'
-            f'<textarea name="prediction" rows="2" required>'
-            f'{_esc(s.get("prediction", ""))}</textarea></label>')
+            f'<textarea name="prediction" rows="3" required>'
+            f'{_esc(s.get("prediction", ""))}</textarea></label></details>')
 
         if kind == "schema":
             form = (
@@ -1573,7 +1688,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                 f'<textarea name="description" rows="3" required>'
                 f'{_esc(s.get("description", ""))}</textarea></label>'
                 f'{words}'
-                f'<p class="wb-imp-meta">'
+                f'<p class="wb-imp-note-sm">'
                 f'{_esc(_t(lang, "imp_adopt_schema_hint"))}</p>'
                 f'<button class="wb-btn" type="submit">'
                 f'{_esc(_t(lang, "imp_adopt"))}</button></form>')
@@ -1587,27 +1702,27 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
             form = (
                 f'<form method="post" action="/improve/adopt" '
                 f'class="wb-imp-form">{hidden}{cohort_fields}'
-                f'<input type="hidden" name="kind" '
-                f'value="{_esc(s["action"])}">'
-                f'<label class="wb-imp-lbl">{_esc(_t(lang, "imp_cohort_id"))}'
-                f'<input name="cohort_id" value="{_esc(default_id)}" required>'
-                f'</label>{words}'
-                f'<p class="wb-imp-meta">{_esc(_t(lang, "imp_adopt_hint"))}</p>'
+                f'<input type="hidden" name="kind" value="{_esc(s["action"])}">'
+                f'<input type="hidden" name="cohort_id" '
+                f'value="{_esc(default_id)}">{words}'
+                f'<p class="wb-imp-note-sm">{_esc(_t(lang, "imp_adopt_hint"))}</p>'
                 f'<button class="wb-btn" type="submit">'
                 f'{_esc(_t(lang, "imp_adopt"))}</button></form>')
         else:
-            # revoke:改进层没有「撤销」这个候选类型 —— 它对应回滚或人工改策略。
-            # 不给按钮,也不假装能一键做到(宪章四:做不了要说)
-            form = (f'<p class="wb-imp-meta">revoke —— '
+            # revoke:改进层没有「撤销」这个候选类型 —— 不给假按钮(宪章四)
+            form = (f'<p class="wb-imp-note-sm">'
                     f'{_esc(_t(lang, "imp_revoke_manual"))}</p>')
-        return f'<div class="wb-imp-sug">{common}{form}</div>'
+
+        tech = (f'<details class="wb-imp-tech"><summary>'
+                f'{_esc(_t(lang, "imp_tech"))}</summary>'
+                f'<code>action={_esc(s["action"])} · '
+                f'{_esc(_json_compact(s.get("cohort") or {"field": s.get("field")}))}'
+                f'</code></details>')
+        return f'<article class="wb-imp-sug">{head}{form}{tech}</article>'
 
     def _candidates_html(self, lang: str, ctx: RunCtx) -> str:
-        """候选清单 + 评测数字 + 晋升表单。
-
-        晋升按钮的可用性由 `improve.gate_verdict` 决定 —— 与 promote 实际
-        执行的是同一个纯函数,页面不许自己判一遍。
-        """
+        """等你拍板的改动。晋升按钮的可用性由 improve.gate_verdict 决定 ——
+        与 promote 实际执行的是同一个纯函数,页面不许自己判一遍。"""
         import json as _json
 
         from . import improve as _improve
@@ -1616,7 +1731,8 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         parts = [f'<h3 class="wb-imp-h">{_esc(_t(lang, "imp_candidates"))}</h3>']
         ws = self.ws
         try:
-            active_id = load_active(ws)["harness_id"]
+            active = load_active(ws)
+            active_id = active["harness_id"]
         except Exception as exc:  # noqa: BLE001 —— 链坏了要说,不静默
             return "".join(parts) + (f'<p class="wb-imp-empty">'
                                      f'{_esc(str(exc))}</p>')
@@ -1629,17 +1745,14 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                 continue
             shown += 1
             man = _json.loads(manifest_path.read_text(encoding="utf-8"))
-            schema_changed = bool(man.get("schema_changed"))
-            tag = (f' <span class="wb-imp-tag">'
-                   f'{_esc(_t(lang, "imp_schema_changed"))}</span>'
-                   if schema_changed else "")
             block = [
-                f'<div class="wb-imp-sug-head"><b>{_esc(cand.name)}</b>{tag} '
-                f'· {_esc(man.get("provenance", ""))} '
-                f'← {_esc(man.get("parent_harness_id", ""))}</div>',
-                f'<div class="wb-imp-note">'
+                f'<div class="wb-imp-sug-title">'
+                f'{_esc(self._candidate_title(lang, cand, man, active))}</div>',
+                f'<div class="wb-imp-why"><span class="wb-imp-k">'
+                f'{_esc(_t(lang, "imp_why"))}</span>'
                 f'{_esc("".join(man.get("created_from_findings") or []))}</div>',
-                f'<div class="wb-imp-note">'
+                f'<div class="wb-imp-why"><span class="wb-imp-k">'
+                f'{_esc(_t(lang, "imp_then"))}</span>'
                 f'{_esc(man.get("prediction", ""))}</div>',
             ]
             lineage_ok = man.get("parent_harness_id") == active_id
@@ -1655,24 +1768,66 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
             else:
                 block.append(f'<p class="wb-imp-empty">'
                              f'{_esc(_t(lang, "imp_eval_none"))}</p>')
-                block.append(self._evaluate_form(lang, ctx, cand.name,
-                                                 schema_changed))
-            parts.append(f'<div class="wb-imp-cand-box">'
-                         + "".join(block) + "</div>")
+                block.append(self._evaluate_form(
+                    lang, ctx, cand.name, bool(man.get("schema_changed"))))
+            block.append(
+                f'<details class="wb-imp-tech"><summary>'
+                f'{_esc(_t(lang, "imp_tech"))}</summary>'
+                f'<code>{_esc(cand.name)} ← {_esc(man.get("parent_harness_id",""))}'
+                f' · {_esc(man.get("provenance",""))}'
+                f' · policy={_esc(str(man.get("policy_digest",""))[:12])}'
+                f'</code></details>')
+            parts.append(f'<article class="wb-imp-cand-box">'
+                         + "".join(block) + "</article>")
         if not shown:
             parts.append(f'<p class="wb-imp-empty">'
                          f'{_esc(_t(lang, "imp_no_candidates"))}</p>')
-        parts.append(f'<div class="wb-imp-meta">{_esc(_t(lang, "imp_active"))}'
-                     f': {_esc(active_id)}</div>')
         return "".join(parts)
 
-    def _eval_html(self, lang: str, ev: dict) -> str:
-        """评测数字表 —— 改善与代价并排,不许只显示改善的那一半。"""
-        def pct(x):
-            return "—" if x is None else f"{x:.1%}"
+    def _candidate_title(self, lang: str, cand: Path, man: dict,
+                         active: dict) -> str:
+        """候选做什么 —— 从政策 diff 反推一句话,而不是印 HAR-0005。"""
+        import json as _json
 
-        rows = [(_t(lang, "imp_load"), pct(ev.get("review_load_baseline")),
-                 pct(ev.get("review_load_candidate")))]
+        try:
+            pol = _json.loads(
+                (cand / "routing_policy.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return cand.name
+        parent = active["policy"]
+        pairs = (("absent_expected_cohorts", "absent_expected"),
+                 ("auto_accept_cohorts", "auto_accept"))
+        for key, action in pairs:
+            old = {c.get("id") for c in parent.get(key) or []}
+            for c in pol.get(key) or []:
+                if c.get("id") not in old:
+                    return _pw.headline(action, _pw.field(c.get("field"), lang),
+                                        lang)
+        if man.get("schema_changed"):
+            return _t(lang, "imp_cand_schema")
+        # 与当前规则比不出差别 —— 通常是已经晋升过的旧候选(它加的那条
+        # 早就在生效规则里了)。退而取它自己最后加的那条,总比印一个
+        # HAR-0002 给 AP 看强
+        for key, action in pairs:
+            entries = pol.get(key) or []
+            if entries:
+                return _pw.headline(action,
+                                    _pw.field(entries[-1].get("field"), lang),
+                                    lang)
+        return _t(lang, "imp_cand_unknown")
+
+    def _eval_html(self, lang: str, ev: dict) -> str:
+        """试算结果 —— 改善与代价并排,不许只显示改善的那一半。"""
+        slots = ev.get("evaluated_slots") or 0
+
+        def load_row(v):
+            if v is None:
+                return "—"
+            return (f"{v:.0%}" if slots == 0
+                    else f"{v:.0%}({round(v * slots)}/{slots})")
+
+        rows = [(_t(lang, "imp_load"), load_row(ev.get("review_load_baseline")),
+                 load_row(ev.get("review_load_candidate")))]
         if ev.get("safety_status") == "scored":
             rows.append((_t(lang, "imp_silent_absent"),
                          str(ev.get("silent_absent_baseline")),
@@ -1681,15 +1836,13 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                          str(ev.get("silent_wrong_baseline")),
                          str(ev.get("silent_wrong_candidate"))))
         body = "".join(
-            f'<tr><td>{_esc(k)}</td><td>{_esc(b)}</td><td>→</td>'
-            f'<td><b>{_esc(c)}</b></td></tr>' for k, b, c in rows)
-        note = ""
-        if ev.get("safety_status") != "scored":
-            note = (f'<p class="wb-imp-empty">'
-                    f'{_esc(_t(lang, "imp_unscored"))}</p>')
-        return (f'<table class="wb-imp-eval">{body}</table>'
-                f'<div class="wb-imp-meta">{_esc(_t(lang, "imp_basis"))}: '
-                f'{_esc(str(ev.get("basis") or "—"))}</div>{note}')
+            f'<tr><td>{_esc(k)}</td><td class="wb-imp-was">{_esc(b)}</td>'
+            f'<td>→</td><td><b>{_esc(c)}</b></td></tr>' for k, b, c in rows)
+        note = ("" if ev.get("safety_status") == "scored" else
+                f'<p class="wb-imp-empty">{_esc(_t(lang, "imp_unscored"))}</p>')
+        return (f'<div class="wb-imp-evalbox">'
+                f'<div class="wb-imp-k">{_esc(_t(lang, "imp_eval_h"))}</div>'
+                f'<table class="wb-imp-eval">{body}</table>{note}</div>')
 
     def _evaluate_form(self, lang: str, ctx: RunCtx, cand_id: str,
                        schema_changed: bool) -> str:
@@ -1705,6 +1858,8 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         return (f'<form method="post" action="/improve/evaluate" '
                 f'class="wb-imp-form">{hidden}'
                 f'<input type="hidden" name="reextract" value="1">'
+                f'<p class="wb-imp-note-sm">'
+                f'{_esc(_t(lang, "imp_reextract_warn"))}</p>'
                 f'<label class="wb-imp-lbl">{_esc(_t(lang, "imp_sample"))}'
                 f'<input name="sample" type="number" min="1" max="200" '
                 f'value="20" required></label>'
@@ -1719,23 +1874,21 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         if not lineage_ok:
             # promote 自己也会拒(parent 对不上 active)。与其让人填完表单再吃
             # 一个 400,不如在这里说清楚 —— 页面不该给一个注定失败的按钮
-            return (f'<div class="wb-imp-gate refuse"><b>'
-                    f'{_esc(_t(lang, "imp_lineage_bad"))}</b></div>')
+            return (f'<div class="wb-imp-gate refuse">'
+                    f'{_esc(_t(lang, "imp_lineage_bad"))}</div>')
         if not verdict["ok"]:
             refusals = "".join(f'<li>{_esc(r)}</li>'
                                for r in verdict["refusals"])
             return (f'<div class="wb-imp-gate refuse"><b>'
                     f'{_esc(_t(lang, "imp_gate_no"))}</b>'
-                    f'<ul class="wb-imp-notes">{refusals}</ul></div>')
-        # 宪章四:安全门**没跑**不等于通过。无真值时不许显示「Gate 全过」
+                    f'<ul class="wb-imp-plainlist">{refusals}</ul></div>')
+        # 宪章四:安全门**没跑**不等于通过。无真值时不许显示「安全检查通过」
         scored = verdict["safety_status"] == "scored"
-        head_key = "imp_gate_ok" if scored else "imp_gate_unrun"
         return (
-            f'<div class="wb-imp-gate {"ok" if scored else "refuse"}">'
-            f'<b>{_esc(_t(lang, head_key))}</b>'
-            f' · gate={_esc(verdict["gate"])} · basis={_esc(verdict["basis"])}'
-            f'<div class="wb-imp-note">{_esc(verdict["claim_limits"])}</div>'
-            f'</div>'
+            f'<div class="wb-imp-gate {"ok" if scored else "warn"}">'
+            f'<b>{_esc(_t(lang, "imp_gate_ok" if scored else "imp_gate_unrun"))}'
+            f'</b><div class="wb-imp-note-sm">'
+            f'{_esc(verdict["claim_limits"])}</div></div>'
             f'<form method="post" action="/improve/promote" class="wb-imp-form">'
             f'<input type="hidden" name="run" value="{_esc(ctx.name)}">'
             f'<input type="hidden" name="lang" value="{_esc(lang)}">'
@@ -1745,9 +1898,9 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
             f'<label class="wb-imp-lbl">{_esc(_t(lang, "imp_rationale"))}'
             f'<textarea name="rationale" rows="2" required></textarea></label>'
             f'<label class="wb-imp-lbl">{_esc(_t(lang, "imp_approved_at"))}'
-            f'<input name="approved_at" placeholder="2026-08-06T12:00:00Z" '
-            f'required></label>'
-            f'<p class="wb-imp-meta">{_esc(_t(lang, "imp_promote_hint"))}</p>'
+            f'<input name="approved_at" class="wb-imp-now" '
+            f'placeholder="2026-08-06T12:00:00Z" required></label>'
+            f'<p class="wb-imp-note-sm">{_esc(_t(lang, "imp_promote_hint"))}</p>'
             f'<button class="wb-btn danger" type="submit">'
             f'{_esc(_t(lang, "imp_promote"))}</button></form>')
 

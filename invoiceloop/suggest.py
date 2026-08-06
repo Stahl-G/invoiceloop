@@ -26,6 +26,7 @@ import json
 import os
 from pathlib import Path
 
+from . import plainwords as _pw
 from .routing import ROUTES  # noqa: F401  (词表来源,便于读者定位)
 
 #: cohort 类动作(改路由策略)
@@ -47,11 +48,13 @@ _ALLOWED_COHORT_KEYS = ("field", "tier", "strength")
 _ALLOWED_ABSENT_KEYS = ("field",)
 
 
+#: description 上限 —— 提示词是发给 DWS 的,不是让模型写小作文的地方
+_MAX_DESCRIPTION = 400
+
+
 def _cohort_keys_for(action: str) -> tuple[str, ...]:
     return (_ALLOWED_ABSENT_KEYS if action == "absent_expected"
             else _ALLOWED_COHORT_KEYS)
-#: description 上限 —— 提示词是发给 DWS 的,不是让模型写小作文的地方
-_MAX_DESCRIPTION = 400
 
 _PROMPT = """你在读一份发票复核系统的 cohort 统计、当前抽取字段描述,
 以及复核者手写笔记。
@@ -78,6 +81,14 @@ cohort 只能用 field / tier / strength 描述,禁止出现 doc_id、具体金�
 3. 你看到的是「没产生修正的复核」,这不等于「这些复核没价值」——
    没被抽查不等于没有错。
 4. `prediction` 要写出你预期**会伤害什么**,不只是会改善什么。
+5. **finding 和 prediction 写给一位不懂技术的应付会计看。**
+   - 用括号里给出的中文字段名(「税额」),不要用 total_vat、seller_vat_id;
+   - 不要出现 cohort、TIER1、unsupported、strength、route、slot、
+     harness 这类词,也不要写 notes [0]-[8] 这种编号;
+   - 用「你复核过的 9 张发票里,9 次都写了……」这种说法,
+     主语是「系统」或「你」,量词是「张发票」;
+   - 每段两三句话说完。
+   (JSON 里的 action / field / cohort 仍用英文内部名 —— 那是给程序读的。)
 
 按这个 JSON 结构回答,不要有别的文字:
 {"suggestions": [
@@ -102,13 +113,15 @@ def _packet(report: dict, schema: dict | None = None) -> tuple[str, list[dict]]:
     if schema:
         lines.append("## 当前抽取字段描述(schema_description 的改动对象)\n")
         for name, spec in sorted((schema.get("properties") or {}).items()):
-            lines.append(f"- {name}: {spec.get('description', '')!r}")
+            lines.append(f"- {name}(中文名「{_pw.field(name)}」): "
+                         f"{spec.get('description', '')!r}")
         lines.append("")
     lines.append("## cohort 统计\n")
     for c in report.get("cohorts", []):
         lines.append(
-            f"- field={c['field']} tier={c['tier']} "
-            f"strength={c.get('support_strength')} route={c.get('route')} "
+            f"- field={c['field']}(中文名「{_pw.field(c['field'])}」) "
+            f"tier={c['tier']} strength={c.get('support_strength')} "
+            f"route={c.get('route')} "
             f"复核{c['reviewed']} 接受{c['accepted']} 修正{c['corrected']} "
             f"拒绝{c['rejected']} 确认缺失{c['confirmed_absent']}")
         for n in c.get("notes", []):

@@ -1195,6 +1195,82 @@ human-confirmed 不用绿) */
 .wb-btn.danger { background: #a3341f; }
 .wb-btn.danger:hover:not(:disabled) { background: #862a19; }
 
+/* ── 改进循环:AP 版式 ──────────────────────────────────────────
+   叙事顺序,不是数据结构顺序。工程标识收进 .wb-imp-tech 折叠区。 */
+.wb-imp-lead {
+    font-size: 14.5px;
+    line-height: 1.75;
+    color: var(--wb-ink);
+    max-width: 62ch;
+    margin: 4px 0 26px;
+}
+.wb-imp-sub { color: var(--wb-muted); font-size: 13px; line-height: 1.7;
+              max-width: 62ch; margin: 0 0 14px; }
+/* 推翻记录:安全方向,给它最强的视觉重量 */
+.wb-imp-alert {
+    border: 1px solid #a3341f;
+    border-left-width: 4px;
+    border-radius: var(--wb-radius-sm);
+    background: rgba(163, 52, 31, 0.05);
+    padding: 14px 18px;
+    margin: 0 0 26px;
+}
+.wb-imp-alert h3 { margin: 0 0 6px; font-size: 14.5px; color: #a3341f; }
+.wb-imp-alert p { margin: 0 0 10px; font-size: 13px; line-height: 1.7;
+                  color: var(--wb-ink); max-width: 60ch; }
+.wb-imp-quote {
+    margin: 3px 0 0 2px;
+    padding-left: 10px;
+    border-left: 2px solid var(--wb-line);
+    color: var(--wb-ink);
+    line-height: 1.6;
+}
+.wb-imp-plainlist { margin: 6px 0 0; padding-left: 20px; line-height: 1.8;
+                    font-size: 13px; }
+/* 一张建议卡 / 一个待定改动 */
+.wb-imp-sug, .wb-imp-cand-box {
+    border: 1px solid var(--wb-line);
+    border-radius: var(--wb-radius-sm);
+    padding: 16px 18px;
+    margin: 0 0 16px;
+    background: var(--wb-bg);
+}
+.wb-imp-sug-title {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.5;
+    margin-bottom: 8px;
+    max-width: 58ch;
+}
+.wb-imp-badges { display: flex; gap: 6px; margin-bottom: 10px; }
+.wb-imp-why { font-size: 13.5px; line-height: 1.75; margin: 6px 0;
+              max-width: 62ch; }
+.wb-imp-k { color: var(--wb-muted); font-size: 12px; display: block; }
+.wb-imp-note-sm { color: var(--wb-muted); font-size: 12.5px; line-height: 1.65;
+                  margin: 6px 0 0; max-width: 60ch; }
+.wb-imp-quotes, .wb-imp-tech, .wb-imp-notes-box {
+    margin-top: 10px;
+    font-size: 12.5px;
+}
+.wb-imp-quotes summary, .wb-imp-tech summary, .wb-imp-notes-box summary {
+    cursor: pointer;
+    color: var(--wb-muted);
+    user-select: none;
+}
+.wb-imp-tech code { font-size: 11.5px; word-break: break-all;
+                    color: var(--wb-muted); }
+.wb-imp-notegroup { margin: 12px 0 0; }
+/* 试算结果:改善与代价并排 */
+.wb-imp-evalbox {
+    margin: 14px 0;
+    padding: 12px 14px;
+    background: var(--wb-line-soft);
+    border-radius: var(--wb-radius-sm);
+}
+.wb-imp-was { color: var(--wb-muted); }
+.wb-imp-gate.warn { background: rgba(163, 52, 31, 0.07); color: #8a4b20; }
+
+
 /* 页码切换(多页文档):小签,不占行高 */
 .wb-page-tabs { display: inline-flex; gap: 4px; margin-left: 10px; }
 .wb-page-tab {
