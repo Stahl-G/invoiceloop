@@ -114,6 +114,7 @@ def build_input_manifest(doc_ids: list[str], *, include_vision: bool = True) -> 
         "code_revision": _code_revision(),
         "harness_id": active["harness_id"],
         "harness_digest": active["policy_digest"],
+        "schema_digest": active.get("schema_digest") or "none",
         "routing_engine": "routing-v1",
         "adaptive": _adaptive_token(derisk_root()),
     }

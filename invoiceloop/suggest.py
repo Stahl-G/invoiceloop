@@ -28,36 +28,71 @@ from pathlib import Path
 
 from .routing import ROUTES  # noqa: F401  (词表来源,便于读者定位)
 
-ACTIONS = ("auto_accept", "absent_expected", "revoke")
+#: cohort 类动作(改路由策略)
+_COHORT_ACTIONS = ("auto_accept", "absent_expected", "revoke")
+#: schema 类动作(改抽取字段描述)—— 2026-08-06 加入。理由:复核负载里
+#: 最大的一块是「DWS 什么都没返回」(88 份实测 138/485 槽),cohort 够不着它,
+#: 只有字段描述能。约束比 cohort 更紧:只改已有受评字段的 description,
+#: 增删字段 / 加 required / 改 type 由 improve.lint_schema 挡在提案之前。
+_SCHEMA_ACTIONS = ("schema_description",)
+ACTIONS = _COHORT_ACTIONS + _SCHEMA_ACTIONS
 #: cohort 只许引用通用特征 —— 与 improve._COHORT_KEYS 同源,不许放宽
 _ALLOWED_COHORT_KEYS = ("field", "tier", "strength")
+#: description 上限 —— 提示词是发给 DWS 的,不是让模型写小作文的地方
+_MAX_DESCRIPTION = 400
 
-_PROMPT = """你在读一份发票复核系统的 cohort 统计与复核者手写笔记。
+_PROMPT = """你在读一份发票复核系统的 cohort 统计、当前抽取字段描述,
+以及复核者手写笔记。
 
-你的任务:提出**候选策略改动**,供人类复核后决定是否采纳。你没有决定权。
+你的任务:提出**候选改动**,供人类复核后决定是否采纳。你没有决定权。
+
+你可以提两类改动:
+
+**A. 路由策略(cohort)** —— action 为:
+- `auto_accept`:该 cohort 可自动放行
+- `absent_expected`:该字段的缺失是预期的(如美国发票没有 VAT 号)
+- `revoke`:应撤销某条已生效的放松
+cohort 只能用 field / tier / strength 描述,禁止出现 doc_id、具体金额、
+具体发票号等单文档特征。
+
+**B. 抽取字段描述(schema)** —— action 为 `schema_description`。
+给出 field 与新的英文 description。用在这种情况:笔记显示抽取器**根本没返回值**
+或**返回了错误的那个字段**,而原因看起来是描述没说清这个字段在真实发票上
+长什么样。只改措辞,不要要求必填、不要新增字段。
 
 规则:
 1. 每条建议必须引用它依据的笔记(给出 note 的序号)。没有出处的建议不要提。
-2. cohort 只能用 field / tier / strength 描述,禁止出现 doc_id、具体金额、
-   具体发票号等单文档特征。
-3. action 只能是:auto_accept(该 cohort 可自动放行)、
-   absent_expected(该字段的缺失是预期的)、revoke(应撤销某条已生效的放松)。
-4. 证据弱就说弱。宁可少提一条,不要凑数。
-5. 你看到的是「没产生修正的复核」,这不等于「这些复核没价值」——
+2. 证据弱就说弱。宁可少提一条,不要凑数。
+3. 你看到的是「没产生修正的复核」,这不等于「这些复核没价值」——
    没被抽查不等于没有错。
+4. `prediction` 要写出你预期**会伤害什么**,不只是会改善什么。
 
 按这个 JSON 结构回答,不要有别的文字:
-{"suggestions": [{"action": "...", "cohort": {"field": "..."},
-  "finding": "你从笔记里读到的事实", "prediction": "采纳后你预期会发生什么",
-  "confidence": "high|medium|low", "cites": [0, 3]}]}
+{"suggestions": [
+  {"action": "absent_expected", "cohort": {"field": "..."},
+   "finding": "你从笔记里读到的事实", "prediction": "采纳后你预期会发生什么",
+   "confidence": "high|medium|low", "cites": [0, 3]},
+  {"action": "schema_description", "field": "...",
+   "description": "新的英文字段描述",
+   "finding": "...", "prediction": "...", "confidence": "...", "cites": [5]}]}
 """
 
 
-def _packet(report: dict) -> tuple[str, list[dict]]:
-    """mine_report → (给模型的文本, 笔记表)。笔记表是引用的锚,
-    模型给的 cites 下标必须落在它里面,否则该条建议丢弃。"""
+def _packet(report: dict, schema: dict | None = None) -> tuple[str, list[dict]]:
+    """mine_report(+ 当前抽取 schema)→ (给模型的文本, 笔记表)。笔记表是
+    引用的锚,模型给的 cites 下标必须落在它里面,否则该条建议丢弃。
+
+    schema 进包的理由:让模型提的是**对现状的 diff**,而不是凭空写一段
+    描述 —— 它得先看见 due_date 现在只写了 "Payment due date."。
+    """
     notes: list[dict] = []
-    lines = ["## cohort 统计\n"]
+    lines = []
+    if schema:
+        lines.append("## 当前抽取字段描述(schema_description 的改动对象)\n")
+        for name, spec in sorted((schema.get("properties") or {}).items()):
+            lines.append(f"- {name}: {spec.get('description', '')!r}")
+        lines.append("")
+    lines.append("## cohort 统计\n")
     for c in report.get("cohorts", []):
         lines.append(
             f"- field={c['field']} tier={c['tier']} "
@@ -83,29 +118,59 @@ def _packet(report: dict) -> tuple[str, list[dict]]:
 
 
 def validate(raw: dict, notes: list[dict]) -> tuple[list[dict], list[str]]:
-    """草稿 → (可用建议, 丢弃理由)。**纯函数,可单测,不碰网络。**"""
+    """草稿 → (可用建议, 丢弃理由)。**纯函数,可单测,不碰网络。**
+
+    两类建议共用「必须给出处」这一条;各自的形状约束分开查。
+    """
+    from .fields import FIELD_KINDS
+
     kept, dropped = [], []
     for i, s in enumerate(raw.get("suggestions") or []):
         label = f"suggestion[{i}]"
-        if s.get("action") not in ACTIONS:
-            dropped.append(f"{label}:action {s.get('action')!r} 不在词表")
+        action = s.get("action")
+        if action not in ACTIONS:
+            dropped.append(f"{label}:action {action!r} 不在词表")
             continue
-        cohort = s.get("cohort")
-        if not isinstance(cohort, dict) or not cohort:
-            dropped.append(f"{label}:没有 cohort")
-            continue
-        bad = [k for k in cohort if k not in _ALLOWED_COHORT_KEYS]
-        if bad:
-            dropped.append(f"{label}:cohort 出现非白名单键 {bad} —— "
-                           f"单文档特征不许进策略")
-            continue
+
+        entry: dict = {}
+        if action in _SCHEMA_ACTIONS:
+            field = s.get("field")
+            if field not in FIELD_KINDS:
+                dropped.append(
+                    f"{label}:field {field!r} 不是受评字段 —— "
+                    f"schema 建议只能改已有的十个字段")
+                continue
+            description = str(s.get("description") or "").strip()
+            if not description:
+                dropped.append(f"{label}:schema 建议没给 description")
+                continue
+            if len(description) > _MAX_DESCRIPTION:
+                dropped.append(
+                    f"{label}:description 超过 {_MAX_DESCRIPTION} 字 —— "
+                    f"字段描述不是写小作文的地方")
+                continue
+            entry = {"kind": "schema", "field": field,
+                     "description": description}
+        else:
+            cohort = s.get("cohort")
+            if not isinstance(cohort, dict) or not cohort:
+                dropped.append(f"{label}:没有 cohort")
+                continue
+            bad = [k for k in cohort if k not in _ALLOWED_COHORT_KEYS]
+            if bad:
+                dropped.append(f"{label}:cohort 出现非白名单键 {bad} —— "
+                               f"单文档特征不许进策略")
+                continue
+            entry = {"kind": "cohort", "cohort": cohort}
+
         cites = [c for c in (s.get("cites") or [])
                  if isinstance(c, int) and 0 <= c < len(notes)]
         if not cites:
             dropped.append(f"{label}:引用为空或越界 —— 没出处的建议不收")
             continue
         kept.append({
-            "action": s["action"], "cohort": cohort,
+            **entry,
+            "action": action,
             "finding": str(s.get("finding", ""))[:500],
             "prediction": str(s.get("prediction", ""))[:500],
             "confidence": s.get("confidence") if s.get("confidence") in
@@ -129,7 +194,12 @@ def suggest(workspace: Path, *, model: str | None = None,
         raise FileNotFoundError(
             f"没有 {report_path} —— 先跑 improve mine")
     report = json.loads(report_path.read_text(encoding="utf-8"))
-    packet, notes = _packet(report)
+    try:
+        from .harness import load_active
+        active_schema = load_active(workspace).get("schema")
+    except Exception:  # noqa: BLE001 —— 拿不到 schema 就只提 cohort,不中断
+        active_schema = None
+    packet, notes = _packet(report, active_schema)
     if not notes:
         out = {"advisory": True, "model": model or "", "suggestions": [],
                "dropped": [], "note_count": 0,

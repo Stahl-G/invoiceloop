@@ -165,6 +165,45 @@ def mine(workspace: Path) -> dict:
 
 # ------------------------------------------------------------------- propose
 
+def lint_schema(parent: dict, candidate: dict) -> list[str]:
+    """提取 schema diff 审查。只许改已有受评字段的 description 字符串。"""
+    violations = []
+    if parent.get("type") != candidate.get("type"):
+        violations.append("候选改了 schema.type —— 禁止")
+    pprops = parent.get("properties") or {}
+    cprops = candidate.get("properties") or {}
+    if set(pprops) != set(cprops):
+        violations.append(
+            f"候选增删字段 {sorted(set(pprops) ^ set(cprops))} —— 只许改 description")
+        return violations
+    for name in sorted(pprops):
+        p, c = pprops[name], cprops[name]
+        if not isinstance(c, dict):
+            violations.append(f"{name}: property 必须是 object")
+            continue
+        if set(c) - {"type", "description"}:
+            violations.append(
+                f"{name}: 含白名单外键 {sorted(set(c) - {'type', 'description'})}"
+                " —— 只许 type+description")
+        if c.get("type") != p.get("type"):
+            violations.append(f"{name}: 改了 type —— 禁止")
+        if "required" in c or "required" in candidate:
+            violations.append(f"{name}: 禁止加 required(会逼抽取器编造)")
+        if name not in FIELDS:
+            violations.append(f"{name}: 不是受评字段")
+        # description 可以变;其余键已在上面拦
+        if set(p) - set(c) - {"description"} or set(c) - set(p) - {"description"}:
+            extra_p = set(p) - set(c) - {"description"}
+            extra_c = set(c) - set(p) - {"description"}
+            if extra_p or extra_c:
+                violations.append(
+                    f"{name}: 键集漂移 parent_only={sorted(extra_p)} "
+                    f"cand_only={sorted(extra_c)}")
+    if "required" in candidate:
+        violations.append("schema 顶层禁止 required")
+    return violations
+
+
 def lint_policy(parent: dict, candidate: dict) -> list[str]:
     """候选策略 diff 审查。返回违规列表(空 = 通过)。只允许给
     auto_accept_cohorts / absent_expected_cohorts 加条目,
@@ -224,9 +263,10 @@ def lint_policy(parent: dict, candidate: dict) -> list[str]:
 
 def _scaffold_candidate(workspace: Path, candidate: dict, *,
                         finding: str, prediction: str,
-                        provenance: str) -> Path:
-    """写 harnesses/HAR-NNNN/{routing_policy,manifest}.json。返回候选目录。"""
-    from .harness import load_active
+                        provenance: str,
+                        schema: dict | None = None) -> Path:
+    """写 harnesses/HAR-NNNN/{routing_policy,manifest[,extraction_schema]}.json。"""
+    from .harness import load_active, schema_digest
 
     workspace = Path(workspace)
     active = load_active(workspace)
@@ -242,6 +282,11 @@ def _scaffold_candidate(workspace: Path, candidate: dict, *,
     candidate["version"] = active["policy"].get("version", 1) + 1
     (cand_dir / "routing_policy.json").write_text(
         json.dumps(candidate, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    # schema:显式传入或继承 active(保证 cohort 候选也带 schema 文件)
+    schema_obj = schema if schema is not None else active["schema"]
+    (cand_dir / "extraction_schema.json").write_text(
+        json.dumps(schema_obj, indent=1, ensure_ascii=False) + "\n",
+        encoding="utf-8")
     (cand_dir / "manifest.json").write_text(json.dumps({
         "harness_id": cand_id,
         "parent_harness_id": active["harness_id"],
@@ -249,10 +294,37 @@ def _scaffold_candidate(workspace: Path, candidate: dict, *,
         "created_from_findings": [finding],
         "prediction": prediction,
         "policy_digest": policy_digest(candidate),
-        # manifest 只记出生事实,创建后不可改(高级裁决五):active/rollback
-        # 状态全部从 PROM 链投影,这里没有 status 字段 —— 不当第二权威
+        "schema_digest": schema_digest(schema_obj),
+        "schema_changed": schema is not None and (
+            schema_digest(schema) != active.get("schema_digest")),
     }, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     return cand_dir
+
+
+def propose_schema(workspace: Path, *, field: str, description: str,
+                   finding: str, prediction: str) -> Path:
+    """派生只改一个字段 description 的候选 harness。"""
+    from .harness import load_active
+    from .ingest import default_extraction_schema
+
+    workspace = Path(workspace)
+    active = load_active(workspace)
+    parent_schema = json.loads(json.dumps(active.get("schema")
+                                          or default_extraction_schema()))
+    if field not in FIELDS:
+        raise ValueError(f"{field!r} 不是受评字段")
+    props = parent_schema.setdefault("properties", {})
+    if field not in props:
+        raise ValueError(f"{field!r} 不在 parent schema.properties 里")
+    props[field] = {**props[field], "description": description}
+    violations = lint_schema(active["schema"], parent_schema)
+    if violations:
+        raise ValueError(f"schema diff 审查未过:{violations}")
+    # 策略不变,只换 schema
+    return _scaffold_candidate(
+        workspace, dict(active["policy"]),
+        finding=finding, prediction=prediction,
+        provenance="human_authored", schema=parent_schema)
 
 
 def propose(workspace: Path, *, cohort: dict, finding: str,
@@ -532,14 +604,223 @@ def _canonical(obj: dict) -> bytes:
     return (json.dumps(obj, indent=1, ensure_ascii=False) + "\n").encode("utf-8")
 
 
-def evaluate(workspace: Path, candidate_id: str) -> dict:
-    """反事实重路由并落盘 eval_<candidate>.json(评测输入身份随文件钉死)。"""
+def evaluate(workspace: Path, candidate_id: str, *,
+             reextract: bool = False, sample: int = 0,
+             budget: float = 600.0) -> dict:
+    """评测并落盘 eval_<candidate>.json。
+
+    默认:反事实重路由(零 API)。
+    reextract=True:用候选 schema 对确定性抽样的 N 份重抽(烧 credits),
+    basis=reextract_sample —— schema 变更候选必须走这条。
+    """
     workspace = Path(workspace)
-    result = _compute_evaluation(workspace, candidate_id)
+    if reextract:
+        if sample <= 0:
+            raise ValueError("reextract 必须给 --sample N(>0)")
+        result = _evaluate_reextract(
+            workspace, candidate_id, sample_n=sample, budget=budget)
+    else:
+        result = _compute_evaluation(workspace, candidate_id)
+        result["basis"] = (
+            "evo_truth_replay" if result.get("safety_status") == "scored"
+            else "evo_replay_only")
     out = workspace / "improve" / f"eval_{candidate_id}.json"
     out.parent.mkdir(exist_ok=True)
     out.write_bytes(_canonical(result))
     return result
+
+
+def _sample_doc_ids(workspace: Path, n: int) -> list[str]:
+    """从 workspace runs 里确定性抽 N 份(哈希排序,不用随机数)。"""
+    docs: list[str] = []
+    for run_dir in sorted((workspace / "runs").glob("run-*")):
+        man = run_dir / "run_manifest.json"
+        if not man.exists():
+            continue
+        for doc in json.loads(man.read_text(encoding="utf-8")).get("docs", []):
+            if doc not in docs:
+                docs.append(doc)
+    docs = sorted(docs)
+    if len(docs) <= n:
+        return docs
+    ranked = sorted(
+        docs,
+        key=lambda d: hashlib.sha256(
+            f"schema-eval-v1|{d}|{n}".encode()).hexdigest())
+    return ranked[:n]
+
+
+def _evaluate_reextract(workspace: Path, candidate_id: str, *,
+                        sample_n: int, budget: float) -> dict:
+    """候选 schema 重抽样本 → 与基线同口径打安全/负载分。"""
+    from .dws_client import extract_to_raw
+    from .harness import load_active, schema_digest
+    from .ocr import pdf_path
+    from .routing import apply_absent_expected, route_slots
+    from .safety_metrics import (
+        SAFETY_NOTE_SCORED, SAFETY_NOTE_UNSCORED,
+        annotations_available, empty_counts, score_routes,
+    )
+
+    workspace = Path(workspace)
+    active = load_active(workspace)
+    cand_dir = workspace / "harnesses" / candidate_id
+    cand_policy = json.loads(
+        (cand_dir / "routing_policy.json").read_text(encoding="utf-8"))
+    cand_schema = json.loads(
+        (cand_dir / "extraction_schema.json").read_text(encoding="utf-8"))
+    parent_schema = active["schema"]
+    violations = lint_schema(parent_schema, cand_schema)
+    if violations:
+        raise ValueError(f"schema diff 审查未过:{violations}")
+
+    sample_ids = _sample_doc_ids(workspace, sample_n)
+    if not sample_ids:
+        raise ValueError("workspace 没有任何 run 文档可抽样")
+
+    raw_dir = workspace / "improve" / "candidates" / candidate_id / "raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    spent = 0.0
+    extracted = 0
+    understand_by_doc: dict[str, dict | None] = {}
+    for doc_id in sample_ids:
+        if spent > budget:
+            break
+        pdf = pdf_path(doc_id)
+        if not pdf.exists():
+            # workspace 布局:input/pdfs
+            alt = workspace / "input" / "pdfs" / f"{doc_id}.pdf"
+            pdf = alt if alt.exists() else pdf
+        target = raw_dir / f"{doc_id}.understand.json"
+        if target.exists():
+            record = json.loads(target.read_text(encoding="utf-8"))
+        else:
+            if not pdf.exists():
+                understand_by_doc[doc_id] = None
+                continue
+            record = extract_to_raw(
+                pdf, cand_schema, raw_dir, doc_id=doc_id, mode="understand")
+            extracted += 1
+            usage = (record.get("body") or {}).get("usage") or {}
+            spent += float(
+                (usage.get("data_extraction_credits") or {}).get("cost") or 0.0)
+        if isinstance(record, dict) and record.get("http_status") == 200:
+            body = record.get("body") or {}
+            output = body.get("output") or {}
+            data = output.get("data") if isinstance(output, dict) else None
+            understand_by_doc[doc_id] = data if isinstance(data, dict) else None
+        else:
+            understand_by_doc[doc_id] = None
+
+    # 基线:用原 run 的 understand;候选:用重抽 understand;同一策略重路由
+    from .matrix import derive_document_records, facts_of
+
+    base_rows: list[dict] = []
+    cand_rows: list[dict] = []
+    # 取最新含这些 doc 的 run 的 gate/ledger
+    run_dirs = sorted((workspace / "runs").glob("run-*"), reverse=True)
+    ledger_claims: list = []
+    gate = {"findings": [], "evaluations": {}}
+    old_understand: dict[str, dict | None] = {}
+    for run_dir in run_dirs:
+        man = json.loads((run_dir / "run_manifest.json").read_text())
+        if not set(sample_ids) & set(man.get("docs", [])):
+            continue
+        ledger_claims = json.loads(
+            (run_dir / "field_ledger.json").read_text())["claims"]
+        gate = json.loads((run_dir / "gate_report.json").read_text())
+        raw_root = Path(man.get("derisk_root") or workspace) / "raw"
+        for doc in sample_ids:
+            p = raw_root / f"{doc}.understand.json"
+            if p.exists():
+                body = json.loads(p.read_text()).get("body") or {}
+                output = body.get("output") or {}
+                data = output.get("data") if isinstance(output, dict) else None
+                old_understand[doc] = data if isinstance(data, dict) else None
+        break
+
+    for doc in sample_ids:
+        for label, udata, sink in (
+            ("base", old_understand.get(doc), base_rows),
+            ("cand", understand_by_doc.get(doc), cand_rows),
+        ):
+            blocking = [f for f in gate.get("findings", [])
+                        if f.get("blocking") and f.get("doc_id") == doc]
+            facts = [facts_of(r) for r in derive_document_records(
+                doc,
+                doc_claims=[c for c in ledger_claims if c["doc_id"] == doc],
+                doc_rejections=[],
+                gate_evaluations=gate.get("evaluations", {}).get(doc, {}),
+                doc_blocking_findings=blocking,
+                understand_data=udata)]
+            routes = route_slots(
+                apply_absent_expected(facts, cand_policy),
+                cand_policy, tier_of=_tier_of)
+            sink.extend({"doc_id": r["doc_id"], "field": r["field"],
+                         "route": r["route"]} for r in routes)
+
+    scored = annotations_available(sample_ids)
+    if scored:
+        base_counts = score_routes(
+            base_rows, understand_of=lambda d: old_understand.get(d))
+        cand_counts = score_routes(
+            cand_rows, understand_of=lambda d: understand_by_doc.get(d))
+        safety_note = SAFETY_NOTE_SCORED
+    else:
+        base_counts = empty_counts()
+        cand_counts = empty_counts()
+        safety_note = SAFETY_NOTE_UNSCORED
+
+    auto = ("auto_accept", "auto_absent")
+    total = max(len(base_rows), 1)
+    return {
+        "candidate": candidate_id,
+        "baseline_harness": active["harness_id"],
+        "basis": "reextract_sample",
+        "sample_doc_ids": sample_ids,
+        "credits_spent": spent,
+        "extracted": extracted,
+        "candidate_policy_digest": hashlib.sha256(
+            (cand_dir / "routing_policy.json").read_bytes()).hexdigest(),
+        "baseline_policy_digest": active["policy_sha256"],
+        "candidate_schema_digest": schema_digest(cand_schema),
+        "baseline_schema_digest": active.get("schema_digest"),
+        "runs": [{"sample": True, "slots": len(base_rows),
+                  "baseline_review": sum(1 for r in base_rows
+                                         if r["route"] not in auto),
+                  "candidate_review": sum(1 for r in cand_rows
+                                          if r["route"] not in auto),
+                  "relaxed_slots": []}],
+        "evaluated_slots": len(base_rows),
+        "review_load_baseline":
+            sum(1 for r in base_rows if r["route"] not in auto) / total,
+        "review_load_candidate":
+            sum(1 for r in cand_rows if r["route"] not in auto) / total,
+        "delta_pp": (
+            sum(1 for r in cand_rows if r["route"] not in auto)
+            - sum(1 for r in base_rows if r["route"] not in auto)
+        ) / total * 100,
+        "safety_status": "scored" if scored else "unscored",
+        "silent_absent_baseline":
+            base_counts["silent_absent"] if scored else None,
+        "silent_absent_candidate":
+            cand_counts["silent_absent"] if scored else None,
+        "silent_wrong_baseline":
+            base_counts["silent_wrong"] if scored else None,
+        "silent_wrong_candidate":
+            cand_counts["silent_wrong"] if scored else None,
+        "absent_hits_baseline":
+            base_counts["absent_hits"] if scored else None,
+        "absent_hits_candidate":
+            cand_counts["absent_hits"] if scored else None,
+        "value_hits_baseline":
+            base_counts["value_hits"] if scored else None,
+        "value_hits_candidate":
+            cand_counts["value_hits"] if scored else None,
+        "safety_note": safety_note,
+        "note": f"reextract_sample n={len(sample_ids)} spent={spent:.1f}; "
+                + safety_note,
+    }
 
 
 def _tier_of(field: str) -> str:
@@ -571,6 +852,109 @@ def _next_promotion_id(workspace: Path) -> str:
     seq = len(list(promotions_dir.glob("PROM-*.json"))) + 1 \
         if promotions_dir.exists() else 1
     return f"PROM-{seq:04d}"
+
+
+#: claim_limits 文案表 —— 晋升记录里对外口径的上限,按 (basis, 是否重抽) 取
+_CLAIM_LIMITS = {
+    ("evo_replay_only", False): (
+        "未经未见资格集评测 —— 公开口径仅限「实现了有界改进机制」,"
+        "不得声称「在未见数据上减少人工」"
+    ),
+    ("evo_truth_replay", False): (
+        "在本 workspace 已有真值文档上:负载不升且静默错不升;"
+        "仍未经未见封箱资格集(SEALED-2)评测 —— "
+        "不得声称「在未见数据上减少人工」。"
+    ),
+    ("sealed2_qualified", False): (
+        "已在 SEALED-2 资格集上通过 Gate 2(静默错不升)+ 负载不升;"
+        "公开口径可说「在未见封箱集上负载不升且静默错不升」,"
+        "仍不得把 SEALED-1/HITL 当 final held-out。"
+    ),
+    ("reextract_sample", True): (
+        "schema 候选经样本重抽评测;公开口径限本样本 + Gate 2 数字,"
+        "未经 SEALED-2 全量前不得声称未见封箱减负。"
+    ),
+    ("sealed2_qualified", True): (
+        "已在 SEALED-2 资格集上通过 Gate 2(静默错不升)+ 负载不升;"
+        "公开口径可说「在未见封箱集上负载不升且静默错不升」。"
+    ),
+}
+
+
+def sealed2_qualifies(workspace: Path, candidate_id: str) -> bool:
+    """`improve/sealed2_qualified.ok` 是否为**这个候选**背书。
+
+    2026-08-06 修:原实现只看标记文件在不在,于是标记变成了 workspace 级的
+    通行证 —— 一个刚从 12 份 HITL 挖出来的新候选,也会被盖上「已在 SEALED-2
+    资格集上通过、可对外说在未见封箱集上减负」。实测复现:due_date 缺席
+    cohort 在本 workspace 的 12 份上 silent_absent 0→0,而同一条 cohort 在
+    88 份未见文档上实测会多出 5 个真实到期日被静默丢掉(见
+    docs/LOOP_GENERALIZATION_2026-08-06.md 同口径复算)。标记说的是
+    「SEALED-2 跑过一次,资格化的是某个 harness」,不是「本 workspace 以后
+    任何候选都算跑过」。
+
+    因此:标记必须点名它资格化的 harness,且必须点到这个候选,才作数。
+    没点名的旧标记一律**不**升级口径(宪章六:不说工件证明不了的话)。
+    """
+    path = Path(workspace) / "improve" / "sealed2_qualified.ok"
+    if not path.exists():
+        return False
+    try:
+        body = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return False
+    return isinstance(body, dict) and body.get("harness_id") == candidate_id
+
+
+def gate_verdict(evaluation: dict, *, sealed2_qualified: bool = False) -> dict:
+    """评测 → `{ok, refusals, gate, basis, claim_limits, safety_status}`。
+
+    **纯函数**(不读盘、不看候选目录),因为它有两个调用方:`promote` 用它
+    决定拒不拒,工作台用它在人点晋升**之前**显示同一个判定。两处必须是
+    同一份代码 —— 页面上写着「可晋升」而 promote 会拒,或者反过来,
+    都是把那道人工闸门变成猜谜。
+
+    ok=False 时 `refusals` 列出全部违反项(promote 只报第一条,页面全列)。
+    """
+    basis_in = evaluation.get("basis") or "evo_replay_only"
+    safety_status = evaluation.get("safety_status") or "unscored"
+    scored = safety_status == "scored"
+    reextract = basis_in == "reextract_sample"
+
+    refusals: list[str] = []
+    if scored:
+        sa_b = evaluation["silent_absent_baseline"]
+        sa_c = evaluation["silent_absent_candidate"]
+        sw_b = evaluation["silent_wrong_baseline"]
+        sw_c = evaluation["silent_wrong_candidate"]
+        if sa_c > sa_b:
+            refusals.append(
+                f"Gate 2 拒绝:silent_absent {sa_b} → {sa_c}(上升不许晋升)")
+        if sw_c > sw_b:
+            refusals.append(
+                f"Gate 2 拒绝:silent_wrong {sw_b} → {sw_c}(上升不许晋升)")
+        if evaluation["review_load_candidate"] > evaluation[
+                "review_load_baseline"]:
+            refusals.append(
+                "Gate 3 拒绝:review_load 上升 —— 安全门通过也不能用更高人工负载换")
+
+    if reextract:
+        gate = "pareto_gated" if scored else "reextract_eval"
+        basis = "sealed2_qualified" if (sealed2_qualified and scored) \
+            else "reextract_sample"
+    elif scored:
+        gate = "pareto_gated"
+        basis = "sealed2_qualified" if sealed2_qualified else "evo_truth_replay"
+    else:
+        gate, basis = "eval_reexecuted", "evo_replay_only"
+    return {
+        "ok": not refusals,
+        "refusals": refusals,
+        "gate": gate,
+        "basis": basis,
+        "claim_limits": _CLAIM_LIMITS[(basis, reextract)],
+        "safety_status": safety_status,
+    }
 
 
 def promote(workspace: Path, candidate_id: str, *, approved_by: str,
@@ -613,56 +997,71 @@ def promote(workspace: Path, candidate_id: str, *, approved_by: str,
         raise ValueError(
             f"没有 eval_{candidate_id}.json —— 未评测的候选不许晋升;"
             f"先 improve evaluate(评测是强制前置,不是建议)")
-    recomputed = _canonical(_compute_evaluation(workspace, candidate_id))
-    if recomputed != eval_path.read_bytes():
-        raise ValueError(
-            "重算评测与存盘 eval 逐字节不符 —— 评测输入(run 工件/裁决账本/"
-            "政策)在评测后被改动过,或 eval 文件被手改;重新 evaluate")
     evaluation = json.loads(eval_path.read_text(encoding="utf-8"))
+    eval_basis = evaluation.get("basis") or "evo_replay_only"
+
+    # schema 变更候选:反事实重放评测不够格
+    from .harness import schema_digest as _schema_digest
+    cand_schema_path = cand_dir / "extraction_schema.json"
+    if cand_schema_path.exists():
+        cand_schema = json.loads(cand_schema_path.read_text(encoding="utf-8"))
+        cand_schema_sha = hashlib.sha256(
+            cand_schema_path.read_bytes()).hexdigest()
+    else:
+        cand_schema = active["schema"]
+        cand_schema_sha = active["schema_sha256"]
+    schema_changed = (
+        _schema_digest(cand_schema) != active.get("schema_digest"))
+    if schema_changed and eval_basis in (
+            "evo_replay_only", "evo_truth_replay"):
+        raise ValueError(
+            f"schema 有变更但评测 basis={eval_basis} —— "
+            f"必须 improve evaluate --reextract(或 sealed2_qualified)")
+
+    if eval_basis == "reextract_sample":
+        # 重抽评测:校验样本 raw 仍在、schema digest 对得上(不与反事实重算对拍)
+        if evaluation.get("candidate_schema_digest") != _schema_digest(
+                cand_schema):
+            raise ValueError(
+                "reextract eval 的 candidate_schema_digest 与候选 schema 不符"
+                " —— 评测后 schema 被改过,重新 evaluate --reextract")
+        raw_root = (workspace / "improve" / "candidates" / candidate_id / "raw")
+        for doc in evaluation.get("sample_doc_ids") or []:
+            if not (raw_root / f"{doc}.understand.json").exists():
+                raise ValueError(
+                    f"reextract 样本 raw 缺失:{doc} —— 重新 evaluate --reextract")
+    else:
+        recomputed = _canonical(_compute_evaluation(workspace, candidate_id))
+        # 反事实路径的 eval 现在带 basis 字段;重算结果需补同一 basis 再比
+        recomputed_obj = json.loads(recomputed)
+        recomputed_obj["basis"] = eval_basis
+        if _canonical(recomputed_obj) != eval_path.read_bytes():
+            # 兼容:旧 eval 无 basis 时允许与无 basis 重算对拍
+            if evaluation.get("basis") is None:
+                if recomputed != eval_path.read_bytes():
+                    raise ValueError(
+                        "重算评测与存盘 eval 逐字节不符 —— 评测输入(run 工件/裁决账本/"
+                        "政策)在评测后被改动过,或 eval 文件被手改;重新 evaluate")
+            else:
+                raise ValueError(
+                    "重算评测与存盘 eval 逐字节不符 —— 评测输入(run 工件/裁决账本/"
+                    "政策)在评测后被改动过,或 eval 文件被手改;重新 evaluate")
     if not evaluation["runs"] or not evaluation["evaluated_slots"]:
         raise ValueError(
             "评测覆盖为零(没有有效 run / 没有受评槽)—— 空评测不构成晋升依据")
 
-    # Gate 2 + Gate 3(弱):有真值则静默错不升、复核负载不升
-    safety_status = evaluation.get("safety_status") or "unscored"
-    if safety_status == "scored":
-        sa_b = evaluation["silent_absent_baseline"]
-        sa_c = evaluation["silent_absent_candidate"]
-        sw_b = evaluation["silent_wrong_baseline"]
-        sw_c = evaluation["silent_wrong_candidate"]
-        if sa_c > sa_b:
-            raise ValueError(
-                f"Gate 2 拒绝:silent_absent {sa_b} → {sa_c}(上升不许晋升)")
-        if sw_c > sw_b:
-            raise ValueError(
-                f"Gate 2 拒绝:silent_wrong {sw_b} → {sw_c}(上升不许晋升)")
-        if evaluation["review_load_candidate"] > evaluation["review_load_baseline"]:
-            raise ValueError(
-                "Gate 3 拒绝:review_load 上升 —— 安全门通过也不能用更高人工负载换")
-        gate = "pareto_gated"
-        # SEALED-2 workspace 跑通后可升 sealed2_qualified;默认仍限 evo 真值回放
-        sealed2_marker = workspace / "improve" / "sealed2_qualified.ok"
-        if sealed2_marker.exists():
-            basis = "sealed2_qualified"
-            claim_limits = (
-                "已在 SEALED-2 资格集上通过 Gate 2(静默错不升)+ 负载不升;"
-                "公开口径可说「在未见封箱集上负载不升且静默错不升」,"
-                "仍不得把 SEALED-1/HITL 当 final held-out。"
-            )
-        else:
-            basis = "evo_truth_replay"
-            claim_limits = (
-                "在本 workspace 已有真值文档上:负载不升且静默错不升;"
-                "仍未经未见封箱资格集(SEALED-2)评测 —— "
-                "不得声称「在未见数据上减少人工」。"
-            )
-    else:
-        gate = "eval_reexecuted"
-        basis = "evo_replay_only"
-        claim_limits = (
-            "未经未见资格集评测 —— 公开口径仅限「实现了有界改进机制」,"
-            "不得声称「在未见数据上减少人工」"
-        )
+    # Gate 2 + Gate 3(弱):有真值则静默错不升、复核负载不升。
+    # 判定在 gate_verdict 里(纯函数),工作台的晋升预览调同一个函数 ——
+    # 页面说「可晋升」而这里拒,就是把人工闸门做成猜谜
+    verdict = gate_verdict(
+        evaluation,
+        sealed2_qualified=sealed2_qualifies(workspace, candidate_id))
+    if verdict["refusals"]:
+        raise ValueError(verdict["refusals"][0])
+    gate = verdict["gate"]
+    basis = verdict["basis"]
+    claim_limits = verdict["claim_limits"]
+    safety_status = verdict["safety_status"]
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("provenance") != "human_authored":
@@ -690,6 +1089,7 @@ def promote(workspace: Path, candidate_id: str, *, approved_by: str,
         "from_policy_digest": active["policy_sha256"],
         "to_harness_id": candidate_id,
         "to_policy_digest": cand_sha,
+        "to_schema_digest": cand_schema_sha,
         "evaluation_digest": hashlib.sha256(eval_path.read_bytes()).hexdigest(),
         "gate": gate,
         "basis": basis,
@@ -775,17 +1175,25 @@ def rollback(workspace: Path, *, to_harness_id: str, approved_by: str,
     return _append_promotion(workspace, record)
 
 
-def mark_sealed2_qualified(workspace: Path, *, note: str = "") -> Path:
-    """人工确认 SEALED-2 评测已过 Gate 2 后挂资格标记。
+def mark_sealed2_qualified(workspace: Path, *, harness_id: str,
+                           note: str = "") -> Path:
+    """人工确认 SEALED-2 评测已过 Gate 2 后,给**具体某个 harness** 挂资格标记。
 
-    存在 `improve/sealed2_qualified.ok` 时,scored promote 的 basis 升为
-    `sealed2_qualified`。本函数不跑评测、不调 API —— 只落盘标记。
+    `harness_id` 是必填的:它是这次 SEALED-2 评测实际跑的那个 harness。
+    只有它自己晋升时 basis 才升为 `sealed2_qualified`;之后从它派生出来的
+    新候选**不继承**这个资格 —— 新候选要这个口径,得自己在 SEALED-2 上跑。
+    本函数不跑评测、不调 API —— 只落盘标记。
     """
     workspace = Path(workspace)
+    if not str(harness_id).strip():
+        raise ValueError(
+            "mark_sealed2_qualified 必须点名 harness_id —— "
+            "「本 workspace 跑过 SEALED-2」不等于「这个候选跑过」")
     improve_dir = workspace / "improve"
     improve_dir.mkdir(parents=True, exist_ok=True)
     path = improve_dir / "sealed2_qualified.ok"
     body = {
+        "harness_id": str(harness_id).strip(),
         "marked_at_protocol": "docs/SEALED2_PROTOCOL.md",
         "doc_list": "docs/sealed2_doc_list.json",
         "note": note.strip(),

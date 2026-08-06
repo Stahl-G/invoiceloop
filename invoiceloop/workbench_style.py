@@ -1144,6 +1144,57 @@ human-confirmed 不用绿) */
     word-break: break-all;
 }
 
+/* 采纳 / 评测 / 晋升表单:模型的话只是预填,人可以改 —— 签字的是人 */
+.wb-imp-form {
+    margin: 10px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--wb-line-soft);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+}
+.wb-imp-lbl {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    width: 100%;
+    font-size: 12px;
+    color: var(--wb-muted);
+}
+.wb-imp-lbl input, .wb-imp-lbl textarea {
+    width: 100%;
+    padding: 6px 8px;
+    font: inherit;
+    font-size: 13px;
+    color: var(--wb-ink);
+    background: var(--wb-bg);
+    border: 1px solid var(--wb-line);
+    border-radius: var(--wb-radius-sm);
+    box-sizing: border-box;
+}
+.wb-imp-lbl textarea { resize: vertical; line-height: 1.5; }
+.wb-imp-cand-box {
+    border: 1px solid var(--wb-line);
+    border-radius: var(--wb-radius-sm);
+    padding: 12px 14px;
+    margin: 10px 0;
+}
+.wb-imp-eval { margin: 8px 0; border-collapse: collapse; font-size: 13px; }
+.wb-imp-eval td { padding: 3px 10px 3px 0; }
+.wb-imp-eval td:first-child { color: var(--wb-muted); }
+/* 门禁判定:通过与拒绝一样醒目 —— 拒绝的理由是这页最该被读到的东西 */
+.wb-imp-gate {
+    margin: 8px 0;
+    padding: 8px 10px;
+    border-radius: var(--wb-radius-sm);
+    font-size: 13px;
+}
+.wb-imp-gate.ok { background: rgba(31, 122, 68, 0.09); color: #1f7a44; }
+.wb-imp-gate.refuse { background: rgba(163, 52, 31, 0.09); color: #a3341f; }
+.wb-btn.danger { background: #a3341f; }
+.wb-btn.danger:hover:not(:disabled) { background: #862a19; }
+
 /* 页码切换(多页文档):小签,不占行高 */
 .wb-page-tabs { display: inline-flex; gap: 4px; margin-left: 10px; }
 .wb-page-tab {

@@ -987,3 +987,190 @@ class TestQueueSearch:
             server, "GET", f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross")
         assert '<details class="wb-evidence">' in adj_text
         assert '<details class="wb-evidence" open>' not in adj_text
+
+
+def _imp_post(port: int, path: str, form: dict) -> tuple[int, dict, str]:
+    return _req(port, "POST", path, body=urlencode(form).encode(),
+                headers={"Content-Type": "application/x-www-form-urlencoded"})
+
+
+class TestImproveLoopPage:
+    """改进循环页的写操作:采纳→评测→晋升,三级摩擦各自到位。
+
+    分级是刻意的(v0.2 §12 的人工闸门不能被一个按钮做成摆设):
+    adopt/evaluate 写的是候选,对 active harness 零影响;promote 会改变
+    之后每一张发票的路由,所以要署名 + 理由 + 时间,少一样就拒。
+    """
+
+    def _adopt(self, port, **over) -> tuple[int, dict, str]:
+        form = {"run": RUN, "lang": "zh", "kind": "absent_expected",
+                "c_field": "seller_vat_id", "cohort_id": "AC-VAT",
+                "finding": "12 份里反复 confirm_absent",
+                "prediction": "负载下降;风险是把真有值的槽误判成缺席"}
+        form.update(over)
+        return _imp_post(port, "/improve/adopt", form)
+
+    def test_adopt_writes_a_candidate_and_evaluates_it(self, workspace, server):
+        status, headers, _ = self._adopt(server)
+        assert status == 303 and "notice=proposed" in headers["location"]
+        cand = workspace / "harnesses" / "HAR-0002"
+        assert (cand / "routing_policy.json").exists()
+        assert (workspace / "improve" / "eval_HAR-0002.json").exists(), \
+            "采纳即评测 —— 人要在同一屏看到代价,不是只看到改善"
+
+    def test_adopt_does_not_change_the_active_harness(self, workspace, server):
+        """这是整套分级摩擦的根据:采纳是安全的,因为它什么都没生效。"""
+        from invoiceloop.harness import load_active
+
+        before = load_active(workspace)["harness_id"]
+        self._adopt(server)
+        assert load_active(workspace)["harness_id"] == before
+        assert not (workspace / "improve" / "promotions").exists()
+
+    def test_adopt_refuses_a_nameless_cohort(self, workspace, server):
+        status, _, _ = self._adopt(server, cohort_id="")
+        assert status == 400
+
+    def test_adopt_refuses_a_cohort_with_no_features(self, workspace, server):
+        status, _, _ = self._adopt(server, c_field="")
+        assert status == 400, "没有 cohort 特征就没有可路由的东西"
+
+    def test_promote_requires_a_name_and_a_reason(self, workspace, server):
+        self._adopt(server)
+        base = {"run": RUN, "lang": "zh", "candidate": "HAR-0002",
+                "approved_at": "2026-08-06T12:00:00Z"}
+        no_name, _, _ = _imp_post(server, "/improve/promote",
+                                  {**base, "approved_by": "",
+                                   "rationale": "r"})
+        no_why, _, _ = _imp_post(server, "/improve/promote",
+                                 {**base, "approved_by": "alice",
+                                  "rationale": ""})
+        assert no_name == 400 and no_why == 400, \
+            "网页入口不许比 CLI 松:署名与理由都是硬要求"
+
+    def test_promote_records_the_humans_own_words(self, workspace, server):
+        self._adopt(server)
+        status, headers, _ = _imp_post(server, "/improve/promote", {
+            "run": RUN, "lang": "zh", "candidate": "HAR-0002",
+            "approved_by": "alice", "rationale": "接受 QA 抽检的残余风险",
+            "approved_at": "2026-08-06T12:00:00Z"})
+        assert status == 303 and "notice=promoted" in headers["location"]
+        rec = json.loads((workspace / "improve" / "promotions"
+                          / "PROM-0001.json").read_text(encoding="utf-8"))
+        assert rec["approved_by"] == "alice"
+        assert rec["rationale"] == "接受 QA 抽检的残余风险"
+        from invoiceloop.harness import load_active
+        assert load_active(workspace)["harness_id"] == "HAR-0002"
+
+    def test_page_shows_the_gate_verdict_and_the_cost_side(self, workspace,
+                                                           server):
+        self._adopt(server)
+        _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert "HAR-0002" in text and "复核负载" in text
+        # 无真值的 workspace:不许显示「Gate 全过」(宪章四:没跑 ≠ 通过)
+        assert "安全门没跑" in text
+        assert "Gate 全过" not in text
+
+    def test_schema_candidate_is_not_auto_evaluated(self, workspace, server):
+        """schema 候选要真重抽才评得了,那要花钱 —— 不许替人按下去。"""
+        status, headers, _ = _imp_post(server, "/improve/adopt-schema", {
+            "run": RUN, "lang": "zh", "field": "due_date",
+            "description": "Payment due date, or the date implied by terms.",
+            "finding": "抽取器什么都没返回", "prediction": "缺值下降;可能编日期"})
+        assert status == 303 and "notice=proposed" in headers["location"]
+        assert (workspace / "harnesses" / "HAR-0002"
+                / "extraction_schema.json").exists()
+        assert not (workspace / "improve" / "eval_HAR-0002.json").exists()
+        _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert "消耗 credits" in text, "要花钱的那一步必须先说清再让人点"
+
+    def test_stale_lineage_candidate_gets_no_promote_button(self, workspace,
+                                                            server):
+        """谱系对不上 active 的候选:promote 必拒,页面就不该给按钮。
+
+        造法:两个候选都从 HAR-0001 派生,晋升掉其中一个 —— 另一个的 parent
+        就成了旧 active。这是真实会出现的状态(第一次在工作台上跑通闭环时,
+        HAR-0002/0003 正是这样挂在页面上,还各带一个注定被拒的晋升表单)。
+        """
+        self._adopt(server)                        # HAR-0002,parent=HAR-0001
+        self._adopt(server, cohort_id="AC-VAT-2")  # HAR-0003,parent=HAR-0001
+        _imp_post(server, "/improve/promote", {
+            "run": RUN, "lang": "zh", "candidate": "HAR-0002",
+            "approved_by": "alice", "rationale": "r",
+            "approved_at": "2026-08-06T12:00:00Z"})
+        _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert "谱系对不上当前 active" in text, \
+            "HAR-0003 的 parent 已经不是 active 了,必须说出来"
+        _, _, tail = text.partition("HAR-0003")
+        assert "/improve/promote" not in tail, \
+            "注定被拒的操作不该给按钮 —— 让人填完表单再吃 400 是坏交互"
+
+
+class TestModelDraftRendering:
+    """模型草稿 → 采纳表单的渲染。suggestions.json 在这里是显式 fixture,
+    不是真实模型输出 —— 测的是页面怎么呈现草稿,不是模型说得对不对。"""
+
+    def _write(self, workspace, suggestions, dropped=()):
+        (workspace / "improve").mkdir(exist_ok=True)
+        (workspace / "improve" / "suggestions.json").write_text(
+            json.dumps({"advisory": True, "model": "m",
+                        "suggestions": suggestions,
+                        "dropped": list(dropped)}, ensure_ascii=False),
+            encoding="utf-8")
+
+    def test_cohort_draft_renders_an_editable_adopt_form(self, workspace,
+                                                         server):
+        self._write(workspace, [{
+            "kind": "cohort", "action": "absent_expected",
+            "cohort": {"field": "seller_vat_id"},
+            "finding": "模型读出来的事实", "prediction": "模型的预测",
+            "confidence": "medium", "cites": [0],
+            "cited_notes": [{"rationale": "页面上没有"}]}])
+        _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert 'action="/improve/adopt"' in text
+        assert 'name="c_field" value="seller_vat_id"' in text
+        assert "页面上没有" in text, "被引用的原话要跟着草稿一起显示"
+        # 模型的话是**预填**,不是既成事实 —— 人必须能改
+        assert "<textarea" in text and "模型读出来的事实" in text
+
+    def test_schema_draft_lets_the_human_edit_the_description(self, workspace,
+                                                              server):
+        self._write(workspace, [{
+            "kind": "schema", "action": "schema_description",
+            "field": "due_date",
+            "description": "Payment due date, or the date implied by terms.",
+            "finding": "f", "prediction": "p", "confidence": "low",
+            "cites": [0], "cited_notes": [{"rationale": "页面上没有"}]}])
+        _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert 'action="/improve/adopt-schema"' in text
+        assert "the date implied by terms" in text
+        assert 'name="description"' in text, "描述必须可改,签字的是人"
+
+    def test_revoke_draft_gets_no_button_because_there_is_no_such_path(
+            self, workspace, server):
+        """宪章四:做不了要说,不许给一个假按钮。"""
+        self._write(workspace, [{
+            "kind": "cohort", "action": "revoke",
+            "cohort": {"field": "seller_vat_id"},
+            "finding": "f", "prediction": "p", "confidence": "high",
+            "cites": [0], "cited_notes": [{"rationale": "推翻过一次"}]}])
+        _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert "撤销不是候选类型" in text
+        assert 'action="/improve/adopt"' not in text
+
+    def test_rejected_drafts_are_shown_not_swallowed(self, workspace, server):
+        self._write(workspace, [], dropped=["suggestion[0]:引用为空 —— 不收"])
+        _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert "被校验层丢弃的草稿" in text and "引用为空" in text
+
+    def test_draft_text_is_escaped(self, workspace, server):
+        """模型输出直接进 HTML 就是 XSS —— 和人写的 rationale 同一条纪律。"""
+        self._write(workspace, [{
+            "kind": "cohort", "action": "auto_accept",
+            "cohort": {"field": "seller_name"},
+            "finding": "<script>alert(1)</script>", "prediction": "p",
+            "confidence": "low", "cites": [0],
+            "cited_notes": [{"rationale": "x"}]}])
+        _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert "<script>alert(1)</script>" not in text
+        assert "&lt;script&gt;" in text

@@ -84,6 +84,59 @@ _T = {
         "imp_dropped": "Drafts rejected by the validator",
         "imp_cmd": "Proposal command (copy, edit, run — nothing is written "
                    "from this page)",
+        "imp_adopt": "Adopt as candidate",
+        "imp_adopt_hint": "Adopting writes a candidate harness and evaluates "
+                          "it. It does not change the active harness — "
+                          "promotion is a separate, signed step below.",
+        "imp_adopt_schema_hint": "Adopting writes a candidate. Schema "
+                                 "candidates cannot be evaluated by "
+                                 "counterfactual replay — they need a "
+                                 "re-extraction that spends credits, which "
+                                 "you authorise below.",
+        "imp_words": "Your words (the model's draft is a starting point — "
+                     "you sign this, so say it your way)",
+        "imp_cohort_id": "Cohort id",
+        "imp_finding": "Finding",
+        "imp_prediction": "Prediction (say what this could damage)",
+        "imp_new_desc": "New field description (sent to DWS)",
+        "imp_candidates": "Candidates and promotion",
+        "imp_no_candidates": "No candidate yet. Adopt a draft above, or run "
+                             "`improve propose` on the command line.",
+        "imp_active": "active",
+        "imp_eval_none": "Not evaluated — a candidate cannot be promoted "
+                         "until it has been.",
+        "imp_eval_run": "Evaluate (counterfactual, no API)",
+        "imp_eval_reextract": "Evaluate by re-extraction (spends credits)",
+        "imp_sample": "Sample docs",
+        "imp_budget": "Credit ceiling",
+        "imp_gate_ok": "Gates pass — promotable",
+        "imp_gate_no": "Gates refuse promotion",
+        "imp_promote": "Promote to active harness",
+        "imp_promote_hint": "Promotion changes how every future invoice is "
+                            "routed. Your name and reason go into the "
+                            "promotion ledger, permanently.",
+        "imp_approved_by": "Your name",
+        "imp_rationale": "Reason (what residual risk are you accepting?)",
+        "imp_approved_at": "Decided at (ISO 8601)",
+        "imp_load": "Review load",
+        "imp_silent_absent": "Silent absence errors",
+        "imp_silent_wrong": "Silent wrong values",
+        "imp_basis": "Evidence basis",
+        "imp_unscored": "No ground truth in this workspace — safety unscored, "
+                        "so the gates cannot vouch for this candidate.",
+        "imp_schema_changed": "changes the extraction schema",
+        "imp_revoke_manual": "Revocation is not a candidate type — there is "
+                             "no one-click path. Use `improve rollback` to "
+                             "return to a known policy, or edit the policy by "
+                             "hand and propose again.",
+        "imp_gate_unrun": "Safety gates did not run (no ground truth in this "
+                          "workspace) — they did not refuse this candidate, "
+                          "but they do not vouch for it either. Whether "
+                          "silent errors or review load went up is unknown.",
+        "imp_lineage_bad": "Lineage does not match the active harness — this "
+                           "candidate was derived from a different one "
+                           "(usually an already-promoted candidate). Promote "
+                           "would refuse it; propose again from active.",
         "all": "All", "pending": "Pending", "done": "Decided",
         "sec_required": "Needs adjudication ({n})",
         "sec_corroborated": "Corroborated — no machine flags, spot-check ({n})",
@@ -192,6 +245,12 @@ _T = {
         "notice_ingested": "New run created.",
         "notice_bundled": "Bundle built.",
         "notice_uploaded": "Uploaded.",
+        "notice_proposed": "Candidate written. It is not in effect — it must "
+                           "pass evaluation and be promoted under your name.",
+        "notice_evaluated": "Evaluated. The numbers are below, including what "
+                            "it may have damaged.",
+        "notice_promoted": "Promoted. Future runs use the new harness; the "
+                           "promotion is in the ledger.",
         "snapshot": "review_snapshot_id",
         "back": "← back to queue",
         "error_title": "Blocked",
@@ -238,7 +297,50 @@ _T = {
                           "--workspace <ws>` 让模型读上面这些原话出提案草稿。",
         "imp_cites": "读的是",
         "imp_dropped": "被校验层丢弃的草稿",
-        "imp_cmd": "提案命令(复制、改、自己跑 —— 本页不写任何东西)",
+        "imp_cmd": "提案命令(复制、改、自己跑)",
+        "imp_adopt": "采纳为候选",
+        "imp_adopt_hint": "采纳只会写出一个候选 harness 并评测它,"
+                          "**不改变当前 active** —— 晋升是下面单独的、要署名的一步。",
+        "imp_adopt_schema_hint": "采纳只会写出候选。schema 候选无法用反事实重放评测 "
+                                 "—— 它需要真的重抽,会消耗 credits,由你在下面授权。",
+        "imp_words": "你的话(模型草稿只是起点 —— 签字的是你,用你自己的说法写)",
+        "imp_cohort_id": "候选 cohort 名",
+        "imp_finding": "发现",
+        "imp_prediction": "预测(写清可能伤害什么)",
+        "imp_new_desc": "新的字段描述(会发给 DWS)",
+        "imp_candidates": "候选与晋升",
+        "imp_no_candidates": "还没有候选。在上面采纳一条草稿,"
+                             "或者用命令行跑 `improve propose`。",
+        "imp_active": "当前 active",
+        "imp_eval_none": "未评测 —— 没评过的候选不许晋升。",
+        "imp_eval_run": "评测(反事实重放,零 API)",
+        "imp_eval_reextract": "重抽评测(消耗 credits)",
+        "imp_sample": "抽样份数",
+        "imp_budget": "credits 上限",
+        "imp_gate_ok": "Gate 全过 —— 可晋升",
+        "imp_gate_no": "Gate 拒绝晋升",
+        "imp_promote": "晋升为 active harness",
+        "imp_promote_hint": "晋升会改变之后每一张发票的路由方式。"
+                            "你的署名与理由会永久写进晋升账本。",
+        "imp_approved_by": "你的署名",
+        "imp_rationale": "理由(你接受了什么残余风险?)",
+        "imp_approved_at": "决定时间(ISO 8601)",
+        "imp_load": "复核负载",
+        "imp_silent_absent": "静默缺席错",
+        "imp_silent_wrong": "静默错值",
+        "imp_basis": "证据基底",
+        "imp_unscored": "本 workspace 没有真值 —— 安全性未计分,"
+                        "门禁无法为这个候选背书。",
+        "imp_schema_changed": "改动了抽取 schema",
+        "imp_revoke_manual": "撤销不是候选类型,一键做不到。"
+                             "要收紧就走 `improve rollback`(回到已知策略),"
+                             "或者人工改策略后重新 propose。",
+        "imp_gate_unrun": "安全门没跑(本 workspace 没有真值)—— "
+                          "门禁没有拒绝它,但也没有为它背书。"
+                          "静默错升没升、负载升没升,这里都不知道。",
+        "imp_lineage_bad": "谱系对不上当前 active —— 这个候选是从别的 harness "
+                           "派生的(通常是已经晋升过的旧候选)。"
+                           "promote 会拒;要用它就从当前 active 重新 propose。",
         "all": "全部", "pending": "待复核", "done": "已裁决",
         "sec_required": "需要裁决 ({n})",
         "sec_corroborated": "印证行 —— 机器未见异常,抽检性质 ({n})",
@@ -335,6 +437,9 @@ _T = {
         "notice_ingested": "已创建新 run。",
         "notice_bundled": "bundle 已打好。",
         "notice_uploaded": "已上传。",
+        "notice_proposed": "候选已写出。它还没有生效 —— 评测通过并由你署名晋升才算。",
+        "notice_evaluated": "评测完成。数字在下面,包括它可能伤害了什么。",
+        "notice_promoted": "已晋升。之后的 run 会用新 harness;晋升记录已入账本。",
         "snapshot": "review_snapshot_id",
         "back": "← 回到复核队列",
         "error_title": "阻断",
@@ -1401,27 +1506,8 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         parts.append(f'<h3 class="wb-imp-h">{_esc(_t(lang, "imp_model"))}</h3>')
         if sug_path.exists():
             sug = _json.loads(sug_path.read_text(encoding="utf-8"))
-            for s in sug.get("suggestions") or []:
-                cohort = " ".join(f"{k}={v}" for k, v in s["cohort"].items())
-                cited = "".join(
-                    f'<li>{_esc(n.get("rationale", ""))}</li>'
-                    for n in s.get("cited_notes") or [])
-                cmd = (f'python3 -m invoiceloop improve propose '
-                       f'--workspace {ws} --cohort-id <起个名> '
-                       + " ".join(f"--{k} {v}" for k, v in s["cohort"].items())
-                       + ' --finding "<改写成你自己的判断>" '
-                         '--prediction "<预计改什么指标、可能伤害什么>"')
-                parts.append(
-                    f'<div class="wb-imp-sug"><div class="wb-imp-sug-head">'
-                    f'<span class="wb-imp-tag advisory">advisory</span> '
-                    f'<b>{_esc(s["action"])}</b> · {_esc(cohort)} · '
-                    f'{_esc(s["confidence"])}</div>'
-                    f'<div class="wb-imp-note">{_esc(s["finding"])}</div>'
-                    f'<div class="wb-imp-note">{_esc(s["prediction"])}</div>'
-                    f'<div class="wb-imp-meta">{_esc(_t(lang, "imp_cites"))}:</div>'
-                    f'<ul class="wb-imp-notes">{cited}</ul>'
-                    f'<div class="wb-imp-meta">{_esc(_t(lang, "imp_cmd"))}</div>'
-                    f'<pre class="wb-imp-cmd">{_esc(cmd)}</pre></div>')
+            for i, s in enumerate(sug.get("suggestions") or []):
+                parts.append(self._suggestion_html(lang, ctx, i, s))
             if sug.get("dropped"):
                 dropped = "".join(f'<li>{_esc(d)}</li>' for d in sug["dropped"])
                 parts.append(f'<div class="wb-imp-meta">'
@@ -1430,12 +1516,240 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         else:
             parts.append(f'<p class="wb-imp-empty">'
                          f'{_esc(_t(lang, "imp_model_none"))}</p>')
+
+        parts.append(self._candidates_html(lang, ctx))
         body = (f'<div class="wb-improve"><h2>{_esc(_t(lang, "improve"))}</h2>'
                 + "".join(parts) + "</div>")
         return self.page(lang, "improve", body, run_name=ctx.name,
                          notice=self._notice(lang, params),
                          ooc=ctx.manifest.get("out_of_calibration", False),
                          keep_params=params)
+
+    def _suggestion_html(self, lang: str, ctx: RunCtx, idx: int,
+                         s: dict) -> str:
+        """一条模型草稿 + 采纳表单。
+
+        采纳表单里 finding/prediction 是**可编辑的文本框**,预填模型的话。
+        这是刻意的:签字的人要用自己的说法写,晋升账本里留下的应该是人的
+        判断,不是模型的措辞被人点了一下。`kind` 由 suggest.validate 打好。
+        """
+        cited = "".join(f'<li>{_esc(n.get("rationale", ""))}</li>'
+                        for n in s.get("cited_notes") or [])
+        kind = s.get("kind") or ("schema" if s.get("action") ==
+                                 "schema_description" else "cohort")
+        if kind == "schema":
+            head = f'{s["action"]} · {s.get("field", "")}'
+        else:
+            head = (f'{s["action"]} · '
+                    + " ".join(f"{k}={v}"
+                               for k, v in (s.get("cohort") or {}).items()))
+        common = (
+            f'<div class="wb-imp-sug-head">'
+            f'<span class="wb-imp-tag advisory">advisory</span> '
+            f'<b>{_esc(head)}</b> · {_esc(s.get("confidence", ""))}</div>'
+            f'<div class="wb-imp-note">{_esc(s.get("finding", ""))}</div>'
+            f'<div class="wb-imp-note">{_esc(s.get("prediction", ""))}</div>'
+            f'<div class="wb-imp-meta">{_esc(_t(lang, "imp_cites"))}:</div>'
+            f'<ul class="wb-imp-notes">{cited}</ul>')
+
+        hidden = (f'<input type="hidden" name="run" value="{_esc(ctx.name)}">'
+                  f'<input type="hidden" name="lang" value="{_esc(lang)}">')
+        words = (
+            f'<div class="wb-imp-meta">{_esc(_t(lang, "imp_words"))}</div>'
+            f'<label class="wb-imp-lbl">{_esc(_t(lang, "imp_finding"))}'
+            f'<textarea name="finding" rows="2" required>'
+            f'{_esc(s.get("finding", ""))}</textarea></label>'
+            f'<label class="wb-imp-lbl">{_esc(_t(lang, "imp_prediction"))}'
+            f'<textarea name="prediction" rows="2" required>'
+            f'{_esc(s.get("prediction", ""))}</textarea></label>')
+
+        if kind == "schema":
+            form = (
+                f'<form method="post" action="/improve/adopt-schema" '
+                f'class="wb-imp-form">{hidden}'
+                f'<input type="hidden" name="field" '
+                f'value="{_esc(s.get("field", ""))}">'
+                f'<label class="wb-imp-lbl">{_esc(_t(lang, "imp_new_desc"))}'
+                f'<textarea name="description" rows="3" required>'
+                f'{_esc(s.get("description", ""))}</textarea></label>'
+                f'{words}'
+                f'<p class="wb-imp-meta">'
+                f'{_esc(_t(lang, "imp_adopt_schema_hint"))}</p>'
+                f'<button class="wb-btn" type="submit">'
+                f'{_esc(_t(lang, "imp_adopt"))}</button></form>')
+        elif s.get("action") in ("auto_accept", "absent_expected"):
+            cohort = s.get("cohort") or {}
+            cohort_fields = "".join(
+                f'<input type="hidden" name="c_{_esc(k)}" value="{_esc(str(v))}">'
+                for k, v in cohort.items())
+            default_id = ("AC-" + str(cohort.get("field", f"C{idx}"))
+                          .upper().replace("_", "-"))
+            form = (
+                f'<form method="post" action="/improve/adopt" '
+                f'class="wb-imp-form">{hidden}{cohort_fields}'
+                f'<input type="hidden" name="kind" '
+                f'value="{_esc(s["action"])}">'
+                f'<label class="wb-imp-lbl">{_esc(_t(lang, "imp_cohort_id"))}'
+                f'<input name="cohort_id" value="{_esc(default_id)}" required>'
+                f'</label>{words}'
+                f'<p class="wb-imp-meta">{_esc(_t(lang, "imp_adopt_hint"))}</p>'
+                f'<button class="wb-btn" type="submit">'
+                f'{_esc(_t(lang, "imp_adopt"))}</button></form>')
+        else:
+            # revoke:改进层没有「撤销」这个候选类型 —— 它对应回滚或人工改策略。
+            # 不给按钮,也不假装能一键做到(宪章四:做不了要说)
+            form = (f'<p class="wb-imp-meta">revoke —— '
+                    f'{_esc(_t(lang, "imp_revoke_manual"))}</p>')
+        return f'<div class="wb-imp-sug">{common}{form}</div>'
+
+    def _candidates_html(self, lang: str, ctx: RunCtx) -> str:
+        """候选清单 + 评测数字 + 晋升表单。
+
+        晋升按钮的可用性由 `improve.gate_verdict` 决定 —— 与 promote 实际
+        执行的是同一个纯函数,页面不许自己判一遍。
+        """
+        import json as _json
+
+        from . import improve as _improve
+        from .harness import load_active
+
+        parts = [f'<h3 class="wb-imp-h">{_esc(_t(lang, "imp_candidates"))}</h3>']
+        ws = self.ws
+        try:
+            active_id = load_active(ws)["harness_id"]
+        except Exception as exc:  # noqa: BLE001 —— 链坏了要说,不静默
+            return "".join(parts) + (f'<p class="wb-imp-empty">'
+                                     f'{_esc(str(exc))}</p>')
+        cand_dirs = sorted((ws / "harnesses").glob("HAR-*")) \
+            if (ws / "harnesses").is_dir() else []
+        shown = 0
+        for cand in cand_dirs:
+            manifest_path = cand / "manifest.json"
+            if cand.name == active_id or not manifest_path.exists():
+                continue
+            shown += 1
+            man = _json.loads(manifest_path.read_text(encoding="utf-8"))
+            schema_changed = bool(man.get("schema_changed"))
+            tag = (f' <span class="wb-imp-tag">'
+                   f'{_esc(_t(lang, "imp_schema_changed"))}</span>'
+                   if schema_changed else "")
+            block = [
+                f'<div class="wb-imp-sug-head"><b>{_esc(cand.name)}</b>{tag} '
+                f'· {_esc(man.get("provenance", ""))} '
+                f'← {_esc(man.get("parent_harness_id", ""))}</div>',
+                f'<div class="wb-imp-note">'
+                f'{_esc("".join(man.get("created_from_findings") or []))}</div>',
+                f'<div class="wb-imp-note">'
+                f'{_esc(man.get("prediction", ""))}</div>',
+            ]
+            lineage_ok = man.get("parent_harness_id") == active_id
+            eval_path = ws / "improve" / f"eval_{cand.name}.json"
+            if eval_path.exists():
+                ev = _json.loads(eval_path.read_text(encoding="utf-8"))
+                block.append(self._eval_html(lang, ev))
+                verdict = _improve.gate_verdict(
+                    ev, sealed2_qualified=_improve.sealed2_qualifies(
+                        ws, cand.name))
+                block.append(self._promote_html(lang, ctx, cand.name, verdict,
+                                                lineage_ok=lineage_ok))
+            else:
+                block.append(f'<p class="wb-imp-empty">'
+                             f'{_esc(_t(lang, "imp_eval_none"))}</p>')
+                block.append(self._evaluate_form(lang, ctx, cand.name,
+                                                 schema_changed))
+            parts.append(f'<div class="wb-imp-cand-box">'
+                         + "".join(block) + "</div>")
+        if not shown:
+            parts.append(f'<p class="wb-imp-empty">'
+                         f'{_esc(_t(lang, "imp_no_candidates"))}</p>')
+        parts.append(f'<div class="wb-imp-meta">{_esc(_t(lang, "imp_active"))}'
+                     f': {_esc(active_id)}</div>')
+        return "".join(parts)
+
+    def _eval_html(self, lang: str, ev: dict) -> str:
+        """评测数字表 —— 改善与代价并排,不许只显示改善的那一半。"""
+        def pct(x):
+            return "—" if x is None else f"{x:.1%}"
+
+        rows = [(_t(lang, "imp_load"), pct(ev.get("review_load_baseline")),
+                 pct(ev.get("review_load_candidate")))]
+        if ev.get("safety_status") == "scored":
+            rows.append((_t(lang, "imp_silent_absent"),
+                         str(ev.get("silent_absent_baseline")),
+                         str(ev.get("silent_absent_candidate"))))
+            rows.append((_t(lang, "imp_silent_wrong"),
+                         str(ev.get("silent_wrong_baseline")),
+                         str(ev.get("silent_wrong_candidate"))))
+        body = "".join(
+            f'<tr><td>{_esc(k)}</td><td>{_esc(b)}</td><td>→</td>'
+            f'<td><b>{_esc(c)}</b></td></tr>' for k, b, c in rows)
+        note = ""
+        if ev.get("safety_status") != "scored":
+            note = (f'<p class="wb-imp-empty">'
+                    f'{_esc(_t(lang, "imp_unscored"))}</p>')
+        return (f'<table class="wb-imp-eval">{body}</table>'
+                f'<div class="wb-imp-meta">{_esc(_t(lang, "imp_basis"))}: '
+                f'{_esc(str(ev.get("basis") or "—"))}</div>{note}')
+
+    def _evaluate_form(self, lang: str, ctx: RunCtx, cand_id: str,
+                       schema_changed: bool) -> str:
+        hidden = (f'<input type="hidden" name="run" value="{_esc(ctx.name)}">'
+                  f'<input type="hidden" name="lang" value="{_esc(lang)}">'
+                  f'<input type="hidden" name="candidate" value="{_esc(cand_id)}">')
+        if not schema_changed:
+            return (f'<form method="post" action="/improve/evaluate" '
+                    f'class="wb-imp-form">{hidden}'
+                    f'<button class="wb-btn" type="submit">'
+                    f'{_esc(_t(lang, "imp_eval_run"))}</button></form>')
+        # schema 候选:必须重抽,会花钱 —— 份数与上限由人填,不给默认一键
+        return (f'<form method="post" action="/improve/evaluate" '
+                f'class="wb-imp-form">{hidden}'
+                f'<input type="hidden" name="reextract" value="1">'
+                f'<label class="wb-imp-lbl">{_esc(_t(lang, "imp_sample"))}'
+                f'<input name="sample" type="number" min="1" max="200" '
+                f'value="20" required></label>'
+                f'<label class="wb-imp-lbl">{_esc(_t(lang, "imp_budget"))}'
+                f'<input name="budget" type="number" min="1" value="600" '
+                f'required></label>'
+                f'<button class="wb-btn" type="submit">'
+                f'{_esc(_t(lang, "imp_eval_reextract"))}</button></form>')
+
+    def _promote_html(self, lang: str, ctx: RunCtx, cand_id: str,
+                      verdict: dict, *, lineage_ok: bool = True) -> str:
+        if not lineage_ok:
+            # promote 自己也会拒(parent 对不上 active)。与其让人填完表单再吃
+            # 一个 400,不如在这里说清楚 —— 页面不该给一个注定失败的按钮
+            return (f'<div class="wb-imp-gate refuse"><b>'
+                    f'{_esc(_t(lang, "imp_lineage_bad"))}</b></div>')
+        if not verdict["ok"]:
+            refusals = "".join(f'<li>{_esc(r)}</li>'
+                               for r in verdict["refusals"])
+            return (f'<div class="wb-imp-gate refuse"><b>'
+                    f'{_esc(_t(lang, "imp_gate_no"))}</b>'
+                    f'<ul class="wb-imp-notes">{refusals}</ul></div>')
+        # 宪章四:安全门**没跑**不等于通过。无真值时不许显示「Gate 全过」
+        scored = verdict["safety_status"] == "scored"
+        head_key = "imp_gate_ok" if scored else "imp_gate_unrun"
+        return (
+            f'<div class="wb-imp-gate {"ok" if scored else "refuse"}">'
+            f'<b>{_esc(_t(lang, head_key))}</b>'
+            f' · gate={_esc(verdict["gate"])} · basis={_esc(verdict["basis"])}'
+            f'<div class="wb-imp-note">{_esc(verdict["claim_limits"])}</div>'
+            f'</div>'
+            f'<form method="post" action="/improve/promote" class="wb-imp-form">'
+            f'<input type="hidden" name="run" value="{_esc(ctx.name)}">'
+            f'<input type="hidden" name="lang" value="{_esc(lang)}">'
+            f'<input type="hidden" name="candidate" value="{_esc(cand_id)}">'
+            f'<label class="wb-imp-lbl">{_esc(_t(lang, "imp_approved_by"))}'
+            f'<input name="approved_by" required></label>'
+            f'<label class="wb-imp-lbl">{_esc(_t(lang, "imp_rationale"))}'
+            f'<textarea name="rationale" rows="2" required></textarea></label>'
+            f'<label class="wb-imp-lbl">{_esc(_t(lang, "imp_approved_at"))}'
+            f'<input name="approved_at" placeholder="2026-08-06T12:00:00Z" '
+            f'required></label>'
+            f'<p class="wb-imp-meta">{_esc(_t(lang, "imp_promote_hint"))}</p>'
+            f'<button class="wb-btn danger" type="submit">'
+            f'{_esc(_t(lang, "imp_promote"))}</button></form>')
 
     # ---- 交付报告
     def report_page(self, lang: str, run_dir: Path, params: dict) -> str:
@@ -1711,6 +2025,14 @@ class _Handler(BaseHTTPRequestHandler):
                 return self._bundle(lang)
             if method == "POST" and path == "/verify":
                 return self._verify(lang)
+            if method == "POST" and path == "/improve/adopt":
+                return self._imp_adopt(lang)
+            if method == "POST" and path == "/improve/adopt-schema":
+                return self._imp_adopt_schema(lang)
+            if method == "POST" and path == "/improve/evaluate":
+                return self._imp_evaluate(lang)
+            if method == "POST" and path == "/improve/promote":
+                return self._imp_promote(lang)
             return self._html(404, self.bench.message_page(lang, "404", [_esc(path)]))
         except _HttpError as exc:
             run_q = f"/queue?run={exc.run}" if exc.run else None
@@ -1889,6 +2211,85 @@ class _Handler(BaseHTTPRequestHandler):
         run = self._require_run(form)
         build_audit_bundle(run)
         self._redirect(f"/deliver?run={run.name}&lang={lang}&notice=bundled")
+
+    # ---- 改进循环的四个写操作
+    #
+    # 分级摩擦是刻意的:adopt / evaluate 写的是**候选**,对 active harness
+    # 零影响,所以给按钮;promote 会改变之后每一张发票的路由,所以要求手打
+    # 署名 + 理由 + 时间,并且只有 improve.gate_verdict 判定通过才渲染表单。
+    # 三个写操作全部落在既有 CLI 的同一批函数上 —— 网页不是第二条路径。
+
+    def _imp_form_run(self, form: dict):
+        return self._require_run(form), (form.get("lang", ["zh"])[0] or "zh")
+
+    def _imp_back(self, run_name: str, lang: str, notice: str) -> None:
+        self._redirect(f"/improve?run={run_name}&lang={lang}&notice={notice}")
+
+    def _imp_adopt(self, lang: str) -> None:
+        """模型草稿 → cohort 候选。propose + evaluate(反事实,零 API)。"""
+        from . import improve
+
+        form = self._form()
+        run, lang = self._imp_form_run(form)
+        cohort = {k[2:]: v[0] for k, v in form.items()
+                  if k.startswith("c_") and v and v[0]}
+        if not cohort:
+            raise _HttpError(400, "草稿没有 cohort 特征 —— 采纳不了")
+        cohort_id = (form.get("cohort_id", [""])[0] or "").strip()
+        if not cohort_id:
+            raise _HttpError(400, "给候选起个名字")
+        kind = form.get("kind", ["auto_accept"])[0]
+        cand_dir = improve.propose(
+            self.bench.ws, cohort={"id": cohort_id, **cohort},
+            finding=(form.get("finding", [""])[0] or "").strip(),
+            prediction=(form.get("prediction", [""])[0] or "").strip(),
+            kind=kind)
+        improve.evaluate(self.bench.ws, cand_dir.name)
+        self._imp_back(run.name, lang, "proposed")
+
+    def _imp_adopt_schema(self, lang: str) -> None:
+        """模型草稿 → schema 候选。**不自动评测** —— 评它要花钱,人来点。"""
+        from . import improve
+
+        form = self._form()
+        run, lang = self._imp_form_run(form)
+        improve.propose_schema(
+            self.bench.ws,
+            field=(form.get("field", [""])[0] or "").strip(),
+            description=(form.get("description", [""])[0] or "").strip(),
+            finding=(form.get("finding", [""])[0] or "").strip(),
+            prediction=(form.get("prediction", [""])[0] or "").strip())
+        self._imp_back(run.name, lang, "proposed")
+
+    def _imp_evaluate(self, lang: str) -> None:
+        from . import improve
+
+        form = self._form()
+        run, lang = self._imp_form_run(form)
+        candidate = (form.get("candidate", [""])[0] or "").strip()
+        if not candidate:
+            raise _HttpError(400, "没给候选 id")
+        reextract = bool(form.get("reextract", [""])[0])
+        improve.evaluate(
+            self.bench.ws, candidate, reextract=reextract,
+            sample=int(form.get("sample", ["0"])[0] or 0),
+            budget=float(form.get("budget", ["600"])[0] or 600))
+        self._imp_back(run.name, lang, "evaluated")
+
+    def _imp_promote(self, lang: str) -> None:
+        """唯一改变 active harness 的网页入口。门在 improve.promote 里,
+        这里只负责把人打的字原样递进去 —— 不代填署名,不代填时间。"""
+        from . import improve
+
+        form = self._form()
+        run, lang = self._imp_form_run(form)
+        improve.promote(
+            self.bench.ws,
+            (form.get("candidate", [""])[0] or "").strip(),
+            approved_by=(form.get("approved_by", [""])[0] or ""),
+            rationale=(form.get("rationale", [""])[0] or ""),
+            approved_at=(form.get("approved_at", [""])[0] or ""))
+        self._imp_back(run.name, lang, "promoted")
 
     def _verify(self, lang: str) -> None:
         import tempfile

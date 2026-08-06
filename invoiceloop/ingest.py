@@ -25,8 +25,9 @@ from .fields import FIELD_KINDS, Kind
 from .ocr import OcrUnavailable
 from .ocr_ingest import ocr_pdf
 
-#: 十个评估字段的描述(搬 dws-derisk schema.py 的字段语义;
-#: 不给 required —— 必填会逼抽取器对不存在的字段编造,把诚实缺失变成自信幻觉)
+#: 十个评估字段的默认描述(包内 HAR-0001 的提取 schema 同源;
+#: 不给 required —— 必填会逼抽取器对不存在的字段编造,把诚实缺失变成自信幻觉)。
+#: 可演化面在 harnesses/*/extraction_schema.json;此处仅作回退常量。
 FIELD_DESCRIPTIONS = {
     "invoice_number": "Seller-assigned invoice identifier.",
     "issue_date": "Date the invoice was issued.",
@@ -41,9 +42,8 @@ FIELD_DESCRIPTIONS = {
 }
 
 
-def extraction_schema() -> dict:
-    """传给 DWS 的 JSON Schema:只要 string,不加任何额外关键字
-    (端点实测会拒 additionalProperties 等,见 dws-derisk schema.py)。"""
+def default_extraction_schema() -> dict:
+    """包内默认 schema(无 harness 文件时的回退)。"""
     return {
         "type": "object",
         "properties": {
@@ -52,6 +52,23 @@ def extraction_schema() -> dict:
             if kind in (Kind.AMOUNT, Kind.DATE, Kind.PARTY, Kind.CODE, Kind.TEXT)
         },
     }
+
+
+def extraction_schema(root: Path | None = None) -> dict:
+    """传给 DWS 的 JSON Schema:只要 string,不加任何额外关键字。
+
+    优先读 active harness 的 extraction_schema.json;缺文件则回退包内默认。
+    """
+    from .harness import load_active
+
+    try:
+        active = load_active(root)
+        schema = active.get("schema")
+        if isinstance(schema, dict) and schema.get("properties"):
+            return schema
+    except Exception:  # noqa: BLE001 —— 无 workspace / 链未就绪时用默认
+        pass
+    return default_extraction_schema()
 
 
 def sanitise_doc_id(stem: str) -> str:

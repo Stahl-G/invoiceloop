@@ -64,6 +64,50 @@ class TestValidate:
         assert kept[0]["confidence"] == "low"
 
 
+class TestSchemaSuggestions:
+    """schema_description:模型能提改字段描述,但约束比 cohort 更紧。"""
+
+    def _schema_raw(self, **over) -> dict:
+        s = {"action": "schema_description", "field": "due_date",
+             "description": "Payment due date, or the date implied by stated "
+                            "terms such as Net 30.",
+             "finding": "f", "prediction": "p", "confidence": "medium",
+             "cites": [1]}
+        s.update(over)
+        return {"suggestions": [s]}
+
+    def test_schema_suggestion_survives(self):
+        kept, dropped = suggest.validate(self._schema_raw(), NOTES)
+        assert dropped == []
+        assert kept[0]["kind"] == "schema" and kept[0]["field"] == "due_date"
+        assert "Net 30" in kept[0]["description"]
+
+    def test_unknown_field_dropped(self):
+        """模型编一个字段名 —— schema 只有那十个受评字段。"""
+        kept, dropped = suggest.validate(
+            self._schema_raw(field="vendor_iban"), NOTES)
+        assert kept == [] and "不是受评字段" in dropped[0]
+
+    def test_empty_description_dropped(self):
+        kept, dropped = suggest.validate(self._schema_raw(description="  "),
+                                         NOTES)
+        assert kept == [] and "没给 description" in dropped[0]
+
+    def test_essay_length_description_dropped(self):
+        kept, dropped = suggest.validate(
+            self._schema_raw(description="x" * 401), NOTES)
+        assert kept == [] and "小作文" in dropped[0]
+
+    def test_schema_suggestion_still_needs_a_citation(self):
+        """出处这条纪律对两类建议一视同仁。"""
+        kept, dropped = suggest.validate(self._schema_raw(cites=[]), NOTES)
+        assert kept == [] and "没出处" in dropped[0]
+
+    def test_cohort_suggestion_is_tagged_as_cohort(self):
+        kept, _ = suggest.validate(_raw(), NOTES)
+        assert kept[0]["kind"] == "cohort", "页面按 kind 分支渲染两种形状"
+
+
 class TestSuggestIO:
     def test_missing_mine_report_blocks(self, tmp_path):
         with pytest.raises(FileNotFoundError, match="improve mine"):

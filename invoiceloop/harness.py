@@ -27,6 +27,36 @@ from .routing import policy_digest
 DEFAULT_HARNESS = "HAR-0001"
 
 
+def _builtin_schema_bytes() -> bytes:
+    path = (resources.files("invoiceloop") / "harnesses" / DEFAULT_HARNESS
+            / "extraction_schema.json")
+    if path.is_file():
+        return path.read_bytes()
+    # 极端回退:与 ingest.default_extraction_schema 同形
+    from .ingest import default_extraction_schema
+    return (json.dumps(default_extraction_schema(), indent=1,
+                       ensure_ascii=False) + "\n").encode("utf-8")
+
+
+def _schema_bytes(root: Path, harness_id: str) -> bytes:
+    """workspace harnesses/ 里的 schema 字节;缺则回退包内默认。
+
+    既有 PROM 记录可能没有 to_schema_digest —— 缺文件视为包内默认,
+    不破坏哈希链。
+    """
+    path = Path(root) / "harnesses" / harness_id / "extraction_schema.json"
+    if path.exists():
+        return path.read_bytes()
+    return _builtin_schema_bytes()
+
+
+def schema_digest(schema: dict) -> str:
+    """canonical JSON sha256(与 policy_digest 同风格)。"""
+    return hashlib.sha256(
+        json.dumps(schema, sort_keys=True, ensure_ascii=False).encode()
+    ).hexdigest()
+
+
 def _builtin_policy_bytes() -> bytes:
     return (resources.files("invoiceloop") / "harnesses" / DEFAULT_HARNESS
             / "routing_policy.json").read_bytes()
@@ -48,16 +78,18 @@ def _policy_bytes(root: Path, harness_id: str) -> bytes:
         f"晋升记录指向的策略必须落盘可查")
 
 
-def _replay_promotions(root: Path) -> tuple[str, bytes, list[dict]]:
-    """重放晋升哈希链,返回 (active_id, active_policy_bytes, records)。
+def _replay_promotions(root: Path) -> tuple[str, bytes, bytes, list[dict]]:
+    """重放晋升哈希链,返回 (active_id, policy_bytes, schema_bytes, records)。
 
     任一环节不符即 RuntimeError(fail closed,不许静默回退)。
+    记录缺 to_schema_digest = 视为包内默认 schema(兼容 PROM-0001..0003)。
     """
     promotions_dir = Path(root) / "improve" / "promotions"
     files = sorted(promotions_dir.glob("PROM-*.json")) \
         if promotions_dir.exists() else []
     current = DEFAULT_HARNESS
     current_bytes = _builtin_policy_bytes()
+    current_schema = _builtin_schema_bytes()
     prev_digest: str | None = None
     records: list[dict] = []
     for i, path in enumerate(files, start=1):
@@ -88,22 +120,32 @@ def _replay_promotions(root: Path) -> tuple[str, bytes, list[dict]]:
             raise RuntimeError(
                 f"{path.name}:目标 {rec['to_harness_id']} 的 policy 字节与记录"
                 f"不符 —— 晋升后政策被改过,拒绝加载")
+        target_schema = _schema_bytes(root, rec["to_harness_id"])
+        expected_schema = rec.get("to_schema_digest")
+        if expected_schema is not None:
+            actual = hashlib.sha256(target_schema).hexdigest()
+            if expected_schema != actual:
+                raise RuntimeError(
+                    f"{path.name}:目标 {rec['to_harness_id']} 的 schema 字节与记录"
+                    f"不符 —— 晋升后 schema 被改过,拒绝加载")
         records.append(rec)
         current = rec["to_harness_id"]
         current_bytes = target_bytes
+        current_schema = target_schema
         prev_digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    return current, current_bytes, records
+    return current, current_bytes, current_schema, records
 
 
 def load_active(root: Path | None = None) -> dict:
-    """{harness_id, policy, policy_digest, policy_sha256}。
+    """{harness_id, policy, policy_digest, policy_sha256, schema, schema_sha256}。
 
     root = workspace/语料根。policy_digest 是 canonical JSON 的内容寻址
     (进执行指纹);policy_sha256 是文件字节 sha256(晋升链绑定用)。
+    schema 同理;旧 PROM 无 to_schema_digest 时用包内默认。
     """
     if root is not None:
         root = Path(root)
-        active_id, active_bytes, records = _replay_promotions(root)
+        active_id, active_bytes, schema_bytes, records = _replay_promotions(root)
         pointer = root / "improve" / "active_harness.json"
         if pointer.exists():
             rec = json.loads(pointer.read_text(encoding="utf-8"))
@@ -127,11 +169,20 @@ def load_active(root: Path | None = None) -> dict:
                 "有晋升记录但缺 active_harness.json 缓存 —— "
                 "状态不完整,拒绝猜测(重新 promote 或删 promotions/)")
         policy = json.loads(active_bytes)
+        schema = json.loads(schema_bytes)
         return {"harness_id": active_id, "policy": policy,
                 "policy_digest": policy_digest(policy),
-                "policy_sha256": hashlib.sha256(active_bytes).hexdigest()}
+                "policy_sha256": hashlib.sha256(active_bytes).hexdigest(),
+                "schema": schema,
+                "schema_sha256": hashlib.sha256(schema_bytes).hexdigest(),
+                "schema_digest": schema_digest(schema)}
     raw = _builtin_policy_bytes()
     policy = json.loads(raw)
+    schema_raw = _builtin_schema_bytes()
+    schema = json.loads(schema_raw)
     return {"harness_id": DEFAULT_HARNESS, "policy": policy,
             "policy_digest": policy_digest(policy),
-            "policy_sha256": hashlib.sha256(raw).hexdigest()}
+            "policy_sha256": hashlib.sha256(raw).hexdigest(),
+            "schema": schema,
+            "schema_sha256": hashlib.sha256(schema_raw).hexdigest(),
+            "schema_digest": schema_digest(schema)}

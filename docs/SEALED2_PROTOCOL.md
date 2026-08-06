@@ -45,7 +45,10 @@ SEALED-1 已完成 final-held-out 职责并降级为演化/回归集
 6. 评测一次,结果写入 `docs/SEALED2_RESULTS.md`,数字照登;
 7. 若作晋升资格:在目标 workspace 放置
    `improve/sealed2_qualified.ok`(人工确认 SEALED-2 eval 已过 Gate 2),
-   此后 scored promote 的 `basis` 升为 `sealed2_qualified`。
+   **标记必须点名它资格化的 `harness_id`** —— 只有该 harness 自己晋升时
+   `basis` 才升为 `sealed2_qualified`,派生候选**不继承**
+   (`improve.mark_sealed2_qualified(ws, harness_id=...)`;
+   理由见 `docs/SEALED2_RESULTS.md` 的 2026-08-06 修正)。
 
 网络失败按断点续跑恢复;**结果驱动的规则/代码修改 = 本批作废,
 SEALED-2 自动降级为回归集**,另批新种子重来。

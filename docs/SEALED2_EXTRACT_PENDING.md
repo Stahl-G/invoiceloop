@@ -1,22 +1,14 @@
-# SEALED-2 抽取状态(待预算授权)
+# SEALED-2 抽取 / 评测状态(已完成 2026-08-06)
 
-名单已冻结:`docs/sealed2_doc_list.json`(drand round 6352483,
-context=`sealed2-v1`,与暴露清单 / SEALED-1 / 旧 heldout 零重叠,pool=5131)。
+名单:`docs/sealed2_doc_list.json`(drand round 6352483, context=`sealed2-v1`)。
 
-**尚未授权 DWS 抽取。** 在明确预算(~5k credits / 200 次双模式调用)前,
-禁止执行:
+**已完成:**
 
-```bash
-python3 -m invoiceloop sealed extract --workspace runs/sealed2-workspace
-INVOICELOOP_CORPUS=runs/sealed2-workspace python3 -m invoiceloop run \
-  --out runs/sealed2 --doc-ids <docs/sealed2_doc_list.json>
-```
+1. 双模式抽取 → `runs/sealed2-workspace/raw/`(100×2, failed=0);
+2. 主臂 run → `runs/sealed2`(HAR-0004);
+3. 结果 → `docs/SEALED2_RESULTS.md`(H1–H7 全过,数字照登);
+4. 资格标记 → `improve/sealed2_qualified.ok`(hitl-sealed /
+   sealed2-workspace / hitl-evo-b1)。
 
-抽取并评测通过后,在目标 improve workspace 放置资格标记:
-
-```bash
-python3 -c "from pathlib import Path; from invoiceloop.improve import mark_sealed2_qualified; \
-  print(mark_sealed2_qualified(Path('runs/hitl-sealed')))"
-```
-
-此后 scored promote 的 `basis` 升为 `sealed2_qualified`(见 `improve.promote`)。
+本批已封存为晋升资格集。结果驱动的改动 = 作废本批,见协议
+`docs/SEALED2_PROTOCOL.md`。

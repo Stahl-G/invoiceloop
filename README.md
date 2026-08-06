@@ -93,9 +93,11 @@ BriefLoop 架构参考 v0.6.1 §3.6 支持充分性栈。该栈在 BriefLoop 中
 
 M0–M4 全部落地,两轮外部验证完成:
 
-- **SEALED-1 封箱评测(2026-08-05,`docs/SEALED1_RESULTS.md`)**:
-  drand 信标播种的 100 份真未见集,分诊 lift 4.03×(线 1.5),H1–H4/H7 过,
-  H5/H6 未过线照登不调判据;证据包 sha256 带外公布;
+- **SEALED-2 封箱评测(2026-08-06,`docs/SEALED2_RESULTS.md`)**:
+  当前唯一 final held-out / 晋升资格集(HAR-0004),H1–H7 全过(lift 3.19×);
+  已挂 `sealed2_qualified.ok`;结果驱动改动 = 本批作废;
+- **SEALED-1(2026-08-05,`docs/SEALED1_RESULTS.md`)**:已降级为回归/演化集;
+  lift 4.03×,H5/H6 未过线照登;
 - **验证轮(2026-08-02,`docs/VERIFICATION_2026-08-02.md`)**:
   旧留出集 H1–H6 全过(lift 3.04×),人类验收五任务通过;
 - **改进层在环**:routing 策略版本化(Harness),人工晋升带 PROM 哈希链,

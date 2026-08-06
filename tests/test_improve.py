@@ -289,22 +289,61 @@ class TestPromoteSafetyGate:
         assert "未见封箱" in record["claim_limits"] or "SEALED-2" in record[
             "claim_limits"]
 
-    def test_sealed2_marker_upgrades_basis(self, ws, monkeypatch):
+    def _scored_candidate(self, ws, monkeypatch):
         from invoiceloop.safety_metrics import write_annotation_stub
 
         write_annotation_stub(ws, DOC, {"invoice_number": "INV-42"})
         pin_corpus(monkeypatch, ws)
         (ws / "improve").mkdir(exist_ok=True)
-        (ws / "improve" / "sealed2_qualified.ok").write_text("ok\n")
         improve.propose(
             ws, cohort={"id": "AE1", "field": "seller_vat_id"},
             finding="FIND-AE", prediction="p", kind="absent_expected")
         improve.evaluate(ws, "HAR-0002")
+
+    def test_sealed2_marker_naming_this_candidate_upgrades_basis(
+            self, ws, monkeypatch):
+        self._scored_candidate(ws, monkeypatch)
+        improve.mark_sealed2_qualified(ws, harness_id="HAR-0002",
+                                       note="SEALED-2 跑的就是它")
         record = improve.promote(ws, "HAR-0002", approved_by="y",
                                  rationale="SEALED-2 资格已挂",
                                  approved_at=DECIDED)
         assert record["basis"] == "sealed2_qualified"
         assert record["gate"] == "pareto_gated"
+
+    def test_sealed2_marker_for_another_harness_does_not_transfer(
+            self, ws, monkeypatch):
+        """标记是给某个 harness 的,不是 workspace 的通行证。
+
+        实测缺陷(2026-08-06,工作台跑通闭环时发现):标记原本只看文件在不在,
+        于是一个刚从 12 份 HITL 挖出来的新候选也会被盖上「已在 SEALED-2 上
+        通过、可对外说未见封箱减负」。同一条 due_date cohort 在本地 12 份上
+        silent_absent 0→0,在 88 份未见文档上实测多出 5 个真实到期日被静默
+        丢掉 —— 正是这个口径不能自动继承的原因。
+        """
+        self._scored_candidate(ws, monkeypatch)
+        improve.mark_sealed2_qualified(ws, harness_id="HAR-0004",
+                                       note="资格化的是别的 harness")
+        record = improve.promote(ws, "HAR-0002", approved_by="y",
+                                 rationale="不该继承别人的资格",
+                                 approved_at=DECIDED)
+        assert record["basis"] == "evo_truth_replay", \
+            "别的 harness 的 SEALED-2 资格不许转给这个候选"
+        assert "SEALED-2" in record["claim_limits"], \
+            "口径上限必须写明还没过封箱资格集"
+
+    def test_unnamed_legacy_marker_does_not_upgrade(self, ws, monkeypatch):
+        """旧的、没点名 harness 的标记 —— 证明不了,就不升级。"""
+        self._scored_candidate(ws, monkeypatch)
+        (ws / "improve" / "sealed2_qualified.ok").write_text("ok\n")
+        record = improve.promote(ws, "HAR-0002", approved_by="y",
+                                 rationale="旧标记",
+                                 approved_at=DECIDED)
+        assert record["basis"] == "evo_truth_replay"
+
+    def test_marker_without_harness_id_is_refused_at_write_time(self, ws):
+        with pytest.raises(ValueError, match="harness_id"):
+            improve.mark_sealed2_qualified(ws, harness_id="  ")
     """83 评 P0-1 + 高级裁决四的攻击链,逐条钉死。"""
 
     def _candidate(self, ws):
