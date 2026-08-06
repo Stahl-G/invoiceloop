@@ -13,18 +13,22 @@ amount_due)在 dws-derisk 六轮实验**第一轮之前**预注册冻结
 「AP 付款决策依赖 + DocILE 有标注可判」。InvoiceLoop 原样继承,
 从未根据任何实验结果增删。
 
-## 四个建议字段缺席的事实(全语料 5,680 份实测,2026-08-06)
+## 四个建议字段缺席的事实(全语料 5,680 份实测,2026-08-06 复算修正)
 
-| rubric 建议字段 | DocILE 对应 | 实测状态 | 结论 |
+(2026-08-06 外部复核抓出:本表第一版的计数取错了标注键(`value` →
+应为 `text`),数字不可复算。已修正,复算脚本在文末。)
+
+| rubric 建议字段 | DocILE 对应 | 实测(5,680 份) | 结论 |
 |---|---|---|---|
-| currency | `currency_code_amount_due` | 1,054 份有该标注**键**,但全部 5,680 份中**非空值为零** | 无可判真值,记分不可定义 |
-| buyer_tax_id | (无此 fieldtype) | DocILE 标注体系里不存在买方税号字段 | 无真值来源 |
-| purchase_order_number | (无此 fieldtype;`order_id` 是订单/合同号,语义不同) | 同上 | 无真值来源 |
-| payment / bank details | `account_num` / `bank_num` | 标注键存在(52/39 份),但全部 5,680 份中**非空值为零** | 无可判真值 |
+| currency | `currency_code_amount_due` | 键在 4,000 份;但标注 text 普遍是裸符号 `$`,按预注册 CODE 规范化塌成 None,**非空仅 126 例**(EUR/USD 等) | 结论不变(无可判真值),理由是规范化塌缩,不是没有标注 |
+| buyer_tax_id | `customer_tax_id` | 键 40 份,非空 40,但高度集中(同值重复) | 太稀有(0.7%),100 份封箱集期望 <1 例,进不了记分 |
+| purchase_order_number | (无此 fieldtype;`order_id` 是订单/合同号,语义不同) | — | 无真值来源 |
+| payment / bank details | `account_num` / `bank_num` | 键 135 / 105 份,**非空 135 / 105**(例 `10491969`、`052001633`) | **有真值但稀有(≈2%)** —— 100 份封箱集期望 ≈2 例,无法支撑任何指标;稀有本身就是排除理由 |
 
-**结论:这四个字段不是「被判为不重要」,而是「在本语料上无真值可判」。**
-评分系统的硬纪律是「没有真值就不进错误率」—— 把它们加进记分集只能
-产出伪指标(把「没有标注」算成「抽错」或「抽对」都是编造)。
+**结论:这四个字段不进记分集的理由是「无可判真值(currency、PO)」
+或「真值稀有到进不了封箱集(buyer_tax_id、bank details)」—— 
+不是「被判为不重要」。** 评分纪律「没有真值就不进错误率」不变:
+把它们加进记分集只能产出伪指标。
 
 ## 产品层与记分层的区分
 
@@ -42,3 +46,25 @@ amount_due)在 dws-derisk 六轮实验**第一轮之前**预注册冻结
 
 在真值覆盖这些字段的语料上(如欧洲 VAT 发票、带银行字段的企业 AP
 数据),字段集应该扩,扩法 = 预注册新字段 + 新封箱集,不回溯改本声明。
+
+## 复算脚本(本表全部数字的来源)
+
+```python
+import json, pathlib
+from invoiceloop.eval_norm import eval_normalise as normalise
+from invoiceloop.fields import Kind
+
+ann = pathlib.Path("~/Developer/dws-derisk/data/docile/annotations").expanduser()
+for ft in ("currency_code_amount_due", "account_num", "bank_num",
+           "customer_tax_id"):
+    keys = nonnull = 0
+    for p in sorted(ann.glob("*.json")):
+        for x in json.loads(p.read_text()).get("field_extractions") or []:
+            if x.get("fieldtype") == ft:
+                keys += 1
+                t = x.get("text")          # 标注值在 text,不是 value
+                if t and str(t).strip() and normalise(t, Kind.CODE) is not None:
+                    nonnull += 1
+    print(ft, "keys:", keys, "nonnull(CODE):", nonnull)
+```
+
