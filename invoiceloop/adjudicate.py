@@ -433,20 +433,20 @@ def verify_bundle(bundle: Path) -> dict:
     failures: list[str] = []
     notes: list[str] = []
     layers: dict[str, bool | None] = {"members": True, "snapshot": None,
-                                        "binding": None, "semantics": None}
+                                        "binding": None, "semantics": None, "signature": None}
     members = 0
     try:
         zf = zipfile.ZipFile(bundle)
     except zipfile.BadZipFile as exc:
         return {"ok": False, "failures": [f"不是合法的 zip/bundle:{exc}"],
                 "members": 0, "layers": {"members": False, "snapshot": None,
-                                          "binding": None, "semantics": None}, "notes": notes}
+                                          "binding": None, "semantics": None, "signature": None}, "notes": notes}
     with zf:
         names = set(zf.namelist())
         if "MANIFEST.sha256" not in names:
             return {"ok": False, "failures": ["缺 MANIFEST.sha256"], "members": 0,
                     "layers": {"members": False, "snapshot": None, "binding": None,
-                            "semantics": None},
+                            "semantics": None, "signature": None},
                     "notes": notes}
         try:
             manifest_text = zf.read("MANIFEST.sha256").decode()
@@ -454,7 +454,7 @@ def verify_bundle(bundle: Path) -> dict:
             return {"ok": False, "failures": ["MANIFEST.sha256 成员损坏(CRC)"],
                     "members": 0,
                     "layers": {"members": False, "snapshot": None, "binding": None,
-                            "semantics": None},
+                            "semantics": None, "signature": None},
                     "notes": notes}
         declared: dict[str, str] = {}
         for line in manifest_text.splitlines():
@@ -485,8 +485,13 @@ def verify_bundle(bundle: Path) -> dict:
                 failures.append(f"哈希不符:{rel}")
                 layers["members"] = False
         extra = sorted(names - set(declared) - {"MANIFEST.sha256"})
-        if extra:
-            failures.append(f"未登记成员:{extra}")
+        # 封缄外层信封(attestation)不是成员 —— 它证明的就是这份 MANIFEST,
+        # 进成员表会成环;由 signature 层专查(DWS 签名封缄,seal.py)
+        from .seal import SEAL_MEMBERS
+
+        unregistered = [e for e in extra if e not in SEAL_MEMBERS]
+        if unregistered:
+            failures.append(f"未登记成员:{unregistered}")
             layers["members"] = False
 
         if "review_snapshot.json" in names:
@@ -878,6 +883,68 @@ def verify_bundle(bundle: Path) -> dict:
         except (json.JSONDecodeError, UnicodeDecodeError, KeyError, TypeError):
             layers["semantics"] = False
             failures.append("语义层:包内投影/账本成员不可解析")
+
+        # ---- 第 5 层 签名层(DWS 封缄,seal.py;无封缄 = None,不是失败)
+        if any(m in member_bytes or m in names for m in
+               ("attestation.json", "attestation.signed.pdf")):
+            from . import seal as _seal
+
+            layers["signature"] = None
+            att_bytes = member_bytes.get("attestation.json") \
+                or (zf.read("attestation.json")
+                    if "attestation.json" in names else None)
+            sig_bytes = member_bytes.get("attestation.signed.pdf") \
+                or (zf.read("attestation.signed.pdf")
+                    if "attestation.signed.pdf" in names else None)
+            manifest_b = member_bytes.get("MANIFEST.sha256") \
+                or zf.read("MANIFEST.sha256")
+            if att_bytes is None or sig_bytes is None:
+                failures.append("封缄不完整:attestation.json 与签名 PDF 必须同在")
+                layers["signature"] = False
+            else:
+                try:
+                    att = json.loads(att_bytes)
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    att = None
+                    failures.append("attestation.json 不可解析")
+                    layers["signature"] = False
+                if att is not None:
+                    recomputed = hashlib.sha256(manifest_b).hexdigest()
+                    if att.get("manifest_sha256") != recomputed:
+                        failures.append(
+                            "attestation 记录的 manifest 摘要与包内 MANIFEST "
+                            "重算不符 —— 封缄后 MANIFEST 被换过")
+                        layers["signature"] = False
+                    elif not _seal.signed_pdf_embeds(
+                            sig_bytes, recomputed.encode()):
+                        failures.append(
+                            "签名 PDF 的内容里找不到该 manifest 摘要 —— "
+                            "签的不是这份 attestation")
+                        layers["signature"] = False
+                    elif not _seal.crypto_available():
+                        notes.append(
+                            "签名层:摘要与签名内容一致,但本机缺验签可选依赖"
+                            "(pip install 'invoiceloop[seal]')—— 密码学验签"
+                            "未执行,记 None 不判过(宪章四)")
+                    else:
+                        try:
+                            crypto = _seal.verify_pdf_signature(sig_bytes)
+                        except Exception as exc:  # noqa: BLE001
+                            failures.append(f"签名结构解析失败:{exc!r}")
+                            layers["signature"] = False
+                        else:
+                            if crypto["valid"]:
+                                layers["signature"] = True
+                                notes.append(
+                                    f"签名层:有效;签署者 {crypto['signer']}"
+                                    f"({crypto['note']})")
+                            else:
+                                failures.append(
+                                    f"签名验签失败:{crypto['note']}")
+                                layers["signature"] = False
+        else:
+            notes.append("未封缄包(无 attestation)—— seal 命令可加 DWS "
+                         "签名封缄;四层结果不受影响")
         if layers["members"] and layers["snapshot"] and layers["binding"] \
                 and layers["semantics"]:
             notes.append("四层全过 = 包内自洽且未被单点篡改;包的真实性锚在"
