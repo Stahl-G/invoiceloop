@@ -141,3 +141,51 @@ class TestCarry:
                    (r3 / "adjudication_ledger.jsonl").read_text().splitlines()]
         assert entries[0]["decision"] == "reject", \
             "携带的是最近的裁决,不是最早的那条"
+
+    def test_qa_probes_stay_fresh(self, ws, monkeypatch):
+        """QA 抽检槽不许携带 —— 探针要新鲜人眼(2026-08-06 run-0006
+        实证:全量携带把 5% 抽检也填了,探针失效)。"""
+        from invoiceloop import harness, improve
+
+        r1 = ws / "runs" / "run-0001"
+        adjudicate.append_adjudication(
+            r1, claim_id=_claim_id(r1, "total_gross"), doc_id=DOC,
+            field="total_gross", decision="accept", rationale="与页面一致",
+            adjudicator="stahl", decided_at=WHEN)
+        # 手工造一个 QA 必中的策略(qa rate=1.0)并晋升
+        policy = harness._builtin_policy()
+        policy["release_tier1_explicit"] = False
+        policy.setdefault("qa", {})["policy_accepted_tier1_rate"] = 1.0
+        cand = improve.register_policy(
+            ws, overrides={"release_tier1_explicit": False,
+                           "qa": {**(policy.get("qa") or {}),
+                                  "policy_accepted_tier1_rate": 1.0}},
+            finding="test:QA 必中", prediction="all tier1 QA")
+        # 绕过评测门直接落 PROM(测试夹具,与 test_deliver 同款手法)
+        import hashlib as _h
+        policy_path = ws / "harnesses" / "HAR-0002" / "routing_policy.json"
+        improve._append_promotion(ws, {
+            "promotion_id": "PROM-0001", "action": "promote",
+            "from_harness_id": "HAR-0001",
+            "from_policy_digest": _h.sha256(
+                harness._builtin_policy_bytes()).hexdigest(),
+            "to_harness_id": "HAR-0002",
+            "to_policy_digest": _h.sha256(policy_path.read_bytes()).hexdigest(),
+            "evaluation_digest": None, "gate": "test_fixture",
+            "basis": "evo_replay_only", "claim_limits": "测试夹具",
+            "approved_by": "test", "approved_at": WHEN,
+            "rationale": "QA 必中夹具", "rollback_harness_id": "HAR-0001"})
+        r2 = _run(ws, "run-0002")
+        rr = json.loads((r2 / "routing_report.json").read_text())
+        qa_slots = [r for r in rr["routes"]
+                    if any(str(c).startswith("QA_SAMPLE:")
+                           for c in r["reason_codes"])]
+        assert qa_slots, "夹具必须真的产出 QA 抽检槽"
+        report = carry_forward(r2, decided_at=WHEN)
+        assert report["kept_qa_fresh"] == len(qa_slots)
+        entries = [json.loads(x) for x in
+                   (r2 / "adjudication_ledger.jsonl").read_text().splitlines()
+                   if x.strip()]
+        qa_fields = {(r["doc_id"], r["field"]) for r in qa_slots}
+        assert not {(e["doc_id"], e["field"]) for e in entries} & qa_fields, \
+            "QA 槽留着等新的人眼,一条都不许替人填"

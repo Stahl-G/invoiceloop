@@ -85,10 +85,18 @@ def carry_forward(dst_run: Path, *, decided_at: str) -> dict:
     dst_raw = _raw_values(dst_run)
 
     report = {"carried": 0, "skipped_changed": 0, "no_prior": 0,
-              "skipped_auto": 0, "by_decision": {}}
+              "skipped_auto": 0, "kept_qa_fresh": 0, "by_decision": {}}
     for (doc_id, field), route in sorted(routes.items()):
         if route in ("auto_accept", "auto_absent"):
             report["skipped_auto"] += 1
+            continue
+        codes = next((r["reason_codes"] for r in routing["routes"]
+                      if r["doc_id"] == doc_id and r["field"] == field), [])
+        if any(str(c).startswith("QA_SAMPLE:") for c in codes):
+            # QA 探针要保持新鲜人眼:搬旧裁决进去 = 探针失效。
+            # 它们留在队列里,就几槽(2026-08-06 run-0006 实证:全量携带
+            # 把 5% 的 policy_accepted 抽检也填了,设计意图被破坏)
+            report["kept_qa_fresh"] += 1
             continue
         tip = tips.get((doc_id, field))
         if tip is None:
