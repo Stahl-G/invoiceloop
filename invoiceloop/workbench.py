@@ -422,6 +422,11 @@ document.addEventListener('click', function (e) {
     if (ta.value.indexOf(chip.dataset.text) === -1) {
       ta.value = (ta.value ? ta.value.replace(/[;\s]+$/, '') + '; ' : '') + chip.dataset.text;
     }
+    // chip 也带一对一心码,但**只在下拉还空着时**写:第一个点的 chip 定调,
+    // 之后的不覆盖,人手选的更不覆盖 —— 连点多个 chip 时最后一个说了算
+    // 会把监督标签变成手滑的产物
+    var crc = form.querySelector('select[name=reason_code]');
+    if (crc && !crc.value && chip.dataset.reason) crc.value = chip.dataset.reason;
     ta.focus();
     return;
   }
@@ -991,9 +996,19 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
             f'value="{d}" required>{_esc(_t(lang, d))}</label>'
             for d in decisions_for_row
         )
+        # 问题 chip 与快路按钮同一条纪律:chip 是**封闭词表**里的一次语义
+        # 选择(点了就原样追加进理由),所以语义一对一的可以带心码;
+        # 含糊的留空。「与页面一致」不带(词表里没有「路由判对了」),
+        # 「口径冲突」不带(applicability 争议在心码集里没有对应项,
+        # 硬塞一个就是编)。
+        chip_reasons = {
+            0: "", 1: "WRONG_VALUE", 2: "BAD_SOURCE_BINDING",
+            3: "AMBIGUOUS_DOCUMENT", 4: "", 5: "CONFIRMED_ABSENT", 6: "OTHER",
+        }
         chips = "".join(
-            f'<button type="button" class="wb-issue-chip" data-text="{_esc(c)}">{_esc(c)}</button>'
-            for c in _T[lang]["issue_chips"]
+            f'<button type="button" class="wb-issue-chip" data-text="{_esc(c)}" '
+            f'data-reason="{chip_reasons.get(i, "")}">{_esc(c)}</button>'
+            for i, c in enumerate(_T[lang]["issue_chips"])
         )
         from .feedback import REASON_CODES
 

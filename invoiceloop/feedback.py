@@ -55,6 +55,12 @@ def compile_events(run_dir: Path) -> list[dict]:
             "route_reason_codes": reason_codes,
             "support_strength": row.get("support_strength"),
             "human_action": d["decision"],
+            # 人手打的那段话(必填项)。2026-08-06 之前它压根没进反馈层 ——
+            # 复核者写的每一条观察都停在裁决账本里,改进循环看不见。
+            # 纪律:**原文透传,不解析**。它是给写 cohort 提案的人读的,
+            # 不是给机器当特征的 —— 自由文本 → 策略需要模型,而模型不许
+            # 进确定性路径(gates.py 首行),更不许由它提议放松安全规则。
+            "rationale": d.get("rationale"),
             "reason_code": d.get("reason_code"),
             "reviewer_confidence": d.get("reviewer_confidence"),
             # 反馈可用性(v0.2 §5.2;2026-08-06 修订):心码 + 非弃权 +

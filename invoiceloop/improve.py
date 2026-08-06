@@ -73,8 +73,19 @@ def mine(workspace: Path) -> dict:
             "route": e.get("route"),
             "reviewed": 0, "accepted": 0, "corrected": 0, "rejected": 0,
             "confirmed_absent": 0, "not_applicable": 0, "abstained": 0,
+            "notes": [],
         })
         c["reviewed"] += 1
+        # 复核者手打的原话,按 cohort 归堆(2026-08-06)。**原文,不解析**:
+        # 这一栏是给写 cohort 提案的人读的 —— 上一条 cohort(absent_expected)
+        # 就是人读完 run-0002 报告手写的,这里只是把「读什么」从 123 行账本
+        # 收敛到「这个 cohort 里大家究竟说了什么」。机器不从中提取特征。
+        note = (e.get("rationale") or "").strip()
+        if note:
+            c["notes"].append({"doc_id": e["doc_id"],
+                               "decision": e["human_action"],
+                               "reason_code": e.get("reason_code"),
+                               "rationale": note})
         action = e["human_action"]
         if action == "accept":
             c["accepted"] += 1
@@ -99,10 +110,15 @@ def mine(workspace: Path) -> dict:
     by_field: dict[str, dict] = {}
     for e in qualified:
         f = by_field.setdefault(e["field"], {"field": e["field"], "total": 0,
-                                             "absentish": 0})
+                                             "absentish": 0, "notes": []})
         f["total"] += 1
         if e["human_action"] in ("confirm_absent", "not_applicable"):
             f["absentish"] += 1
+            note = (e.get("rationale") or "").strip()
+            if note:
+                # 提案要不要写、怎么写,人读这些原话决定 —— 候选是线索,
+                # 不是授权(mine 的选择偏差警告同一条)
+                f["notes"].append({"doc_id": e["doc_id"], "rationale": note})
     absence_candidates = [
         {**f, "share": f["absentish"] / f["total"],
          "suggested": {"kind": "absent_expected",

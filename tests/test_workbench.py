@@ -511,6 +511,15 @@ class TestQuickPathCarriesReasonCode:
         assert all("data-reason=" in b for b in buttons), \
             [b for b in buttons if "data-reason=" not in b]
 
+    def test_issue_chips_carry_one_to_one_codes_only(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=zh")
+        assert 'data-text="值不对" data-reason="WRONG_VALUE"' in text
+        assert 'data-text="位置不对" data-reason="BAD_SOURCE_BINDING"' in text
+        assert 'data-text="与页面一致" data-reason=""' in text, \
+            "「与页面一致」不带码 —— 词表里没有「路由判对了」"
+        assert 'data-text="口径冲突" data-reason=""' in text, \
+            "applicability 争议在心码集里没有对应项,硬塞一个就是编"
+
     def test_js_writes_button_reason_and_one_to_one_prefill(self, workspace, server):
         _, _, js = _req(server, "GET", "/assets.js")
         assert "dataset.reason" in js, "快路必须把按钮上的心码写进下拉"

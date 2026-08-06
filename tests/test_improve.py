@@ -399,6 +399,26 @@ class TestMineQualityGate:
         assert report["cohorts"] == [], \
             "不可行动事件不进 cohort —— 低收益候选不许建在没有监督标签的记录上"
 
+    def test_rationale_reaches_the_cohort_verbatim(self, ws):
+        """复核者手打的话必须能被改进层看到 —— 2026-08-06 之前它停在
+        裁决账本里,反馈事件根本不带这个字段。原文透传,不解析。"""
+        run_dir = ws / "runs" / "run-0001"
+        adjudicate.append_adjudication(
+            run_dir, claim_id=_claim_id(run_dir, "total_gross"), doc_id=DOC,
+            field="total_gross", decision="accept",
+            rationale="页面右下角还有一个小写的 total,DWS 取的是大写那个",
+            adjudicator="t", decided_at=DECIDED,
+            reason_code="ROUTING_FALSE_POSITIVE")
+        (e,) = improve.compile_workspace(ws)
+        assert e["rationale"].startswith("页面右下角"), "事件要带原话"
+        report = improve.mine(ws)
+        (cohort,) = report["cohorts"]
+        assert cohort["notes"] == [{
+            "doc_id": DOC, "decision": "accept",
+            "reason_code": "ROUTING_FALSE_POSITIVE",
+            "rationale": "页面右下角还有一个小写的 total,DWS 取的是大写那个",
+        }], "原话按 cohort 归堆,一字不改 —— 给写提案的人读"
+
     def test_low_confidence_events_not_mined(self, ws):
         """主动标「没把握」的记录同样出局 —— 这条是真信息,要听。"""
         run_dir = ws / "runs" / "run-0001"
