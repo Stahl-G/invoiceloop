@@ -34,6 +34,28 @@ def cmd_doctor() -> int:
     check("tesseract", shutil.which("tesseract") is not None, False,
           "扫描件退路(无文字层的 PDF);没有它,扫描件按宪章四阻断而不是静默跳过")
 
+    # 凭证:只报有没有与来自哪里,**永不回显值**。全缺不阻断 ——
+    # 产品路径的 demo 零 API,评委不需要任何 key 就能跑通
+    from .env import status as env_status
+
+    env_info = env_status()
+    creds = env_info["credentials"]
+    check("credentials:.env", env_info["env_file"] is not None, False,
+          f"{env_info['env_file'] or '未找到项目 .env(cp .env.example .env)'}"
+          + (f" mode={env_info['env_file_mode']}"
+             if env_info["env_file_mode"] else ""))
+    if env_info["env_file_mode"] and env_info["env_file_mode"] not in ("0o600", "0o400"):
+        check("credentials:.env 权限", False, False,
+              f"{env_info['env_file_mode']} —— 建议 chmod 600(不阻断)")
+    for purpose, why in (
+        ("dws", "DWS 抽取(ingest --do-extract / 工作台抽取)"),
+        ("nutrient", "签名封缄 invoiceloop seal(缺则回退 DWS_API_KEY)"),
+        ("anthropic", "读图 vision 与顾问层 suggest"),
+    ):
+        source = creds.get(purpose)
+        check(f"credentials:{purpose}", source is not None, False,
+              f"{why} —— " + (f"已配置(来源:{source})" if source else "未配置"))
+
     from .ocr import corpus_available, derisk_root
 
     check("research:dws-derisk 存盘证据", corpus_available(), False,

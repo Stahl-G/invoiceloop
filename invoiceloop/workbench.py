@@ -366,6 +366,14 @@ def _t(lang: str, key: str, **kw) -> str:
     return text.format(**kw) if kw else text
 
 
+def _dws_key() -> str | None:
+    """抽取用的 DWS key:进程环境 → 项目 .env(统一入口,见 env.py)。
+    工作台只问「有没有」,值不进页面、不进日志。"""
+    from .env import credential
+
+    return credential("dws")
+
+
 def _esc(x) -> str:
     return html.escape("" if x is None else str(x), quote=True)
 
@@ -1678,7 +1686,7 @@ class _Handler(BaseHTTPRequestHandler):
             if method == "GET" and path == "/upload":
                 import os
                 return self._html(200, self.bench.upload_page(
-                    lang, params, has_key=bool(os.environ.get("DWS_API_KEY"))), set_cookies)
+                    lang, params, has_key=bool(_dws_key())), set_cookies)
             if method == "GET" and path == "/deliver":
                 run = self._require_run(params)
                 return self._html(200, self.bench.deliver_page(lang, run, params), set_cookies)
@@ -1826,7 +1834,7 @@ class _Handler(BaseHTTPRequestHandler):
 
         form = self._form()
         do_extract = form.get("do_extract", [""])[0] == "1"
-        if do_extract and not os.environ.get("DWS_API_KEY"):
+        if do_extract and not _dws_key():
             raise _HttpError(400, _t(lang, "no_key"))
         try:
             with contextlib.redirect_stdout(io.StringIO()):

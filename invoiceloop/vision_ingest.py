@@ -32,27 +32,15 @@ _FIELDS = sorted(FIELD_KINDS)
 
 
 def _credentials() -> tuple[str | None, str, str]:
-    """(api_key, base_url, model)。env 优先,本地凭证文件兜底;
-    base_url/model 也走 env(代理兼容层,如 ANTHROPIC_BASE_URL)。"""
-    file_vars: dict[str, str] = {}
-    if VISION_ENV.exists():
-        for line in VISION_ENV.read_text(encoding="utf-8").splitlines():
-            if "=" in line and not line.startswith("#"):
-                k, _, v = line.partition("=")
-                file_vars[k.strip()] = v.strip()
+    """(api_key, base_url, model)。取值统一走 `env` 模块:
+    进程环境 → 项目 `.env` → 旧 `~/.config/invoiceloop/vision.env`。
+    2026-08-06 之前这里自带一份解析逻辑,与 DWS/seal 各找各的 —— 已合并。"""
+    from . import env as env_mod
 
-    def get(*names: str) -> str | None:
-        for name in names:
-            value = os.environ.get(name) or file_vars.get(name)
-            if value:
-                return value
-        return None
-
-    key = get("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
-    base = (get("ANTHROPIC_BASE_URL") or "https://api.anthropic.com").rstrip("/")
-    model = (get("ANTHROPIC_DEFAULT_SONNET_MODEL_NAME",
-                 "ANTHROPIC_DEFAULT_SONNET_MODEL",
-                 "ANTHROPIC_DEFAULT_HAIKU_MODEL") or DEFAULT_MODEL)
+    key = env_mod.credential("anthropic")
+    base = (env_mod.credential("anthropic_base")
+            or "https://api.anthropic.com").rstrip("/")
+    model = env_mod.credential("anthropic_model") or DEFAULT_MODEL
     return key, base, model
 
 #: prompt:第六轮 READER_DOC 的五条纪律逐字保留(那是被测过的部分),

@@ -92,7 +92,10 @@ class TestCmdVision:
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
         monkeypatch.delenv("ANTHROPIC_BASE_URL", raising=False)
-        monkeypatch.setattr("invoiceloop.vision_ingest.VISION_ENV",
+        # 凭证入口 2026-08-06 统一到 env 模块:这里要挡的是**文件来源**
+        # (项目 .env + 旧 vision.env),conftest 的 autouse 开关已置位,
+        # 这行是显式重申 —— 本用例的全部意义就是「真的没有 key」
+        monkeypatch.setattr("invoiceloop.env.LEGACY_VISION_ENV",
                             ws / "no-such-file.env")
         with pytest.raises(SystemExit, match="ANTHROPIC"):
             cmd_vision(ws)
