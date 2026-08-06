@@ -36,9 +36,13 @@ def extract(
     文档被拒是终局答案,body 按存盘纪律落盘(78.5 评 P1:单发无重试)。
     重试耗尽照样向上抛,ingest 记失败、门禁记阻断 —— 安全方向不变。
     """
-    key = api_key or os.environ.get("DWS_API_KEY")
+    from .env import credential
+
+    key = api_key or credential("dws")
     if not key:
-        raise RuntimeError("DWS_API_KEY 未设置;环境变量注入,不写进任何文件")
+        raise RuntimeError(
+            "DWS_API_KEY 未设置 —— 进程环境或项目根 .env(见 .env.example);"
+            "值不写进任何工件")
 
     payload: dict[str, Any] = {"schema": schema, "parseConfig": {"mode": mode}}
     document = Path(document)

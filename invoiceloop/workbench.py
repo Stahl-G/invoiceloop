@@ -64,6 +64,26 @@ _T = {
         "queue": "Review queue", "report": "Delivery report",
         "search_ph": "doc id or field…", "search_btn": "Search",
         "upload": "Upload", "deliver": "Deliver & verify",
+        "improve": "Improvement loop",
+        "imp_intro": "What reviewers actually wrote, grouped by cohort. "
+                     "Candidates are leads, not authorisations — you write "
+                     "the proposal, evaluate re-routes it counterfactually, "
+                     "and only a human promotes it.",
+        "imp_overturn": "Auto-accepts a human overturned (tightening signal)",
+        "imp_overturn_none": "None — no policy-released slot has been "
+                             "overturned in this workspace.",
+        "imp_absence": "Expected-absence candidates",
+        "imp_low_yield": "Low-yield candidates (high review, zero correction)",
+        "imp_notes": "Reviewer's own words",
+        "imp_no_notes": "No reviewer notes yet — run a review round first.",
+        "imp_model": "Model draft (advisory — a human decides)",
+        "imp_model_none": "No model draft. Run `invoiceloop suggest "
+                          "--workspace <ws>` to have a model read the notes "
+                          "above and draft proposals.",
+        "imp_cites": "reads",
+        "imp_dropped": "Drafts rejected by the validator",
+        "imp_cmd": "Proposal command (copy, edit, run — nothing is written "
+                   "from this page)",
         "all": "All", "pending": "Pending", "done": "Decided",
         "sec_required": "Needs adjudication ({n})",
         "sec_corroborated": "Corroborated — no machine flags, spot-check ({n})",
@@ -73,13 +93,16 @@ _T = {
         "corrected_ph": "corrected value",
         "rationale_ph": "Issue / rationale (required) — write down what's wrong",
         "reason_code_label": "Reason code (optional, feeds the improvement loop):",
-        "confidence_label": "Confidence (optional):",
+        "confidence_label": "Flag doubt (only if unsure):",
         "conf_high": "high", "conf_medium": "medium", "conf_low": "low",
         "adjudicator_ph": "reviewer name",
         "issue_chips": ["matches the page", "wrong value", "wrong location",
                         "illegible", "label-convention conflict", "not on page", "other"],
         "accept_preset": "matches the page",
         "quick_accept": "✓ value is right — accept & next",
+        "quick_accept_fp": "✓ right — and this slot did not need review",
+        "quick_fp_rationale": "matches the page; this queue rule was a "
+                              "false positive",
         "quick_draft": "✓ draft is right — adopt “{value}” & next",
         "quick_dws": "✓ value is right — adopt DWS read “{value}” & next",
         "why_queue": "why this is in your queue",
@@ -200,6 +223,22 @@ _T = {
         "queue": "复核队列", "report": "交付报告",
         "search_ph": "发票号 / 字段名…", "search_btn": "搜索",
         "upload": "上传", "deliver": "交付与验证",
+        "improve": "改进循环",
+        "imp_intro": "复核者到底写了什么,按 cohort 归堆。候选是线索,"
+                     "不是授权 —— 提案由你写,evaluate 做反事实重路由,"
+                     "promote 只有人能点。",
+        "imp_overturn": "自动放行被人推翻(收紧信号)",
+        "imp_overturn_none": "无 —— 本 workspace 还没有策略放行的槽被推翻。",
+        "imp_absence": "预期缺失候选",
+        "imp_low_yield": "低收益候选(高频复核、零修正)",
+        "imp_notes": "复核者原话",
+        "imp_no_notes": "还没有复核笔记 —— 先跑一轮复核。",
+        "imp_model": "模型草稿(顾问性质,人决定)",
+        "imp_model_none": "没有模型草稿。跑 `invoiceloop suggest "
+                          "--workspace <ws>` 让模型读上面这些原话出提案草稿。",
+        "imp_cites": "读的是",
+        "imp_dropped": "被校验层丢弃的草稿",
+        "imp_cmd": "提案命令(复制、改、自己跑 —— 本页不写任何东西)",
         "all": "全部", "pending": "待复核", "done": "已裁决",
         "sec_required": "需要裁决 ({n})",
         "sec_corroborated": "印证行 —— 机器未见异常,抽检性质 ({n})",
@@ -209,12 +248,14 @@ _T = {
         "corrected_ph": "修正值",
         "rationale_ph": "发现的问题 / 理由(必填)—— 把问题直接写在这里",
         "reason_code_label": "原因码(可选,喂给改进循环):",
-        "confidence_label": "把握度(可选):",
+        "confidence_label": "标注存疑(只在没把握时填):",
         "conf_high": "高", "conf_medium": "中", "conf_low": "低",
         "adjudicator_ph": "裁决人",
         "issue_chips": ["与页面一致", "值不对", "位置不对", "看不清", "口径冲突", "页面上没有", "其他"],
         "accept_preset": "与页面一致",
         "quick_accept": "✓ 原值正确 —— 接受,下一条",
+        "quick_accept_fp": "✓ 原值正确,而且这条不该进队列",
+        "quick_fp_rationale": "与页面一致;这条路由是误报",
         "quick_draft": "✓ 原值正确 —— 采用被拒草稿「{value}」,下一条",
         "quick_dws": "✓ 原值正确 —— 采用 DWS 读到「{value}」,下一条",
         "why_queue": "为什么在我的队列里",
@@ -325,6 +366,14 @@ def _t(lang: str, key: str, **kw) -> str:
     return text.format(**kw) if kw else text
 
 
+def _dws_key() -> str | None:
+    """抽取用的 DWS key:进程环境 → 项目 .env(统一入口,见 env.py)。
+    工作台只问「有没有」,值不进页面、不进日志。"""
+    from .env import credential
+
+    return credential("dws")
+
+
 def _esc(x) -> str:
     return html.escape("" if x is None else str(x), quote=True)
 
@@ -370,6 +419,17 @@ document.addEventListener('change', function (e) {
     if (e.target.value === 'accept' && !ta.value.trim()) ta.value = preset;
     else if (e.target.value !== 'accept' && ta.value === preset) ta.value = '';
   }
+  // 一对一心码:adjudicate 的 combo 表规定 CONFIRMED_ABSENT 只能配
+  // confirm_absent、NOT_APPLICABLE 只能配 not_applicable —— 决策已经唯一
+  // 确定了心码,不必再问一遍。只在空着或还挂着另一个自动码时改动,人手填
+  // 的一律不碰;切走时清掉,免得把不合法组合提上去(服务端会 400)。
+  var rc = form.querySelector('select[name=reason_code]');
+  if (rc) {
+    var auto = { confirm_absent: 'CONFIRMED_ABSENT',
+                 not_applicable: 'NOT_APPLICABLE' };
+    var isAuto = rc.value === 'CONFIRMED_ABSENT' || rc.value === 'NOT_APPLICABLE';
+    if (!rc.value || isAuto) rc.value = auto[e.target.value] || '';
+  }
 });
 document.addEventListener('click', function (e) {
   // 一键快路:人看了页面,点一下就完成「原值正确」并跳下一条。
@@ -390,6 +450,10 @@ document.addEventListener('click', function (e) {
     }
     var qta = qform.querySelector('.wb-rationale');
     if (qta && !qta.value.trim()) qta.value = quick.dataset.rationale || '';
+    // 按钮自带的心码最后写,盖过上面 change 事件的一对一预填 ——
+    // 「不该进队列」那一支要的是 ROUTING_FALSE_POSITIVE,不是决策推出来的码
+    var qrc = qform.querySelector('select[name=reason_code]');
+    if (qrc) qrc.value = quick.dataset.reason || '';
     qform.dataset.armed = '1';
     qform.requestSubmit();
     return;
@@ -402,6 +466,11 @@ document.addEventListener('click', function (e) {
     if (ta.value.indexOf(chip.dataset.text) === -1) {
       ta.value = (ta.value ? ta.value.replace(/[;\s]+$/, '') + '; ' : '') + chip.dataset.text;
     }
+    // chip 也带一对一心码,但**只在下拉还空着时**写:第一个点的 chip 定调,
+    // 之后的不覆盖,人手选的更不覆盖 —— 连点多个 chip 时最后一个说了算
+    // 会把监督标签变成手滑的产物
+    var crc = form.querySelector('select[name=reason_code]');
+    if (crc && !crc.value && chip.dataset.reason) crc.value = chip.dataset.reason;
     ta.focus();
     return;
   }
@@ -607,6 +676,7 @@ class Workbench:
                 ("queue", f"/queue?run={nav_run}"),
                 ("report", f"/report?run={nav_run}"),
                 ("deliver", f"/deliver?run={nav_run}"),
+                ("improve", f"/improve?run={nav_run}"),
                 ("upload", "/upload"),
             ):
                 cls = "wb-tab active" if key == active else "wb-tab"
@@ -917,30 +987,53 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         # 不该要四次点击。有声明 → accept 预填;草稿被冻结拒 → correct
         # 预填被拒草稿的值(冻结绑定是机械门槛,人看了页面说对就是对,
         # 账本记 correct + 人工理由,诚实)。仍是人逐槽点击,不批量。
+        # 快路按钮**自带心码**(2026-08-06):按钮的文案本来就是一次语义
+        # 选择,人已经做过了;系统丢掉再用下拉问一遍,是同一件事问两遍
+        # (run-0002:93% 的裁决走预设理由,心码填写率 8/123)。
+        # 纪律:只在按钮语义与心码**一对一**时带,含糊的一律留空 ——
+        # 代填心码就是伪造监督信号(GOAL.md「不在没有依据下让数字变好看」)。
         quick = ""
         draft_value = next((r["value"] for r in row["rejections"]
                             if r.get("value")), None)
         if claim_id:
+            # accept 有两种互斥含义,只有人知道是哪种:
+            #   「该拦,我确认没问题」→ 无心码(词表里没有「路由判对了」,
+            #     而它也不构成放松规则的证据);
+            #   「白拦了」→ ROUTING_FALSE_POSITIVE,这是挖掘低收益 cohort
+            #     唯一需要的信号。所以拆成两个按钮,不是多加一个表单字段。
             quick = (f'<button type="button" class="wb-quick-ok" '
-                     f'data-decision="accept" data-value="" '
+                     f'data-decision="accept" data-value="" data-reason="" '
                      f'data-rationale="{_esc(_t(lang, "accept_preset"))}">'
-                     f'{_esc(_t(lang, "quick_accept"))}</button>')
+                     f'{_esc(_t(lang, "quick_accept"))}</button>'
+                     f'<button type="button" class="wb-quick-ok wb-quick-fp" '
+                     f'data-decision="accept" data-value="" '
+                     f'data-reason="ROUTING_FALSE_POSITIVE" '
+                     f'data-rationale="{_esc(_t(lang, "quick_fp_rationale"))}">'
+                     f'{_esc(_t(lang, "quick_accept_fp"))}</button>')
         elif draft_value:
+            # 值对、冻结绑定没接住 —— 这正是 BAD_SOURCE_BINDING 的定义
             quick = (f'<button type="button" class="wb-quick-ok" '
                      f'data-decision="correct" data-value="{_esc(draft_value)}" '
+                     f'data-reason="BAD_SOURCE_BINDING" '
                      f'data-rationale="{_esc(_t(lang, "quick_draft_rationale"))}">'
                      f'{_esc(_t(lang, "quick_draft", value=draft_value))}</button>')
         elif row.get("value") not in (None, ""):
             # 无声明也没走到冻结(如 OCR 受阻、草稿被排除),但 DWS 读到了值
-            # —— 人看页面确认后采用该值,账本记 correct + 人证理由
+            # —— 人看页面确认后采用该值,账本记 correct + 人证理由。
+            # 心码留空:这一支既可能是绑定失败,也可能是 OCR 阻断导致门禁
+            # unavailable,两者诊断不同,机器分不出来就不替人选。
             quick = (f'<button type="button" class="wb-quick-ok" '
                      f'data-decision="correct" data-value="{_esc(row["value"])}" '
+                     f'data-reason="" '
                      f'data-rationale="{_esc(_t(lang, "quick_draft_rationale"))}">'
                      f'{_esc(_t(lang, "quick_dws", value=row["value"]))}</button>')
         else:
-            # 无声明且无值(预期缺失抽检等):一键确认缺失
+            # 无声明且无值(预期缺失抽检等):一键确认缺失。
+            # CONFIRMED_ABSENT 与 confirm_absent 在 adjudicate 的 combo 表里
+            # 就是一对一,再问一遍等于让人把刚点的东西重打一遍
             quick = (f'<button type="button" class="wb-quick-ok" '
                      f'data-decision="confirm_absent" data-value="" '
+                     f'data-reason="CONFIRMED_ABSENT" '
                      f'data-rationale="{_esc(_t(lang, "quick_absent_rationale"))}">'
                      f'{_esc(_t(lang, "quick_absent"))}</button>')
         radios = "".join(
@@ -948,9 +1041,19 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
             f'value="{d}" required>{_esc(_t(lang, d))}</label>'
             for d in decisions_for_row
         )
+        # 问题 chip 与快路按钮同一条纪律:chip 是**封闭词表**里的一次语义
+        # 选择(点了就原样追加进理由),所以语义一对一的可以带心码;
+        # 含糊的留空。「与页面一致」不带(词表里没有「路由判对了」),
+        # 「口径冲突」不带(applicability 争议在心码集里没有对应项,
+        # 硬塞一个就是编)。
+        chip_reasons = {
+            0: "", 1: "WRONG_VALUE", 2: "BAD_SOURCE_BINDING",
+            3: "AMBIGUOUS_DOCUMENT", 4: "", 5: "CONFIRMED_ABSENT", 6: "OTHER",
+        }
         chips = "".join(
-            f'<button type="button" class="wb-issue-chip" data-text="{_esc(c)}">{_esc(c)}</button>'
-            for c in _T[lang]["issue_chips"]
+            f'<button type="button" class="wb-issue-chip" data-text="{_esc(c)}" '
+            f'data-reason="{chip_reasons.get(i, "")}">{_esc(c)}</button>'
+            for i, c in enumerate(_T[lang]["issue_chips"])
         )
         from .feedback import REASON_CODES
 
@@ -1222,6 +1325,111 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                 f'<a href="{back}">{_esc(_t(lang, "back"))}</a></span>'
                 f'{_btn(next_r, "next_pending")}</div>')
 
+    # ---- 改进循环:把复核者原话与(可选的)模型草稿摆在一起给人读
+    def improve_page(self, lang: str, run_dir: Path, params: dict) -> str:
+        """**只读页。** 它不写候选、不晋升、不调模型 —— 页面底部给的是
+        一条可复制的 propose 命令。理由:唯一写 active 的入口必须是
+        `improve promote`(v0.2 §12),网页上一个按钮就能改策略,等于
+        把那道人工闸门做成摆设。模型草稿标成 advisory,并挂着它读的原话。
+        """
+        import json as _json
+
+        ctx = RunCtx(run_dir)
+        ws = self.ws
+        report_path = ws / "improve" / "mine_report.json"
+        sug_path = ws / "improve" / "suggestions.json"
+        report = (_json.loads(report_path.read_text(encoding="utf-8"))
+                  if report_path.exists() else {})
+        parts = [f'<p class="wb-imp-intro">{_esc(_t(lang, "imp_intro"))}</p>']
+
+        # 收紧信号排最前:它是安全方向,放松线索可以等,这个不能
+        overturns = report.get("overturned_auto_accepts") or []
+        parts.append(f'<h3 class="wb-imp-h wb-imp-danger">'
+                     f'{_esc(_t(lang, "imp_overturn"))}</h3>')
+        if overturns:
+            for o in overturns:
+                qa = ' <span class="wb-imp-tag">QA</span>' if o.get("random_qa") else ""
+                parts.append(
+                    f'<div class="wb-imp-overturn"><b>{_esc(o["field"])}</b>{qa} '
+                    f'· {_esc(o["doc_id"])} · {_esc(o["human_action"])}'
+                    f'({_esc(str(o.get("reason_code") or "—"))})'
+                    f'<div class="wb-imp-note">{_esc(o.get("rationale") or "")}</div>'
+                    f'</div>')
+        else:
+            parts.append(f'<p class="wb-imp-empty">'
+                         f'{_esc(_t(lang, "imp_overturn_none"))}</p>')
+
+        for key, items, count_key in (
+            ("imp_absence", report.get("absence_candidates") or [], "absentish"),
+            ("imp_low_yield", report.get("low_yield_candidates") or [], "reviewed"),
+        ):
+            parts.append(f'<h3 class="wb-imp-h">{_esc(_t(lang, key))}</h3>')
+            if not items:
+                parts.append(f'<p class="wb-imp-empty">—</p>')
+            for c in items:
+                parts.append(
+                    f'<div class="wb-imp-cand"><b>{_esc(c["field"])}</b> '
+                    f'· n={c.get(count_key)}</div>')
+
+        # 复核者原话 —— 本页的主体。模型有没有草稿都要能读到人写的东西
+        parts.append(f'<h3 class="wb-imp-h">{_esc(_t(lang, "imp_notes"))}</h3>')
+        any_note = False
+        for c in report.get("cohorts") or []:
+            notes = c.get("notes") or []
+            if not notes:
+                continue
+            any_note = True
+            head = (f'{c["field"]} · {c.get("support_strength")} · '
+                    f'{c.get("route")} · n={c["reviewed"]}')
+            body = "".join(
+                f'<li><span class="wb-imp-meta">{_esc(n.get("decision") or "")}'
+                f' / {_esc(str(n.get("reason_code") or "—"))}</span> '
+                f'{_esc(n["rationale"])}</li>' for n in notes)
+            parts.append(f'<div class="wb-imp-cohort"><b>{_esc(head)}</b>'
+                         f'<ul class="wb-imp-notes">{body}</ul></div>')
+        if not any_note:
+            parts.append(f'<p class="wb-imp-empty">'
+                         f'{_esc(_t(lang, "imp_no_notes"))}</p>')
+
+        parts.append(f'<h3 class="wb-imp-h">{_esc(_t(lang, "imp_model"))}</h3>')
+        if sug_path.exists():
+            sug = _json.loads(sug_path.read_text(encoding="utf-8"))
+            for s in sug.get("suggestions") or []:
+                cohort = " ".join(f"{k}={v}" for k, v in s["cohort"].items())
+                cited = "".join(
+                    f'<li>{_esc(n.get("rationale", ""))}</li>'
+                    for n in s.get("cited_notes") or [])
+                cmd = (f'python3 -m invoiceloop improve propose '
+                       f'--workspace {ws} --cohort-id <起个名> '
+                       + " ".join(f"--{k} {v}" for k, v in s["cohort"].items())
+                       + ' --finding "<改写成你自己的判断>" '
+                         '--prediction "<预计改什么指标、可能伤害什么>"')
+                parts.append(
+                    f'<div class="wb-imp-sug"><div class="wb-imp-sug-head">'
+                    f'<span class="wb-imp-tag advisory">advisory</span> '
+                    f'<b>{_esc(s["action"])}</b> · {_esc(cohort)} · '
+                    f'{_esc(s["confidence"])}</div>'
+                    f'<div class="wb-imp-note">{_esc(s["finding"])}</div>'
+                    f'<div class="wb-imp-note">{_esc(s["prediction"])}</div>'
+                    f'<div class="wb-imp-meta">{_esc(_t(lang, "imp_cites"))}:</div>'
+                    f'<ul class="wb-imp-notes">{cited}</ul>'
+                    f'<div class="wb-imp-meta">{_esc(_t(lang, "imp_cmd"))}</div>'
+                    f'<pre class="wb-imp-cmd">{_esc(cmd)}</pre></div>')
+            if sug.get("dropped"):
+                dropped = "".join(f'<li>{_esc(d)}</li>' for d in sug["dropped"])
+                parts.append(f'<div class="wb-imp-meta">'
+                             f'{_esc(_t(lang, "imp_dropped"))}</div>'
+                             f'<ul class="wb-imp-notes">{dropped}</ul>')
+        else:
+            parts.append(f'<p class="wb-imp-empty">'
+                         f'{_esc(_t(lang, "imp_model_none"))}</p>')
+        body = (f'<div class="wb-improve"><h2>{_esc(_t(lang, "improve"))}</h2>'
+                + "".join(parts) + "</div>")
+        return self.page(lang, "improve", body, run_name=ctx.name,
+                         notice=self._notice(lang, params),
+                         ooc=ctx.manifest.get("out_of_calibration", False),
+                         keep_params=params)
+
     # ---- 交付报告
     def report_page(self, lang: str, run_dir: Path, params: dict) -> str:
         ctx = RunCtx(run_dir)
@@ -1466,6 +1674,10 @@ class _Handler(BaseHTTPRequestHandler):
             if method == "GET" and path == "/report":
                 run = self._require_run(params)
                 return self._html(200, self.bench.report_page(lang, run, params), set_cookies)
+            if method == "GET" and path == "/improve":
+                run = self._require_run(params)
+                return self._html(200, self.bench.improve_page(lang, run, params),
+                                  set_cookies)
             if method == "GET" and path == "/adjudicate":
                 params.setdefault("adjudicator", [self._adjudicator()])
                 run = self._require_run(params)
@@ -1474,7 +1686,7 @@ class _Handler(BaseHTTPRequestHandler):
             if method == "GET" and path == "/upload":
                 import os
                 return self._html(200, self.bench.upload_page(
-                    lang, params, has_key=bool(os.environ.get("DWS_API_KEY"))), set_cookies)
+                    lang, params, has_key=bool(_dws_key())), set_cookies)
             if method == "GET" and path == "/deliver":
                 run = self._require_run(params)
                 return self._html(200, self.bench.deliver_page(lang, run, params), set_cookies)
@@ -1622,7 +1834,7 @@ class _Handler(BaseHTTPRequestHandler):
 
         form = self._form()
         do_extract = form.get("do_extract", [""])[0] == "1"
-        if do_extract and not os.environ.get("DWS_API_KEY"):
+        if do_extract and not _dws_key():
             raise _HttpError(400, _t(lang, "no_key"))
         try:
             with contextlib.redirect_stdout(io.StringIO()):

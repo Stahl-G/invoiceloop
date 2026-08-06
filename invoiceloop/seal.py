@@ -107,11 +107,13 @@ def render_attestation_pdf(attestation_bytes: bytes) -> bytes:
 # ---------------------------------------------------------------- /sign 客户端
 
 def _api_key() -> str:
-    key = os.environ.get("NUTRIENT_API_KEY") or os.environ.get("DWS_API_KEY")
+    from .env import credential
+
+    key = credential("nutrient")
     if not key:
         raise RuntimeError(
-            "签名需要 NUTRIENT_API_KEY(或 DWS_API_KEY)—— 环境变量注入,"
-            "不写进任何文件")
+            "签名需要 NUTRIENT_API_KEY(或 DWS_API_KEY)—— 进程环境或"
+            "项目根 .env(见 .env.example);值不写进任何工件")
     return key
 
 

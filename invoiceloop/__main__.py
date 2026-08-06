@@ -46,6 +46,13 @@ def _main() -> None:
     p_adj.add_argument("--decided-at", required=True, help="ISO 时间,由人给出")
     p_adj.add_argument("--corrected-value", default=None,
                        help="decision=correct 时必填,其余决策禁带")
+    # 反馈平面(v0.2 §5.2)此前只有网页表单能填 —— 改进循环在命令行上
+    # 不可测、不可脚本化。两个都是可选:不给就是不给,系统不代填
+    p_adj.add_argument("--reason-code", default=None,
+                       help="最小心码集之一(可选;与裁决的合法组合有校验)")
+    p_adj.add_argument("--reviewer-confidence", default=None,
+                       choices=["high", "medium", "low"],
+                       help="只在没把握时标 low —— 未填不影响挖掘资格")
     p_adj.add_argument("--supersedes", dest="supersedes_decision_id", default=None,
                        help="该字段槽已有裁决时必填:当前 tip 的 decision_id")
 
@@ -97,6 +104,12 @@ def _main() -> None:
     p_see = se_sub.add_parser("extract", help="按名单跑双模式,断点续跑,预算熔断")
     p_see.add_argument("--workspace", type=Path, required=True)
     p_see.add_argument("--budget", type=float, default=6000.0)
+
+    # suggest 刻意**不在** improve 之下:改进控制面仍是全确定性零模型,
+    # 顾问层旁挂,输出 advisory 草稿,采纳与否走人 —— 与 vision 同款位置
+    p_sg = sub.add_parser("suggest", help="顾问层:模型读复核笔记出提案草稿(需人复核)")
+    p_sg.add_argument("--workspace", type=Path, required=True)
+    p_sg.add_argument("--model", default=None)
 
     p_imp = sub.add_parser("improve", help="改进控制面(v0.2 收窄版,全确定性零模型)")
     imp_sub = p_imp.add_subparsers(dest="improve_command", required=True)
@@ -207,6 +220,8 @@ def _main() -> None:
             adjudicator=args.adjudicator, decided_at=args.decided_at,
             corrected_value=args.corrected_value,
             supersedes_decision_id=args.supersedes_decision_id,
+            reason_code=args.reason_code,
+            reviewer_confidence=args.reviewer_confidence,
         )
         if not result["panel_refreshed"]:
             result["hint"] = ("panel 未刷新,但裁决已落盘(fsync)。"
@@ -258,6 +273,17 @@ def _main() -> None:
                                     seed_source=args.seed_source, n=args.n)
         else:
             heldout.cmd_extract(args.workspace, budget=args.budget)
+    elif args.command == "suggest":
+        from . import suggest as suggest_mod
+
+        out = suggest_mod.suggest(args.workspace, model=args.model)
+        print(json.dumps({"advisory": True,
+                          "suggestions": len(out["suggestions"]),
+                          "dropped": out.get("dropped", []),
+                          "note_count": out.get("note_count", 0),
+                          "file": str(args.workspace / "improve"
+                                      / "suggestions.json")},
+                         ensure_ascii=False, indent=1))
     elif args.command == "improve":
         from . import improve
 

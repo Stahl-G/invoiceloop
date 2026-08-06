@@ -9,6 +9,20 @@ import pytest
 from invoiceloop import dws, ocr
 
 
+@pytest.fixture(autouse=True)
+def _no_dotenv(monkeypatch):
+    """测试一律不读磁盘上的 `.env` / 旧 vision.env。
+
+    测试在仓库里跑,而仓库根常放着开发者真实的 `.env`。不隔离的话:
+    ① 「缺 key 应该报错」这类用例会读到真凭证而假绿(实测发生过);
+    ② 用例可能真的打出去、真的花额度。要测文件读取的用例自己 delenv
+    这个开关(见 tests/test_env.py 的 no_legacy)。
+    """
+    from invoiceloop import env as env_mod
+
+    monkeypatch.setenv(env_mod.DISABLE_VAR, "1")
+
+
 def pin_corpus(monkeypatch, root) -> None:
     """fixture 锁定语料根:主变量与 legacy 别名同设。
 

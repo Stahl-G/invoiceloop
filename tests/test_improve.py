@@ -93,16 +93,44 @@ class TestFeedbackAndMine:
                 rationale="r", adjudicator="t", decided_at=DECIDED,
                 reason_code="CONFIRMED_ABSENT")
 
-    def test_actionable_requires_confidence_and_code(self, ws):
+    def test_unstated_confidence_stays_actionable(self, ws):
+        """2026-08-06 修订:未填把握度不再取消资格。
+
+        原判据要求 high/medium,run-0002 实测填写率 3/123 → 合格事件 0,
+        挖掘臂从未点火。不对称:主动标 low 是真信息,未填不等于有把握。
+        """
         run_dir = ws / "runs" / "run-0001"
         adjudicate.append_adjudication(
             run_dir, claim_id=_claim_id(run_dir, "total_gross"), doc_id=DOC,
             field="total_gross", decision="accept", rationale="r",
             adjudicator="t", decided_at=DECIDED,
-            reason_code="ROUTING_FALSE_POSITIVE")  # 没给把握度 → 不可行动
+            reason_code="ROUTING_FALSE_POSITIVE")  # 没给把握度
         (e,) = improve.compile_workspace(ws)
-        assert e["actionable"] is False, \
-            "无 reviewer_confidence 的事件不作改进标签(业务裁决仍有效)"
+        assert e["actionable"] is True, \
+            "未填把握度的事件仍可作改进标签(合格门只看心码/弃权/主动标低)"
+
+    def test_low_confidence_disqualifies(self, ws):
+        """人主动说「没把握」是真信息 —— 这条仍然出局。"""
+        run_dir = ws / "runs" / "run-0001"
+        adjudicate.append_adjudication(
+            run_dir, claim_id=_claim_id(run_dir, "total_gross"), doc_id=DOC,
+            field="total_gross", decision="accept", rationale="r",
+            adjudicator="t", decided_at=DECIDED,
+            reason_code="ROUTING_FALSE_POSITIVE", reviewer_confidence="low")
+        (e,) = improve.compile_workspace(ws)
+        assert e["actionable"] is False
+        report = improve.mine(ws)
+        assert report["buckets"]["not_actionable_reasons"]["low_confidence"] == 1
+
+    def test_actionable_still_requires_reason_code(self, ws):
+        """心码仍是硬要求 —— 没有心码就没有监督标签,不许系统代填。"""
+        run_dir = ws / "runs" / "run-0001"
+        adjudicate.append_adjudication(
+            run_dir, claim_id=_claim_id(run_dir, "total_gross"), doc_id=DOC,
+            field="total_gross", decision="accept", rationale="r",
+            adjudicator="t", decided_at=DECIDED)
+        (e,) = improve.compile_workspace(ws)
+        assert e["actionable"] is False
 
     def test_mine_report_flags_low_yield_cohorts(self, ws):
         run_dir = ws / "runs" / "run-0001"
@@ -357,19 +385,93 @@ class TestMineQualityGate:
             "tip 是 correct,被顶替的 accept 不许进统计"
 
     def test_non_actionable_events_not_mined(self, ws):
+        """质量门仍然咬人 —— 2026-08-06 只换了「不合格」的判据:
+        从「没填把握度」改成「没给心码 / 主动标了低把握 / 弃权」。"""
         run_dir = ws / "runs" / "run-0001"
-        for _ in range(3):
-            pass
+        adjudicate.append_adjudication(
+            run_dir, claim_id=_claim_id(run_dir, "total_gross"), doc_id=DOC,
+            field="total_gross", decision="accept", rationale="r",
+            adjudicator="t", decided_at=DECIDED)  # 无心码 → 不可行动
+        report = improve.mine(ws)
+        assert report["buckets"]["all_events"] == 1
+        assert report["buckets"]["qualified_for_mining"] == 0
+        assert report["buckets"]["not_actionable_reasons"]["no_reason_code"] == 1
+        assert report["cohorts"] == [], \
+            "不可行动事件不进 cohort —— 低收益候选不许建在没有监督标签的记录上"
+
+    def test_overturned_auto_accept_is_reported_even_from_a_qa_probe(self, ws):
+        """策略自动放行、人推翻 —— 撤销该 cohort 的证据。
+
+        与放松线索不对称:一条就报,不设频次门槛,QA 探针抓到的也算数
+        (探针存在的理由就是抓这个)。
+        """
+        run_dir = ws / "runs" / "run-0001"
+        matrix = json.loads((run_dir / "support_matrix.json").read_text("utf-8"))
+        row = next(r for r in matrix["rows"] if r["field"] == "total_gross")
+        row["route"] = "auto_accept"
+        row["reason_codes"] = ["CLEAN", "QA_SAMPLE:policy_accepted_tier1"]
+        (run_dir / "support_matrix.json").write_text(
+            json.dumps(matrix, ensure_ascii=False), encoding="utf-8")
+        adjudicate.append_adjudication(
+            run_dir, claim_id=_claim_id(run_dir, "total_gross"), doc_id=DOC,
+            field="total_gross", decision="reject",
+            rationale="页面上印的是 Fed. I.D.,不是 VAT 号",
+            adjudicator="t", decided_at=DECIDED,
+            reason_code="WRONG_FIELD_MAPPING")
+        report = improve.mine(ws)
+        (o,) = report["overturned_auto_accepts"]
+        assert o["field"] == "total_gross" and o["human_action"] == "reject"
+        assert o["random_qa"] is True, "QA 探针抓到的推翻照样进撤销信号"
+        assert o["rationale"].startswith("页面上印的是")
+        assert report["low_yield_candidates"] == [], \
+            "推翻不是放松线索 —— 不许混进候选"
+
+    def test_reviewed_slot_overturn_is_not_a_revocation_signal(self, ws):
+        """route=review 的槽被 correct 是正常工作,不是策略出错。"""
+        run_dir = ws / "runs" / "run-0001"
+        matrix = json.loads((run_dir / "support_matrix.json").read_text("utf-8"))
+        row = next(r for r in matrix["rows"] if r["field"] == "total_gross")
+        row["route"] = "review"
+        (run_dir / "support_matrix.json").write_text(
+            json.dumps(matrix, ensure_ascii=False), encoding="utf-8")
+        adjudicate.append_adjudication(
+            run_dir, claim_id=_claim_id(run_dir, "total_gross"), doc_id=DOC,
+            field="total_gross", decision="correct", corrected_value="1.00",
+            rationale="值不对", adjudicator="t", decided_at=DECIDED,
+            reason_code="WRONG_VALUE")
+        assert improve.mine(ws)["overturned_auto_accepts"] == []
+
+    def test_rationale_reaches_the_cohort_verbatim(self, ws):
+        """复核者手打的话必须能被改进层看到 —— 2026-08-06 之前它停在
+        裁决账本里,反馈事件根本不带这个字段。原文透传,不解析。"""
+        run_dir = ws / "runs" / "run-0001"
+        adjudicate.append_adjudication(
+            run_dir, claim_id=_claim_id(run_dir, "total_gross"), doc_id=DOC,
+            field="total_gross", decision="accept",
+            rationale="页面右下角还有一个小写的 total,DWS 取的是大写那个",
+            adjudicator="t", decided_at=DECIDED,
+            reason_code="ROUTING_FALSE_POSITIVE")
+        (e,) = improve.compile_workspace(ws)
+        assert e["rationale"].startswith("页面右下角"), "事件要带原话"
+        report = improve.mine(ws)
+        (cohort,) = report["cohorts"]
+        assert cohort["notes"] == [{
+            "doc_id": DOC, "decision": "accept",
+            "reason_code": "ROUTING_FALSE_POSITIVE",
+            "rationale": "页面右下角还有一个小写的 total,DWS 取的是大写那个",
+        }], "原话按 cohort 归堆,一字不改 —— 给写提案的人读"
+
+    def test_low_confidence_events_not_mined(self, ws):
+        """主动标「没把握」的记录同样出局 —— 这条是真信息,要听。"""
+        run_dir = ws / "runs" / "run-0001"
         adjudicate.append_adjudication(
             run_dir, claim_id=_claim_id(run_dir, "total_gross"), doc_id=DOC,
             field="total_gross", decision="accept", rationale="r",
             adjudicator="t", decided_at=DECIDED,
-            reason_code="ROUTING_FALSE_POSITIVE")  # 无把握度 → 不可行动
+            reason_code="ROUTING_FALSE_POSITIVE", reviewer_confidence="low")
         report = improve.mine(ws)
-        assert report["buckets"]["all_events"] == 1
         assert report["buckets"]["qualified_for_mining"] == 0
-        assert report["cohorts"] == [], \
-            "不可行动事件不进 cohort —— 低收益候选不许建在没把握的记录上"
+        assert report["cohorts"] == []
 
 
 class TestAbsentExpectedLoop:

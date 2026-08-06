@@ -488,6 +488,119 @@ class TestAcceptPreset:
         assert '>与页面一致</button>' in text
 
 
+class TestQuickPathCarriesReasonCode:
+    """快路按钮自带心码(2026-08-06):按钮文案本来就是一次语义选择,
+    再用下拉问一遍是同一件事问两遍(run-0002 心码填写率 8/123 → 挖掘臂
+    合格事件 0)。纪律:只在一对一时带,含糊的留空,不代人选。"""
+
+    def test_accept_splits_into_plain_and_false_positive(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=zh")
+        assert 'data-decision="accept" data-value="" data-reason=""' in text, \
+            "「该拦,我确认没问题」不带心码 —— 词表里没有「路由判对了」,"\
+            "它也不构成放松规则的证据"
+        assert 'data-reason="ROUTING_FALSE_POSITIVE"' in text, \
+            "「白拦了」要能一键说出来 —— 这是挖掘低收益 cohort 唯一的信号"
+        assert "不该进队列" in text
+
+    def test_every_quick_button_declares_a_reason_slot(self, workspace, server):
+        """每个快路按钮都要显式带 data-reason(可以为空)—— 漏掉属性和
+        「故意留空」在 HTML 上必须区分得开,否则 JS 分不出来。"""
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=zh&filter=all")
+        buttons = re.findall(r'<button[^>]*class="wb-quick-ok[^"]*"[^>]*>', text)
+        assert buttons, "队列页应有快路按钮"
+        assert all("data-reason=" in b for b in buttons), \
+            [b for b in buttons if "data-reason=" not in b]
+
+    def test_issue_chips_carry_one_to_one_codes_only(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=zh")
+        assert 'data-text="值不对" data-reason="WRONG_VALUE"' in text
+        assert 'data-text="位置不对" data-reason="BAD_SOURCE_BINDING"' in text
+        assert 'data-text="与页面一致" data-reason=""' in text, \
+            "「与页面一致」不带码 —— 词表里没有「路由判对了」"
+        assert 'data-text="口径冲突" data-reason=""' in text, \
+            "applicability 争议在心码集里没有对应项,硬塞一个就是编"
+
+    def test_js_writes_button_reason_and_one_to_one_prefill(self, workspace, server):
+        _, _, js = _req(server, "GET", "/assets.js")
+        assert "dataset.reason" in js, "快路必须把按钮上的心码写进下拉"
+        assert "CONFIRMED_ABSENT" in js and "NOT_APPLICABLE" in js, \
+            "决策唯一确定的心码要自动预填(combo 表就是这么规定的)"
+
+    def test_false_positive_button_records_reason_code(self, workspace, server):
+        status, _, _ = _decide(server, reason_code="ROUTING_FALSE_POSITIVE")
+        assert status == 303
+        entry = _ledger(workspace)[0]
+        assert entry["reason_code"] == "ROUTING_FALSE_POSITIVE"
+
+    def test_confidence_is_now_opt_in_for_doubt(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=zh")
+        assert "只在没把握时填" in text, \
+            "把握度改成存疑标注 —— 未填不再取消挖掘资格,主动标低才出局"
+
+
+class TestImprovePage:
+    """改进循环页:只读。原话是主体,模型草稿必须看起来像草稿。"""
+
+    def _mine(self, workspace):
+        from invoiceloop import improve
+        return improve.mine(workspace)
+
+    def test_page_renders_without_any_improve_artifacts(self, workspace, server):
+        """还没跑过 mine 也要能打开 —— 空页面比 500 有用。"""
+        status, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert status == 200
+        assert "改进循环" in text
+        assert "没有模型草稿" in text
+
+    def test_reviewer_notes_reach_the_page(self, workspace, server):
+        _decide(server, rationale="页面右下角还有一个小写的 total",
+                reason_code="ROUTING_FALSE_POSITIVE")
+        self._mine(workspace)
+        _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert "页面右下角还有一个小写的 total" in text, \
+            "复核者原话必须出现在改进页上 —— 这一页就是为了让人读它"
+
+    def test_page_writes_nothing(self, workspace, server):
+        """唯一写 active 的入口是 improve promote —— 网页上不许有按钮
+        能改策略,只给可复制的命令。"""
+        self._mine(workspace)
+        _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert 'action="/improve"' not in text
+        assert "improve propose" in text or "还没有复核笔记" in text
+
+    def test_model_draft_is_marked_advisory_with_its_citations(
+            self, workspace, server):
+        self._mine(workspace)
+        (workspace / "improve" / "suggestions.json").write_text(json.dumps({
+            "advisory": True, "model": "m", "note_count": 1,
+            "suggestions": [{
+                "action": "absent_expected", "cohort": {"field": "seller_vat_id"},
+                "finding": "美国发票普遍无 VAT", "prediction": "少一类重复确认",
+                "confidence": "medium", "cites": [0],
+                "cited_notes": [{"doc_id": "d1", "rationale": "页面上没有"}]}],
+            "dropped": ["suggestion[1]:引用为空或越界 —— 没出处的建议不收"],
+        }, ensure_ascii=False), encoding="utf-8")
+        _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert "advisory" in text, "模型草稿要打上 advisory 标"
+        assert "页面上没有" in text, "草稿要挂着它读的原话,人才能核"
+        assert "没出处的建议不收" in text, "被丢弃的草稿也要看得见"
+
+    def test_overturned_auto_accept_is_shown_first(self, workspace, server):
+        run_dir = workspace / "runs" / RUN
+        matrix = json.loads((run_dir / "support_matrix.json").read_text("utf-8"))
+        row = next(r for r in matrix["rows"] if r["field"] == "total_gross")
+        row["route"] = "auto_accept"
+        (run_dir / "support_matrix.json").write_text(
+            json.dumps(matrix, ensure_ascii=False), encoding="utf-8")
+        _decide(server, decision="reject", rationale="Fed. I.D. 不是 VAT 号",
+                reason_code="WRONG_FIELD_MAPPING")
+        self._mine(workspace)
+        _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert "自动放行被人推翻" in text
+        assert text.index("自动放行被人推翻") < text.index("复核者原话"), \
+            "收紧信号排在放松线索前面 —— 安全方向优先"
+
+
 class TestQueueSections:
     """队列必须区分「需要裁决」与「印证行(抽检)」—— 混在一起,
     用户会以为全绿行也要复审 = 假错误(2026-08-03 实测原话)。"""

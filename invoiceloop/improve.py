@@ -38,8 +38,9 @@ def mine(workspace: Path) -> dict:
     """聚合裁决事件 → cohort 统计。cohort key = field × tier ×
     support_strength × route。找「高频复核、零修正」的候选放松对象。
 
-    反馈质量门(83 评问题三):cohort 统计只用**合格事件** ——
-    actionable(心码+中高把握+非弃权)∧ 未被顶替 ∧ 非 QA 随机探针。
+    反馈质量门(83 评问题三;2026-08-06 修订把握度判据):cohort 统计
+    只用**合格事件** —— actionable(心码 ∧ 非弃权 ∧ 未主动标低把握)
+    ∧ 未被顶替 ∧ 非 QA 随机探针。
     全量口径并列展示,但低收益候选只从合格集出 —— 否则「放松建议」
     建立在人没把握或已被修正的记录上。
     """
@@ -55,9 +56,9 @@ def mine(workspace: Path) -> dict:
         "qualified_for_mining": len(qualified),
         "not_actionable_reasons": {
             "no_reason_code": sum(1 for e in events if not e["reason_code"]),
-            "low_or_no_confidence": sum(
-                1 for e in events
-                if e["reviewer_confidence"] not in ("high", "medium")),
+            # 只数**主动**标低的;未填不再计入(2026-08-06,见 feedback.py)
+            "low_confidence": sum(
+                1 for e in events if e["reviewer_confidence"] == "low"),
             "abstain": sum(1 for e in events
                            if e["human_action"] == "abstain"),
         },
@@ -72,8 +73,19 @@ def mine(workspace: Path) -> dict:
             "route": e.get("route"),
             "reviewed": 0, "accepted": 0, "corrected": 0, "rejected": 0,
             "confirmed_absent": 0, "not_applicable": 0, "abstained": 0,
+            "notes": [],
         })
         c["reviewed"] += 1
+        # 复核者手打的原话,按 cohort 归堆(2026-08-06)。**原文,不解析**:
+        # 这一栏是给写 cohort 提案的人读的 —— 上一条 cohort(absent_expected)
+        # 就是人读完 run-0002 报告手写的,这里只是把「读什么」从 123 行账本
+        # 收敛到「这个 cohort 里大家究竟说了什么」。机器不从中提取特征。
+        note = (e.get("rationale") or "").strip()
+        if note:
+            c["notes"].append({"doc_id": e["doc_id"],
+                               "decision": e["human_action"],
+                               "reason_code": e.get("reason_code"),
+                               "rationale": note})
         action = e["human_action"]
         if action == "accept":
             c["accepted"] += 1
@@ -98,10 +110,15 @@ def mine(workspace: Path) -> dict:
     by_field: dict[str, dict] = {}
     for e in qualified:
         f = by_field.setdefault(e["field"], {"field": e["field"], "total": 0,
-                                             "absentish": 0})
+                                             "absentish": 0, "notes": []})
         f["total"] += 1
         if e["human_action"] in ("confirm_absent", "not_applicable"):
             f["absentish"] += 1
+            note = (e.get("rationale") or "").strip()
+            if note:
+                # 提案要不要写、怎么写,人读这些原话决定 —— 候选是线索,
+                # 不是授权(mine 的选择偏差警告同一条)
+                f["notes"].append({"doc_id": e["doc_id"], "rationale": note})
     absence_candidates = [
         {**f, "share": f["absentish"] / f["total"],
          "suggested": {"kind": "absent_expected",
@@ -109,12 +126,31 @@ def mine(workspace: Path) -> dict:
         for f in by_field.values()
         if f["absentish"] >= 3 and f["absentish"] / f["total"] >= 0.8
     ]
+    # 撤销信号(2026-08-06):被策略自动放行、又被人推翻的槽。
+    # **方向与上面两类相反** —— low_yield/absence 是放松的线索,这一类是
+    # 收紧的证据,所以不进 candidates,单列。判据只要一条:auto_* 路由 +
+    # 人给了 correct/reject。一条就报,不设频次门槛 —— 放松要证据、
+    # 收紧要及时,两边不对称是故意的(安全方向优先,宪章四)。
+    # 事件已过合格门(非 QA 探针会被排除),所以这里额外把 QA 探针也算上:
+    # 抽检抓到的推翻正是探针存在的理由,不能因为它是随机抽的就不算数。
+    overturned = [
+        {"field": e["field"], "doc_id": e["doc_id"], "route": e.get("route"),
+         "human_action": e["human_action"], "reason_code": e.get("reason_code"),
+         "rationale": (e.get("rationale") or "").strip(),
+         "random_qa": e["random_qa"], "harness_id": e["harness_id"]}
+        for e in events
+        if str(e.get("route") or "").startswith("auto_")
+        and e["human_action"] in ("correct", "reject")
+        and not e["superseded"]
+    ]
     report = {
         "warning": _SELECTION_BIAS_WARNING,
         "events": len(events),
         "buckets": buckets,
         "cohorts": sorted(cohorts.values(),
                           key=lambda c: (-c["reviewed"], c["field"])),
+        "overturned_auto_accepts": sorted(
+            overturned, key=lambda o: (o["field"], o["doc_id"])),
         "low_yield_candidates": sorted(low_yield,
                                        key=lambda c: -c["reviewed"]),
         "absence_candidates": sorted(absence_candidates,
