@@ -205,8 +205,9 @@ def verify_pdf_signature(pdf_bytes: bytes) -> dict:
         return {"valid": False, "signer": None,
                 "note": "PDF 里找不到 /ByteRange 或 /Contents —— 不是有效的"
                         "数字签名结构"}
-    a, b, c, d = (int(x) for x in br.groups())
-    covered = pdf_bytes[a:b] + pdf_bytes[c:d]
+    o1, l1, o2, l2 = (int(x) for x in br.groups())
+    # /ByteRange 是 (偏移, 长度) 对,不是 (起, 止) 区间
+    covered = pdf_bytes[o1:o1 + l1] + pdf_bytes[o2:o2 + l2]
     sig_bytes = bytes.fromhex(re.sub(rb"\s", b"", contents.group(1)).decode())
     ci = _cms.ContentInfo.load(sig_bytes)
     if ci["content_type"].native != "signed_data":
@@ -221,8 +222,10 @@ def verify_pdf_signature(pdf_bytes: bytes) -> dict:
                 "note": "签名覆盖内容的摘要与签名内记录不符 —— 内容被改过"}
     cert_der = sd["certificates"][0].chosen.dump()
     cert = x509.load_der_x509_certificate(cert_der)
+    # CMS 签名的输入是 signed_attrs 的 universal SET 编码 —— 不是
+    # 存盘时的 implicit [0] 标签(实测 DWS 签名同样如此:untag 才验得过)
     cert.public_key().verify(signer["signature"].native,
-                             signed_attrs.dump(),
+                             signed_attrs.untag().dump(),
                              _pad.PKCS1v15(), hashes.SHA256())
     return {"valid": True,
             "signer": cert.subject.rfc4514_string(),

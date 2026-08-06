@@ -18,7 +18,7 @@ dev = ["pytest>=8"]
 research = []
 # 封缄验签(verify 第五层的密码学部分):缺省时签名层记 None 并注明未验证,
 # 不静默判过(宪章四)
-seal = ["asn1crypto>=3", "cryptography>=42"]
+seal = ["asn1crypto>=1.5", "cryptography>=42"]
 
 [project.scripts]
 invoiceloop = "invoiceloop.__main__:main"
