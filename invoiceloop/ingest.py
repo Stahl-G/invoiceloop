@@ -89,8 +89,13 @@ def cmd_ingest(
     modes: tuple[str, ...] = ("understand", "agentic"),
     do_ocr: bool = True,
     do_extract: bool = True,
+    adaptive: bool = False,
 ) -> dict:
-    """input/pdfs/*.pdf → ocr/(本地)+ raw/(DWS)。返回并打印摘要。"""
+    """input/pdfs/*.pdf → ocr/(本地)+ raw/(DWS)。返回并打印摘要。
+
+    adaptive=True:先 understand,风险诊断后再决定是否调 agentic
+    (L1 opt-in;默认 False 保持双模式全跑)。
+    """
     workspace = Path(workspace)
     pdf_dir = workspace / "input" / "pdfs"
     if not pdf_dir.is_dir():
@@ -101,8 +106,12 @@ def cmd_ingest(
     if not docs:
         raise SystemExit(f"输入契约:{pdf_dir} 里没有 .pdf 文件")
 
+    if adaptive:
+        modes = ("understand",)  # agentic 按文档 escalate,不在外层笛卡尔积
+
     summary = {"docs": len(docs), "ocred": 0, "ocr_blocked": [],
-               "extracted": 0, "extract_skipped": 0, "extract_failed": []}
+               "extracted": 0, "extract_skipped": 0, "extract_failed": [],
+               "adaptive": adaptive, "escalated": 0, "skipped_clean": 0}
 
     if do_ocr:
         ocr_dir = workspace / "ocr"
@@ -124,34 +133,80 @@ def cmd_ingest(
         from .dws_client import extract_to_raw
 
         raw_dir = workspace / "raw"
+        if adaptive:
+            from .adaptive import (
+                diagnose_risk,
+                mark_workspace_adaptive,
+                write_attempt_record,
+            )
+            mark_workspace_adaptive(workspace)
+
         for doc_id, pdf in docs.items():
+            if adaptive:
+                # ---- L1:understand → diagnose → maybe agentic
+                u_target = raw_dir / f"{doc_id}.understand.json"
+                u_record = _extract_one(pdf, raw_dir, doc_id, "understand",
+                                        u_target, summary)
+                udata = None
+                u_status = None
+                if isinstance(u_record, dict):
+                    u_status = u_record.get("http_status")
+                    body = u_record.get("body") or {}
+                    output = body.get("output") or {}
+                    data = output.get("data") if isinstance(output, dict) else None
+                    udata = data if isinstance(data, dict) else None
+                reasons = diagnose_risk(udata)
+                escalated = bool(reasons)
+                a_status = None
+                if escalated:
+                    a_target = raw_dir / f"{doc_id}.agentic.json"
+                    a_record = _extract_one(pdf, raw_dir, doc_id, "agentic",
+                                            a_target, summary)
+                    if isinstance(a_record, dict):
+                        a_status = a_record.get("http_status")
+                    summary["escalated"] += 1
+                else:
+                    summary["skipped_clean"] += 1
+                write_attempt_record(
+                    workspace, doc_id, escalated=escalated, reasons=reasons,
+                    understand_status=u_status if isinstance(u_status, int) else None,
+                    agentic_status=a_status if isinstance(a_status, int) else None,
+                )
+                continue
+
             for mode in modes:
                 target = raw_dir / f"{doc_id}.{mode}.json"
-                if target.exists():
-                    record: object = None
-                    try:
-                        record = json.loads(target.read_text())
-                    except (json.JSONDecodeError, UnicodeDecodeError):
-                        pass  # 损坏的存盘 = 没抽过,重抽(不许 .get 崩在 list 上)
-                    if isinstance(record, dict) and record.get("http_status") == 200:
-                        summary["extract_skipped"] += 1
-                        continue
-                try:
-                    record = extract_to_raw(pdf, extraction_schema(), raw_dir,
-                                            doc_id=doc_id, mode=mode)
-                except Exception as exc:  # noqa: BLE001 —— 记失败,不中断整批
-                    summary["extract_failed"].append(
-                        {"doc_id": doc_id, "mode": mode, "error": repr(exc)})
-                    continue
-                status = record.get("http_status") if isinstance(record, dict) else None
-                if status == 200:
-                    summary["extracted"] += 1
-                else:
-                    # 非 200 也存了盘(4xx body 是被拒原因的唯一记录,属分母),
-                    # 但摘要必须如实:拿错 key 不许看到「全部成功」(82 评 P1-8)
-                    summary["extract_failed"].append(
-                        {"doc_id": doc_id, "mode": mode,
-                         "error": f"http_status={status}"})
+                _extract_one(pdf, raw_dir, doc_id, mode, target, summary)
 
     print(json.dumps(summary, ensure_ascii=False, indent=1))
     return summary
+
+
+def _extract_one(pdf, raw_dir, doc_id, mode, target, summary) -> dict | None:
+    """单次抽取,更新 summary;返回存盘 record 或 None。"""
+    from .dws_client import extract_to_raw
+
+    if target.exists():
+        record: object = None
+        try:
+            record = json.loads(target.read_text())
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            pass
+        if isinstance(record, dict) and record.get("http_status") == 200:
+            summary["extract_skipped"] += 1
+            return record
+    try:
+        record = extract_to_raw(pdf, extraction_schema(), raw_dir,
+                                doc_id=doc_id, mode=mode)
+    except Exception as exc:  # noqa: BLE001 —— 记失败,不中断整批
+        summary["extract_failed"].append(
+            {"doc_id": doc_id, "mode": mode, "error": repr(exc)})
+        return None
+    status = record.get("http_status") if isinstance(record, dict) else None
+    if status == 200:
+        summary["extracted"] += 1
+    else:
+        summary["extract_failed"].append(
+            {"doc_id": doc_id, "mode": mode,
+             "error": f"http_status={status}"})
+    return record if isinstance(record, dict) else None

@@ -60,9 +60,14 @@
   understand 中位 **9.1s**(p95 31.6s),agentic 中位 **11.9s**
   (p95 35.5s),两模式串行 ≈ **21s/份**;本地门禁/冻结/矩阵为毫秒级,
   不构成瓶颈;
-- **为什么两模式恒调、不做动态降档**:双模式分歧本身是六道门禁之一
-  (cross_mode_agreement),省掉 agentic 就等于拆掉这道门 —— 
-  成本是信号的一部分,不是浪费。
+- **为什么两模式恒调、不做动态降档(默认路径)**:双模式分歧本身是六道门禁之一
+  (cross_mode_agreement),省掉 agentic 就等于拆掉这道门 ——
+  成本是信号的一部分,不是浪费。密封评测 / heldout / demo **必须**走默认双模式。
+- **L1 自适应(opt-in)**:`ingest --adaptive` 先跑 understand,仅当 TIER1 缺值 /
+  算术失败 / 形态失败时才 escalate 整份 agentic;干净文档跳过二次抽取,
+  `cross_mode` 记 unavailable 且**不**整文档阻断。attempt 元数据在
+  `attempts/{doc}/manifest.json`;执行指纹含 adaptive 分量,不与双模式 run 撞车。
+  自适应效果需 paired live 验证,improve 反事实重路由评不了调用顺序。
 
 ## 它不做什么
 

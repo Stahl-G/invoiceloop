@@ -105,10 +105,19 @@ def cmd_plan(workspace: Path, n: int = HELDOUT_N) -> list[str]:
     return ids
 
 
-# ------------------------------------------------------------------ SEALED-1
+# ------------------------------------------------------------------ SEALED
+
+#: 抽样 PRNG 语境。SEALED-1 复算必须传 context="sealed1-v1";
+#: 新封箱默认 sealed2-v1,避免与 SEALED-1 撞同一随机流。
+SEALED_CONTEXTS = {
+    "sealed1-v1": "invoiceloop-sealed1-v1",
+    "sealed2-v1": "invoiceloop-sealed2-v1",
+}
+DEFAULT_SEALED_CONTEXT = "sealed2-v1"
+
 
 def sealed_pool() -> tuple[str, ...]:
-    """SEALED-1 合格池:heldout_pool 再减 development_exposure_manifest
+    """封箱合格池:heldout_pool 再减 development_exposure_manifest
     全量(高级裁决二:排除一切开发期暴露,不只是两份正式名单)。"""
     manifest_path = (Path(__file__).resolve().parent.parent
                      / "docs" / "development_exposure_manifest.json")
@@ -117,37 +126,43 @@ def sealed_pool() -> tuple[str, ...]:
     return tuple(d for d in heldout_pool() if d not in exposed)
 
 
-def sealed_list(seed_hex: str, n: int = HELDOUT_N) -> list[str]:
+def sealed_list(seed_hex: str, n: int = HELDOUT_N, *,
+                context: str = DEFAULT_SEALED_CONTEXT) -> list[str]:
     """种子随机抽样(高级裁决一):种子来自代码冻结后才存在的外部随机源
     (drand beacon 指定轮次),开发期间名单不可预知。确定性:同种子同名单。"""
     import random
 
+    if context not in SEALED_CONTEXTS:
+        raise ValueError(f"未知封箱语境:{context};允许 {sorted(SEALED_CONTEXTS)}")
     pool = sorted(sealed_pool())
     if len(pool) < n:
         raise RuntimeError(f"封箱合格池只有 {len(pool)} 份,不足 {n}")
-    return sorted(random.Random(f"invoiceloop-sealed1-v1|{seed_hex}")
-                  .sample(pool, n))
+    prefix = SEALED_CONTEXTS[context]
+    return sorted(random.Random(f"{prefix}|{seed_hex}").sample(pool, n))
 
 
 def cmd_plan_sealed(workspace: Path, *, seed_hex: str, seed_source: str,
-                    n: int = HELDOUT_N) -> list[str]:
+                    n: int = HELDOUT_N,
+                    context: str = DEFAULT_SEALED_CONTEXT) -> list[str]:
     """封箱名单落盘。seed_source 记录随机源承诺(协议文档 + 轮次)。"""
     workspace = prepare_workspace(workspace)
-    ids = sealed_list(seed_hex, n)
+    ids = sealed_list(seed_hex, n, context=context)
     payload = {
         "n": n,
         "pool_size": len(sealed_pool()),
         "pool_min_fields": POOL_MIN_FIELDS,
         "exclusion": "docs/development_exposure_manifest.json 全量补集",
         "sampling": "seeded random.sample(sorted pool), "
-                    "seed=sha256 语境 invoiceloop-sealed1-v1",
+                    f"seed=sha256 语境 {SEALED_CONTEXTS[context]}",
+        "context": context,
         "seed": seed_hex,
         "seed_source": seed_source,
         "doc_ids": ids,
     }
     (workspace / "doc_list.json").write_text(
         json.dumps(payload, indent=1) + "\n", encoding="utf-8")
-    print(f"pool={payload['pool_size']}  sealed n={n}  seed={seed_hex[:16]}…")
+    print(f"pool={payload['pool_size']}  sealed n={n}  "
+          f"context={context}  seed={seed_hex[:16]}…")
     print(f"名单已落盘:{workspace / 'doc_list.json'} —— 先提交,再调用")
     return ids
 

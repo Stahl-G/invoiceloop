@@ -34,6 +34,11 @@ def _main() -> None:
     p_ing.add_argument("--workspace", type=Path, required=True)
     p_ing.add_argument("--no-ocr", action="store_true", help="跳过本地独立 OCR")
     p_ing.add_argument("--no-extract", action="store_true", help="跳过 DWS 抽取(先只产 OCR)")
+    p_ing.add_argument(
+        "--adaptive", action="store_true",
+        help="L1 opt-in:understand 先跑,仅风险文档再调 agentic"
+             "(默认仍双模式全跑;密封评测勿开)",
+    )
 
     p_adj = sub.add_parser("adjudicate", help="追加人工裁决(随后自动重渲 panel)")
     p_adj.add_argument("--run", type=Path, required=True)
@@ -97,7 +102,8 @@ def _main() -> None:
     p_hoe.add_argument("--workspace", type=Path, required=True)
     p_hoe.add_argument("--budget", type=float, default=6000.0)
 
-    p_se = sub.add_parser("sealed", help="封箱留出集(docs/SEALED1_PROTOCOL.md)")
+    p_se = sub.add_parser(
+        "sealed", help="封箱留出集(docs/SEALED2_PROTOCOL.md;复算 SEALED-1 用 --context sealed1-v1)")
     se_sub = p_se.add_subparsers(dest="sealed_command", required=True)
     p_sep = se_sub.add_parser("plan", help="种子抽样并落盘名单(先于任何调用)")
     p_sep.add_argument("--workspace", type=Path, required=True)
@@ -105,6 +111,9 @@ def _main() -> None:
                        help="外部随机源的十六进制熵(drand 轮次 randomness)")
     p_sep.add_argument("--seed-source", required=True,
                        help="随机源承诺标识(协议文档 + 轮次)")
+    p_sep.add_argument("--context", default="sealed2-v1",
+                       choices=("sealed1-v1", "sealed2-v1"),
+                       help="PRNG 语境(默认 sealed2-v1)")
     p_sep.add_argument("--n", type=int, default=100)
     p_see = se_sub.add_parser("extract", help="按名单跑双模式,断点续跑,预算熔断")
     p_see.add_argument("--workspace", type=Path, required=True)
@@ -215,7 +224,8 @@ def _main() -> None:
         from .ingest import cmd_ingest
 
         cmd_ingest(args.workspace, do_ocr=not args.no_ocr,
-                   do_extract=not args.no_extract)
+                   do_extract=not args.no_extract,
+                   adaptive=bool(getattr(args, "adaptive", False)))
     elif args.command == "adjudicate":
         from .adjudicate import adjudicate_and_render
 
@@ -284,7 +294,8 @@ def _main() -> None:
 
         if args.sealed_command == "plan":
             heldout.cmd_plan_sealed(args.workspace, seed_hex=args.seed,
-                                    seed_source=args.seed_source, n=args.n)
+                                    seed_source=args.seed_source, n=args.n,
+                                    context=args.context)
         else:
             heldout.cmd_extract(args.workspace, budget=args.budget)
     elif args.command == "suggest":

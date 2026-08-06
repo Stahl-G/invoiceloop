@@ -1,17 +1,18 @@
 {
- "purpose": "SEALED-1 排除池:这些文档开发过程已暴露,不许进封箱评测",
+ "purpose": "封箱排除池(SEALED-2+):这些文档开发过程已暴露,不许进新封箱评测",
  "generated": "scripts/build_exposure_manifest.py(确定性,可重算)",
  "counts": {
   "calibration_160": 160,
   "heldout_100": 100,
-  "unique_total": 260
+  "sealed1_100": 100,
+  "unique_total": 360
  },
  "doc_ids": [
   {
    "doc_id": "00134dd365a24343b35b78c6",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -20,7 +21,7 @@
    "doc_id": "00136a27c7774c1e8dc6b2f2",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -29,7 +30,7 @@
    "doc_id": "002e3cf97973428f905671b3",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     },
     {
@@ -42,7 +43,7 @@
    "doc_id": "002f9b82b74f4258b3b072d0",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -51,7 +52,7 @@
    "doc_id": "003568b1286f4dab953fc2d5",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -60,7 +61,7 @@
    "doc_id": "0039ed9f32974a90afb4f8f2",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -69,7 +70,7 @@
    "doc_id": "003cc91637994b7d9566ac41",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     },
     {
@@ -82,7 +83,7 @@
    "doc_id": "00405d767fb1406180d05ef2",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -91,7 +92,7 @@
    "doc_id": "004e76fe452448eebaadc53b",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -100,7 +101,7 @@
    "doc_id": "006835846482455e8d75f8f8",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -109,7 +110,7 @@
    "doc_id": "0079863fa739477290959e5d",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -118,7 +119,7 @@
    "doc_id": "0087b1c5608a443995fe9656",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -127,7 +128,7 @@
    "doc_id": "008ca3c5e4024ce2aa2c77e2",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -136,7 +137,7 @@
    "doc_id": "0096d69f865b443290705bee",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -145,7 +146,7 @@
    "doc_id": "009bdcdec5c04cd3b2e31555",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -154,7 +155,7 @@
    "doc_id": "00a5c8697856473393f3f9e2",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -163,7 +164,7 @@
    "doc_id": "00aa98164d264f4e924f55a9",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -172,7 +173,7 @@
    "doc_id": "00bc2d75785b4c02a3454a48",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -181,7 +182,7 @@
    "doc_id": "00c87916e4a44197b45b0f8b",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -190,7 +191,7 @@
    "doc_id": "00ccfe1a0a96487cb67f3925",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -199,7 +200,7 @@
    "doc_id": "00e7f330e0344e9abdef3073",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -208,7 +209,7 @@
    "doc_id": "00e9a4cf34a046199a0b3bb4",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -217,7 +218,7 @@
    "doc_id": "00ecc5c210c54030a0c76eff",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -226,7 +227,7 @@
    "doc_id": "00f290a2e79045878780ad0a",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -235,7 +236,7 @@
    "doc_id": "0100fa8313bf4d3489c55c81",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -244,7 +245,7 @@
    "doc_id": "011510a48eb3468192a4aa44",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -253,7 +254,7 @@
    "doc_id": "01188ef591384224a527a94a",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -262,7 +263,7 @@
    "doc_id": "01306f143c9142899afc2e6c",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -271,7 +272,7 @@
    "doc_id": "0133788ff6914aa09df4d064",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -280,7 +281,7 @@
    "doc_id": "013feac0924a49e396b966d7",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -289,7 +290,7 @@
    "doc_id": "015f35badb50413fab2ea1be",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -298,7 +299,7 @@
    "doc_id": "01628ff7c56f4b1995c3048e",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -307,7 +308,7 @@
    "doc_id": "016985e27277483dbc599e9b",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -316,7 +317,7 @@
    "doc_id": "0169915dcb2c439494efcb35",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -325,7 +326,7 @@
    "doc_id": "0169e50a56374480b0c3666d",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -334,7 +335,7 @@
    "doc_id": "0175d161e1cf43be839a04f6",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -343,7 +344,7 @@
    "doc_id": "0178861dd64f4c58bbd4367a",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -352,7 +353,7 @@
    "doc_id": "017d92ebe44843639e9c63d8",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -361,7 +362,7 @@
    "doc_id": "0180d4e9dbee401386e36c31",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -370,7 +371,7 @@
    "doc_id": "0197abb815c741bf8be17795",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -379,7 +380,7 @@
    "doc_id": "019ccddb86644a51a4638251",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -388,7 +389,7 @@
    "doc_id": "01a13a4f5d2748d6a57e9a67",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -397,7 +398,7 @@
    "doc_id": "01a38f27cb974e848903ef72",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -406,7 +407,7 @@
    "doc_id": "01ad8f95ff8c41808368090f",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -415,7 +416,7 @@
    "doc_id": "01b33429ff38481289f43295",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -424,7 +425,7 @@
    "doc_id": "01c6345280824ef681cf7b38",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -433,7 +434,7 @@
    "doc_id": "01ca9b8ea3d5499dab534427",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -442,7 +443,7 @@
    "doc_id": "01cfcdac81ae44e8a06440ad",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -451,7 +452,7 @@
    "doc_id": "01d3f512061d441f80e7df28",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -460,7 +461,7 @@
    "doc_id": "01e49b6f7b0e4edf91f42c0f",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -469,7 +470,7 @@
    "doc_id": "02056b1bbc444100b9e71d2f",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -478,7 +479,7 @@
    "doc_id": "02074e661462419cb309bd7e",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -487,7 +488,7 @@
    "doc_id": "0219aad7064d4ba1a88f428f",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -496,7 +497,7 @@
    "doc_id": "02214b3dc57148efa42d1b85",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -505,7 +506,7 @@
    "doc_id": "022d1406c0f04ee4806547fa",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -514,7 +515,7 @@
    "doc_id": "02375a9928804547b4cc58a8",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -523,7 +524,7 @@
    "doc_id": "023d32572143486587809f7a",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -532,7 +533,7 @@
    "doc_id": "023e00c3df3346638f0e2f0e",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -541,7 +542,7 @@
    "doc_id": "0248bfbab87846e3aea3acb1",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -550,7 +551,7 @@
    "doc_id": "026b40228369449785a2cbc5",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -559,7 +560,7 @@
    "doc_id": "027b8980b7e944cf8da2cb1b",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -568,7 +569,7 @@
    "doc_id": "028e0857a139450a8c4e5ba3",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -577,7 +578,7 @@
    "doc_id": "02979db44fb34d359e139957",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -586,7 +587,7 @@
    "doc_id": "0297ca022c9f48679f43fee3",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -595,7 +596,7 @@
    "doc_id": "029942f7f4594791830bcf15",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -604,7 +605,7 @@
    "doc_id": "02a50adccac54a569011f167",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -613,7 +614,7 @@
    "doc_id": "02a5c4103d8a487c847c415f",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -622,7 +623,7 @@
    "doc_id": "02ae6d8164c545078ad53e4a",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -631,7 +632,7 @@
    "doc_id": "02d4d227d25c430ba4d5bcb0",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -640,7 +641,7 @@
    "doc_id": "02f04b622635431a9f1877c4",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -649,7 +650,7 @@
    "doc_id": "030266cfa9dc402cbd477eb3",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -658,7 +659,7 @@
    "doc_id": "03172d9dc4084fb28bc70e2c",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -667,7 +668,7 @@
    "doc_id": "031ef81c70234fff8f3ba2df",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -676,7 +677,7 @@
    "doc_id": "032114eae2d040b7a05b859d",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -685,7 +686,7 @@
    "doc_id": "033c77f0e0fe431ca4499a74",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -694,7 +695,7 @@
    "doc_id": "035fb5c9709e4d928a2e2088",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -703,7 +704,7 @@
    "doc_id": "03607f9078b649b7afea93a2",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -712,7 +713,7 @@
    "doc_id": "03632555cc3b4e71b91b793d",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -721,7 +722,7 @@
    "doc_id": "036f86baa0874467908a999d",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -730,7 +731,7 @@
    "doc_id": "037164f86c754d028f726fc7",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -739,7 +740,7 @@
    "doc_id": "0399b3aaa65e43b4aeba1a99",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -748,7 +749,7 @@
    "doc_id": "039b024e54fe41e8ad8717e8",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -757,7 +758,7 @@
    "doc_id": "039f9c90c89b424daa806cd0",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -766,7 +767,7 @@
    "doc_id": "03a317a4caf34ef4960f63db",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -775,7 +776,7 @@
    "doc_id": "03a95ed874f948cc8077ff08",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -784,7 +785,7 @@
    "doc_id": "03cac5639aa8477faf58654d",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -793,7 +794,7 @@
    "doc_id": "03cb60ae1b384136b66b98dc",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -802,7 +803,7 @@
    "doc_id": "03ce0f0e04304609a7939960",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -811,7 +812,7 @@
    "doc_id": "03d02e829a1f4728b1832e06",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -820,7 +821,7 @@
    "doc_id": "03da927fa2d04f1f8db236f2",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -829,7 +830,7 @@
    "doc_id": "03e652b572cd4b0f91544157",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -838,7 +839,7 @@
    "doc_id": "03f9e09ca9f64ae4b5180f78",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -847,7 +848,7 @@
    "doc_id": "040a088f9c724696b0296618",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -856,7 +857,7 @@
    "doc_id": "042038f28cf04ccb867d1f81",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -865,7 +866,7 @@
    "doc_id": "0420e873afb549069d05f37b",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -874,7 +875,7 @@
    "doc_id": "04296c7069ba44ef95dca76a",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -883,7 +884,7 @@
    "doc_id": "04338f6b61084dd2ab88f65a",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -892,7 +893,7 @@
    "doc_id": "04345516ddca4de2a96a22b5",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -901,7 +902,7 @@
    "doc_id": "043cf82b3b2444bc8ec67bd3",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -910,7 +911,7 @@
    "doc_id": "04555359ea0e4cd290686298",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -919,7 +920,7 @@
    "doc_id": "046e0c4924044de09f6d9e7b",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     },
     {
@@ -932,7 +933,7 @@
    "doc_id": "047651e509ba4173b4403492",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -941,7 +942,7 @@
    "doc_id": "0486b9113afc4ee2b4783d91",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -950,7 +951,7 @@
    "doc_id": "049006c19fad484cbfce7ffe",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -959,7 +960,7 @@
    "doc_id": "049aa72bba734a3ab34c04c2",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -968,7 +969,7 @@
    "doc_id": "049ae2c3f29945b481c22617",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -977,7 +978,7 @@
    "doc_id": "049c373c8e494b2eab3a2efa",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -986,7 +987,7 @@
    "doc_id": "04b06c345ae74c5daa59e189",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -995,7 +996,7 @@
    "doc_id": "04c1af19678f40a9b72729c7",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1004,7 +1005,7 @@
    "doc_id": "04c7b8068c3f47d581cae70a",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1013,7 +1014,7 @@
    "doc_id": "04c8eae2485142aca9677163",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1022,7 +1023,7 @@
    "doc_id": "04cb9c50d4c949598689ea6f",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1031,7 +1032,7 @@
    "doc_id": "04d531ca811f448a91c6ff4e",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1040,7 +1041,7 @@
    "doc_id": "04e8f8701242428b96aed535",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1049,7 +1050,7 @@
    "doc_id": "051155407f5142569d18b37b",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1058,7 +1059,7 @@
    "doc_id": "0516feb42d844ffba7b68494",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1067,7 +1068,7 @@
    "doc_id": "051e4a894bb342e9b243ff69",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1076,7 +1077,7 @@
    "doc_id": "054e57bddc234d1d9c5b0380",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1085,7 +1086,7 @@
    "doc_id": "0573f22568ea44b596d94d63",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1094,7 +1095,7 @@
    "doc_id": "05964c88eedc4729a601c24e",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1103,7 +1104,7 @@
    "doc_id": "05993f7600bf451f8a36e49b",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1112,7 +1113,7 @@
    "doc_id": "05a4ab115b77425a9f79f572",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1121,7 +1122,7 @@
    "doc_id": "05d16be7f93b48ed8f374701",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1130,7 +1131,7 @@
    "doc_id": "05d4fdbe707348de80e1e764",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1139,7 +1140,7 @@
    "doc_id": "05ebd9e7cf16493bbb4edec5",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1148,7 +1149,7 @@
    "doc_id": "05ec7dea25cc40d29f99b699",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1157,7 +1158,7 @@
    "doc_id": "05f54086450b4503bd0de7ce",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1166,7 +1167,7 @@
    "doc_id": "05fdeef697944bdbacf4b911",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1175,7 +1176,7 @@
    "doc_id": "06003408e6064f7aad9798fc",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1184,7 +1185,7 @@
    "doc_id": "06042be876f64270a9f330b6",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1193,7 +1194,7 @@
    "doc_id": "06057bde200c472198287570",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1202,7 +1203,7 @@
    "doc_id": "060b4258a8eb4a7bb50c54b5",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1211,7 +1212,7 @@
    "doc_id": "061bb0dc31ad4a0e8bc10219",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1220,7 +1221,7 @@
    "doc_id": "062044dabaa24e27af3f733a",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1229,7 +1230,7 @@
    "doc_id": "062d94841d1649a5b5a4e720",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1238,7 +1239,7 @@
    "doc_id": "06317b08a4184b2aa7365c10",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1247,7 +1248,7 @@
    "doc_id": "0639e1ea5b114070803df68a",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1256,7 +1257,7 @@
    "doc_id": "067e58970ab14323b428bcab",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1265,7 +1266,7 @@
    "doc_id": "067e90fb90374c1ca55313f5",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1274,7 +1275,7 @@
    "doc_id": "068d0838434b4e5597a70cce",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1283,7 +1284,7 @@
    "doc_id": "06945dcd737849b0b59544fb",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1292,7 +1293,7 @@
    "doc_id": "0698aee6191c452b951af737",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1301,7 +1302,7 @@
    "doc_id": "069922e0f9ae4c60af6bc7e5",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1310,7 +1311,7 @@
    "doc_id": "069dbb3056594b459a39adb4",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1319,7 +1320,7 @@
    "doc_id": "06a6fbe04d3d40a2956378ab",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1328,7 +1329,7 @@
    "doc_id": "06a94234728b4a04b7e14bb2",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1337,7 +1338,7 @@
    "doc_id": "06bcdb2b22e94c839c822849",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1346,7 +1347,7 @@
    "doc_id": "06c69b729aa94182867d5a5a",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1355,7 +1356,7 @@
    "doc_id": "06c76cf7636f44f69320c117",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1364,7 +1365,7 @@
    "doc_id": "06eb6e1f400647ce96fff1b9",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1373,7 +1374,7 @@
    "doc_id": "06ed70d6aadb481696b2636f",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1382,7 +1383,7 @@
    "doc_id": "0702dd1bf01840b68230b252",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1391,7 +1392,7 @@
    "doc_id": "07164182d4104ad9b73a7188",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1400,7 +1401,7 @@
    "doc_id": "07214b89d1bd407b829a7847",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1409,7 +1410,7 @@
    "doc_id": "072d66f581f344bfbf3bc8ef",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1418,7 +1419,7 @@
    "doc_id": "0746d3a85e0545b98b343196",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1427,7 +1428,7 @@
    "doc_id": "074b8104cd7548919d36fc37",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1436,7 +1437,7 @@
    "doc_id": "074ca3c6fdeb4ccc8dad3d02",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1445,7 +1446,7 @@
    "doc_id": "075114e316e544969dfbf46d",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1454,7 +1455,7 @@
    "doc_id": "075686bfdbaf4acfb80ade1c",
    "reasons": [
     {
-     "reason": "calibration-160(六轮实验设计/阈值全部见过它)",
+     "reason": "calibration-160(六轮实验设计/评分全部见过它)",
      "source": "dws-derisk run_batch.sample(160)"
     }
    ]
@@ -1469,11 +1470,38 @@
    ]
   },
   {
+   "doc_id": "08564a1ef0f44863bf4b01be",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "0a2366374d1848acb72a2d4d",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "0adfbe4baba7438ba8ab1713",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "0c56b86aedd445d8a845a287",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -1492,6 +1520,24 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "0f1ca104aeed4a75b109d4e8",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "10067f2d14c54f45b4d11675",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -1559,11 +1605,29 @@
    ]
   },
   {
+   "doc_id": "1f86b7aae6b0494e99113b12",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "216cf63b39294c50910ec131",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "22698eeb9d224750b1548d47",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -1577,6 +1641,24 @@
    ]
   },
   {
+   "doc_id": "250d4fdc5b114f379d1d2c22",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "254b7845992547228487acc5",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "26334e3999664f13b3d63890",
    "reasons": [
     {
@@ -1586,11 +1668,38 @@
    ]
   },
   {
+   "doc_id": "26d095ab3e774bd3ad18d9d5",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "28b6b9e30a864295bb5eae3d",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "28cec6830f7b43529a3ba378",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "294d78b9fdc44ff993bde143",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -1613,6 +1722,51 @@
    ]
   },
   {
+   "doc_id": "2f51e6ea8a384a6980ceca07",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "2f68f50595734c558720192c",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "2f7b3cfb6a1e491eaf5f7029",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "2f8e44ef734b47c7a051be3b",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "2fc175e2f49f4a1fa777598b",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "2fcc3819b3ee42ebb701ca56",
    "reasons": [
     {
@@ -1627,6 +1781,15 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "3328230f6ce9455f9ae48224",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -1649,11 +1812,38 @@
    ]
   },
   {
+   "doc_id": "391cd6c1d61f42f39d266ab4",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "39dc02d91095494bb8b1da29",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "3a28e169b0e149e8930a4021",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "3a5499ec4e014045a5c774a6",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -1672,6 +1862,24 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "4000a86055c0417fb444dc68",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "4091d00062c74b84b9e45af3",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -1703,6 +1911,15 @@
    ]
   },
   {
+   "doc_id": "4975a41e5b88457a976bbb78",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "499184f33e0144b58c87af9d",
    "reasons": [
     {
@@ -1730,6 +1947,15 @@
    ]
   },
   {
+   "doc_id": "50bbaa7c37374cc584cb06d3",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "512ac4d15bf34ed78e035a97",
    "reasons": [
     {
@@ -1744,6 +1970,15 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "5510cc65664d46a69ef906bf",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -1766,11 +2001,38 @@
    ]
   },
   {
+   "doc_id": "5a9493430a9e49b49ae49ad0",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "5c1c7960b46f4dfc9a5a44db",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "5da5a0e2bded40ad8948d5eb",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "5db8abd6665a4eec93f59e96",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -1784,11 +2046,29 @@
    ]
   },
   {
+   "doc_id": "5ff67a5505954989950400bd",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "6151c5bfa189436ca7060b19",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "61c446666ea644e683e520d6",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -1802,11 +2082,29 @@
    ]
   },
   {
+   "doc_id": "65e34b0561a841339c6ef146",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "65ea94315d98478489b684b2",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "66583cda46a344f683756e34",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -1820,6 +2118,15 @@
    ]
   },
   {
+   "doc_id": "699b369e9d414eb28dcb4d23",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "6ab57799121c486289610ff6",
    "reasons": [
     {
@@ -1829,11 +2136,38 @@
    ]
   },
   {
+   "doc_id": "6b5ca42333b247b083bbcfa0",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "6ceecf3352ce4c9b8ce06e91",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "6d3c39ad29f44fda85ebda6a",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "6decf48ff2bc4b94bf2c04e7",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -1892,11 +2226,29 @@
    ]
   },
   {
+   "doc_id": "7dcd8801807544cba7c1fa34",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "7fe28725724241f1b5eefaa1",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "812b7e6213e0485ab99e9a48",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -1910,11 +2262,56 @@
    ]
   },
   {
+   "doc_id": "84841d69ba38451c8337757d",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "84dd5f5c0f204c39a8561647",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "863e3854266040d49a14cee0",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "8697219373c84cb19a1da8b4",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "86cf121fdcb44d9c942db92c",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "86dcb611a1974c85a76f7ae6",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -1937,6 +2334,15 @@
    ]
   },
   {
+   "doc_id": "8c2273ca0acf4c52b31fe709",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "8cb096cf81dc43bd95111871",
    "reasons": [
     {
@@ -1955,11 +2361,38 @@
    ]
   },
   {
+   "doc_id": "9051c9b9b65541f9ae2493f6",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "91b7c668b4a24ed5b0ac8e35",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "920f42aab82d4bb28bf68b79",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "9366897ef8604a39b25e0ec8",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -1973,11 +2406,38 @@
    ]
   },
   {
+   "doc_id": "9516c656f9184251a2669378",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "969fde2888b14bb99f7aa1f7",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "9706b37288654c8d8522cf69",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "99a96ebc8fc64662a80a990f",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -2000,6 +2460,15 @@
    ]
   },
   {
+   "doc_id": "9c89f2651d10430eba923a45",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "9e62e88925324a259eabfe8c",
    "reasons": [
     {
@@ -2009,11 +2478,47 @@
    ]
   },
   {
+   "doc_id": "9fadde216b7d49b1bb62085a",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "a0ccc3e54ee54316a347f811",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "a116da9b551a4465b8fc55e5",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "a14811674f9e4b2c99bce2be",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "a187ba31eae2481ca20cdc7a",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -2063,11 +2568,47 @@
    ]
   },
   {
+   "doc_id": "ae77ce0a6bac49d0989bada9",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "af4d270d97cf4dc4bec18b1d",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "afe032e87bdd43c2b158c6f9",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "b0557da98934425180c4f16a",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "b2784d5a07f84664919de89c",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -2081,11 +2622,29 @@
    ]
   },
   {
+   "doc_id": "b2e6fa6e24434b0dab627226",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "b4eb1516fd61447c86cd2156",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "b6279ff2da834d9ab3fecf07",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -2108,6 +2667,24 @@
    ]
   },
   {
+   "doc_id": "bbd6e70912004112b83dbe39",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "bbdc085351b549178bdbfb1a",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "bcc089ccb3b148238023fa50",
    "reasons": [
     {
@@ -2126,11 +2703,29 @@
    ]
   },
   {
+   "doc_id": "c08bae6e22ef44eeb3f92cf8",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "c185c64d07f84d1b9eaad102",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "c19343b2784348c5b34b6d80",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -2153,11 +2748,47 @@
    ]
   },
   {
+   "doc_id": "c6a73292f5004df3afee5b72",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "c80043eb417041e88c1c3bc7",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "c954cb6fb3804354be9821d8",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "cb128af5bab94cca9ab40ac4",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "cba91ce9767f46e09bd02b98",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -2171,6 +2802,15 @@
    ]
   },
   {
+   "doc_id": "cd75c9e34fe940feb44ccef1",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "cdc50569915f4f18813f306f",
    "reasons": [
     {
@@ -2180,11 +2820,29 @@
    ]
   },
   {
+   "doc_id": "cdf65b6accc54facb0d8cf8e",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "d0380efa5caa47ffb4c9bd46",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "d269a6bcfbe54ce0b6cc2b81",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -2216,11 +2874,65 @@
    ]
   },
   {
+   "doc_id": "d965aaae35104f1d8e2b3760",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "dad52236b17e4b939524558a",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "db046e0d94664532b8176956",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "db2e81c790384a11bbde5194",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "db60e02cb0074cd5baf3cf01",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "dbdd03c16b814e13a412ce04",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "ddfcaaa66c64422c93409374",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -2234,11 +2946,47 @@
    ]
   },
   {
+   "doc_id": "dedc334705bb4a1697e9b358",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "e09db0a270c1486184982f8f",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "e09f45560d7143708b8b162c",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "e1a58dd3e11e490cbc1cb87f",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "e2517107ab9b4a859a2ae5c8",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -2252,11 +3000,29 @@
    ]
   },
   {
+   "doc_id": "e37d9820e2b94f809defd83b",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "e54b2a08fe4e437187d992db",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "e765a01bde8b4bc38c0ace79",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -2270,11 +3036,38 @@
    ]
   },
   {
+   "doc_id": "e804115bd684499ca577c6f2",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "e8d2da0e6738488888bcd53b",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "e9a885b5e9bc4f76b6b69b96",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "ea974676b77e469ca8c97708",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -2297,11 +3090,56 @@
    ]
   },
   {
+   "doc_id": "ee07d38c385e43c3aba7c1f5",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "f0d621ee4fb24fb197ce7732",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "f1285c45438a4ded8679d21c",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "f1b0c5690ac9414dba5770aa",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "f2a028185da5413da07076e3",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "f2caad44263441f498fa72b5",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -2324,11 +3162,56 @@
    ]
   },
   {
+   "doc_id": "f6b2768c06404cdd8d510d4d",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "f6fa97a83b8246a196a5217b",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "f7b199fd711149feaf0044c8",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "f8161f6392774af5825837c8",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "f973802bdbcb41be9a4c7a87",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "f9bc33f0c55746e28831654a",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   },
@@ -2351,11 +3234,29 @@
    ]
   },
   {
+   "doc_id": "fc6dd357dcd64cf28a6f09f7",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "fe035193e1894c1d96ecf3b8",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "fea9d968aa154d67950e01ad",
+   "reasons": [
+    {
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "source": "docs/sealed1_doc_list.json"
     }
    ]
   }

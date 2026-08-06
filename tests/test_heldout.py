@@ -133,6 +133,22 @@ class TestSealedList:
             "与旧留出 100 互斥(暴露清单的子集,双保险)"
 
     def test_pool_shrinks_by_exposure(self):
+        # 暴露清单含旧留出 100 + SEALED-1 100(均 ⊂ heldout_pool)
         assert len(heldout.sealed_pool()) == \
-            len(heldout.heldout_pool()) - 100, \
-            "旧留出 100 从合格池中移除(校准 160 本就不在 heldout_pool)"
+            len(heldout.heldout_pool()) - 200, \
+            "旧留出 100 + SEALED-1 100 必须从合格池中移除"
+
+    def test_sealed1_recompute_context(self):
+        """SEALED-1 名单复算必须用 sealed1-v1 语境,不得被 sealed2 默认污染。"""
+        import json as _json
+        from pathlib import Path as _P
+
+        sealed1 = _json.loads((_P("docs") / "sealed1_doc_list.json").read_text())
+        # 临时:若暴露已含 sealed1,池变小,但同种子+同语境仍应复算原名单
+        # —— 仅当 sealed1 尚未进暴露池时池够大;进池后 sealed_list 会因池
+        # 变化而无法逐份复算。协议要求:复算用冻结时的池。此处只钉语境串。
+        a = heldout.sealed_list(sealed1["seed"], context="sealed1-v1")
+        b = heldout.sealed_list(sealed1["seed"], context="sealed1-v1")
+        assert a == b
+        c = heldout.sealed_list(sealed1["seed"], context="sealed2-v1")
+        assert c != a, "换语境必须换名单"

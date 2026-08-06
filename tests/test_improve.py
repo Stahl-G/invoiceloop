@@ -185,8 +185,11 @@ class TestEvaluatePromote:
         result = improve.evaluate(ws, "HAR-0002")
         assert result["baseline_harness"] == "HAR-0001"
         assert result["candidate"] == "HAR-0002"
+        assert result["safety_status"] == "unscored", \
+            "合成 fixture 无 DocILE 标注 → 不假装过了 Gate 2"
         assert "note" in result and "反事实" in result["note"], \
-            "evaluate 不许给安全性结论(真值评测是 sealed 协议)"
+            "unscored 时仍须声明不给安全性结论"
+        assert "不给安全性结论" in result["note"]
 
         # promote 必须人名+理由+时间
         with pytest.raises(ValueError, match="approved_by"):
@@ -200,6 +203,7 @@ class TestEvaluatePromote:
         assert record["gate"] == "eval_reexecuted"
         assert record["basis"] == "evo_replay_only", \
             "未经未见资格集的晋升必须如实标 demo activation(评审裁决五)"
+        assert record["safety_status"] == "unscored"
         assert record["to_policy_digest"]
         assert record["from_policy_digest"]
         pointer = json.loads((ws / "improve" / "active_harness.json").read_text())
@@ -242,7 +246,65 @@ class TestEvaluatePromote:
             "新 run 必须能回答「哪版 harness 处理的」"
 
 
-class TestPromoteGateAttacks:
+class TestPromoteSafetyGate:
+    """Gate 2:scored 时静默错上升必须拒;不升则可 pareto_gated。"""
+
+    def test_silent_absent_rise_refused(self, ws, monkeypatch):
+        from invoiceloop.safety_metrics import write_annotation_stub
+
+        # 真值有 seller_vat_id → 候选 auto_absent 会制造 silent_absent
+        write_annotation_stub(
+            ws, DOC, {"invoice_number": "INV-42", "seller_vat_id": "DE123"})
+        pin_corpus(monkeypatch, ws)
+        improve.propose(
+            ws, cohort={"id": "AE1", "field": "seller_vat_id"},
+            finding="FIND-AE", prediction="p", kind="absent_expected")
+        result = improve.evaluate(ws, "HAR-0002")
+        assert result["safety_status"] == "scored"
+        assert result["silent_absent_candidate"] > result["silent_absent_baseline"]
+        with pytest.raises(ValueError, match="Gate 2.*silent_absent"):
+            improve.promote(ws, "HAR-0002", approved_by="y", rationale="r",
+                            approved_at=DECIDED)
+
+    def test_safe_absent_cohort_pareto_gated(self, ws, monkeypatch):
+        from invoiceloop.safety_metrics import write_annotation_stub
+
+        # 真值有 invoice_number(与抽取一致),seller_vat_id 真值缺席 →
+        # auto_absent 不增加 silent_absent
+        write_annotation_stub(ws, DOC, {"invoice_number": "INV-42"})
+        pin_corpus(monkeypatch, ws)
+        improve.propose(
+            ws, cohort={"id": "AE1", "field": "seller_vat_id"},
+            finding="FIND-AE", prediction="p", kind="absent_expected")
+        result = improve.evaluate(ws, "HAR-0002")
+        assert result["safety_status"] == "scored"
+        assert result["silent_absent_candidate"] <= result["silent_absent_baseline"]
+        assert result["silent_wrong_candidate"] <= result["silent_wrong_baseline"]
+        assert result["review_load_candidate"] <= result["review_load_baseline"]
+        record = improve.promote(ws, "HAR-0002", approved_by="y",
+                                 rationale="真值本就空,预期缺失安全",
+                                 approved_at=DECIDED)
+        assert record["gate"] == "pareto_gated"
+        assert record["basis"] == "evo_truth_replay"
+        assert "未见封箱" in record["claim_limits"] or "SEALED-2" in record[
+            "claim_limits"]
+
+    def test_sealed2_marker_upgrades_basis(self, ws, monkeypatch):
+        from invoiceloop.safety_metrics import write_annotation_stub
+
+        write_annotation_stub(ws, DOC, {"invoice_number": "INV-42"})
+        pin_corpus(monkeypatch, ws)
+        (ws / "improve").mkdir(exist_ok=True)
+        (ws / "improve" / "sealed2_qualified.ok").write_text("ok\n")
+        improve.propose(
+            ws, cohort={"id": "AE1", "field": "seller_vat_id"},
+            finding="FIND-AE", prediction="p", kind="absent_expected")
+        improve.evaluate(ws, "HAR-0002")
+        record = improve.promote(ws, "HAR-0002", approved_by="y",
+                                 rationale="SEALED-2 资格已挂",
+                                 approved_at=DECIDED)
+        assert record["basis"] == "sealed2_qualified"
+        assert record["gate"] == "pareto_gated"
     """83 评 P0-1 + 高级裁决四的攻击链,逐条钉死。"""
 
     def _candidate(self, ws):

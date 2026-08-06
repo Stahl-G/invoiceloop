@@ -347,9 +347,20 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
 
     不重跑 pipeline;零 API、确定性 —— 所以 promote 可以重算并逐字节
     比对存盘 eval,而不是信任一个可编辑的文件(高级裁决四)。
+
+    若 workspace 文档在 DocILE 下有可读标注,额外累计 silent_absent /
+    silent_wrong(与 safety_metrics / loop_generalization 同函数),供
+    promote Gate 2 使用;无标注则 safety_status=unscored。
     """
     from .harness import load_active
     from .routing import apply_absent_expected, route_slots
+    from .safety_metrics import (
+        SAFETY_NOTE_SCORED,
+        SAFETY_NOTE_UNSCORED,
+        annotations_available,
+        empty_counts,
+        score_routes,
+    )
 
     workspace = Path(workspace)
     active = load_active(workspace)
@@ -366,6 +377,10 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
 
     runs = sorted((workspace / "runs").glob("run-*"))
     comparisons = []
+    all_docs: list[str] = []
+    base_route_rows: list[dict] = []
+    cand_route_rows: list[dict] = []
+    understand_by_doc: dict[str, dict | None] = {}
     for run_dir in runs:
         if not (run_dir / "event_log.jsonl").exists():
             continue
@@ -385,6 +400,7 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
                          (cand_policy.get("absent_expected_cohorts") or [])}
         facts = []
         for doc in run_manifest.get("docs", []):
+            all_docs.append(doc)
             udata = None
             raw_path = raw_root / f"{doc}.understand.json"
             if raw_path.exists():
@@ -393,6 +409,7 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
                 output = body.get("output") or {}
                 data = output.get("data") if isinstance(output, dict) else None
                 udata = data if isinstance(data, dict) else None
+            understand_by_doc[doc] = udata
             from .matrix import derive_document_records, facts_of
 
             blocking = [
@@ -414,6 +431,11 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
             stored = json.loads(routing_path.read_text(encoding="utf-8"))
             base_routes = {f"{r['doc_id']}|{r['field']}": r["route"]
                            for r in stored.get("routes", [])}
+            for r in stored.get("routes", []):
+                base_route_rows.append({
+                    "doc_id": r["doc_id"], "field": r["field"],
+                    "route": r["route"],
+                })
         else:  # 2026-08-05 前的 run 没有 routing_report,用 requires 推
             matrix = json.loads(
                 (run_dir / "support_matrix.json").read_text(encoding="utf-8"))
@@ -422,8 +444,16 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
                     "review" if r.get("requires_adjudication") else "auto_accept"
                 for r in matrix["rows"]
             }
+            for r in matrix["rows"]:
+                base_route_rows.append({
+                    "doc_id": r["doc_id"], "field": r["field"],
+                    "route": base_routes[f"{r['doc_id']}|{r['field']}"],
+                })
         cand_routes = route_slots(apply_absent_expected(facts, cand_policy),
                                   cand_policy, tier_of=_tier_of)
+        cand_route_rows.extend(
+            {"doc_id": r["doc_id"], "field": r["field"], "route": r["route"]}
+            for r in cand_routes)
         auto = ("auto_accept", "auto_absent")
         relaxed = []
         for r in cand_routes:
@@ -442,6 +472,23 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
     total_slots = sum(c["slots"] for c in comparisons)
     total_base = sum(c["baseline_review"] for c in comparisons)
     total_cand = sum(c["candidate_review"] for c in comparisons)
+
+    scored = bool(all_docs) and annotations_available(all_docs)
+    if scored:
+        base_counts = score_routes(
+            base_route_rows,
+            understand_of=lambda d: understand_by_doc.get(d),
+        )
+        cand_counts = score_routes(
+            cand_route_rows,
+            understand_of=lambda d: understand_by_doc.get(d),
+        )
+        safety_note = SAFETY_NOTE_SCORED
+    else:
+        base_counts = empty_counts()
+        cand_counts = empty_counts()
+        safety_note = SAFETY_NOTE_UNSCORED
+
     return {
         "candidate": candidate_id,
         "baseline_harness": active["harness_id"],
@@ -454,8 +501,30 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
         "review_load_baseline": total_base / max(total_slots, 1),
         "review_load_candidate": total_cand / max(total_slots, 1),
         "delta_pp": (total_cand - total_base) / max(total_slots, 1) * 100,
-        "note": ("反事实重路由(不重跑抽取与门禁);「被放松槽是否有害」"
-                 "需要 EVO 语料的真值评测(sealed 协议),本报告不给安全性结论"),
+        "safety_status": "scored" if scored else "unscored",
+        "silent_absent_baseline":
+            base_counts["silent_absent"] if scored else None,
+        "silent_absent_candidate":
+            cand_counts["silent_absent"] if scored else None,
+        "silent_wrong_baseline":
+            base_counts["silent_wrong"] if scored else None,
+        "silent_wrong_candidate":
+            cand_counts["silent_wrong"] if scored else None,
+        "absent_hits_baseline":
+            base_counts["absent_hits"] if scored else None,
+        "absent_hits_candidate":
+            cand_counts["absent_hits"] if scored else None,
+        "value_hits_baseline":
+            base_counts["value_hits"] if scored else None,
+        "value_hits_candidate":
+            cand_counts["value_hits"] if scored else None,
+        "safety_note": safety_note,
+        "note": (
+            "反事实重路由(不重跑抽取与门禁);"+safety_note
+            if scored else
+            ("反事实重路由(不重跑抽取与门禁);「被放松槽是否有害」"
+             "需要 EVO 语料的真值评测(sealed 协议),本报告不给安全性结论")
+        ),
     }
 
 
@@ -553,6 +622,48 @@ def promote(workspace: Path, candidate_id: str, *, approved_by: str,
     if not evaluation["runs"] or not evaluation["evaluated_slots"]:
         raise ValueError(
             "评测覆盖为零(没有有效 run / 没有受评槽)—— 空评测不构成晋升依据")
+
+    # Gate 2 + Gate 3(弱):有真值则静默错不升、复核负载不升
+    safety_status = evaluation.get("safety_status") or "unscored"
+    if safety_status == "scored":
+        sa_b = evaluation["silent_absent_baseline"]
+        sa_c = evaluation["silent_absent_candidate"]
+        sw_b = evaluation["silent_wrong_baseline"]
+        sw_c = evaluation["silent_wrong_candidate"]
+        if sa_c > sa_b:
+            raise ValueError(
+                f"Gate 2 拒绝:silent_absent {sa_b} → {sa_c}(上升不许晋升)")
+        if sw_c > sw_b:
+            raise ValueError(
+                f"Gate 2 拒绝:silent_wrong {sw_b} → {sw_c}(上升不许晋升)")
+        if evaluation["review_load_candidate"] > evaluation["review_load_baseline"]:
+            raise ValueError(
+                "Gate 3 拒绝:review_load 上升 —— 安全门通过也不能用更高人工负载换")
+        gate = "pareto_gated"
+        # SEALED-2 workspace 跑通后可升 sealed2_qualified;默认仍限 evo 真值回放
+        sealed2_marker = workspace / "improve" / "sealed2_qualified.ok"
+        if sealed2_marker.exists():
+            basis = "sealed2_qualified"
+            claim_limits = (
+                "已在 SEALED-2 资格集上通过 Gate 2(静默错不升)+ 负载不升;"
+                "公开口径可说「在未见封箱集上负载不升且静默错不升」,"
+                "仍不得把 SEALED-1/HITL 当 final held-out。"
+            )
+        else:
+            basis = "evo_truth_replay"
+            claim_limits = (
+                "在本 workspace 已有真值文档上:负载不升且静默错不升;"
+                "仍未经未见封箱资格集(SEALED-2)评测 —— "
+                "不得声称「在未见数据上减少人工」。"
+            )
+    else:
+        gate = "eval_reexecuted"
+        basis = "evo_replay_only"
+        claim_limits = (
+            "未经未见资格集评测 —— 公开口径仅限「实现了有界改进机制」,"
+            "不得声称「在未见数据上减少人工」"
+        )
+
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("provenance") != "human_authored":
         # 机器提议的候选:cohort 白名单 lint 是硬边界;人类署名候选的
@@ -580,12 +691,10 @@ def promote(workspace: Path, candidate_id: str, *, approved_by: str,
         "to_harness_id": candidate_id,
         "to_policy_digest": cand_sha,
         "evaluation_digest": hashlib.sha256(eval_path.read_bytes()).hexdigest(),
-        "gate": "eval_reexecuted",
-        # 命名诚实(评审裁决五):没有未见资格集(PROMOTION set)的晋升
-        # 只是 demo activation;「在未见数据上安全减负」不许这么声称
-        "basis": "evo_replay_only",
-        "claim_limits": "未经未见资格集评测 —— 公开口径仅限「实现了有界改进机制」,"
-                        "不得声称「在未见数据上减少人工」",
+        "gate": gate,
+        "basis": basis,
+        "claim_limits": claim_limits,
+        "safety_status": safety_status,
         "approved_by": approved_by.strip(),
         "approved_at": approved_at.strip(),
         "rationale": rationale.strip(),
@@ -664,3 +773,23 @@ def rollback(workspace: Path, *, to_harness_id: str, approved_by: str,
         "rollback_harness_id": active["harness_id"],
     }
     return _append_promotion(workspace, record)
+
+
+def mark_sealed2_qualified(workspace: Path, *, note: str = "") -> Path:
+    """人工确认 SEALED-2 评测已过 Gate 2 后挂资格标记。
+
+    存在 `improve/sealed2_qualified.ok` 时,scored promote 的 basis 升为
+    `sealed2_qualified`。本函数不跑评测、不调 API —— 只落盘标记。
+    """
+    workspace = Path(workspace)
+    improve_dir = workspace / "improve"
+    improve_dir.mkdir(parents=True, exist_ok=True)
+    path = improve_dir / "sealed2_qualified.ok"
+    body = {
+        "marked_at_protocol": "docs/SEALED2_PROTOCOL.md",
+        "doc_list": "docs/sealed2_doc_list.json",
+        "note": note.strip(),
+    }
+    path.write_text(json.dumps(body, indent=1, ensure_ascii=False) + "\n",
+                    encoding="utf-8")
+    return path

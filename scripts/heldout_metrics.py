@@ -21,15 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from invoiceloop.eval_norm import eval_normalise as normalise
 from invoiceloop.fields import FIELD_KINDS
-from invoiceloop.ocr import derisk_root
-
-DOCILE_TO_FIELD = {
-    "document_id": "invoice_number", "date_issue": "issue_date", "date_due": "due_date",
-    "vendor_name": "seller_name", "vendor_tax_id": "seller_vat_id",
-    "customer_billing_name": "buyer_name", "amount_total_net": "total_net",
-    "amount_total_tax": "total_vat", "amount_total_gross": "total_gross",
-    "amount_due": "amount_due",
-}
+from invoiceloop.safety_metrics import DOCILE_TO_FIELD, truth  # noqa: F401
 
 BANDS = {
     "H1 lift": (1.5, None),
@@ -39,18 +31,6 @@ BANDS = {
     "H5 citation 失败率": (None, 0.15),
     "H6 冻结拒绝率": (0.05, 0.35),
 }
-
-
-def truth(doc_id: str) -> dict[str, str]:
-    path = derisk_root() / "data" / "docile" / "annotations" / f"{doc_id}.json"
-    if not path.exists():
-        return {}
-    out: dict[str, str] = {}
-    for item in json.loads(path.read_text())["field_extractions"]:
-        name = DOCILE_TO_FIELD.get(item.get("fieldtype"))
-        if name and item.get("text"):
-            out.setdefault(name, item["text"])
-    return out
 
 
 def measure(run_dir: Path) -> dict[str, float]:

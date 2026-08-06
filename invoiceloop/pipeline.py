@@ -221,6 +221,11 @@ def run(
     from .harness import load_active
 
     active = load_active(derisk_root())
+    from .adaptive import load_agentic_policy
+
+    agentic_policy = load_agentic_policy(derisk_root())
+    agentic_optional = frozenset(
+        d for d, pol in agentic_policy.items() if pol == "optional_skipped")
     gate_report = gates.run_gates(
         doc_ids,
         understand=understand, agentic=agentic, vision_answers=vision_answers,
@@ -230,6 +235,7 @@ def run(
         absent_expected=frozenset(
             c["field"] for c in active["policy"].get("absent_expected_cohorts", [])
             if c.get("field")),
+        agentic_optional=agentic_optional,
     )
     _write_json(out_dir / "gate_report.json", gate_report)
     emit("gates_evaluated",

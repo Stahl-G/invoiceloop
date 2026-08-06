@@ -33,6 +33,11 @@ def _sha_or_none(path: Path) -> str | None:
     return sha256_file(path) if path.exists() else None
 
 
+def _adaptive_token(root: Path) -> str:
+    from .adaptive import adaptive_fingerprint_token
+    return adaptive_fingerprint_token(root)
+
+
 def _code_revision() -> str | None:
     """当前代码的 git commit —— 门禁与规范化规则就是「策略」,策略的版本
     就是代码版本(78 评 P4)。装在非 git 环境(如打包安装)则为 None,
@@ -110,6 +115,7 @@ def build_input_manifest(doc_ids: list[str], *, include_vision: bool = True) -> 
         "harness_id": active["harness_id"],
         "harness_digest": active["policy_digest"],
         "routing_engine": "routing-v1",
+        "adaptive": _adaptive_token(derisk_root()),
     }
     manifest.update(execution)
     manifest["execution_fingerprint"] = hashlib.sha256(

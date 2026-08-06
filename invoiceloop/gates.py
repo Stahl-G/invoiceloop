@@ -182,6 +182,7 @@ def run_gates(
     ocr_blocked: frozenset[str] = frozenset(),
     duplicate_groups: list[dict] | None = None,
     absent_expected: frozenset[str] = frozenset(),
+    agentic_optional: frozenset[str] = frozenset(),
 ) -> dict:
     """门禁事务(§5.3):绑定确切工件哈希后运行;签名对不上则拒绝执行由调用方检查。
 
@@ -195,6 +196,8 @@ def run_gates(
     cohort 的字段集,来自 policy 不是代码)—— 缺值不再是阻断发现:
     裁决记 expected_absent,finding 降为 info 级非阻断。缺值的**事实**
     照记(verdict 不是 pass),只是后果从「必须人裁」变成「政策确认缺失」。
+    agentic_optional:L1 adaptive 故意跳过 agentic 的文档 —— 缺 agentic
+    不记文档级阻断;cross_mode 记 unavailable/not_applicable。
     返回 gate_report:evaluations(每 doc×field×gate 的裁决)+ findings + 输入签名。
     """
     acc = GateAccumulator()
@@ -226,7 +229,8 @@ def run_gates(
             continue
         try:
             _evaluate_doc(doc_id, u, a, vision_answers, acc, per_field,
-                          absent_expected=absent_expected)
+                          absent_expected=absent_expected,
+                          agentic_optional=doc_id in agentic_optional)
         except Exception as exc:  # noqa: BLE001 —— 门禁自己出错也是阻断发现
             # 宪章四:一个门禁崩在一份文档上,不许带垮整批,也不许假装评过
             acc.add(Finding(
@@ -284,14 +288,18 @@ def _evaluate_doc(
     acc: GateAccumulator,
     per_field: dict[str, dict[str, str]],
     absent_expected: frozenset[str] = frozenset(),
+    agentic_optional: bool = False,
 ) -> None:
     """评估一份文档的六个门禁;异常由 run_gates 记成阻断发现。"""
-    if a is None:
+    if a is None and not agentic_optional:
         acc.add(Finding(
             "cross_mode_agreement", doc_id, None, "high", "blocking",
             "re_extract", "agentic 响应缺失或 HTTP 非 200,重跑抽取",
             f"raw/{doc_id}.agentic.json", "DWS agentic 响应不可用,双模式门禁跑不了",
         ))
+    elif a is None and agentic_optional:
+        # L1 adaptive 故意跳过:不阻断;字段级 cross_mode 仍记 unavailable
+        pass
 
     failed_checks = _c1_c3(u.data)
     for check_id, fields_hit in failed_checks.items():
