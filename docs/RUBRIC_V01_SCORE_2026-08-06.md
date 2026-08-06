@@ -102,6 +102,26 @@ E 的另一半扣分(与上轮口径衔接):记分层不含任何 KILE/LIR 形�
 
 ---
 
+## 四b、与官方 brief 的对照(2026-08-06 拿到原文后追记)
+
+rubric v0.1 是从官方要求反推的,冻结在先。拿到 brief 原文后核对:**判据方向
+成立,不修改任何权重**(改了就是事后量身定做)。但有两处 brief 明说、
+而本 rubric 未单独设权的能力,登记为**评分之外的真实风险**:
+
+1. **DWS Viewer**:brief 的五个 spark 里有四个把 Viewer 点名为人工复核面。
+   InvoiceLoop 用的是自建 stdlib workbench。按 rubric D 的原文
+   (「一个 API 用得深优于三个装饰性调用」)**不扣分,D 仍 15/15**;
+   但出题方的偏好与本 rubric 的判据在此处不重合,属分数覆盖不到的风险。
+2. **数字签名**:brief 两次点名「digitally sign the result so its
+   authenticity is provable」。当前 audit bundle 的信任根是**带外公布的
+   sha256** —— `verify` 自己的 notes 就写着「verify 不是自己的信任根」。
+   这是整条审计链上唯一一处非密码学锚点,而 DWS 恰好提供签名。
+
+brief 对本项目论点的正面确认(不加分,但影响叙事选择):
+「deterministic, auditable output, with a human in the loop where a guess
+isn't acceptable」与 ARCHITECTURE §1 宪章几乎逐条同构;
+「'almost right' isn't good enough」即 GOAL.md 的静默错误问题。
+
 ## 五、剩余 ROI(合计 +3 → 96/96)
 
 | # | 动作 | 分 | 说明 |
