@@ -15,6 +15,13 @@
 - evidence bundle:`runs/sealed1-evidence.zip`(22MB,raw + 两臂工件 +
   名单 + 摘要)sha256 =
   `fca5f1e209373bb13fc9c31212e05136748b43429db2d937ef25c0b7750dc0ff`。
+- **DWS 签名封缄(2026-08-06)**:`runs/sealed1/audit_bundle.sealed.zip`
+  sha256 = `ad6a698cb6e45ba66f4063b2cf760440b13fa335cd896b64fed6f2b6d4f33132`,
+  CAdES b-lt 签名(签署者 `CN=Nutrient DWS API Test Document Signer`,
+  可信时间戳在签名内)。verify 五层全过(成员/快照/语义/签名;
+  空裁决故绑定 None)。**诚实边界不变**:签名固定的是「这份 manifest
+  摘要于时间 T 经过 DWS 签名且未改」,签发主体是 Nutrient 的测试签名
+  证书,不是本项目 —— 「谁造的包」仍锚在带外。
 
 ## 主终点:H1–H7(主臂 HAR-0001;通过区间沿用旧 HELDOUT 预注册)
 
