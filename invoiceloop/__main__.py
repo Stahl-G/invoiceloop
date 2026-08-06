@@ -68,6 +68,11 @@ def _main() -> None:
     p_seal = sub.add_parser("seal", help="DWS 签名封缄 audit bundle(需 NUTRIENT_API_KEY)")
     p_seal.add_argument("--run", type=Path, required=True)
 
+    p_carry = sub.add_parser("carry", help="同证据裁决携带:旧 run 的裁决搬进最新 run")
+    p_carry.add_argument("--run", type=Path, required=True)
+    p_carry.add_argument("--decided-at", default=None,
+                         help="ISO 时间(默认当前 UTC —— 执行 carry 即人在给时间)")
+
     p_wb = sub.add_parser("workbench", help="H1 复核工作台:本地 loopback Web 应用(127.0.0.1)")
     p_wb.add_argument("--workspace", type=Path, required=True)
     p_wb.add_argument("--port", type=int, default=8765)
@@ -245,6 +250,15 @@ def _main() -> None:
         from .seal import seal_run
 
         print(seal_run(args.run))
+    elif args.command == "carry":
+        from datetime import datetime, timezone
+
+        from .carry import carry_forward
+
+        decided_at = args.decided_at or datetime.now(
+            timezone.utc).replace(microsecond=0).isoformat()
+        print(json.dumps(carry_forward(args.run, decided_at=decided_at),
+                         ensure_ascii=False, indent=1))
     elif args.command == "workbench":
         from .workbench import cmd_workbench
 

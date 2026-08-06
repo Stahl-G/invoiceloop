@@ -76,6 +76,7 @@ def append_adjudication(
     supersedes_decision_id: str | None = None,
     reason_code: str | None = None,
     reviewer_confidence: str | None = None,
+    carried_from_decision_id: str | None = None,
 ) -> dict:
     """追加一条裁决并 fsync。时间由调用方注入 —— 工件本身不读墙钟(可复算)。
 
@@ -233,6 +234,10 @@ def append_adjudication(
                 entry["reason_code"] = reason_code
             if reviewer_confidence is not None:
                 entry["reviewer_confidence"] = reviewer_confidence
+            if carried_from_decision_id is not None:
+                # 同证据携带(carry.py):不是新的人工判断,是同一人对同一份
+                # 证据的判断的机械搬运 —— 溯源字段让账本自己说得清
+                entry["carried_from_decision_id"] = carried_from_decision_id
             with (run_dir / "adjudication_ledger.jsonl").open("a", encoding="utf-8") as fh:
                 fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
                 fh.flush()
