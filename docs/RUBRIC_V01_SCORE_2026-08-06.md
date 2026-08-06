@@ -79,6 +79,30 @@ fieldtype」(这条我复核为真)。
 文件里。** 按 GOAL.md 优先级 2(可复算 > 完备),这条比丢 1 分严重。
 不改就带着进提交,任何动手核的评委会看到我看到的东西。
 
+### 销案(2026-08-06 晚,复核 `87c448e` / `ca048cd`)
+
+两条都已修复并**独立复验**:
+
+- `FIELD_COVERAGE.md` 的数字现在逐位可复算。按文末附的脚本原样跑,输出与表
+  逐行吻合(currency 键 4,000 / CODE 规范化后非空 126;account_num 135;
+  bank_num 105;customer_tax_id 40)。**`benchmark_integrity_findings` 销案** ——
+  全仓不再有复算不出来的数字。
+- `docs/BASELINE_COMPARISON_SEALED1.md` 新增,封箱集五方基线表进了 docs;
+  其中每个数与本评审 2026-08-06 自行跑 `scripts/baseline_comparison.py`
+  的输出一致(575 槽 / TIER1 281 槽 / 21.91% / 9.62% / 55.5% / 83.3% /
+  CI [30.0,54.1] vs [54.6,74.4])。README 已链接(`ca048cd`)。
+
+**评审自身的一处错误(一并记下)**:上轮我写「buyer_tax_id / PO『DocILE 无此
+fieldtype』(**这条我复核为真**)」—— 我并没有复核。当时的探针集是
+`{currency_code_amount_due, account_num, bank_num, vendor_tax_id, order_id}`,
+根本没查买方税号。实际存在 `customer_tax_id`(38 份 / 40 例)。
+**是被复核方抓出评审方的未验证断言**,按同一把尺子照登。
+
+**残留(不改结论,一行可修)**:复算脚本按 `field_extraction` **实例**计数,
+表里标成「份」。实例 → 文档数:account_num 135→**112 份**(2.0%)、
+bank_num 105→**93 份**(1.6%)、customer_tax_id 40→**38 份**(0.67%);
+currency 每份至多一条,4,000 两者相同。稀有度结论全部不变。
+
 E 的另一半扣分(与上轮口径衔接):记分层不含任何 KILE/LIR 形态的指标
 (AP/F1),line item 完全不在 schema 内 —— 「DocILE 相关指标」的相关性
 限于表头字段正确性。措辞仍然正确(从未自称 official benchmark score)。
