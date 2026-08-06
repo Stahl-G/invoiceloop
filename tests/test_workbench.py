@@ -864,3 +864,13 @@ class TestQueueSearch:
         # 搜索状态在 chip 链接里保持(翻 filter 不丢搜索词)
         _, _, text4 = _req(server, "GET", f"/queue?run={RUN}&q={DOC[:6]}&lang=zh")
         assert f"q={DOC[:6]}" in text4
+
+    def test_adjudicate_evidence_collapsed_queue_open(self, workspace, server):
+        """证据区:队列页默认摊开(2026-08-03 反馈),裁决页默认收起
+        (2026-08-06 反馈)—— 两处场景各自默认。"""
+        _, _, queue_text = _req(server, "GET", f"/queue?run={RUN}&filter=all")
+        assert '<details class="wb-evidence" open>' in queue_text
+        _, _, adj_text = _req(
+            server, "GET", f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross")
+        assert '<details class="wb-evidence">' in adj_text
+        assert '<details class="wb-evidence" open>' not in adj_text

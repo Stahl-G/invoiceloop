@@ -913,18 +913,19 @@ a:hover { text-decoration: underline; }
     line-height: 0;  /* img 基线缝隙 */
 }
 .wb-page { display: block; width: 100%; height: auto; }
-/* 高亮框:对比要足(投影可见)—— 3px 描边 + 半透明填充 + 外描影。
-   冻结绑定 = 确定性机检结果 → 绿实线;DWS 引用 = advisory → 紫虚线。 */
+/* 高亮框:看得见但不挡字(2026-08-06 用户实测:3px 太粗,糊住文本)——
+   细描边 + 极淡填充;冻结绑定 = 绿实线(机检确定性);
+   DWS 引用 = 紫虚线(advisory)。 */
 .wb-hl { position: absolute; border-radius: 2px; }
 .wb-hl-bind {
-    border: 3px solid var(--wb-pass);
-    background: rgba(44, 122, 75, 0.18);
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.65);
+    border: 1.5px solid var(--wb-pass);
+    background: rgba(44, 122, 75, 0.08);
+    box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.5);
 }
 .wb-hl-cited {
-    border: 3px dashed var(--wb-advisory);
-    background: rgba(109, 75, 196, 0.20);
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.65);
+    border: 1.5px dashed var(--wb-advisory);
+    background: rgba(109, 75, 196, 0.08);
+    box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.5);
 }
 .wb-legend {
     display: flex;
@@ -942,12 +943,12 @@ a:hover { text-decoration: underline; }
     border-radius: 2px;
 }
 .wb-legend-swatch.bind {
-    border: 3px solid var(--wb-pass);
-    background: rgba(44, 122, 75, 0.18);
+    border: 1.5px solid var(--wb-pass);
+    background: rgba(44, 122, 75, 0.08);
 }
 .wb-legend-swatch.cited {
-    border: 3px dashed var(--wb-advisory);
-    background: rgba(109, 75, 196, 0.20);
+    border: 1.5px dashed var(--wb-advisory);
+    background: rgba(109, 75, 196, 0.08);
 }
 
 /* 底栏:上一条 / 下一条未裁决 + 进度,sticky 贴底 */

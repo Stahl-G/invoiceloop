@@ -636,6 +636,21 @@ class Workbench:
                 for p in self.runs() if (p / "event_log.jsonl").exists()
             )
             runs_nav = f'<span class="wb-runs">{links}</span>'
+        # 搜索框放顶栏(2026-08-06 用户要求):全局可达,提交去队列页;
+        # 当前页带 q 参数时保留原词
+        search_nav = ""
+        if nav_run:
+            q = ""
+            if keep_params is not None:
+                q = (keep_params.get("q") or [""])[0]
+            search_nav = (
+                f'<form class="wb-search wb-search-top" method="get" action="/queue">'
+                f'<input type="hidden" name="run" value="{_esc(nav_run)}">'
+                f'<input type="hidden" name="lang" value="{_esc(lang)}">'
+                f'<input type="search" name="q" value="{_esc(q)}" '
+                f'placeholder="{_esc(_t(lang, "search_ph"))}">'
+                f'<button type="submit" class="wb-search-btn">'
+                f'{_esc(_t(lang, "search_btn"))}</button></form>')
         return f"""<!DOCTYPE html>
 <html lang="{'zh' if lang == 'zh' else 'en'}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -646,6 +661,7 @@ class Workbench:
 <span class="wb-brand">{_esc(_t(lang, 'brand'))}</span>
 <nav class="wb-tabs">{''.join(tabs)}</nav>
 {runs_nav}
+{search_nav}
 <span class="wb-lang"><a href="{lang_href}">{"中文" if other == "zh" else "EN"}</a></span>
 </div></div>
 <div class="wb-thesis">{_esc(_t(lang, 'thesis'))}</div>
@@ -711,7 +727,7 @@ class Workbench:
 <div class="wb-progress" title="{_esc(_t(lang, 'reviewed', x=decided, y=len(rows)))}">
 <div class="wb-progress-bar" style="width:{pct}%"></div></div>
 <p>{_esc(_t(lang, 'reviewed', x=decided, y=len(rows)))}</p>
-<div class="wb-filters">{chips}{search}</div>
+<div class="wb-filters">{chips}</div>
 {''.join(cards)}
 <div class="wb-footer">{_esc(_t(lang, 'snapshot'))}={_esc(ctx.snapshot_id)}<br>
 field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__version__}</div>"""
@@ -830,7 +846,8 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         return (f'<div class="wb-vision-suggest"><span class="wb-vs-label">{label}</span> '
                 f'<span class="wb-vs-split">{_esc(_t(lang, "vision_split"))}:{split}</span></div>')
 
-    def _evidence(self, lang: str, ctx: RunCtx, row: dict) -> str:
+    def _evidence(self, lang: str, ctx: RunCtx, row: dict,
+                  open_by_default: bool = True) -> str:
         parts = []
         containing = [ctx.spans_by_id[s] for s in row["span_ids"] if s in ctx.spans_by_id]
         cited = [ctx.spans_by_id[s] for s in row.get("cited_span_ids", [])
@@ -867,10 +884,12 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
             items = "".join(f"<li>{_esc(_lim(lang, x))}</li>" for x in row["limitations"])
             parts.append(f"<ul>{items}</ul>")
         inner = "".join(parts) or "—"
-        # 默认摊开:证据是复核的主信息,不是高级选项 —— 每行多点一下才看得见,
-        # 这个交互就是无意义的(2026-08-03 用户原话)。仍可手动折叠。
-        return (f'<details class="wb-evidence" open><summary>{_esc(_t(lang, "evidence"))}'
-                f"</summary>{inner}</details>")
+        # 队列页默认摊开:证据是复核的主信息(2026-08-03 用户原话);
+        # 单槽裁决页默认收起(2026-08-06 用户实测:判定卡一屏放不下,
+        # 要看再展开)—— 两处场景不同,各自默认
+        open_attr = " open" if open_by_default else ""
+        return (f'<details class="wb-evidence"{open_attr}><summary>'
+                f'{_esc(_t(lang, "evidence"))}</summary>{inner}</details>')
 
     def _decide_form(self, lang: str, ctx: RunCtx, row: dict, tip: dict | None,
                      conflict: bool, n_orphans: int, adjudicator: str,
@@ -1135,7 +1154,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 {policy}
 </div>
 {self._vision_suggest(lang, ctx, row)}
-{self._evidence(lang, ctx, row)}
+{self._evidence(lang, ctx, row, open_by_default=False)}
 {self._decide_form(lang, ctx, row, tip, conflict, n_orphans, adjudicator,
                    next_hint="adjudicate")}
 </div>"""
