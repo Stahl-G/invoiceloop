@@ -124,7 +124,8 @@ python3 -m invoiceloop workbench --workspace demo-ws   # http://127.0.0.1:8765
 
 Numbers you can recompute: triage lift 4.03× on the sealed set
 (pre-registered thresholds), TIER1 silent-error 9.62% vs 21.91% for a
-confidence-threshold baseline at a fixed operating point, decision load
+confidence-threshold baseline at a fixed operating point
+(table: docs/BASELINE_COMPARISON_SEALED1.md), decision load
 for release 82.9% → 64.2% under the promoted HAR-0002 policy — all from
 stored evidence, no API calls needed to verify.
 
