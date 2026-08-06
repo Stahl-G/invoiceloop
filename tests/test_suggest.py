@@ -157,3 +157,49 @@ class TestPacket:
         assert "收紧信号,优先看" in text
         assert any(n["rationale"] == "EIN 不是 VAT" for n in notes), \
             "推翻的原话也要可引用 —— 它是最该被读到的一条"
+
+
+class TestProvenance:
+    """工件必须如实记录**真正被调用的**模型 —— 顾问层的溯源就靠这一行。"""
+
+    def _ws(self, tmp_path):
+        (tmp_path / "improve").mkdir()
+        (tmp_path / "improve" / "mine_report.json").write_text(json.dumps({
+            "cohorts": [{"field": "seller_vat_id", "tier": "TIER1",
+                         "support_strength": "unsupported", "route": "review",
+                         "reviewed": 3, "accepted": 0, "corrected": 0,
+                         "rejected": 0, "confirmed_absent": 3,
+                         "notes": [NOTES[0]]}]}), encoding="utf-8")
+        return tmp_path
+
+    def test_recorded_model_is_the_one_actually_called(self, tmp_path,
+                                                       monkeypatch):
+        """回归:调用走 INVOICELOOP_SUGGEST_MODEL,记录却写 default_model ——
+        实测产出的 suggestions.json 标着 deepseek,真正调的是 mimo。"""
+        ws = self._ws(tmp_path)
+        monkeypatch.setattr("invoiceloop.vision_ingest._credentials",
+                            lambda: ("k", "https://x", "default-model"))
+        monkeypatch.setenv("INVOICELOOP_SUGGEST_MODEL", "actually-called")
+        seen = {}
+
+        def fake_ask(packet, *, key, base_url, model):
+            seen["model"] = model
+            return {"suggestions": []}
+
+        monkeypatch.setattr(suggest, "_ask", fake_ask)
+        out = suggest.suggest(ws)
+        assert seen["model"] == "actually-called"
+        assert out["model"] == seen["model"], \
+            "记录的模型必须就是被调用的那个,不许各算各的"
+
+
+class TestBudget:
+    def test_budget_is_env_overridable_with_a_floor(self, monkeypatch):
+        monkeypatch.delenv("INVOICELOOP_SUGGEST_MAX_TOKENS", raising=False)
+        assert suggest._budget() == suggest._MAX_TOKENS
+        monkeypatch.setenv("INVOICELOOP_SUGGEST_MAX_TOKENS", "50000")
+        assert suggest._budget() == 50000
+        monkeypatch.setenv("INVOICELOOP_SUGGEST_MAX_TOKENS", "10")
+        assert suggest._budget() == 1024, "地板价:给太小等于必然截断"
+        monkeypatch.setenv("INVOICELOOP_SUGGEST_MAX_TOKENS", "不是数字")
+        assert suggest._budget() == suggest._MAX_TOKENS, "手滑不许把调用打崩"

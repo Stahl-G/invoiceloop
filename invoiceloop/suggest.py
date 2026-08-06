@@ -215,13 +215,17 @@ def suggest(workspace: Path, *, model: str | None = None,
         raise RuntimeError(
             "缺 ANTHROPIC_API_KEY —— suggest 是顾问层,没有 key 就没有建议;"
             "改进控制面(improve mine/propose/evaluate/promote)不受影响")
-    raw = _ask(packet, key=key, base_url=base_url,
-               model=model or os.environ.get("INVOICELOOP_SUGGEST_MODEL")
-               or default_model)
+    # 选定的模型只算一次,调用与记录用**同一个变量**。2026-08-06 之前
+    # 这两处是两个不同的表达式(调用带 INVOICELOOP_SUGGEST_MODEL,记录不带),
+    # 于是 suggestions.json 会写着一个根本没被调用过的模型名 ——
+    # 顾问层的工件对「谁写的这份草稿」说了假话,溯源就断在这里(宪章六)。
+    chosen = (model or os.environ.get("INVOICELOOP_SUGGEST_MODEL")
+              or default_model)
+    raw = _ask(packet, key=key, base_url=base_url, model=chosen)
     kept, dropped = validate(raw, notes)
     out = {
         "advisory": True,
-        "model": model or default_model,
+        "model": chosen,
         "note_count": len(notes),
         "suggestions": kept,
         "dropped": dropped,
@@ -241,25 +245,61 @@ def _write(workspace: Path, payload: dict) -> Path:
     return path
 
 
+#: 输出预算。推理型模型会先写一大段 thinking 块,预算给小了就全烧在推理上:
+#: deepseek-v4-flash 实测 2000 与 8000 都被整段吃掉(stop_reason=max_tokens、
+#: content 里只有一个 thinking 块,一个 text 块都没轮到)。给足,别让预算
+#: 成为「模型没说话」的伪装。`INVOICELOOP_SUGGEST_MAX_TOKENS` 可覆盖。
+_MAX_TOKENS = 32000
+#: 思考预算(effort)。留空 = 不传,由服务端默认;设了就按 Anthropic 的
+#: extended thinking 形状传 `thinking.budget_tokens`。
+_THINKING_ENV = "INVOICELOOP_SUGGEST_THINKING_BUDGET"
+
+
+def _budget() -> int:
+    raw = os.environ.get("INVOICELOOP_SUGGEST_MAX_TOKENS")
+    try:
+        return max(int(raw), 1024) if raw else _MAX_TOKENS
+    except ValueError:
+        return _MAX_TOKENS
+
+
 def _ask(packet: str, *, key: str, base_url: str, model: str) -> dict:
     """一次 messages 调用,取回 JSON。解析失败如实抛,不猜。"""
     import requests
 
     from .vision_ingest import API_VERSION
 
+    budget = _budget()
+    payload = {"model": model, "max_tokens": budget,
+               "messages": [{"role": "user",
+                             "content": f"{_PROMPT}\n\n{packet}"}]}
+    thinking = os.environ.get(_THINKING_ENV)
+    if thinking:
+        payload["thinking"] = {"type": "enabled",
+                               "budget_tokens": int(thinking)}
     response = requests.post(
         f"{base_url.rstrip('/')}/v1/messages",
         headers={"x-api-key": key, "anthropic-version": API_VERSION,
                  "content-type": "application/json"},
-        json={"model": model, "max_tokens": 2000,
-              "messages": [{"role": "user",
-                            "content": f"{_PROMPT}\n\n{packet}"}]},
-        timeout=120,
+        json=payload,
+        timeout=600,
     )
     response.raise_for_status()
     body = response.json()
+    # thinking 块没有 text 键,天然被跳过;这里只收模型真正写出来的答案
     text = "".join(b.get("text", "") for b in body.get("content", []))
     start, end = text.find("{"), text.rfind("}")
     if start < 0 or end <= start:
-        raise ValueError(f"模型没有返回 JSON:{text[:200]!r}")
+        # 宪章四:说清楚到底怎么了。「没返回 JSON」把「预算被推理烧光」
+        # 说成了「模型没说话」,照着这句话去调 prompt 会白费功夫
+        stop = body.get("stop_reason")
+        used = (body.get("usage") or {}).get("output_tokens")
+        kinds = [b.get("type") for b in body.get("content", [])]
+        if stop == "max_tokens":
+            raise ValueError(
+                f"模型在写完 JSON 之前用光了输出预算(stop_reason=max_tokens,"
+                f"output_tokens={used}/{budget},"
+                f"返回的块={kinds})—— 调大 _MAX_TOKENS 或换个话少的模型")
+        raise ValueError(
+            f"模型没有返回 JSON(stop_reason={stop},块={kinds}):{text[:200]!r}")
     return json.loads(text[start:end + 1])

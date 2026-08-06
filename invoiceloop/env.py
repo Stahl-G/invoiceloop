@@ -33,7 +33,12 @@ ALIASES: dict[str, tuple[str, ...]] = {
     "nutrient": ("NUTRIENT_API_KEY", "DWS_API_KEY"),
     "anthropic": ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"),
     "anthropic_base": ("ANTHROPIC_BASE_URL",),
-    "anthropic_model": ("ANTHROPIC_DEFAULT_SONNET_MODEL_NAME",
+    # ANTHROPIC_MODEL 排第一:它是用户直接指定模型的那个变量。2026-08-06
+    # 之前它不在表里 —— .env 里写了也不生效,实际读到的是宿主会话中的
+    # ANTHROPIC_DEFAULT_SONNET_MODEL,于是「我配的模型」与「真正被调的
+    # 模型」是两个东西,而且不报错(实测:配 mimo-v2.5,读到 deepseek)。
+    "anthropic_model": ("ANTHROPIC_MODEL",
+                        "ANTHROPIC_DEFAULT_SONNET_MODEL_NAME",
                         "ANTHROPIC_DEFAULT_SONNET_MODEL",
                         "ANTHROPIC_DEFAULT_HAIKU_MODEL"),
 }
