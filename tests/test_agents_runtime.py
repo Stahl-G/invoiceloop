@@ -1,4 +1,10 @@
-"""Tests for Gemini GenAI SDK Agent Runtime and Replay Harness."""
+"""运行时与录放。
+
+`call_gemini_model`(非结构化)已删除:它会吞掉 JSON 解析错误,
+机器消费的结果不许走那条路。只剩 `call_gemini_structured` 一条。
+ADK 流水线的录放走 `adk_replay`,按请求摘要绑定,测试在
+`test_agents_adk_pipeline.py`。
+"""
 
 from __future__ import annotations
 
@@ -10,7 +16,6 @@ from invoiceloop.agents.runtime import (
     AgentCallRecorder,
     ReplayRecordingMissing,
     GeminiCredentialMissing,
-    call_gemini_model,
     call_gemini_structured,
     is_replay_mode,
 )
@@ -58,45 +63,6 @@ class TestAgentCallRecorder:
         assert d == tmp_path / "agent_calls"
         # Verify raw/ was NOT created
         assert not (tmp_path / "raw" / "agents").exists()
-
-
-class TestCallGeminiModel:
-    def test_replay_with_recording(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("INVOICELOOP_REPLAY", "1")
-        monkeypatch.setenv("INVOICELOOP_NO_DOTENV", "1")
-        rec = AgentCallRecorder(tmp_path)
-        rec.record("gemini_test123", {
-            "output_text": "test response",
-            "output_json": {"key": "value"},
-            "model": "gemini-3.6-flash",
-        })
-        result = call_gemini_model(
-            prompt="test", workspace=tmp_path, call_id="gemini_test123"
-        )
-        assert result["replayed"] is True
-        assert result["text"] == "test response"
-        assert result["json"] == {"key": "value"}
-
-    def test_replay_raises_on_missing_recording(self, tmp_path, monkeypatch):
-        """Replay + no recording → ReplayRecordingMissing, NOT a fake stub (R4)."""
-        monkeypatch.setenv("INVOICELOOP_REPLAY", "1")
-        monkeypatch.setenv("INVOICELOOP_NO_DOTENV", "1")
-        with pytest.raises(ReplayRecordingMissing) as exc_info:
-            call_gemini_model(
-                prompt="test", workspace=tmp_path, call_id="missing_recording"
-            )
-        assert "missing_recording" in str(exc_info.value)
-
-    def test_no_key_and_not_replay_raises(self, tmp_path, monkeypatch):
-        """No API key + not in replay → GeminiCredentialMissing (R4)."""
-        monkeypatch.delenv("INVOICELOOP_REPLAY", raising=False)
-        monkeypatch.setenv("INVOICELOOP_NO_DOTENV", "1")
-        monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-        monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
-        with pytest.raises((GeminiCredentialMissing, ImportError)):
-            call_gemini_model(
-                prompt="test", workspace=tmp_path, call_id="test_no_key"
-            )
 
 
 class TestCallGeminiStructured:

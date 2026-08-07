@@ -125,6 +125,16 @@ def _main() -> None:
     p_sg.add_argument("--workspace", type=Path, required=True)
     p_sg.add_argument("--model", default=None)
 
+    p_ag = sub.add_parser(
+        "agents", help="ADK 层:改进循环由 Runner 执行(纯建议,不写账本)")
+    ag_sub = p_ag.add_subparsers(dest="agents_command", required=True)
+    p_agl = ag_sub.add_parser(
+        "improve-loop",
+        help="跑 ADK SequentialAgent(miner→proposer→evaluator→critic)")
+    p_agl.add_argument("--workspace", type=Path, required=True)
+    p_agl.add_argument("--model", default=None,
+                       help="缺省 gemini-3.6-flash;INVOICELOOP_REPLAY=1 走录音")
+
     p_imp = sub.add_parser("improve", help="改进控制面(v0.2 收窄版,全确定性零模型)")
     imp_sub = p_imp.add_subparsers(dest="improve_command", required=True)
     p_im = imp_sub.add_parser("mine", help="cohort 统计:找高频复核零修正")
@@ -309,6 +319,22 @@ def _main() -> None:
                           "file": str(args.workspace / "improve"
                                       / "suggestions.json")},
                          ensure_ascii=False, indent=1))
+    elif args.command == "agents":
+        from .agents.improve_loop import run_improve_loop
+
+        report = run_improve_loop(args.workspace, model=args.model)
+        print(json.dumps({
+            "advisory": report["advisory"],
+            "adk_executed": report["adk"]["executed"],
+            "stages": report["adk"]["event_authors"],
+            "model": report["model"],
+            "proposals": len(report["proposals"]),
+            "blocking_evaluations": report["blocking_evaluations"],
+            "recommended_for_human_review":
+                report["recommended_for_human_review"],
+            "file": str(args.workspace / "improve" / "adk_loop_report.json"),
+            "note": "建议而已 —— 晋升仍由 Gate 2 + 人签字决定",
+        }, ensure_ascii=False, indent=1))
     elif args.command == "improve":
         from . import improve
 

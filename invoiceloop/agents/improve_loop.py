@@ -1,298 +1,310 @@
-"""Gemini GenAI SDK & ADK Multi-Agent Improve Loop.
+"""改进循环:由 ADK `Runner` 真正执行的四阶段流水线。
 
-Orchestrates 4 distinct Agents via Google ADK SequentialAgent:
-1. MinerAgent: Identifies review patterns from mine_report.json.
-2. ProposerAgent: Drafts candidate policy cohorts or schema description diffs.
-3. CriticAgent (Adversarial): Evaluates proposals using Gemini structured output
-   with counterfactual evidence from improve.evaluate(). No hardcoded field rules.
-4. EvaluatorNode: Triggers deterministic `improve.evaluate()`.
+    Runner.run_async()
+      └─ SequentialAgent "improve_pipeline"
+           ├─ LlmAgent  miner      → state["miner"]        哪些复核模式值得成规则
+           ├─ LlmAgent  proposer   → state["proposals"]    规则怎么写才不过宽
+           ├─ Evaluator (BaseAgent)→ state["counterfactual"]  确定性,总是跑
+           └─ LlmAgent  critic     → state["critic"]       这条规则会丢掉真值吗
 
-Safety Constraint:
-- Single-Writer Discipline: Output is written ONLY to `improve/adk_loop_report.json`.
-  This is a SEPARATE file from `improve/suggestions.json` (which suggest.py owns).
-  Two producers must not write the same file.
-- Promotion remains gated by deterministic `Gate 2` and human signature.
+为什么 Evaluator 是自定义 `BaseAgent` 而不是工具:
+工具由模型决定调不调。宪章四说跑不了的检查不算通过 —— 反事实评测**必须**
+每次都跑。`SequentialAgent` 按顺序执行子节点,没有模型能跳过它。
+
+模型的权限边界(宪章一,单一写者):
+- 模型产出的是**建议**,字段叫 `recommend_for_human_review`,不叫 `accepted`。
+  它不批准任何东西,也不决定哪条候选值得评测 —— 全部候选都被确定性评测。
+- 输出只写 `improve/adk_loop_report.json`;`suggestions.json` 归 suggest.py。
+- 晋升仍然只由 Gate 2 + 人签字决定,本模块不碰。
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
+from collections.abc import AsyncGenerator
 from pathlib import Path
 from typing import Any, Literal
 
+from google.adk.agents import BaseAgent, LlmAgent, SequentialAgent
+from google.adk.agents.readonly_context import ReadonlyContext
+from google.adk.events import Event, EventActions
+from google.adk.models.base_llm import BaseLlm
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
+from google.genai import types
 from pydantic import BaseModel
-from google.adk.agents import LlmAgent, SequentialAgent, LoopAgent
 
 from invoiceloop import improve
-from .runtime import call_gemini_structured, is_replay_mode, _resolve_model
+
+from .adk_replay import replay_callbacks
+from .runtime import _resolve_model
+
+APP_NAME = "invoiceloop_improve"
+PIPELINE_STAGES = ("miner", "proposer", "evaluator", "critic")
+
+#: session state 键 —— 单一来源,指令/节点/报告全部引用这里
+STATE_MINE_REPORT = "mine_report"
+STATE_MINER = "miner"
+STATE_PROPOSALS = "proposals"
+STATE_COUNTERFACTUAL = "counterfactual"
+STATE_CRITIC = "critic"
 
 
-# ── Pydantic schemas for structured output ────────────────────────
+# ── 结构化输出契约 ────────────────────────────────────────────────
 
-class CriticVerdict(BaseModel):
-    """Structured verdict from the adversarial critic agent."""
-    accepted: bool
+class MinerCandidate(BaseModel):
+    field: str
+    tier: str
+    reviewed: int
+    why: str
+
+
+class MinerFindings(BaseModel):
+    candidates: list[MinerCandidate]
+
+
+class ProposalCohort(BaseModel):
+    field: str
+    tier: str
+
+
+class Proposal(BaseModel):
+    action: str
+    cohort: ProposalCohort
+    finding: str
+    prediction: str
+
+
+class ProposalSet(BaseModel):
+    proposals: list[Proposal]
+
+
+class Verdict(BaseModel):
+    """模型的**建议**,不是批准。
+
+    字段名刻意不叫 `accepted` / `approved` / `safe`:模型没有放行权,
+    它能说的只有「这条值不值得人看」和「风险在哪」。
+    """
+
+    cohort_field: str
+    recommend_for_human_review: bool
     risk: Literal["LOW", "MEDIUM", "HIGH"]
     reason: str
     values_at_risk: list[str]
 
 
-class MinerSummary(BaseModel):
-    """Structured output from the miner agent's analysis."""
-    top_candidates: list[dict[str, Any]]
-    pattern_summary: str
-    total_reviewed: int
+class CriticReview(BaseModel):
+    verdicts: list[Verdict]
 
 
-# ── Tool Functions (ADK Tooling) ──────────────────────────────────
+# ── 确定性节点 ────────────────────────────────────────────────────
 
-def mine_report_tool(workspace_str: str) -> dict[str, Any]:
-    """Scans mine_report.json for high-frequency, un-overturned review patterns."""
-    workspace = Path(workspace_str)
-    report_path = workspace / "improve" / "mine_report.json"
-    if not report_path.exists():
-        improve.mine(workspace)
-    if not report_path.exists():
-        return {"candidates": []}
+def cohort_key(cohort: dict[str, Any]) -> str:
+    """反事实结果的键 —— 整个 cohort 的规范化形式,不是 field。
 
-    report = json.loads(report_path.read_text(encoding="utf-8"))
-    low_yield = report.get("low_yield_candidates", [])
-    return {
-        "candidates": low_yield,
-        "buckets": report.get("buckets", {}),
-        "total_cohorts": len(report.get("cohorts", [])),
-    }
-
-def propose_cohorts_tool(miner_output: dict[str, Any]) -> list[dict[str, Any]]:
-    """Formulates candidate policy cohorts from miner findings."""
-    proposals = []
-    for cand in miner_output.get("candidates", []):
-        field = cand.get("field")
-        tier = cand.get("tier")
-        strength = cand.get("support_strength")
-        if field and tier:
-            cohort = {"field": field, "tier": tier}
-            if strength:
-                cohort["strength"] = strength
-            proposals.append({
-                "action": "auto_accept",
-                "cohort": cohort,
-                "finding": f"Reviewed {cand.get('reviewed', 0)} times with 0 corrections.",
-                "prediction": f"Relaxes review requirement for {field} when {strength or 'all'}.",
-            })
-    return proposals
+    早先版本按 `cohort["field"]` 键控,同一字段的多条 cohort 会互相覆盖,
+    Critic 于是拿到别条候选的反事实证据。
+    """
+    return json.dumps(cohort, sort_keys=True, ensure_ascii=False)
 
 
-# ── Agent Classes (Legacy Interface / Direct SDK calling) ───────
-# These maintain the old interface for tests while ADK is integrated.
+class EvaluatorNode(BaseAgent):
+    """对每条提案跑确定性 `improve.propose` + `improve.evaluate`。
 
-class MinerAgent:
-    def __init__(self, workspace: Path | str):
-        self.workspace = Path(workspace)
-    def run(self) -> dict[str, Any]:
-        return mine_report_tool(str(self.workspace))
+    评测失败**不吞** —— 记一条 blocking 结果交给 Critic 与报告。
+    早先版本 `except Exception: pre_evals[field] = {}`,Critic 于是拿着
+    空反事实照样能给出正面建议。
+    """
 
-class ProposerAgent:
-    def __init__(self, workspace: Path | str):
-        self.workspace = Path(workspace)
-    def run(self, miner_output: dict[str, Any]) -> list[dict[str, Any]]:
-        return propose_cohorts_tool(miner_output)
+    workspace: Path
 
-
-class CriticAgent:
-    """Agent 3 (Adversarial): Evaluates proposals via Gemini structured output."""
-
-    SYSTEM_INSTRUCTION = (
-        "You are an adversarial AI auditor for a financial invoice extraction system. "
-        "Your job is to evaluate policy relaxation proposals and decide whether they "
-        "are safe to adopt. You will receive a proposal along with counterfactual "
-        "evidence showing what would happen if the proposal were adopted. "
-        "You must reject proposals that would cause genuine invoice values to be "
-        "silently dropped or misclassified. "
-        "Respond ONLY with the structured JSON verdict. Do NOT repeat the schema."
-    )
-
-    def __init__(self, workspace: Path | str):
-        self.workspace = Path(workspace)
-
-    def evaluate_proposal(
-        self,
-        proposal: dict[str, Any],
-        counterfactual: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        """Evaluate a single proposal with counterfactual evidence."""
-        prompt_parts = [
-            "## Proposal\n",
-            json.dumps(proposal, indent=2, ensure_ascii=False),
-        ]
-        if counterfactual:
-            prompt_parts.extend([
-                "\n\n## Counterfactual Evidence (from deterministic evaluation)\n",
-                json.dumps(counterfactual, indent=2, ensure_ascii=False),
-                "\n\nThe above shows what would happen if this proposal were adopted. "
-                "Evaluate whether the trade-off (slots saved vs. silent errors introduced) "
-                "is acceptable. If ANY genuine values would be dropped, reject.",
-            ])
-        else:
-            prompt_parts.append(
-                "\n\n## No Counterfactual Evidence Available\n"
-                "The evaluation could not be run. Without evidence of safety, "
-                "you should be conservative and reject unless the proposal "
-                "is clearly harmless."
-            )
-
-        prompt = "\n".join(prompt_parts)
-        cohort = proposal.get("cohort") or {}
-        field = cohort.get("field", "unknown")
-
-        result = call_gemini_structured(
-            prompt=prompt,
-            schema=CriticVerdict,
-            system_instruction=self.SYSTEM_INSTRUCTION,
-            workspace=self.workspace,
-            call_id=f"critic_{field}",
-        )
-
-        verdict = result["parsed"]
-        return {
-            "accepted": verdict.accepted,
-            "reason": verdict.reason,
-            "risk_score": verdict.risk,
-            "values_at_risk": verdict.values_at_risk,
-            "replayed": result.get("replayed", False),
-        }
-
-
-class EvaluatorNode:
-    def __init__(self, workspace: Path | str):
-        self.workspace = Path(workspace)
-
-    def run(self, approved_proposals: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        results = []
-        for prop in approved_proposals:
+    async def _run_async_impl(
+        self, ctx
+    ) -> AsyncGenerator[Event, None]:
+        proposals = (ctx.session.state.get(STATE_PROPOSALS) or {}).get("proposals", [])
+        results: list[dict[str, Any]] = []
+        for prop in proposals:
+            cohort = prop.get("cohort") or {}
+            entry: dict[str, Any] = {"cohort": cohort, "key": cohort_key(cohort)}
             try:
-                cohort = prop.get("cohort")
-                if not cohort:
-                    continue
                 cand_dir = improve.propose(
                     self.workspace,
                     cohort=cohort,
-                    finding=prop.get("finding", "Gemini Multi-Agent Proposed"),
-                    prediction=prop.get("prediction", "Gemini Multi-Agent Proposed"),
+                    finding=prop.get("finding", ""),
+                    prediction=prop.get("prediction", ""),
                 )
-                cand_id = cand_dir.name
-                eval_res = improve.evaluate(self.workspace, cand_id)
-                results.append({"candidate_id": cand_id, "evaluation": eval_res})
-            except Exception as exc:  # noqa: BLE001
-                results.append({"error": str(exc), "proposal": prop})
-        return results
+                entry["evaluation"] = improve.evaluate(self.workspace, cand_dir.name)
+                entry["blocking"] = False
+                entry["candidate"] = cand_dir.name
+            except Exception as exc:  # noqa: BLE001 — 宪章四:跑不了 = 阻断
+                entry["blocking"] = True
+                entry["blocking_reason"] = f"{type(exc).__name__}: {exc}"
+                entry["evaluation"] = None
+            results.append(entry)
+
+        yield Event(
+            author=self.name,
+            invocation_id=ctx.invocation_id,
+            actions=EventActions(state_delta={STATE_COUNTERFACTUAL: {"results": results}}),
+        )
 
 
-# ── Pipeline Orchestration (ADK) ──────────────────────────────────
+# ── 指令 ──────────────────────────────────────────────────────────
 
-def build_adk_pipeline(model_name: str) -> SequentialAgent:
-    """Builds the ADK workflow agent graph."""
-    
-    miner_adk = LlmAgent(
-        name="Miner",
-        model=model_name,
-        instruction="Analyze the mining report to find extraction patterns.",
-        tools=[mine_report_tool],
+def _miner_instruction(ctx: ReadonlyContext) -> str:
+    report = ctx.state.get(STATE_MINE_REPORT) or {}
+    return (
+        "You read a deterministic mining report from an invoice review ledger "
+        "and judge which human-review patterns are stable enough to become a "
+        "policy rule. You do not decide anything — a deterministic evaluator "
+        "and a human do.\n\n"
+        f"mine_report.json:\n{json.dumps(report, ensure_ascii=False, indent=1)}\n\n"
+        "Return the candidates worth proposing, with a one-line reason each. "
+        "Return an empty list if none are."
     )
-    
-    proposer_adk = LlmAgent(
-        name="Proposer",
-        model=model_name,
-        instruction="Formulate proposals based on mined patterns.",
-        tools=[propose_cohorts_tool],
+
+
+def _proposer_instruction(ctx: ReadonlyContext) -> str:
+    miner = ctx.state.get(STATE_MINER) or {}
+    return (
+        "You turn mining candidates into draft policy cohorts. A cohort that is "
+        "too wide silently drops values that are genuinely on the page — that is "
+        "the failure mode you are guarding against.\n\n"
+        f"candidates:\n{json.dumps(miner, ensure_ascii=False, indent=1)}\n\n"
+        "Return one proposal per candidate. Return an empty list for no candidates."
     )
-    
-    critic_adk = LlmAgent(
-        name="Critic",
-        model=model_name,
-        instruction=CriticAgent.SYSTEM_INSTRUCTION,
+
+
+def _critic_instruction(ctx: ReadonlyContext) -> str:
+    proposals = ctx.state.get(STATE_PROPOSALS) or {}
+    counterfactual = ctx.state.get(STATE_COUNTERFACTUAL) or {}
+    return (
+        "You are the adversarial reviewer. For each proposal you are given the "
+        "DETERMINISTIC counterfactual: what the rule would have saved and what it "
+        "would have silently dropped. Argue against the proposal wherever the "
+        "numbers allow it.\n\n"
+        "A `blocking: true` entry means the evaluation could not run. A check that "
+        "did not run is NOT a pass — recommend against, and say so.\n\n"
+        "You are not approving anything. `recommend_for_human_review` means only "
+        "'a human should spend time on this one'.\n\n"
+        f"proposals:\n{json.dumps(proposals, ensure_ascii=False, indent=1)}\n\n"
+        f"counterfactual:\n{json.dumps(counterfactual, ensure_ascii=False, indent=1)}\n\n"
+        "Return one verdict per proposal. Return an empty list for no proposals."
     )
-    
-    critic_loop = LoopAgent(
-        name="critic_review",
-        sub_agents=[proposer_adk, critic_adk],
-        max_iterations=2,
-    )
-    
-    pipeline = SequentialAgent(
+
+
+def build_pipeline(model: str | BaseLlm, workspace: Path) -> SequentialAgent:
+    """四阶段图。顺序由 SequentialAgent 保证,模型无权改。
+
+    每个 LlmAgent 都挂录放回调:重放模式下 before 回调直接返回录音,
+    模型调用被 ADK 跳过 —— 图照跑,网络不动(见 `adk_replay`)。
+    """
+    before, after = replay_callbacks(workspace)
+
+    def _llm(name: str, state_key: str, instruction,
+             schema: type[BaseModel]) -> LlmAgent:
+        # state_key 与 name 分开写:下游按 state_key 读,`output_key=name`
+        # 会让 proposer 写进 state["proposer"] 而 evaluator 读 state["proposals"],
+        # 整条链静默断掉(重构时踩过一次,由本目录测试抓到)。
+        return LlmAgent(
+            name=name, model=model, instruction=instruction,
+            output_schema=schema, output_key=state_key,
+            before_model_callback=before, after_model_callback=after,
+        )
+
+    return SequentialAgent(
         name="improve_pipeline",
-        sub_agents=[miner_adk, critic_loop],
+        sub_agents=[
+            _llm("miner", STATE_MINER, _miner_instruction, MinerFindings),
+            _llm("proposer", STATE_PROPOSALS, _proposer_instruction, ProposalSet),
+            EvaluatorNode(name="evaluator", workspace=workspace),
+            _llm("critic", STATE_CRITIC, _critic_instruction, CriticReview),
+        ],
     )
-    return pipeline
 
 
-def run_improve_loop(workspace: Path | str) -> dict[str, Any]:
-    """Runs the 4-stage Multi-Agent Improve Loop."""
+# ── 入口 ──────────────────────────────────────────────────────────
+
+def _load_mine_report(ws: Path) -> dict[str, Any]:
+    path = ws / "improve" / "mine_report.json"
+    if not path.exists():
+        return {"cohorts": [], "buckets": {}, "low_yield_candidates": []}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+async def _drive(pipeline: SequentialAgent, ws: Path,
+                 mine_report: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
+    service = InMemorySessionService()
+    await service.create_session(
+        app_name=APP_NAME, user_id="invoiceloop", session_id="improve",
+        state={STATE_MINE_REPORT: mine_report},
+    )
+    runner = Runner(app_name=APP_NAME, agent=pipeline, session_service=service)
+    authors: list[str] = []
+    async for event in runner.run_async(
+        user_id="invoiceloop", session_id="improve",
+        new_message=types.Content(
+            role="user", parts=[types.Part(text="run the improve loop")]
+        ),
+    ):
+        if event.author not in authors:
+            authors.append(event.author)
+    session = await service.get_session(
+        app_name=APP_NAME, user_id="invoiceloop", session_id="improve"
+    )
+    return authors, dict(session.state)
+
+
+def run_improve_loop(
+    workspace: Path | str, *, model: str | BaseLlm | None = None
+) -> dict[str, Any]:
+    """跑 ADK 流水线,写 `improve/adk_loop_report.json`(纯建议)。
+
+    Args:
+        workspace: run workspace.
+        model: 模型名或 `BaseLlm` 实例。缺省从 env / `DEFAULT_GEMINI_MODEL` 解析。
+    """
     ws = Path(workspace)
-    
-    # We construct the ADK pipeline to demonstrate architectural integration,
-    # but the execution runs through our replay-capable deterministic harness.
-    model_name = _resolve_model(None, ws)
-    _pipeline = build_adk_pipeline(model_name)
+    resolved = model if isinstance(model, BaseLlm) else _resolve_model(model, ws)
+    mine_report = _load_mine_report(ws)
 
-    # 1. Miner Agent
-    miner = MinerAgent(ws)
-    miner_out = miner.run()
+    pipeline = build_pipeline(resolved, ws)
+    authors, state = asyncio.run(_drive(pipeline, ws, mine_report))
 
-    # 2. Proposer Agent
-    proposer = ProposerAgent(ws)
-    proposals = proposer.run(miner_out)
+    counterfactual = (state.get(STATE_COUNTERFACTUAL) or {}).get("results", [])
+    blocked = [r for r in counterfactual if r.get("blocking")]
+    verdicts = (state.get(STATE_CRITIC) or {}).get("verdicts", [])
 
-    # 3. Pre-evaluate for counterfactual evidence (feeds the Critic)
-    pre_evals: dict[str, dict] = {}
-    for prop in proposals:
-        cohort = prop.get("cohort")
-        if not cohort:
-            continue
-        field = cohort.get("field", "unknown")
-        try:
-            cand_dir = improve.propose(
-                ws, cohort=cohort,
-                finding=prop.get("finding", ""),
-                prediction=prop.get("prediction", ""),
-            )
-            eval_res = improve.evaluate(ws, cand_dir.name)
-            pre_evals[field] = eval_res
-        except Exception:  # noqa: BLE001
-            pre_evals[field] = {}
-
-    # 4. Critic Agent (with counterfactual evidence)
-    critic = CriticAgent(ws)
-    approved = []
-    rejected = []
-    for prop in proposals:
-        cohort = prop.get("cohort") or {}
-        field = cohort.get("field", "unknown")
-        counterfactual = pre_evals.get(field)
-        critic_res = critic.evaluate_proposal(prop, counterfactual=counterfactual)
-        if critic_res["accepted"]:
-            approved.append(prop)
-        else:
-            rejected.append({"proposal": prop, "critic": critic_res})
-
-    # 5. Evaluator Node (full evaluation for approved proposals)
-    evaluator = EvaluatorNode(ws)
-    eval_results = evaluator.run(approved) if approved else []
-
-    # Write to adk_loop_report.json — NOT suggestions.json
-    report_path = ws / "improve" / "adk_loop_report.json"
-    report_path.parent.mkdir(exist_ok=True)
     payload = {
         "advisory": True,
         "source": "Gemini_Multi_Agent_Improve_Loop",
-        "miner_summary": miner_out.get("buckets", {}),
-        "proposals_count": len(proposals),
-        "approved_by_critic": len(approved),
-        "rejected_by_critic": rejected,
-        "evaluations": eval_results,
+        "adk": {
+            "executed": True,
+            "runner": "google.adk.runners.Runner",
+            "app_name": APP_NAME,
+            "pipeline": "SequentialAgent(improve_pipeline)",
+            "event_authors": authors,
+            "state_keys": sorted(k for k in state if not k.startswith("_")),
+        },
+        "model": resolved if isinstance(resolved, str) else type(resolved).__name__,
+        "miner_summary": mine_report.get("buckets", {}),
+        "proposals": (state.get(STATE_PROPOSALS) or {}).get("proposals", []),
+        "counterfactual": counterfactual,
+        "blocking_evaluations": len(blocked),
+        "recommendations": verdicts,
+        "recommended_for_human_review": sum(
+            1 for v in verdicts if v.get("recommend_for_human_review")
+        ),
+        "authority": (
+            "advisory only — the model recommends, Python recomputes, "
+            "Gate 2 and a human signature decide promotion"
+        ),
     }
-    report_path.write_text(
+
+    out = ws / "improve" / "adk_loop_report.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
-
     return payload
