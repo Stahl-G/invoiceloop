@@ -159,6 +159,7 @@ skip 属预期,不是失败。`heldout` 命令在运行时把 sibling 仓库插�
 # 两分钟 demo:内嵌示例语料跑通全流程 —— 零 API、零外部数据、零 sibling 仓库
 python3 -m invoiceloop demo --out demo-ws
 python3 -m invoiceloop workbench --workspace demo-ws   # http://127.0.0.1:8765 网页复核
+# Cloud Run 托管(可选 GCS):见 docs/CLOUD_RUN.md · ./scripts/deploy_cloud_run.sh
 
 # 自己的发票:PDF 丢进 workspace/input/pdfs/(输入契约 §12)
 python3 -m invoiceloop ingest --workspace ws/    # 本地独立 OCR + DWS 抽取(需 DWS_API_KEY)

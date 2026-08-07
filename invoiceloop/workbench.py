@@ -48,6 +48,8 @@ from .snapshot import (
 )
 
 HOST = "127.0.0.1"
+#: Cloud Run / 容器公开绑定用 0.0.0.0;默认仍是 loopback(见 make_server)。
+PUBLIC_BIND_HOSTS = frozenset({"0.0.0.0", "::"})
 MAX_UPLOAD = 50 * 1024 * 1024  # 50MB,上传上限,先查 Content-Length 再读体
 
 #: Host 白名单 —— loopback 不等于安全:浏览器跨站表单可以直接 POST 到
@@ -2078,12 +2080,26 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _check_gates(self, method: str) -> None:
         host = self._host_of(self.headers.get("Host"))
-        if host is not None and host not in _ALLOWED_HOSTS:
-            raise _HttpError(403, f"Host {host!r} 不在 loopback 白名单 —— "
-                                  f"这通常是 DNS rebinding 的特征,已拒")
+        allowed = getattr(self.server, "allowed_hosts", _ALLOWED_HOSTS)
+        public = getattr(self.server, "public", False)
+        if host is not None:
+            if public:
+                # 公开绑定:若调用方显式给了白名单则强制;否则交给 Cloud Run 入口层
+                if allowed and host not in allowed and not _host_suffix_ok(host, allowed):
+                    raise _HttpError(403, f"Host {host!r} 不在公开白名单")
+            elif host not in allowed:
+                raise _HttpError(403, f"Host {host!r} 不在 loopback 白名单 —— "
+                                      f"这通常是 DNS rebinding 的特征,已拒")
         if method == "POST":
             origin = self._host_of(self.headers.get("Origin"))
-            if origin is not None and origin not in _ALLOWED_HOSTS:
+            if origin is None:
+                return
+            if public:
+                # 同页 POST:Origin 主机必须等于 Host(Cloud Run URL 可变)
+                if host is not None and origin != host:
+                    raise _HttpError(403, f"跨源 POST(Origin {origin!r})已拒 —— "
+                                          f"本服务只接受本页发起的写操作")
+            elif origin not in allowed:
                 raise _HttpError(403, f"跨源 POST(Origin {origin!r})已拒 —— "
                                       f"本服务只接受本页发起的写操作")
 
@@ -2127,6 +2143,10 @@ class _Handler(BaseHTTPRequestHandler):
 
         path, params = self._params()
         set_cookies: list = []
+        # 探针先于 Host 闸 —— Cloud Run / Docker HEALTHCHECK 不该被白名单绊倒
+        if method == "GET" and path == "/healthz":
+            body = json.dumps({"ok": True, "service": "invoiceloop-workbench"}).encode()
+            return self._send(200, body, "application/json; charset=utf-8")
         lang = self._lang(params, set_cookie=set_cookies)
         try:
             self._check_gates(method)
@@ -2503,9 +2523,39 @@ class _HttpError(Exception):
         self.run = run
 
 
-def make_server(workspace: Path, port: int) -> ThreadingHTTPServer:
-    """绑定 127.0.0.1 的工作台服务器。loopback only —— 不提供 host 参数,
-    要暴露给别人的话走 audit bundle,不要把这个服务放到网络上。"""
+def _host_suffix_ok(host: str, allowed: set[str]) -> bool:
+    """白名单条目以 `.` 开头时按后缀匹配(如 `.run.app`)。"""
+    for entry in allowed:
+        if entry.startswith(".") and host.endswith(entry):
+            return True
+    return False
+
+
+def resolve_port(port: int | None) -> int:
+    """CLI `--port` > 环境 `PORT`(Cloud Run 注入) > 8765。"""
+    import os
+
+    if port is not None:
+        return int(port)
+    env = os.environ.get("PORT")
+    if env:
+        return int(env)
+    return 8765
+
+
+def make_server(
+    workspace: Path,
+    port: int,
+    *,
+    host: str = HOST,
+    allowed_hosts: set[str] | None = None,
+) -> ThreadingHTTPServer:
+    """起工作台 HTTP 服务。
+
+    默认绑 127.0.0.1(loopback)。Cloud Run / Docker 需显式 `host="0.0.0.0"`;
+    公开绑定时 Host 闸放宽(可再用 `allowed_hosts` / `.run.app` 后缀收紧)。
+    本地评委路径不要公开绑定 —— 要给人看离线结果走 audit bundle。
+    """
     import os
 
     workspace = Path(workspace)
@@ -2513,16 +2563,47 @@ def make_server(workspace: Path, port: int) -> ThreadingHTTPServer:
     # 只设别名会被环境里的主变量遮蔽,工作台直接读错根(81 评 P1-1 的产品侧孪生)
     os.environ["INVOICELOOP_CORPUS"] = str(workspace)
     os.environ["INVOICELOOP_DWS_DERISK"] = str(workspace)
-    server = ThreadingHTTPServer((HOST, port), _Handler)
+    public = host in PUBLIC_BIND_HOSTS
+    if public:
+        # 空集 = 不按 Host 白名单拦截(入口层是 Cloud Run);显式列表则强制。
+        # 始终并上 loopback —— 本地 docker -p 8080:8080 与 HEALTHCHECK 的 Host
+        # 是 127.0.0.1,不能被 `.run.app` 白名单误杀。
+        hosts = set(allowed_hosts) if allowed_hosts is not None else set()
+        if hosts:
+            hosts |= set(_ALLOWED_HOSTS)
+    else:
+        hosts = set(allowed_hosts) if allowed_hosts is not None else set(_ALLOWED_HOSTS)
+        if not hosts:
+            hosts = set(_ALLOWED_HOSTS)
+    server = ThreadingHTTPServer((host, port), _Handler)
     server.daemon_threads = True
     server.bench = Workbench(workspace)
+    server.public = public
+    server.allowed_hosts = hosts
+    server.bind_host = host
     return server
 
 
-def cmd_workbench(workspace: Path, port: int) -> int:
-    server = make_server(workspace, port)
-    url = f"http://127.0.0.1:{server.server_address[1]}"
-    print(f"InvoiceLoop 工作台:{url}(仅本机 loopback,Ctrl-C 停止)")
+def cmd_workbench(
+    workspace: Path,
+    port: int | None = None,
+    *,
+    host: str = HOST,
+    allowed_hosts: list[str] | None = None,
+) -> int:
+    bind_port = resolve_port(port)
+    allow = set(allowed_hosts) if allowed_hosts else None
+    # 环境变量补充白名单(Cloud Run 服务 URL / 自定义域名)
+    import os
+
+    extra = os.environ.get("INVOICELOOP_ALLOWED_HOSTS", "").strip()
+    if extra:
+        allow = (allow or set()) | {h.strip().lower() for h in extra.split(",") if h.strip()}
+    server = make_server(workspace, bind_port, host=host, allowed_hosts=allow)
+    addr_host = "127.0.0.1" if host in PUBLIC_BIND_HOSTS else host
+    url = f"http://{addr_host}:{server.server_address[1]}"
+    mode = "公开绑定(Cloud Run/容器)" if server.public else "仅本机 loopback"
+    print(f"InvoiceLoop 工作台:{url}({mode},Ctrl-C 停止)")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

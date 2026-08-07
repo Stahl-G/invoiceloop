@@ -19,6 +19,8 @@ research = []
 # 封缄验签(verify 第五层的密码学部分):缺省时签名层记 None 并注明未验证,
 # 不静默判过(宪章四)
 seal = ["asn1crypto>=1.5", "cryptography>=42"]
+# Cloud Run 可选 GCS workspace 同步(见 docs/CLOUD_RUN.md)
+cloud = ["google-cloud-storage>=2.14"]
 
 [project.scripts]
 invoiceloop = "invoiceloop.__main__:main"

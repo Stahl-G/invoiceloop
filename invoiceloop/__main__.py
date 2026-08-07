@@ -78,9 +78,15 @@ def _main() -> None:
     p_carry.add_argument("--decided-at", default=None,
                          help="ISO 时间(默认当前 UTC —— 执行 carry 即人在给时间)")
 
-    p_wb = sub.add_parser("workbench", help="H1 复核工作台:本地 loopback Web 应用(127.0.0.1)")
+    p_wb = sub.add_parser("workbench", help="H1 复核工作台(默认 127.0.0.1;Cloud Run 用 --host 0.0.0.0)")
     p_wb.add_argument("--workspace", type=Path, required=True)
-    p_wb.add_argument("--port", type=int, default=8765)
+    p_wb.add_argument("--port", type=int, default=None,
+                      help="默认读环境变量 PORT(Cloud Run),否则 8765")
+    p_wb.add_argument("--host", default="127.0.0.1",
+                      help="绑定地址;容器/Cloud Run 传 0.0.0.0")
+    p_wb.add_argument("--allowed-host", action="append", default=[],
+                      dest="allowed_hosts",
+                      help="公开绑定时可选 Host 白名单(可重复;支持 .run.app 后缀)")
 
     p_demo = sub.add_parser("demo", help="内嵌示例语料 → 完整 run(零 API、零外部数据)")
     p_demo.add_argument("--out", type=Path, required=True, help="demo workspace 落点(必须不存在或为空)")
@@ -92,6 +98,15 @@ def _main() -> None:
     p_vis.add_argument("--api-key", default=None, help="默认读 ANTHROPIC_API_KEY")
 
     sub.add_parser("doctor", help="环境自检:poppler/tesseract/requests/研究数据")
+
+    p_cloud = sub.add_parser("cloud", help="GCS workspace 同步(可选;docs/CLOUD_RUN.md)")
+    cloud_sub = p_cloud.add_subparsers(dest="cloud_command", required=True)
+    p_cpull = cloud_sub.add_parser("pull", help="gs://…/workspace.tar.gz → 本地目录")
+    p_cpull.add_argument("--uri", required=True)
+    p_cpull.add_argument("--dest", type=Path, required=True)
+    p_cpush = cloud_sub.add_parser("push", help="本地目录 → gs://…/workspace.tar.gz")
+    p_cpush.add_argument("--uri", required=True)
+    p_cpush.add_argument("--src", type=Path, required=True)
 
     p_ho = sub.add_parser("heldout", help="留出集(docs/HELDOUT.md)")
     ho_sub = p_ho.add_subparsers(dest="heldout_command", required=True)
@@ -161,6 +176,10 @@ def _main() -> None:
         from .doctor import cmd_doctor
 
         raise SystemExit(cmd_doctor())
+    if args.command == "cloud":
+        from .cloud_sync import cmd_cloud
+
+        raise SystemExit(cmd_cloud(args))
     if args.command == "run":
         import os
 
@@ -272,7 +291,9 @@ def _main() -> None:
     elif args.command == "workbench":
         from .workbench import cmd_workbench
 
-        raise SystemExit(cmd_workbench(args.workspace, args.port))
+        raise SystemExit(cmd_workbench(
+            args.workspace, args.port,
+            host=args.host, allowed_hosts=args.allowed_hosts or None))
     elif args.command == "demo":
         from .demo import cmd_demo
 
