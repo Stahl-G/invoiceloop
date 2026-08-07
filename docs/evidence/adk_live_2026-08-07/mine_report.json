@@ -1,0 +1,20 @@
+{
+ "warning": "选择偏差警告:本报告只说明「这些复核没产生修正」,不说「这些复核没价值」—— 没被抽查不等于没有错(v0.2 §9.4)。任何 cohort 放宽都必须经过 evaluate 的反事实比较与人工 promote,本报告本身不授权任何改动。",
+ "events": 3,
+ "buckets": {
+  "all_events": 3,
+  "actionable": 0,
+  "superseded": 0,
+  "random_qa": 0,
+  "qualified_for_mining": 0,
+  "not_actionable_reasons": {
+   "no_reason_code": 3,
+   "low_confidence": 0,
+   "abstain": 0
+  }
+ },
+ "cohorts": [],
+ "overturned_auto_accepts": [],
+ "low_yield_candidates": [],
+ "absence_candidates": []
+}
