@@ -1,0 +1,14 @@
+{
+ "project": "airy-decorator-361514",
+ "region": "asia-southeast1",
+ "service": "invoiceloop",
+ "url": "https://invoiceloop-h6ff2yrz2a-as.a.run.app",
+ "latest_ready_revision": "invoiceloop-00002-tnk",
+ "image": "asia-southeast1-docker.pkg.dev/airy-decorator-361514/cloud-run-source-deploy/invoiceloop@sha256:343761e21ff9c9459ab076a772c1de1fa80fc3e195f63b77107de6b3c72b1bdc",
+ "env": {
+  "PYTHONUNBUFFERED": "1",
+  "INVOICELOOP_READ_ONLY": "1"
+ },
+ "ingress": "all",
+ "created": "2026-08-07T11:17:51.447564Z"
+}

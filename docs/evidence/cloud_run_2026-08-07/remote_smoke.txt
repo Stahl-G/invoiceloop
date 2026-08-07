@@ -1,0 +1,21 @@
+# Cloud Run 远端 smoke —— 2026-08-07T11:32:42Z
+# URL: https://invoiceloop-478275522139.asia-southeast1.run.app
+
+## 探针
+GET /_health   200  {"ok": true, "service": "invoiceloop-workbench"}
+GET /healthz   404  (Google 前端吞掉,见 CLOUD_RUN.md)
+
+## 读路径
+GET /queue     200
+GET /report    200
+
+## 写路径(全部必须 403)
+POST /decide                  403
+POST /upload                  403
+POST /ingest                  403
+POST /bundle                  403
+POST /verify                  403
+POST /improve/adopt           403
+POST /improve/adopt-schema    403
+POST /improve/evaluate        403
+POST /improve/promote         403
