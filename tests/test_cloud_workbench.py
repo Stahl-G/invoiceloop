@@ -148,23 +148,6 @@ def test_loopback_still_rejects_foreign_host(workspace):
         srv.server_close()
 
 
-def test_cloud_pull_fails_loud_without_sdk(tmp_path):
-    from invoiceloop import cloud_sync as cs
-
-    original = cs._client
-
-    def raise_missing():
-        raise SystemExit(
-            "缺 google-cloud-storage —— pip install 'invoiceloop[cloud]'"
-        )
-
-    cs._client = raise_missing  # type: ignore[assignment]
-    try:
-        with pytest.raises(SystemExit, match="google-cloud-storage"):
-            cs.pull("gs://bucket/prefix", tmp_path / "ws")
-    finally:
-        cs._client = original
-
 
 # ── 只读模式:公开演示不许写裁决账本 ──────────────────────────────
 

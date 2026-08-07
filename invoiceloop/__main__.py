@@ -102,15 +102,6 @@ def _main() -> None:
 
     sub.add_parser("doctor", help="环境自检:poppler/tesseract/requests/研究数据")
 
-    p_cloud = sub.add_parser("cloud", help="GCS workspace 同步(可选;docs/CLOUD_RUN.md)")
-    cloud_sub = p_cloud.add_subparsers(dest="cloud_command", required=True)
-    p_cpull = cloud_sub.add_parser("pull", help="gs://…/workspace.tar.gz → 本地目录")
-    p_cpull.add_argument("--uri", required=True)
-    p_cpull.add_argument("--dest", type=Path, required=True)
-    p_cpush = cloud_sub.add_parser("push", help="本地目录 → gs://…/workspace.tar.gz")
-    p_cpush.add_argument("--uri", required=True)
-    p_cpush.add_argument("--src", type=Path, required=True)
-
     p_ho = sub.add_parser("heldout", help="留出集(docs/HELDOUT.md)")
     ho_sub = p_ho.add_subparsers(dest="heldout_command", required=True)
     p_hop = ho_sub.add_parser("plan", help="生成并落盘名单(先于任何调用)")
@@ -179,10 +170,6 @@ def _main() -> None:
         from .doctor import cmd_doctor
 
         raise SystemExit(cmd_doctor())
-    if args.command == "cloud":
-        from .cloud_sync import cmd_cloud
-
-        raise SystemExit(cmd_cloud(args))
     if args.command == "run":
         import os
 

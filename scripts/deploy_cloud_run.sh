@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # 把本仓库部署到 Cloud Run(托管 URL = 参赛「Google Cloud 服务」镜头)。
 #
-# 前置:gcloud auth / 已选 project;API: run, cloudbuild, artifactregistry, storage(可选)
+# 前置:gcloud auth / 已选 project(需开计费)
+#   gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
 #
 # 用法:
 #   ./scripts/deploy_cloud_run.sh
 #   PROJECT=my-proj REGION=asia-southeast1 SERVICE=invoiceloop ./scripts/deploy_cloud_run.sh
-#   GCS_WORKSPACE_URI=gs://bucket/invoiceloop ./scripts/deploy_cloud_run.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -21,10 +21,8 @@ fi
 
 echo "deploy: project=${PROJECT} region=${REGION} service=${SERVICE}"
 
-ENV_VARS="PYTHONUNBUFFERED=1"
-if [[ -n "${GCS_WORKSPACE_URI:-}" ]]; then
-  ENV_VARS="${ENV_VARS},GCS_WORKSPACE_URI=${GCS_WORKSPACE_URI}"
-fi
+# 公开实例只读 —— --allow-unauthenticated 只有在这个前提下才是安全的
+ENV_VARS="PYTHONUNBUFFERED=1,INVOICELOOP_READ_ONLY=1"
 
 gcloud run deploy "${SERVICE}" \
   --project="${PROJECT}" \
