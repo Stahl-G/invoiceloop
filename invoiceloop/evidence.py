@@ -1,13 +1,9 @@
-"""M0 抽取事务(ARCHITECTURE.md §5.1):存盘响应 → 工件注册 → 证据片段 → 声明图。
+"""Evidence spans and the artifact registry: content addressing for every upstream
+file a run consumed.
 
-不调 API:响应早已存盘(extract.py 的纪律是先存盘再解释),这里把存盘文件
-按内容哈希冻结为工件,从 `source_bboxes` 注册证据片段,并为每个片段挂上
-独立 OCR 文本与旁边印着的标签 —— 支持关系是几何的,这几样就是可验证的载体。
-
-裁剪渲染走 poppler(pdftoppm/pdfinfo),坐标换算搬自
-vision_eval.py::_rects / crop_field:DWS 报的是自己像素空间的 bbox
-(Letter 上约 1700×2200),经 `body.output.pages` 的页尺寸归一化,
-再在目标 DPI 的真实页尺寸上乘回去。
+A span records where on the page a value was found; the registry records the
+sha256 of every input artifact. Together they answer "which bytes was this
+computed from", which is what makes offline verification possible.
 """
 
 from __future__ import annotations

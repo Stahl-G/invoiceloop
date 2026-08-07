@@ -1,15 +1,14 @@
-"""主体方向原型(阶段 D):卖方名 span 距哪个角色标签最近。
+"""Party direction prototype: frozen label vocabulary and geometry.
 
-**不进产品。** `docs/DOCTYPE_PLAN_2026-08-07.md` Q3 生死线:SEALED-2 100 份上
-准确率 < 80% → 第 3 项作废。实测见 `docs/DOCTYPE_STAGE_D_2026-08-07.md`
-(主指标 ≈52%)—— 本模块只冻结复算规则,不接线到 gates / routing / improve。
+**Killed, and deliberately kept.** The pre-registered rule — take the nearest
+role label to the extracted seller_name span and let its side predict whether the
+extraction matches ground truth — scored 51.6% on SEALED-2 against an 80% product
+line, so it is not wired into gates, routing or improve. See
+`docs/DOCTYPE_STAGE_D_2026-08-07.md`.
 
-规则(预注册,不许为好看事后改极性):
-- 卖方侧标签:`Remit to` / `Pay to` / `Station`
-- 买方侧标签:`Bill to` / `Advertiser` / `Agency`
-- 对抽出的 `seller_name` span(同页),取欧氏距离最近的标签侧
-- 预测:近卖方侧 ⇒ 抽取应与 DocILE `vendor_name` 一致;近买方侧 ⇒ 应不一致
-- 准确率 = 预测与 `eval_normalise(PARTY)` 对错一致的比例
+What was killed is *this frozen label-geometry rule*, not the idea that party
+direction is machine-checkable. The module stays so the negative result stays
+recomputable.
 """
 
 from __future__ import annotations

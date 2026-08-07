@@ -1,15 +1,20 @@
-"""分诊路由层(v0.2 设计 §11,P0-3):哪一槽需要人看,策略驱动,版本化。
+"""Triage routing (v0.2 design §11, P0-3): which slot needs a human — policy
+driven, and versioned.
 
-从 matrix.py 抽出的纯函数。纪律:
+Extracted from matrix.py as pure functions. The discipline:
 
-- **策略是数据,不是代码**:routing_policy.json 是可替换的 Harness 组件,
-  改进层的候选只能编辑它(的 auto_accept_cohorts),不许碰这里的代码;
-- **硬阻断不可放松**(v0.2 §11.2):doc 级阻断、槽位阻断、gate fail、
-  unsupported、口径争议 —— cohort 匹配再中也不许把它们放出复核;
-- **cohort 只能放松软触发**(gate warning 级),且只能引用通用特征
-  (field/tier/strength),禁止 doc_id/期望值硬编码(linter 在 improve 侧);
-- `routing_report.json` 是 run 的权威工件,进 review_snapshot 成分 ——
-  「哪版策略把哪槽送进了队列」必须可离线重算。
+- **Policy is data, not code.** routing_policy.json is a replaceable harness
+  component; an improvement-layer candidate may edit its auto_accept_cohorts
+  and nothing in this file.
+- **Hard blocks never relax** (v0.2 §11.2): document-level blocks, slot blocks,
+  gate failures, unsupported rows and convention disputes stay in review no
+  matter how well a cohort matches.
+- **A cohort may only relax soft triggers** (gate warnings), and may only
+  reference general features (field / tier / strength). Hardcoding a doc_id or
+  an expected value is forbidden; the linter for that lives on the improve side.
+- `routing_report.json` is an authoritative run artifact and a review_snapshot
+  component — "which policy version put which slot in the queue" must be
+  recomputable offline.
 """
 
 from __future__ import annotations

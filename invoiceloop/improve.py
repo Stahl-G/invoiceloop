@@ -1,12 +1,10 @@
-"""改进控制面(v0.2 收窄版):mine → propose → evaluate → promote。
+"""The improvement control plane (v0.2, narrowed): mine → propose → evaluate →
+promote / rollback.
 
-纪律(与裁决同一宪章):
-- 全部确定性、零模型 —— mine 是统计,propose 是脚手架,evaluate 是
-  反事实重路由,promote 是唯一写 active 指针的入口且必须人名+理由;
-- 候选只能给 auto_accept_cohorts 加条目,只许引用通用特征
-  (field/tier/strength)—— diff linter 硬性执行;
-- 报告只说明「这些复核没产生修正」,不说「这些复核没价值」 ——
-  没被抽查不等于没有错(v0.2 §9.4 选择偏差),这句话印在每份 mine 报告头部。
+Fully deterministic and model-free. A candidate policy has to survive a
+counterfactual replay of the frozen evidence and a signed human promotion before
+it takes effect; Gate 2 (silent errors must not rise) and Gate 3 (review load
+must not rise) are checked by Python, not argued.
 """
 
 from __future__ import annotations

@@ -1,8 +1,9 @@
-"""反馈平面(v0.2 §3.4):从权威工件派生 FeedbackEvent。
+"""The feedback plane: reason codes and reviewer confidence, so the mining arm has
+something to mine.
 
-裁决账本是权威;反馈事件是**派生的、可重建的数据产品** —— 不反向修改
-裁决,不写回任何 run 工件。改进层(mine/propose/evaluate)只消费这里
-产出的事件,不直接读裁决账本 —— 这样「反馈被怎么解释」本身也可重算。
+Both are optional. An unfilled reason code is not filled in on the reviewer's
+behalf — the system reports the gap rather than deciding for a person
+(charter rule four).
 """
 
 from __future__ import annotations

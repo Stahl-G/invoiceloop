@@ -1,19 +1,22 @@
-"""统一凭证入口:项目根一个 `.env`,DWS / 读图 / 签名 / 顾问层都从这里取。
+"""One credential entry point: a single `.env` at the project root, shared by DWS,
+vision reading, signing and the advisory layer.
 
-在这之前有四套各找各的:`DWS_API_KEY` 只认进程环境、读图另有
-`~/.config/invoiceloop/vision.env`、seal 认 `NUTRIENT_API_KEY`、
-heldout 认 `DWS_API_KEYS` 或另一个文件。配一次跑不通三次是必然的。
+Before this there were four schemes looking in four places: `DWS_API_KEY` from the
+process environment only, vision from `~/.config/invoiceloop/vision.env`, seal from
+`NUTRIENT_API_KEY`, heldout from `DWS_API_KEYS` or yet another file. Configuring
+once and failing three times was inevitable.
 
-纪律(和原来一样,一条没松):
+The discipline, unchanged and unrelaxed:
 
-- **进程环境永远优先**,`.env` 只补缺 —— 免得文件里的旧值悄悄盖掉你刚
-  export 的临时 key;
-- **不写回 `os.environ`**。注入全局环境会让「这个值哪来的」变得不可回答,
-  也会让测试互相污染。取值一律走 `get()`;
-- `.env` 已在 `.gitignore` 里;权限不是 0600 时 `doctor` 会说,但不阻断 ——
-  报告缺口,不替人做决定(宪章四);
-- 值**永不落进任何工件**:run 目录、bundle、日志里都不出现 key 本身,
-  只出现「有没有」。
+- **The process environment always wins**, `.env` only fills gaps — so a stale
+  value in a file cannot quietly shadow the temporary key you just exported;
+- **Never write back into `os.environ`.** Injecting into the global environment
+  makes "where did this value come from" unanswerable and lets tests contaminate
+  each other. Read through `get()`.
+- `.env` is in `.gitignore`. If its mode is not 0600, `doctor` says so but does
+  not block — report the gap, do not decide for the person (charter rule four);
+- Values **never reach any artifact**: no key appears in a run directory, a bundle
+  or a log. Only whether one is present.
 """
 
 from __future__ import annotations

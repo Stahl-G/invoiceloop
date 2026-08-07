@@ -1,11 +1,16 @@
-"""support_panel.html —— 静态、离线、无需服务。demo 主画面。
+"""support_panel.html — static, offline, no server. The demo's main view.
 
-写进 panel 的纪律(宪章六 + GOAL.md,第 4 条最容易在收尾时被磨掉,守住它):
+The discipline for what goes on the panel (charter rule six plus GOAL.md; the
+fourth item is the one most easily sanded off near a deadline, so hold it):
 
-- 必须写"抽取本身不可信" —— 这不是矛盾的注脚,是这套东西存在的理由。
-- 每个门禁的拦截率必须带 ARCHITECTURE.md §8 那三条限定。
-- 口径争议(label_convention_disputed)显式展示,不进任何"错误"计数。
-- 页脚给出输入签名:panel 上每个数都能从存盘证据零 API 重算。
+- It must say that extraction itself is untrustworthy. That is not a
+  contradictory footnote; it is the reason this exists.
+- Every gate's interception rate carries the three qualifications from
+  ARCHITECTURE.md §8.
+- Convention disputes (label_convention_disputed) are shown explicitly and enter
+  no "error" count.
+- The footer gives the input signature: every number on the panel recomputes from
+  stored evidence with zero API calls.
 """
 
 from __future__ import annotations

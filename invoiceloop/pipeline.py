@@ -1,9 +1,13 @@
-"""端到端编排:extract → freeze → gate → matrix → panel,全部落盘到 run 目录。
+"""End-to-end orchestration: extract → freeze → gate → matrix → panel, all written
+into a run directory.
 
-纪律:
-- 零 API —— 一切从存盘证据出发,重跑不计费、结果可复算(GOAL.md 优先级 2)。
-- 确定性 —— 不写墙钟时间;同样输入哈希必须产出同样字节(§5.3 是可复算性的来源)。
-- 单一写者 —— 模型(dws/读图)的值只是草稿;ID、门禁、事件、哈希全在 Python。
+Discipline:
+- Zero API — everything starts from stored evidence, so re-running costs nothing
+  and results recompute (GOAL.md priority 2).
+- Deterministic — no wall clock is written; the same input hash must produce the
+  same bytes (§5.3 is where recomputability comes from).
+- Single writer — values from models (DWS, vision) are drafts only; IDs, gates,
+  events and hashes are all Python's.
 """
 
 from __future__ import annotations

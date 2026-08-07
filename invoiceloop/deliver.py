@@ -1,22 +1,32 @@
-"""整单交付层(P2,2026-08-05):deliverable.json —— 裁决后的最终值投影。
+"""Whole-document delivery (P2, 2026-08-05): deliverable.json — the projection of
+final values after adjudication.
 
-设计(用户 2026-08-04 批准;语义完整性修复 2026-08-05,81 评 P0):
-- 纯投影,与 panel 同级:由 field_ledger + support_matrix + 裁决账本重算,
-  不是权威,不改任何分诊行为(校准数字零漂移);
-- **值源永远是冻结账本与裁决账本,不是 support_matrix** —— matrix 不在
-  快照成分内(可重建投影),若拿它当值源,改动投影即可污染交付物且
-  三层 verify 全过(81 评实测攻击)。matrix 在这里只提供行集与
-  requires_adjudication 标记,值一律从 field_ledger 的 claim 取;
-- 每槽最终值:correct → 修正值;accept → **冻结 claim 的值**(accept 必须
-  带 claim_id);confirm_absent / not_applicable → null(两种不同语义,
-  不许混);reject → null;abstain → 未决;未裁决且需裁决 → pending;
-  **TIER1 印证槽未显式裁决 → pending_tier1**(关键字段在出口有业务
-  后果差异:印证也不能默认放行);TIER2 印证槽 →
-  unreviewed_corroborated(值照出,如实标注未逐个人看);
-- 整单状态:TIER1 槽被 reject 或裁决指向不存在的 claim → blocked;
-  任何 pending/abstain → pending;带文档级阻断发现(OCR 缺失等)的
-  放行如实标 released_with_caveats —— 机检没跑过的放行不许看起来
-  和机检全过的一样。
+Design (approved 2026-08-04; semantic-integrity fix 2026-08-05, from the 81-point
+review's P0):
+
+- A pure projection, peer to the panel: recomputed from field_ledger +
+  support_matrix + the adjudication ledger. Not authoritative, and it changes no
+  triage behaviour (calibration numbers drift by zero).
+- **Values always come from the frozen ledger and the adjudication ledger, never
+  from support_matrix.** The matrix is not a snapshot component (it is a
+  rebuildable projection), so using it as the value source would let an edit to
+  the projection poison the delivery while all three verify layers still pass —
+  this was an attack demonstrated during the 81-point review. Here the matrix
+  supplies only the row set and the requires_adjudication flag; every value comes
+  from a field_ledger claim.
+- Per slot: `correct` → the corrected value; `accept` → **the frozen claim's
+  value** (accept must carry claim_id); `confirm_absent` / `not_applicable` →
+  null (two different meanings, never merged); `reject` → null; `abstain` →
+  undecided; needs adjudication but has none → pending; **a TIER1 corroborated
+  slot with no explicit decision → pending_tier1** (key fields differ in business
+  consequence at the exit, so corroboration alone does not release them); a TIER2
+  corroborated slot → unreviewed_corroborated (the value ships, labelled honestly
+  as not individually reviewed).
+- Per document: a rejected TIER1 slot, or an adjudication pointing at a claim
+  that does not exist → blocked; any pending or abstained slot → pending; a
+  release carrying document-level blocking findings (missing OCR and the like) is
+  labelled released_with_caveats — a document released while a check could not
+  run must never look as clean as one where every check passed.
 """
 
 from __future__ import annotations

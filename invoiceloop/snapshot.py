@@ -1,12 +1,9 @@
-"""输入指纹与复核快照 —— 不可变 run 的身份层。
+"""The review snapshot: what an adjudication is bound to, and what an execution
+fingerprint is made of.
 
-两个确定性哈希,都不读墙钟:
-
-- **input_manifest.fingerprint**:这批输入(PDF + 独立 OCR + DWS 存盘响应 +
-  抽取 schema)是什么。同样输入重跑 = 重放既有 run,不新开;输入变了才开新 run。
-- **review_snapshot.review_snapshot_id**:复核者当时看到的完整快照
-  (输入清单 + 工件注册表 + 证据片段注册表 + 冻结账本 + 门禁报告)。
-  人工裁决绑定它 —— 只绑账本的话,同一账本配上被替换的证据检测不到。
+A snapshot covers the input manifest, the artifact registry, the evidence spans,
+the frozen ledger, the gate report and the routing report. Binding an adjudication
+to the ledger alone would miss substituted evidence, so it binds to all of them.
 """
 
 from __future__ import annotations

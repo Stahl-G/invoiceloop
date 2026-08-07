@@ -1,18 +1,23 @@
-"""workbench_style.py —— H1 复核工作台的全部样式。
+"""All styling for the H1 review workbench.
 
-服务器把 CSS 常量内联进每个页面:无构建、无框架、无外部资源、系统字体栈。
-改样式只改这里,重跑即生效。
+The server inlines these CSS constants into every page: no build step, no
+framework, no external resources, system font stack. Change styling here and
+re-run.
 
-语义色纪律来自 briefloop-prototypes README 的 Visual System v1,必须守住
-(这是产品的诚实性,不是装饰):
+The semantic colour discipline comes from the Visual System v1 in the
+briefloop-prototypes README, and must hold — this is product honesty, not
+decoration:
 
-- 蓝 = action / info;人的裁决当前状态(accept/reject/correct/abstain)也是蓝 ——
-  human-confirmed 不是 deterministic pass,不许用绿。
-- 紫 = advisory:DWS / 模型来源的值与提示,永不表示"通过"。
-- 绿 = 仅确定性通过(门禁 pass、bundle 校验 ok)。
-- 红 = deterministic block / 阻断;.wb-rejected / .wb-blocking 沿用此色。
-- 黄 = attention(warning、口径争议、两步确认的武装态)。
-- 灰 = unavailable / 待复核。
+- Blue = action / info. The current state of a human decision
+  (accept/reject/correct/abstain) is also blue: human-confirmed is not a
+  deterministic pass, and must not be green.
+- Purple = advisory: values and hints sourced from DWS or a model. Never means
+  "passed".
+- Green = deterministic pass only (a gate passing, a bundle verifying).
+- Red = deterministic block. `.wb-rejected` / `.wb-blocking` use this.
+- Yellow = attention (warnings, convention disputes, the armed state of a
+  two-step confirmation).
+- Grey = unavailable or awaiting review.
 """
 
 CSS = """/* ==========================================================================

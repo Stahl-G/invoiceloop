@@ -1,26 +1,33 @@
-"""单据类别:受控词表 + 页面字面证据。
+"""Document class: a controlled vocabulary plus literal page evidence.
 
-**为什么需要这个模块。** DWS 的 understand 响应一直带 `invoice_type`,这个
-系统从来没用过它。实测(2026-08-07,SEALED-1 未人工 88 份 + SEALED-2 100 份):
-四分之一左右的文档根本不是发票 —— 订单、报价、合同、确认单、收据、贷项通知、
-形式发票。系统把它们每一份都当成一张有 10 个必填字段的发票在问人,而且在
-贷项通知单上把 8460.95 CR 当成正数放行(2026-08-07 人工复核 HD-0007,
-`ROUTING_FALSE_NEGATIVE`)—— 那是把该收的钱当成该付的钱。
+**Why this module exists.** The DWS understand response has always carried
+`invoice_type`, and this system never used it. Measured 2026-08-07 across the 88
+never-reviewed SEALED-1 documents and the 100 SEALED-2 documents: roughly a
+quarter are not invoices at all — purchase orders, quotes, contracts, order
+confirmations, receipts, credit notes, pro forma invoices. The system was asking a
+human about all ten mandatory invoice fields for every one of them, and on a
+credit note it released 8460.95 CR as a positive number (human review HD-0007,
+2026-08-07, `ROUTING_FALSE_NEGATIVE`) — treating money owed to you as money you owe.
 
-**为什么类型声明必须带证据。** `invoice_type` 是**被监督的那个模型自己写的
-自由文本**。一旦策略拿它当条件(「这类单据不用查这些字段」「这类单据要查
-符号」),模型只要改一个字符串,就能关掉针对自己的监督。所以类型不是一个
-标签,必须和这个项目里其他所有值一个待遇:**绑定到页面上一块具体区域,
-带独立 OCR 的字面支撑**。找不到支撑 = 阻断,不是默认成 invoice(宪章四:
-跑不了的检查不算通过)。
+**Why a type claim must carry evidence.** `invoice_type` is **free text written by
+the very model under supervision**. The moment a policy conditions on it ("this
+document class need not check these fields", "this class needs a sign check"), the
+model can switch off its own supervision by changing one string. So a type is not
+a label; it gets the same treatment as every other value here: **bound to a
+specific region of the page, with literal support from an independent OCR**. No
+support found means blocked, not defaulted to invoice (charter rule four: a check
+that could not run is not a pass).
 
-**为什么用 OCR 而不是读图模型。** 这道检查完全可以确定性地跑在冻结证据上:
-零 API、零延迟、可离线重算、能进回归测试。一个能确定性跑的检查不该换成
-一个要联网才能跑的。
+**Why OCR rather than a vision model.** This check runs deterministically on
+frozen evidence: zero API, zero latency, recomputable offline, and testable in
+regression. A check that can run deterministically should not be traded for one
+that needs the network.
 
-**匹配规则是本模块自己的,不复用 `citation_holds`。** 后者是 `want in have`
-的子串包含(见 CLAUDE.md 的搬运陷阱),拿不到几何。这里要的是**词序列匹配
-并合并 bbox** —— 因为证据要能在页面上圈出来给人看,布尔值不够。
+**The matching rule is this module's own; `citation_holds` is deliberately not
+reused.** That one is `want in have` substring containment (see the porting traps
+in CLAUDE.md) and yields no geometry. What is needed here is **token-sequence
+matching with merged bounding boxes** — the evidence has to be circleable on the
+page for a human, and a boolean is not enough.
 """
 
 from __future__ import annotations

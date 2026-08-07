@@ -1,8 +1,9 @@
-"""环境自检:评委拿到 clean clone 后的第一件事应该是 `invoiceloop doctor`。
+"""Environment self-check: the first thing to run on a clean clone.
 
-产品路径(workspace:ingest → run → adjudicate → bundle)的硬依赖缺失
-→ 退出码 1;研究路径(heldout、校准复算、run --out 读 dws-derisk 存盘证据)
-只报告不阻断 —— 默认安装不要求 sibling 校准档案。
+A missing hard dependency of the product path (workspace: ingest → run →
+adjudicate → bundle) exits 1. The research path (heldout, calibration recompute,
+`run --out` reading stored dws-derisk evidence) is reported but never blocks —
+a default install does not require the sibling calibration archive.
 """
 
 from __future__ import annotations

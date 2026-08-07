@@ -1,9 +1,9 @@
-"""CLI:python -m invoiceloop ...
+"""CLI: python -m invoiceloop ...
 
-    run         从存盘证据跑全流程(零 API)
-    adjudicate  追加一条人工裁决
-    bundle      打 audit_bundle.zip
-    doctor      环境自检(产品路径硬依赖缺失 → 退出码 1)
+run         full pipeline from stored evidence (zero API)
+adjudicate  append one human decision
+bundle      build audit_bundle.zip
+doctor      environment self-check (missing product-path dependency → exit 1)
 """
 
 from __future__ import annotations

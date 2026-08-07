@@ -1,26 +1,37 @@
-"""H1 评委面向复核工作台 —— 本地 loopback Web 应用(127.0.0.1,零新增依赖)。
+"""The H1 review workbench — a local loopback web application (127.0.0.1, no new
+dependencies).
 
-形态决定(钉死,别悄悄改):
-- **stdlib http.server,不加 Flask/FastAPI** —— pyproject 运行时仍只有
-  requests 一个依赖,评委 clean clone 后 pip install . 即可,不多装任何东西。
-- **server-rendered HTML + 渐进增强 JS** —— 无 JS 时除浏览器上传外全部可用
-  (上传可回落到输入契约:把 PDF 放进 workspace/input/pdfs/)。
-- **人只写裁决,且只能写裁决** —— /decide 走 adjudicate.append_adjudication
-  的同一套校验(快照一致性、三元一致、supersession),工作台不开任何后门。
-- **decided_at 由服务器在点击时盖章** —— 点击就是人给出时间的动作;
-  裁决是人的输入不是重算工件,不违反"工件不读墙钟"(run 工件仍全确定)。
-- 视觉纪律借 briefloop-prototypes:DWS/模型值 = 紫(advisory,永不绿),
-  人工确认 = 蓝,确定性通过 = 绿,阻断 = 红,不可用 = 灰。
+Shape decisions, pinned; do not quietly change them:
+- **stdlib http.server, no Flask or FastAPI** — the pyproject runtime still has
+  exactly one dependency, requests, so a clean clone plus `pip install .` is enough
+  and installs nothing extra.
+- **Server-rendered HTML with progressive-enhancement JS** — everything except
+  browser upload works with JS off, and upload falls back to the input contract
+  (put the PDF in workspace/input/pdfs/).
+- **A person writes adjudications, and only adjudications** — /decide goes through
+  the same checks as adjudicate.append_adjudication (snapshot consistency, the
+  claim/doc/field triple, supersession). The workbench opens no back door.
+- **decided_at is stamped by the server at click time** — clicking *is* the act of
+  a person supplying the time. An adjudication is human input, not a recomputed
+  artifact, so this does not violate "artifacts never read the wall clock"; run
+  artifacts remain fully deterministic.
+- Visual discipline borrowed from briefloop-prototypes: DWS/model values are purple
+  (advisory, never green), human confirmation is blue, deterministic pass is green,
+  blocked is red, unavailable is grey.
 
-路由契约(tests/test_workbench.py 以此为准):
+Route contract (tests/test_workbench.py is the authority):
     GET  / /queue /adjudicate /report /upload /deliver /files/<run>/<rel> /download/<run>/audit_bundle.zip
-    POST /decide /upload?filename= /ingest /bundle /verify(原始字节)
+    POST /decide /upload?filename= /ingest /bundle /verify (raw bytes)
 
-/adjudicate 是 Gradescope 风格的单槽裁决页:左栏整页渲染 + bbox 高亮
-overlay(冻结绑定绿实线 / DWS 引用紫虚线),右栏判定卡 + 决策表单(与队列页
-同一套表单字段、同一个 /decide 端点),底栏按分诊序导航上一条/下一条未裁决。
-表单多带一个 hidden next=adjudicate:提交后服务器推进到队列序里下一个未裁决
-槽位;不带该字段的提交(队列页)仍跳回队列锚点 —— 两条路的裁决语义一字不差。
+/adjudicate is a Gradescope-style single-slot page: the left column renders the
+full page with a bbox highlight overlay (frozen binding in a solid green line, the
+DWS citation in a dashed purple one); the right column holds the verdict card and
+the decision form (the same form fields and the same /decide endpoint as the
+queue page); the footer navigates to the previous or next unadjudicated slot in
+triage order. The form carries one extra hidden field, next=adjudicate: on submit
+the server advances to the next unadjudicated slot in queue order, while a submit
+without it (from the queue page) returns to the queue anchor. The adjudication
+semantics of the two paths are identical.
 """
 
 from __future__ import annotations

@@ -1,16 +1,22 @@
-"""留出集执行驱动(docs/HELDOUT.md 的可执行形态)。
+"""The held-out execution driver — docs/HELDOUT.md in runnable form.
 
-纪律:
-- 名单确定性可复现、**先于任何调用落盘**(预注册:答案先于打分)。
-- 密钥只从环境变量 `DWS_API_KEYS`(逗号分隔)或
-  `~/.config/invoiceloop/heldout.keys` 读,绝不写进仓库与证据档案。
-- 存盘纪律同 dws-derisk extract.py:先写原始响应再解释;4xx 也是证据。
-- 断点续跑:已存盘且 200 的 (doc, mode) 跳过。
-- 预算熔断:按每次返回的 usage cost 累计,超线即停(默认 6000)。
-- 余额见底(401/402/403)自动换下一把 key;429 退避重试。
+Discipline:
+- The document list is deterministic and reproducible, and is **written to disk
+  before any call** (pre-registration: answers precede scoring).
+- Keys come only from `DWS_API_KEYS` (comma separated) or
+  `~/.config/invoiceloop/heldout.keys`, and are never written into the repository
+  or the evidence archive.
+- Storage discipline matches dws-derisk extract.py: raw response first,
+  interpretation second; a 4xx is evidence too.
+- Resumable: a (doc, mode) already stored with status 200 is skipped.
+- Budget breaker: usage cost accumulates from each response, and the run stops on
+  crossing the line (default 6000).
+- On an exhausted balance (401/402/403) it rotates to the next key; 429 backs off
+  and retries.
 
-工作区自包含:`raw/`(新响应)+ `data`(指向校准档案的符号链接),
-把 `INVOICELOOP_DWS_DERISK` 指到工作区,pipeline 原样跑。
+The workspace is self-contained: `raw/` for new responses plus a `data` symlink to
+the calibration archive. Point `INVOICELOOP_DWS_DERISK` at the workspace and the
+pipeline runs unchanged.
 """
 
 from __future__ import annotations

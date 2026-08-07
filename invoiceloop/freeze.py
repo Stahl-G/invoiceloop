@@ -1,13 +1,17 @@
-"""冻结事务(ARCHITECTURE.md §5.2)—— 系统的关键防线。
+"""The freeze transaction (ARCHITECTURE.md §5.2) — the system's critical defence.
 
-模型只能写 `field_drafts.json`(无 ID、无权威);Python 校验绑定、
-分配稳定 `FC-####`、冻结账本。第六轮那次错位事故(359 行答案绑到别的发票)
-在这条规则下当场被拒 118/168 行(70%),而不是事后靠 OCR 考古发现。
+A model may only write `field_drafts.json`: no IDs, no authority. Python checks
+the binding, assigns a stable `FC-####`, and freezes the ledger. The round-six
+misbinding incident (359 answers bound to the wrong invoices) was rejected on
+the spot under this rule — 118 of 168 rows, 70% — instead of being excavated
+from OCR after the fact.
 
-绑定规则必须是**文档级**的:值要出现在这份发票的独立 OCR 文本里。
-片段级(要求值落在 DWS 注册的 bbox 内)实测误伤 26–28% 的合法作答 ——
-被误伤的正是 DWS 没返回值或框错位置、而读图在页面别处找到的行,
-那是读图唯一有增量价值的地方。§5.2 有那张对照表。
+The binding rule has to be **document-level**: the value must appear in this
+invoice's independent OCR text. A span-level rule (requiring the value to fall
+inside a bbox DWS registered) was measured to reject 26–28% of legitimate
+answers — and the ones it rejected were exactly the rows where DWS returned no
+value or boxed the wrong region and a vision reader found it elsewhere on the
+page, which is the only place vision reading adds anything. §5.2 has the table.
 """
 
 from __future__ import annotations

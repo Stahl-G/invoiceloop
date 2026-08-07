@@ -1,18 +1,24 @@
-"""Harness 加载:PROM 哈希链重放 → 策略 dict + 内容寻址 digest。
+"""Harness loading: replay the PROM hash chain → policy dict + content-addressed
+digest.
 
-权威关系(83 评 P0-2 + 高级裁决五):active harness 由**晋升记录哈希链**
-(`improve/promotions/PROM-*.json`)重放决定,`active_harness.json`
-只是缓存。每条 PROM 记录带 previous_promotion_digest(前一条文件字节
-sha256)与 from/to 双侧 policy digest;重放校验:文件名序号连续、
-记录 ID 与文件名一致、from 侧 harness+digest 等于当前重放状态、
-链 digest 连续、目标 policy 文件字节与 to_policy_digest 一致。
-缓存与重放不符、或无记录却有指针 —— 一律 fail closed。
+Where authority lives (83-point review P0-2, plus adjudication five): the active
+harness is determined by replaying the **promotion hash chain**
+(`improve/promotions/PROM-*.json`). `active_harness.json` is only a cache. Each
+PROM record carries previous_promotion_digest (the sha256 of the previous
+record's bytes) and both the from-side and to-side policy digests. The replay
+checks that filename sequence numbers are contiguous, that record IDs match
+filenames, that the from-side harness and digest equal the current replay state,
+that chain digests are continuous, and that the target policy file's bytes match
+to_policy_digest. A cache that disagrees with the replay, or a pointer with no
+records behind it, fails closed.
 
-哈希链能检测孤立修改与操作事故;对抗「整体重写本地历史」的锚仍在
-带外(git tag / 公布的 digest)—— 与 bundle verify 同一诚实边界。
+A hash chain detects isolated edits and operational accidents. The anchor against
+wholesale rewriting of local history is still out of band — a git tag, a published
+digest — the same honesty boundary as bundle verify.
 
-默认 = 包内 HAR-0001(保守起点,与 2026-08-05 前的内联分诊逻辑等价)。
-写指针只有 `improve promote`/`rollback` 一个入口(必须人名 + 理由)。
+Default = the packaged HAR-0001: a conservative starting point, equivalent to the
+inline triage logic used before 2026-08-05. The pointer has exactly one writer,
+`improve promote` / `rollback`, and both require a name and a rationale.
 """
 
 from __future__ import annotations

@@ -1,12 +1,13 @@
-"""Gemini GenAI SDK & ADK Agent Layer for InvoiceLoop.
+"""Gemini GenAI SDK and ADK agent layer.
 
-改进循环由 ADK `Runner` 真正执行(见 `improve_loop`),模型出口挂录放
-回调做零 API 重放(见 `adk_replay`)。模型只产建议:不分配 ID、不写账本、
-不决定门禁跑不跑、不晋升。
+The improvement loop is genuinely executed by an ADK `Runner` (see
+`improve_loop`), and the model boundary carries record/replay callbacks for
+zero-API replay (see `adk_replay`). Models produce advice only: they assign no
+IDs, write no ledger, decide no check's scheduling, and promote nothing.
 
-只有结构化调用一条路径 —— `call_gemini_structured`。非结构化的
-`call_gemini_model` 已删除:它会吞掉 JSON 解析错误,机器消费的结果
-不许走那条路。
+There is one call path, the structured one — `call_gemini_structured`. The
+unstructured `call_gemini_model` has been removed: it swallowed JSON parse
+errors, and nothing a machine consumes may travel that way.
 """
 
 from __future__ import annotations

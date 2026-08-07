@@ -1,17 +1,19 @@
-"""输入契约(§12 决定 3):人把 PDF 放进 `input/pdfs/`,系统从这里读。
+"""The input contract (§12, decision 3): a person puts PDFs in `input/pdfs/`, and
+the system reads from there.
 
 ```
 workspace/
-  input/pdfs/   ← 把发票丢这里(文件名即文档身份,见 sanitise_doc_id)
-  ocr/          ← 独立 OCR(本地产,文字层或 tesseract)
-  raw/          ← DWS 响应落这里(先存盘后解释)
-  runs/run-NNNN ← run --workspace 的产出:不可变,逐代递增;
-  runs/current.json   最新一代的指针(可重建,不是权威)
+  input/pdfs/   ← drop invoices here (the filename is the document identity,
+                  see sanitise_doc_id)
+  ocr/          ← independent OCR, produced locally from a text layer or tesseract
+  raw/          ← DWS responses land here (stored before interpreted)
+  runs/run-NNNN ← output of `run --workspace`: immutable, one generation per input
+  runs/current.json   pointer to the latest generation (rebuildable, not authoritative)
 ```
 
-两条命令:`python3 -m invoiceloop ingest --workspace ws/`(本文)
-+ `python3 -m invoiceloop run --workspace ws/`。
-断点续跑:已存在的 OCR 与 200 响应一律跳过。
+Two commands: `python3 -m invoiceloop ingest --workspace ws/` (this module) and
+`python3 -m invoiceloop run --workspace ws/`. Resumable: existing OCR and stored
+200 responses are skipped.
 """
 
 from __future__ import annotations

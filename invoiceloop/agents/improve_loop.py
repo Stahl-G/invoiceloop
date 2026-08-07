@@ -1,21 +1,25 @@
-"""改进循环:由 ADK `Runner` 真正执行的四阶段流水线。
+"""The improvement loop: a four-stage pipeline genuinely executed by an ADK `Runner`.
 
     Runner.run_async()
       └─ SequentialAgent "improve_pipeline"
-           ├─ LlmAgent  miner      → state["miner"]        哪些复核模式值得成规则
-           ├─ LlmAgent  proposer   → state["proposals"]    规则怎么写才不过宽
-           ├─ Evaluator (BaseAgent)→ state["counterfactual"]  确定性,总是跑
-           └─ LlmAgent  critic     → state["critic"]       这条规则会丢掉真值吗
+           ├─ LlmAgent  miner      → state["miner"]        which review patterns deserve a rule
+           ├─ LlmAgent  proposer   → state["proposals"]    how to write it without going too wide
+           ├─ Evaluator (BaseAgent)→ state["counterfactual"]  deterministic, always runs
+           └─ LlmAgent  critic     → state["critic"]       would this rule drop real values?
 
-为什么 Evaluator 是自定义 `BaseAgent` 而不是工具:
-工具由模型决定调不调。宪章四说跑不了的检查不算通过 —— 反事实评测**必须**
-每次都跑。`SequentialAgent` 按顺序执行子节点,没有模型能跳过它。
+Why the evaluator is a custom `BaseAgent` rather than a tool: a tool is invoked at
+the model's discretion. Charter rule four says a check that could not run is not a
+pass, so the counterfactual evaluation **must** run every time. `SequentialAgent`
+executes its children in order, and no model can skip it.
 
-模型的权限边界(宪章一,单一写者):
-- 模型产出的是**建议**,字段叫 `recommend_for_human_review`,不叫 `accepted`。
-  它不批准任何东西,也不决定哪条候选值得评测 —— 全部候选都被确定性评测。
-- 输出只写 `improve/adk_loop_report.json`;`suggestions.json` 归 suggest.py。
-- 晋升仍然只由 Gate 2 + 人签字决定,本模块不碰。
+The model's authority boundary (charter rule one, single writer):
+- The model produces **advice**. The field is called `recommend_for_human_review`,
+  not `accepted`. It approves nothing, and it does not decide which candidates are
+  worth evaluating — every candidate is evaluated deterministically.
+- Output goes only to `improve/adk_loop_report.json`; `suggestions.json` belongs
+  to suggest.py.
+- Promotion is still decided by Gate 2 plus a human signature. This module does
+  not touch it.
 """
 
 from __future__ import annotations

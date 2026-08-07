@@ -1,19 +1,24 @@
-"""seal —— 审计包的 DWS 签名封缄(第五层的外层信封,不是成员)。
+"""seal — DWS signature sealing of an audit bundle: the outer envelope of layer five,
+not a member of it.
 
-设计(DWS_SIGN_AND_VIEWER_PLAN.md,2026-08-06 评审采纳):
+Design (DWS_SIGN_AND_VIEWER_PLAN.md, accepted in review 2026-08-06):
 
-- `bundle` 保持离线、确定性、同输入同字节 —— 一个字不改;
-- `seal` 是纯增量:读 audit_bundle.zip,造 attestation(不含我方时间戳
-  —— 时间由签名的可信时间戳提供,我方不自报),渲染成一页极简 PDF
-  (手写 PDF 语法,零新依赖,确定性),POST /sign(cades/b-lt),
-  得 audit_bundle.sealed.zip = 原成员 + attestation.json +
-  attestation.signed.pdf。MANIFEST 一个字节不动(成员身份不成环:
-  attestation 证明的就是那份 manifest);
-- key 只从环境变量读(NUTRIENT_API_KEY 优先,DWS_API_KEY 兜底),
-  与 dws_client 同一纪律:绝不落盘;
-- 诚实边界(必须同屏):签名证明「这份摘要于时间 T 经过 DWS 签名且此后
-  未被改动」,签发主体是 DWS 的证书,不是本项目 —— 「谁造的包」
-  仍需带外身份。verify 的 notes 按此写,不许写「现在有信任根了」。
+- `bundle` stays offline, deterministic and byte-identical for identical input.
+  Not one character changes;
+- `seal` is purely additive: read audit_bundle.zip, build an attestation (with no
+  timestamp of ours — time comes from the signature's trusted timestamp, we do not
+  assert our own), render it as a one-page minimal PDF (hand-written PDF syntax,
+  no new dependency, deterministic), POST /sign (cades/b-lt), and get
+  audit_bundle.sealed.zip = the original members plus attestation.json and
+  attestation.signed.pdf. MANIFEST does not change by a byte, and membership does
+  not become circular: the attestation attests to exactly that manifest;
+- the key is read from the environment only (NUTRIENT_API_KEY first, DWS_API_KEY as
+  fallback), same discipline as dws_client: never written to disk;
+- the honesty boundary, which must appear on the same screen: the signature proves
+  that this digest was signed by DWS at time T and has not changed since. The
+  issuing subject is DWS's certificate, not this project — *who built the bundle*
+  still needs an out-of-band identity. verify's notes say exactly this, and must
+  never say "there is now a root of trust".
 """
 
 from __future__ import annotations

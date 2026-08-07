@@ -1,14 +1,15 @@
-"""存盘 DWS 响应与第六轮读图答案的只读访问。
+"""Read-only access to stored DWS responses and round-six vision answers.
 
-零 API:一切读 `~/Developer/dws-derisk/raw/` 的存盘文件,比较规则改了重跑
-不再计费,panel 上每个数字都能从存盘证据重算(GOAL.md 优先级 2)。
+Zero API: everything reads stored files under `~/Developer/dws-derisk/raw/`, so
+changing a comparison rule and re-running costs nothing, and every number on the
+panel can be recomputed from stored evidence (GOAL.md priority 2).
 
-存盘 record 形状(dws-derisk extract.py 写入)::
+Stored record shape (written by dws-derisk extract.py)::
 
     {doc_id, document, mode, http_status, body, credits, request_id}
-    body.output.data     — {field: value} 抽取值
+    body.output.data     — {field: value}, the extracted values
     body.output.metadata — {field: {bbox, confidence, source_bboxes, pageIndex, ...}}
-    body.output.pages    — [{page, width, height}] DWS 自己的像素空间
+    body.output.pages    — [{page, width, height}], DWS's own pixel space
 """
 
 from __future__ import annotations

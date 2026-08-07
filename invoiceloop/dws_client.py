@@ -1,10 +1,13 @@
-"""独立的 DWS /extraction/extract 客户端(不依赖 dws-derisk 仓库)。
+"""A standalone client for DWS /extraction/extract, with no dependency on the
+dws-derisk repository.
 
-存盘纪律与 dws-derisk extract.py 相同:**先写原始响应,再谈解释**;
-record 形状逐字段一致,所以 dws.load_response 零改动读取。
-4xx body 也存 —— 文档被拒的原因只在那里(dws-derisk 的教训)。
+Same storage discipline as dws-derisk extract.py: **write the raw response first,
+interpret afterwards**. The record shape matches field for field, so
+dws.load_response reads it unchanged. 4xx bodies are stored too — the reason a
+document was rejected exists only there (a lesson from dws-derisk).
 
-密钥只从参数或环境变量 DWS_API_KEY 读,绝不落盘。
+The key is read from an argument or the DWS_API_KEY environment variable, and is
+never written to disk.
 """
 
 from __future__ import annotations

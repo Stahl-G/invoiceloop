@@ -1,13 +1,19 @@
-"""`python3 -m invoiceloop demo` —— 内嵌示例语料跑通全流程。
+"""`python3 -m invoiceloop demo` — run the whole pipeline on the bundled corpus.
 
-评委路径的关键一环:仓库不再要求任何外部数据 —— samples/ 内嵌三份
-DocILE 发票 + 已存盘的 DWS 响应(抽取不重跑,零 API)+ 读图作答,
-`demo --out ws/` 就地建 workspace、本地 OCR、跑完整 run,最后提示
-打开工作台。046e0c49 是退化扫描件:多数 poppler 构建抽不出文字层,
-OCR 受阻 → 诚实阻断展品;个别构建能抽出,它就照常走全流程 ——
-两种形态都合法。与环境无关的展品是读图门对「买卖双方抽反」的
-warning(由 vendored 数据决定)。钉死「受阻必显式」的不变量,
-不钉「某份文档必须受阻」(78 评 P3:后者在评委机上实测失败)。
+The key link in a reviewer's path: the repository needs no external data.
+`samples/` carries three DocILE invoices, their already-stored DWS responses (so
+extraction is not re-run — zero API) and vision answers. `demo --out ws/` builds a
+workspace in place, runs local OCR, executes a full run, and points at the
+workbench.
+
+046e0c49 is a degraded scan: most poppler builds cannot pull a text layer from it,
+so OCR is blocked and it becomes an honest blocking exhibit; a few builds can, and
+then it flows through normally. Both shapes are legitimate. The
+environment-independent exhibit is the vision gate's warning about the buyer and
+seller being extracted the wrong way round, which the vendored data determines.
+What is pinned is the invariant "blocked must be explicit", not "this document
+must block" — the 78-point review's P3 found the latter failing on a reviewer's
+machine.
 """
 
 from __future__ import annotations

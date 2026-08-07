@@ -1,23 +1,33 @@
-"""suggest:让模型读复核笔记,写**提案草稿** —— 人读完才算数。
+"""suggest: let a model read the review notes and write **draft proposals** — they
+count only once a person has read them.
 
-宪章位置(与 `vision_ingest` 完全同款,不是新机制):
-模型只写草稿文件(`improve/suggestions.json`,无 ID、无策略、不进账本);
-要不要变成候选,由人在工作台上读完原话与草稿后点一下,再走既有的
-`propose → evaluate → promote` —— 反事实评估、人工晋升、QA 探针一个不少。
+Where this sits in the charter (identical to `vision_ingest`; not a new
+mechanism): the model writes only a draft file (`improve/suggestions.json` — no
+IDs, no policy, never the ledger). Whether a draft becomes a candidate is decided
+by a person, in the workbench, after reading both the original notes and the
+draft, and it then goes through the existing `propose → evaluate → promote` path
+with the counterfactual evaluation, the human promotion and the QA probes all
+intact.
 
-**它不在改进控制面里。** `improve` 的四个子命令仍然全确定性零模型;
-suggest 是旁挂的顾问层,输出带 `advisory: true` 与被引用的笔记 id。
-理由是 `gates.py` 首行那条:确定性路径不调模型。让模型提议放松安全规则
-而没有人复核,是这套架构存在意义的反面;让模型帮人**读** 123 行笔记,
-则只是把人从翻账本里解放出来 —— 差别全在「谁签字」。
+**This is not part of the improvement control plane.** The four `improve`
+subcommands remain deterministic and model-free; suggest is an advisory layer
+bolted on the side, and its output carries `advisory: true` plus the ids of the
+notes it cites. The reason is the first line of `gates.py`: the deterministic path
+does not call models. Letting a model propose relaxing a safety rule with nobody
+reviewing it is the opposite of why this architecture exists; letting a model help
+a person *read* 123 lines of notes only saves them from paging through the ledger.
+The whole difference is who signs.
 
-草稿的硬约束(写入前逐条校验,违反即拒):
-- 只能引用 mine_report 里已有的 cohort 特征(field/tier/strength/route),
-  不许出现 doc_id、期望值或任何单文档硬编码 —— 与 routing 的 cohort
-  白名单同一条纪律;
-- 每条建议必须给出它读的笔记(`cites`),空引用的建议直接丢弃 ——
-  没有出处的建议就是模型的意见,不是从证据来的;
-- 只提 `auto_accept` / `absent_expected` / `revoke` 三种动作,别的不收。
+Hard constraints on a draft, checked line by line before it is written, violation
+means rejection:
+
+- it may reference only cohort features already present in mine_report
+  (field / tier / strength / route). No doc_id, no expected value, no
+  single-document hardcoding — the same discipline as the routing cohort allowlist;
+- every suggestion must name the notes it read (`cites`); a suggestion with no
+  citation is discarded, because a suggestion with no source is the model's
+  opinion rather than something derived from evidence;
+- only three actions are accepted: `auto_accept`, `absent_expected`, `revoke`.
 """
 
 from __future__ import annotations

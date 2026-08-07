@@ -1,19 +1,23 @@
-"""ADK 模型出口的录放层 —— 零 API 重放,录音绑定请求身份。
+"""Record/replay at the ADK model boundary — zero-API replay, with each recording
+bound to the identity of its request.
 
-挂在 `LlmAgent` 的 `before_model_callback` / `after_model_callback` 上:
-ADK 文档写明 before 回调返回 `LlmResponse` 时「模型调用被跳过」,所以重放
-模式下**一个请求都不会发出去**,而 Runner、SequentialAgent、状态传递、
-事件流全部照常执行。
+Hangs off an `LlmAgent`'s `before_model_callback` / `after_model_callback`. ADK
+documents that returning an `LlmResponse` from the before-callback skips the
+model call, so in replay mode **not one request leaves the process**, while the
+Runner, the SequentialAgent, state passing and the event stream all execute
+normally.
 
-录音的键是**整个请求的摘要**,不是调用点起的名字:
+A recording is keyed by the digest of the **entire request**, not by a name the
+call site made up:
 
     sha256(model ‖ system_instruction ‖ contents ‖ response schema ‖ mime)
 
-早先版本用 `critic_{field}` / `party_{doc_id}` 这样的手写 call_id,
-model / prompt / schema 都不在身份里 —— 改了模型或提示词之后,旧录音
-仍然会被当成本次调用的结果返回。这不是理论风险:仓库里
-`test_agents_party.py` 与 `test_agents_vision.py` 的录音写着
-`gemini-2.5-flash`,而运行时默认早已是 `gemini-3.6-flash`,测试照过。
+The previous version used hand-written call ids like `critic_{field}` and
+`party_{doc_id}`, which carried neither the model nor the prompt nor the schema —
+so after changing a model or a prompt, the old recording would still be returned
+as this call's answer. This was not a theoretical risk: `test_agents_party.py` and
+`test_agents_vision.py` held recordings that said `gemini-2.5-flash` while the
+runtime default was already `gemini-3.6-flash`, and both tests passed.
 """
 
 from __future__ import annotations

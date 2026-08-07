@@ -1,13 +1,7 @@
-"""M1 六个确定性门禁(ARCHITECTURE.md §6),产出 gate_report.json。
+"""M1 six deterministic gates (ARCHITECTURE.md §3 spine ②).
 
-全部确定性,不调模型。检查逻辑搬自 dws-derisk 已测实现:
-C1–C7 ← routers.py::consistency_review,citation ← round3.py::citation_holds
-(子串包含,不是 token 匹配),agree ← paired.py::agree(双都缺值算一致 ——
-预注册的字面读法)。
-
-负面发现规则(宪章四):门禁跑不了 = blocking_level "blocking",severity "high"。
-"不适用"(如 citation 对 PARTY/DATE 字段)不是跑不了 —— 记 unavailable,
-不产生 finding。契约不变量:blocking == (blocking_level == "blocking")。
+Every gate runs on frozen artifacts and calls nothing over the network. A gate
+that could not run is a blocking finding, never a pass (charter rule four).
 """
 
 from __future__ import annotations

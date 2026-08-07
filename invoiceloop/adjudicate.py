@@ -1,18 +1,23 @@
-"""M4 人工裁决与交付(ARCHITECTURE.md §3 骨干④)。
+"""M4 human adjudication and delivery (ARCHITECTURE.md §3 spine ④).
 
-人是裁决的写者,但只能写裁决 —— 不许改已冻结的运行输入(宪章一)。
-裁决只追加,不编辑:`adjudication_ledger.jsonl` 是 append-only,落盘即 fsync。
+A person is the writer of adjudications, and may write nothing else — frozen run
+inputs are not editable (charter rule one). Adjudications append, never edit:
+`adjudication_ledger.jsonl` is append-only and fsynced on write.
 
-每条裁决绑定**完整复核快照**(review_snapshot_id:输入清单 + 工件注册表 +
-证据片段 + 冻结账本 + 门禁报告),不是只绑账本 —— 同一账本配上被替换的
-证据,只绑账本检测不到。裁决语义冻结:
+Each adjudication binds to the **complete review snapshot** (review_snapshot_id:
+input manifest + artifact registry + evidence spans + frozen ledger + gate
+report), not to the ledger alone — the same ledger with substituted evidence
+would be undetectable if only the ledger were bound. The decision semantics are
+frozen:
 
-- `correct` 必须带 corrected_value;`accept/reject/abstain` 禁止携带
-- claim_id ↔ doc_id ↔ field 三者必须精确一致(不许只指着一个真实 claim
-  就裁决别的字段)
-- 同一字段槽的第二次决定必须显式 supersede 当前 tip;链由 review.py 投影
+- `correct` requires corrected_value; `accept` / `reject` / `abstain` must not
+  carry one
+- claim_id ↔ doc_id ↔ field must agree exactly (pointing at one real claim
+  while adjudicating a different field is refused)
+- a second decision on the same field slot must explicitly supersede the current
+  tip; review.py projects the chain
 
-交付 = audit_bundle.zip(见 build_audit_bundle)。
+Delivery = audit_bundle.zip (see build_audit_bundle).
 """
 
 from __future__ import annotations

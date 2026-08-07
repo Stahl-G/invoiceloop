@@ -1,15 +1,19 @@
-"""跨文档查重(C8):同号发票的内容冲突与重复提交。
+"""Cross-document duplicate detection (C8): conflicting content and resubmission
+under one invoice number.
 
-六道门禁全是单文档的;这是第一个跨文档维度,看的是一个 run 的整个文档集。
-纪律(与门禁同一宪章):
+All six gates are single-document; this is the first cross-document dimension,
+and it looks at a run's whole document set. Same charter, same discipline:
 
-- finding 不是 verdict:同号冲突 ≠ 「是假发票」,是「必须人看」——
-  non-blocking,repair_owner=human,不进错误率;
-- 分组键是 (seller_name, invoice_number) —— 编号空间是按卖家的,
-  不同卖家同号不算冲突;
-- 取值只来自冻结账本(dws_understand 声明优先,缺了取 agentic)——
-  草稿不算数,查重建立在已过绑定的值上;
-- 确定性、零 API:同一冻结账本必然产出同一组冲突。
+- a finding is not a verdict: two documents sharing a number does not mean "this
+  is a forgery", it means "a person must look" — non-blocking,
+  repair_owner=human, and it does not enter the error rate;
+- the grouping key is (seller_name, invoice_number), because number spaces belong
+  to sellers; the same number from two sellers is not a conflict;
+- values come only from the frozen ledger (dws_understand claims first, agentic
+  as fallback) — drafts do not count, and duplicate detection is built on values
+  that already passed binding;
+- deterministic and zero-API: the same frozen ledger always yields the same
+  conflict set.
 """
 
 from __future__ import annotations

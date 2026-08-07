@@ -1,16 +1,22 @@
-"""工程词 → 业务话。给不写代码的应付会计(AP)看的那一层。
+"""Engineering vocabulary → business language: the layer for an accounts-payable
+clerk who does not write code.
 
-为什么单独一个模块:工作台的改进循环页原本直接印内部词表 ——
-`cohort`、`HAR-0005`、`absent_expected`、`TIER1 · unsupported · review`、
-`silent_absent 0→0`。这些是**账本里的**名字,是可复算、可对拍的前提,
-不能改;但它们不该是**人眼前**的名字。两者分开,页面翻译,工件不动。
+Why this is its own module: the workbench's improvement page used to print the
+internal vocabulary directly — `cohort`, `HAR-0005`, `absent_expected`,
+`TIER1 · unsupported · review`, `silent_absent 0→0`. Those are the names **in the
+ledger**, and they are the precondition for recomputing and cross-checking, so
+they cannot change. But they should not be the names **in front of a person**.
+Separate the two: translate the page, leave the artifacts alone.
 
-纪律:
-- 只翻译,不改变含义,更不柔化风险。「漏掉真实存在的值」就是要让人
-  看懂它有多糟,不许说成「轻微偏差」;
-- 找不到译名时**原样回退**,不猜 —— 页面上出现一个没译的英文词,
-  是「这里还没做」的诚实信号,比编一个好听的名字强;
-- 内部标识(harness id、digest、doc_id)不翻译,收进「技术细节」折叠区。
+Discipline:
+- Translate only. Do not change meaning, and above all do not soften risk.
+  "Dropping a value that was really there" has to land as badly as it is; calling
+  it "a minor deviation" is forbidden;
+- When no translation exists, **fall back to the original** rather than guessing.
+  An untranslated English term on the page is an honest signal that this part is
+  not done yet, which beats inventing a nice-sounding name;
+- Internal identifiers (harness id, digest, doc_id) are not translated; they go
+  into the collapsed "technical detail" section.
 """
 
 from __future__ import annotations

@@ -1,12 +1,9 @@
-"""静默错评分(Trust Kernel 侧):与 scripts/loop_generalization 同口径。
+"""Safety metrics: silent errors, review load, and triage lift, scored against
+ground truth.
 
-改进层 evaluate/promote 与离线复算脚本共用本模块 —— 不许各写一份。
-规范化只用 eval_norm(禁止用 fields.normalise 骗指标)。
-
-口径(已发表 LOOP_GENERALIZATION 表):
-- silent_absent: route==auto_absent 且真值非空(含 $0.00 等口径边界)
-- silent_wrong: route==auto_accept 且双方有值且 eval_normalise 后不等
-- 复核负载: route not in (auto_accept, auto_absent)
+Only ever runs against a corpus that has annotations. `annotations_available()`
+gates the lab/production boundary — without truth the metrics are marked
+`unscored` rather than quietly reported as passing.
 """
 
 from __future__ import annotations

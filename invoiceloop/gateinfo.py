@@ -1,20 +1,29 @@
-"""六门的一句话说明 —— 悬停提示的数据源(workbench 与静态 panel 共用)。
+"""One-line explanations of the six gates — the data source for hover tooltips,
+shared by the workbench and the static panel.
 
-每条都对照 gates.py 的实现与 THRESHOLDS.md 的预注册结论写过(宪章六:
-不说门禁实际不查的东西)。2026-08-03 保真复核抓出并已修正三处失真:
-- 118 行错位是**冻结事务的文档级绑定**抓的(token ≥80% 对整份文档 OCR),
-  不是引用门 —— 引用门的作用对象已接纳值,实测记录是第三轮把 T1 静默
-  从 4.4% 压到 3.1%(约一半观测可判定)
-- 读图相对 DWS 的独立性**过了**预注册线(lift 1.29×/1.33× < 1.5);
-  只警示不否决的真实理由是读者自身静默错误 8.6–15.8% 远超 1% 线、
-  弃权 59–61%
-- 第六轮结论只建立在**两位**读者上(GPT 5.6 SOL 的 359 行因 63.1% 内容
-  出现在别的文档被整体作废,不进判定)
+Every line was written against the implementation in gates.py and the
+pre-registered conclusions in THRESHOLDS.md (charter rule six: do not describe a
+gate as checking something it does not). A fidelity review on 2026-08-03 caught
+and corrected three distortions:
 
-实现依据:算术 C1/C2/C3(容差 0.02)、形态 C4-C6、在场 C7、
-引用 round3.citation_holds(`want in have` 子串,AMOUNT/CODE,首引用框)、
-双模式 paired.agree(双缺=一致;两模式相关,一致≠对)、
-读图 WARNING 不否决(gates.py「读图自己也错得起」)。
+- the 118 misbound rows were caught by the **freeze transaction's document-level
+  binding** (token ≥80% against the whole document's OCR), not by the citation
+  gate. The citation gate acts on already-accepted values, and its measured record
+  is round three pushing TIER1 silent errors from 4.4% to 3.1%, on roughly half of
+  observations being decidable;
+- vision reading's independence from DWS **failed** the pre-registered line
+  (lift 1.29× / 1.33×, below 1.5). The real reason it warns rather than vetoes is
+  that readers' own silent-error rate of 8.6–15.8% is far above the 1% line and
+  they abstain 59–61% of the time;
+- the round-six conclusion rests on **two** readers: GPT 5.6 SOL's 359 rows were
+  voided wholesale because 63.1% of their content appeared in other documents, so
+  they do not enter the determination.
+
+Implementation basis: arithmetic C1/C2/C3 (tolerance 0.02), well-formedness C4–C6,
+presence C7, citation via round3.citation_holds (`want in have` substring,
+AMOUNT/CODE, first cited box), dual-mode paired.agree (both absent counts as
+agreement; the modes are correlated, so agreement does not mean correct), and
+vision WARNING that does not veto (gates.py: "the reader can be wrong too").
 """
 
 from __future__ import annotations

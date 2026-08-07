@@ -1,11 +1,8 @@
-"""人工裁决的读取侧:加载账本 + supersession 链投影。
+"""Project the adjudication ledger into current decisions.
 
-纪律:
-- 投影是纯函数 —— 同一份 adjudication_ledger.jsonl + 同一个 review_snapshot_id,
-  任何机器任何时候投出的 current state 都一样(可重算,GOAL.md 优先级 2)。
-- current state 由 supersession 链决定,不许"取最后一行碰运气"。
-- v1 旧条目(无 decision_id,2026-08-02 验收轮留下)给合成 id,同槽位的
-  旧条目按 seq 隐式串链 —— 那是 v1 当时的语义,如实标注 legacy,不改写字节。
+The ledger is append-only, so "what is the decision on this slot" is a projection
+over the supersession chain rather than a stored value. A second decision must
+name the tip it supersedes; this module walks those links and returns the tip.
 """
 
 from __future__ import annotations

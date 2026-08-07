@@ -1,8 +1,15 @@
-"""L1 自适应二次抽取(opt-in):understand → 风险诊断 → 必要时 agentic。
+"""L1 adaptive second extraction (opt-in): understand → risk diagnosis → agentic
+only when needed.
 
-默认产品路径仍是双模式全跑(README:cross_mode_agreement 门依赖 agentic)。
-本模块只服务 `--adaptive` ingest:故意跳过 agentic 的干净文档不得被
-gates 当成「agentic 缺失阻断」。
+The default product path still runs both modes; the cross_mode_agreement gate
+depends on agentic. This module serves `--adaptive` ingest only, and exists so
+that a clean document whose agentic pass was deliberately skipped is not treated
+by the gates as "agentic missing, blocked".
+
+Measured 2026-08-06 on 88 unseen documents: it saved 2.3% of calls, and on the
+"clean" documents it skipped, every cross-mode disagreement slot that had ground
+truth turned out to be one where understand was wrong (4/4). Not recommended.
+See docs/L1_ADAPTIVE_MEASURED_2026-08-06.md.
 """
 
 from __future__ import annotations

@@ -1,10 +1,12 @@
-"""DocILE 词级 OCR 的只读访问层。
+"""Read-only access to DocILE word-level OCR.
 
-校准档案在 `~/Developer/dws-derisk/`(ARCHITECTURE.md §12 决定 1),本包通过
-配置指向它,不复制数据。打分与绑定只读存盘文件,零 API。
+The calibration archive lives at `~/Developer/dws-derisk/` (ARCHITECTURE.md §12,
+decision 1); this package points at it by configuration rather than copying the
+data. Scoring and binding read stored files only — zero API.
 
-宪章四:OCR 缺失不是"绑定失败",是检查跑不了 —— 抛 `OcrUnavailable`,
-由上层记成阻断发现,不许压成 `False` 藏进拒绝率。
+Charter rule four: missing OCR is not a "binding failure", it is a check that
+could not run. It raises `OcrUnavailable`, and the layer above records a blocking
+finding rather than collapsing it to `False` and hiding it in a rejection rate.
 """
 
 from __future__ import annotations

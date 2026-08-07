@@ -1,12 +1,14 @@
-"""任意 PDF → 独立 OCR(DocILE 词级格式),输入契约的本地腿。
+"""Any PDF → independent OCR in DocILE word-level format: the local leg of the input
+contract.
 
-绑定/引用/证据全都建立在"独立 OCR"上 —— 独立的意思是**不来自 DWS**。
-born-digital PDF 用文字层(pdftotext -bbox,词级坐标);
-扫描件退到 tesseract(若在);两条都没有 = OcrUnavailable,阻断不藏。
+Binding, citation and evidence all rest on an OCR that is *independent*, meaning
+**not from DWS**. Born-digital PDFs use the text layer (`pdftotext -bbox`, word
+coordinates); scans fall back to tesseract if present; neither available means
+`OcrUnavailable` — blocked, not hidden.
 
-产出形状与 DocILE OCR 一致(pages → blocks → lines → words,
-geometry 为相对坐标),下游所有消费者(iter_words / doc_tokens /
-region_ocr_text / printed_label)零改动复用。
+The output shape matches DocILE OCR (pages → blocks → lines → words, geometry in
+relative coordinates), so every downstream consumer — iter_words, doc_tokens,
+region_ocr_text, printed_label — is reused unchanged.
 """
 
 from __future__ import annotations

@@ -1,13 +1,8 @@
-"""评估字段集与预注册规范化规则。
+"""The scored field set and its tiers.
 
-字段集与分层搬自 dws-derisk `routers.py`(TIER1/TIER2);规范化规则逐字搬自
-dws-derisk `score.py::normalise` —— 那是 THRESHOLDS.md §5 预注册、六轮冻结的
-比较规则。值是否"正确"只相对于比较规则有意义,所以规则与字段定义住在一起,
-改它就是改结果,不许静默改。
-
-注意(CLAUDE.md 搬运陷阱之一):`normalise` 是 kind-dependent 的,
-AMOUNT 分支把值塌成单值、CODE 分支整串剥 —— 它产不出 token 序列。
-绑定用的 token 化在 `ocr.normalise_tokens`,两者不要混用。
+TIER1 is the fields whose consequences are financial or regulatory: totals,
+amount due, invoice number, VAT id, the parties. TIER2 is the rest. The split
+matters at the exit — a TIER1 slot is not released on corroboration alone.
 """
 
 from __future__ import annotations

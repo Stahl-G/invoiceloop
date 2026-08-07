@@ -1,14 +1,18 @@
-"""vision-ingest:整页渲染 → 读图模型作答 → `vision/answers6.<tag>.tsv`。
+"""vision-ingest: full-page render → a vision model answers → `vision/answers6.<tag>.tsv`.
 
-packet 规格原样搬自 dws-derisk vision_eval6.py 第六轮(2026-08-03 规格挖掘,
-逐项从代码抄回):DPI 150 全页渲染、五条纪律的 prompt、tsv 列序、
-ABSTAIN 约定、空值=弃权。两处必要的适配(round6 是 agentic 包,这里是
-单文档 API 调用):文件引用改成内联说明;一次调用带**一份**文档的全部页
-(纪律 5 本来就禁止拼图与跨文档)。
+The packet specification is carried over verbatim from dws-derisk vision_eval6.py
+round six (recovered from the code line by line on 2026-08-03): 150 DPI full-page
+render, the five-rule prompt, the tsv column order, the ABSTAIN convention, empty
+means abstain. Two adaptations were necessary because round six was an agentic
+package and this is a single-document API call: file references become inline
+descriptions, and one call carries all pages of **one** document (rule five already
+forbids collages and cross-document mixing).
 
-宪章位置:模型只写 tsv(草稿),进不进账本由冻结事务与门禁决定;
-tsv 经 snapshot 的 answers6 glob 进输入指纹 —— 改了作答 = 新 run 代。
-断点续跑:已有页图不重渲,tsv 里已有该文档的行不重问。
+Where this sits in the charter: the model writes only a tsv (a draft); whether it
+reaches the ledger is decided by the freeze transaction and the gates. The tsv
+enters the input fingerprint through snapshot's answers6 glob, so changing an
+answer means a new run generation. Resumable: existing page images are not
+re-rendered, and a document already present in the tsv is not asked again.
 """
 
 from __future__ import annotations

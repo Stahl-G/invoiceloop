@@ -1,6 +1,7 @@
-"""InvoiceLoop —— 支持关系可验证的发票抽取。
+"""InvoiceLoop — verifiable support for invoice extraction.
 
-抽取的正确性不可信,支持关系可验证。交付物是支持矩阵,不是判决。
+Extraction correctness is untrustworthy; support relations are verifiable.
+The deliverable is a support matrix, not a verdict.
 """
 
 __version__ = "0.2.0"

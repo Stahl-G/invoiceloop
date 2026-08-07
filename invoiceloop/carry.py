@@ -1,17 +1,22 @@
-"""carry —— 同证据裁决携带:人裁过的东西,证据一个字没变,不再问第二次。
+"""carry — same-evidence decision carry: what a person already judged, on evidence
+that has not changed by a single byte, is not asked a second time.
 
-动机(2026-08-06 用户实测):换 harness 开新 run 后,复核队列里大量槽位
-是「同一份证据,人上一轮已经判过」。重问一遍是纯浪费 —— 但直接跳过
-又是伪造人工。携带的规则是机械的、可验证的:
+Motivation (measured by the user, 2026-08-06): after promoting a new harness and
+opening a new run, a large share of queue slots were "same evidence, already
+judged last round". Asking again is pure waste — but silently skipping is
+fabricating human review. The carry rule is mechanical and checkable:
 
-- accept/reject:新 run 的 understand 声明存在,且**值与 span 绑定逐位
-  等于**旧声明(值变了、绑定变了、声明没了 —— 都回人);
-- correct:新 run 该槽的 DWS 原值与旧 run 相同(人补的值才有意义);
-- confirm_absent / not_applicable:新 run 该槽**没有** understand 声明
-  (有声明 = 证据变了,回人);
-- abstain 永不携带(未决就是未决);
-- 每条携带记录带 carried_from_decision_id 溯源 —— 它不是新的人工
-  判断,是同一个人对同一份证据的判断的机械搬运,账本里看得清清楚楚。
+- accept / reject: the new run's understand claim exists and its **value and span
+  binding are byte-for-byte equal** to the old claim. A changed value, a changed
+  binding, or a vanished claim all go back to the human;
+- correct: the new run's raw DWS value for that slot equals the old run's (a
+  human-supplied value only means something against the same original);
+- confirm_absent / not_applicable: the new run has **no** understand claim for
+  that slot (a claim appearing means the evidence changed — back to the human);
+- abstain never carries (undecided is undecided);
+- every carried record keeps carried_from_decision_id. It is not a new human
+  judgement; it is the mechanical transport of one person's judgement about one
+  unchanged body of evidence, and the ledger says so plainly.
 """
 
 from __future__ import annotations

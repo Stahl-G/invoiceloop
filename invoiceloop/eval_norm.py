@@ -1,12 +1,11 @@
-"""评测参考规范化 —— 2026-08-05 自 fields.normalise 逐字冻结(v0.2 P0-5)。
+"""Evaluation-time normalisation — the pre-registered rules, frozen across six
+rounds.
 
-与产品侧 fields.normalise 从此分家:
-
-- 产品侧可以被 Improve 候选演化(schema/normalization 是可编辑面);
-- **本文件是评测权威的一部分,改进层禁止编辑** —— 否则候选可以靠放宽
-  「相等」的定义骗取指标提升(v0.2 公理三:evaluator 在循环之外);
-- scripts/heldout_metrics.py 与 scripts/baseline_comparison.py 的偏差口径
-  只用这里的函数;改本文件 = 作废全部既有评测数字,必须有书面记录。
+Ported from dws-derisk `score.py::normalise` and checked point by point against
+the original in `test_port_fidelity`. Kind-dependent: the AMOUNT branch collapses
+a value to a single number, the CODE branch strips the whole string. Neither
+produces a token sequence — if tokens are what you need, split on `[a-z0-9]+`
+yourself, and use the same function on both sides.
 """
 
 from __future__ import annotations

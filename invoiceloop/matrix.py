@@ -1,16 +1,21 @@
-"""M3 支持矩阵(ARCHITECTURE.md §4 SupportRow / §7 分诊)。
+"""M3 support matrix (ARCHITECTURE.md §4 SupportRow, §7 triage).
 
-每行一个 (doc, field),四维,不是一个分数:
+One row per (doc, field), four dimensions rather than one score:
 
-- support_strength:  corroborated / single_source / unsupported —— 按**来源层级**数,
-  不是按置信度拍。dws_extraction 只算一层(双模式共享前端,已知不独立,
-  lift 2.40×,agreement 不够格当第二层)。
-- source_tiers:      这一行实际有哪些层在支持。
-- applicability:     口径争议走 §4 运行时判据,显式标注、进人工裁决、不进错误率(宪章五)。
-- limitations:       说不准的地方逐条写出(宪章六:未测量的写"尚未测量")。
+- support_strength:  corroborated / single_source / unsupported — counted by
+  **source tier**, not decided by confidence. dws_extraction counts as one tier
+  only: both modes share a front end and are known not to be independent
+  (lift 2.40×), so their agreement does not qualify as a second tier.
+- source_tiers:      which tiers actually support this row.
+- applicability:     convention disputes go through the §4 runtime criterion —
+  marked explicitly, routed to a human, and kept out of the error rate
+  (charter rule five).
+- limitations:       everything the system cannot vouch for, written out
+  (charter rule six: what has not been measured says "not yet measured").
 
-分诊 = 按 support_strength 升序排列,不要求任何一档"可信",
-只要求排序优于随机(校准:4.2× 集中度,看 46% 字段覆盖 78% 偏差)。
+Triage = sort ascending by support_strength. Nothing is required to be
+"trustworthy"; the ordering only has to beat random — calibration measured 4.2×
+concentration, with 46% of fields covering 78% of the deviation.
 """
 
 from __future__ import annotations
