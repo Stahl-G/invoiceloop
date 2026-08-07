@@ -1,0 +1,103 @@
+{
+  "call_id": "adk_c43819abc8f3b53a",
+  "agent": "critic",
+  "identity": {
+    "model": "gemini-3.6-flash",
+    "system_instruction": "You are the adversarial reviewer. For each proposal you are given the DETERMINISTIC counterfactual: what the rule would have saved and what it would have silently dropped. Argue against the proposal wherever the numbers allow it.\n\nA `blocking: true` entry means the evaluation could not run. A check that did not run is NOT a pass — recommend against, and say so.\n\nYou are not approving anything. `recommend_for_human_review` means only 'a human should spend time on this one'.\n\nproposals:\n{\n \"proposals\": []\n}\n\ncounterfactual:\n{\n \"results\": []\n}\n\nReturn one verdict per proposal. Return an empty list for no proposals.\n\nYou are an agent. Your internal name is \"critic\".",
+    "contents": [
+      {
+        "parts": [
+          {
+            "text": "run the improve loop"
+          }
+        ],
+        "role": "user"
+      },
+      {
+        "parts": [
+          {
+            "text": "For context:"
+          },
+          {
+            "text": "[miner] said: {\"candidates\":[]}"
+          }
+        ],
+        "role": "user"
+      },
+      {
+        "parts": [
+          {
+            "text": "For context:"
+          },
+          {
+            "text": "[proposer] said: {\"proposals\":[]}"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "response_mime_type": "application/json",
+    "response_schema": {
+      "$defs": {
+        "Verdict": {
+          "description": "模型的**建议**,不是批准。\n\n字段名刻意不叫 `accepted` / `approved` / `safe`:模型没有放行权,\n它能说的只有「这条值不值得人看」和「风险在哪」。",
+          "properties": {
+            "cohort_field": {
+              "title": "Cohort Field",
+              "type": "string"
+            },
+            "recommend_for_human_review": {
+              "title": "Recommend For Human Review",
+              "type": "boolean"
+            },
+            "risk": {
+              "enum": [
+                "LOW",
+                "MEDIUM",
+                "HIGH"
+              ],
+              "title": "Risk",
+              "type": "string"
+            },
+            "reason": {
+              "title": "Reason",
+              "type": "string"
+            },
+            "values_at_risk": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Values At Risk",
+              "type": "array"
+            }
+          },
+          "required": [
+            "cohort_field",
+            "recommend_for_human_review",
+            "risk",
+            "reason",
+            "values_at_risk"
+          ],
+          "title": "Verdict",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "verdicts": {
+          "items": {
+            "$ref": "#/$defs/Verdict"
+          },
+          "title": "Verdicts",
+          "type": "array"
+        }
+      },
+      "required": [
+        "verdicts"
+      ],
+      "title": "CriticReview",
+      "type": "object"
+    }
+  },
+  "model": "gemini-3.6-flash",
+  "output_text": "{\"verdicts\":[]}"
+}

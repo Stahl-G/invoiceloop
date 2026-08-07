@@ -235,3 +235,24 @@ def call_gemini_structured(
         "replayed": False,
         "call_id": call_id,
     }
+
+
+def export_credential_for_adk(workspace: Path | str | None = None) -> str | None:
+    """把 invoiceloop 解析到的凭据放进进程环境,供 ADK 自建的 client 使用。
+
+    ADK 的 `LlmAgent` 不经过 `_get_client()` —— 它自己 new 一个 genai client,
+    读的是 `GOOGLE_API_KEY` / `GEMINI_API_KEY` 进程环境变量。不桥接的话
+    `.env` 里的密钥对 ADK 不可见,用户看到的是 ADK 那条通用报错,
+    而不是我们这条会提到 `INVOICELOOP_REPLAY=1` 的。
+
+    重放模式下不需要凭据,直接返回 None —— 那条路一个请求都不发。
+    """
+    if is_replay_mode(workspace):
+        return None
+    api_key = env.credential("gemini", workspace=workspace)
+    if not api_key:
+        raise GeminiCredentialMissing()
+    # 只设 GOOGLE_API_KEY:两个都设的话 google-genai 每次调用都警告
+    # "Both GOOGLE_API_KEY and GEMINI_API_KEY are set."
+    os.environ["GOOGLE_API_KEY"] = api_key
+    return api_key

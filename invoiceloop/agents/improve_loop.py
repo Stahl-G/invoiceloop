@@ -38,7 +38,7 @@ from pydantic import BaseModel
 from invoiceloop import improve
 
 from .adk_replay import replay_callbacks
-from .runtime import _resolve_model
+from .runtime import _resolve_model, export_credential_for_adk
 
 APP_NAME = "invoiceloop_improve"
 PIPELINE_STAGES = ("miner", "proposer", "evaluator", "critic")
@@ -267,6 +267,10 @@ def run_improve_loop(
     """
     ws = Path(workspace)
     resolved = model if isinstance(model, BaseLlm) else _resolve_model(model, ws)
+    if isinstance(resolved, str):
+        # ADK 自己建 genai client,读进程环境,不认 invoiceloop 的 .env 加载器。
+        # 桥接过去,并且用我们自己的错误 —— ADK 的通用报错不会提到重放模式。
+        export_credential_for_adk(ws)
     mine_report = _load_mine_report(ws)
 
     pipeline = build_pipeline(resolved, ws)

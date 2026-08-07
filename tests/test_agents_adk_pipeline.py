@@ -209,3 +209,20 @@ def test_replay_refuses_a_recording_made_under_a_different_prompt(tmp_path, monk
     monkeypatch.setenv("INVOICELOOP_REPLAY", "1")
     with pytest.raises(ReplayRecordingMissing):
         _run(ws)
+
+
+def test_string_model_without_a_credential_raises_our_error(tmp_path, monkeypatch):
+    """ADK 自己建 client,读的是进程环境,不认 invoiceloop 的 .env。
+
+    桥接没做的时候,用户看到的是 ADK 的通用 "No API key was provided",
+    而不是我们那条说清「或者设 INVOICELOOP_REPLAY=1」的错误。
+    """
+    from invoiceloop.agents.runtime import GeminiCredentialMissing
+
+    monkeypatch.setenv("INVOICELOOP_NO_DOTENV", "1")
+    monkeypatch.delenv("INVOICELOOP_REPLAY", raising=False)
+    for var in ("GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINI_AUTH_TOKEN"):
+        monkeypatch.delenv(var, raising=False)
+
+    with pytest.raises(GeminiCredentialMissing):
+        run_improve_loop(_workspace(tmp_path), model="gemini-3.6-flash")

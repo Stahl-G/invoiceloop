@@ -1,0 +1,42 @@
+{
+  "advisory": true,
+  "source": "Gemini_Multi_Agent_Improve_Loop",
+  "adk": {
+    "executed": true,
+    "runner": "google.adk.runners.Runner",
+    "app_name": "invoiceloop_improve",
+    "pipeline": "SequentialAgent(improve_pipeline)",
+    "event_authors": [
+      "miner",
+      "proposer",
+      "evaluator",
+      "critic"
+    ],
+    "state_keys": [
+      "counterfactual",
+      "critic",
+      "mine_report",
+      "miner",
+      "proposals"
+    ]
+  },
+  "model": "gemini-3.6-flash",
+  "miner_summary": {
+    "all_events": 3,
+    "actionable": 0,
+    "superseded": 0,
+    "random_qa": 0,
+    "qualified_for_mining": 0,
+    "not_actionable_reasons": {
+      "no_reason_code": 3,
+      "low_confidence": 0,
+      "abstain": 0
+    }
+  },
+  "proposals": [],
+  "counterfactual": [],
+  "blocking_evaluations": 0,
+  "recommendations": [],
+  "recommended_for_human_review": 0,
+  "authority": "advisory only — the model recommends, Python recomputes, Gate 2 and a human signature decide promotion"
+}

@@ -139,11 +139,20 @@ call_id,model / prompt / schema 都不在身份里 —— 改了模型或提示�
 1. **`SequentialAgent` 在 google-adk 2.6.2 里已标记 deprecated**,官方建议迁到
    `Workflow`。`Workflow` 是另一套 graph/edges API,不是 drop-in;当前仍用
    `SequentialAgent`,功能正常,测试会打 DeprecationWarning。
-2. **尚无 live 调用取证。** 上面全部测试跑在脚本化模型或录音上。在拿到一次
-   真实 `gemini-3.6-flash` 调用并落盘之前,不得声称「已接通 Gemini」。
-3. **Critic 的判断质量未测量。** 现有测试证明的是**权限与管道**正确
+2. **Critic 的判断质量未测量。** 现有测试证明的是**权限与管道**正确
    (它拿得到确定性反事实、它的输出只是建议),不是「它判得准」。
    宪章六:不说工件证明不了的话。
+3. **实时取证跑在 demo 语料上**(2 份文档、3 条裁决),三个模型都正确地返回
+   空列表 —— 没有可挖的模式。循环在**有真实复核历史的语料**上的表现尚未测量。
+
+## 6b. 实时调用取证
+
+2026-08-07 完成第一次真实调用:`gemini-3.6-flash`,`google-adk` 2.6.2 +
+`google-genai` 2.17.0,三次真实请求,15.3s。录音、输入、产出与反证都在
+`docs/evidence/adk_live_2026-08-07/`。
+
+关键结论:**在完全清空凭据的环境下重放,报告与实时产出 `diff` 零差异**;
+而换模型或改提示词都会被 `ReplayRecordingMissing` 拒绝(反证见该目录 README)。
 
 ---
 

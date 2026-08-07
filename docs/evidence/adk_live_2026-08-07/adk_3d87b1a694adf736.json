@@ -1,0 +1,95 @@
+{
+  "call_id": "adk_3d87b1a694adf736",
+  "agent": "proposer",
+  "identity": {
+    "model": "gemini-3.6-flash",
+    "system_instruction": "You turn mining candidates into draft policy cohorts. A cohort that is too wide silently drops values that are genuinely on the page — that is the failure mode you are guarding against.\n\ncandidates:\n{\n \"candidates\": []\n}\n\nReturn one proposal per candidate. Return an empty list for no candidates.\n\nYou are an agent. Your internal name is \"proposer\".",
+    "contents": [
+      {
+        "parts": [
+          {
+            "text": "run the improve loop"
+          }
+        ],
+        "role": "user"
+      },
+      {
+        "parts": [
+          {
+            "text": "For context:"
+          },
+          {
+            "text": "[miner] said: {\"candidates\":[]}"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "response_mime_type": "application/json",
+    "response_schema": {
+      "$defs": {
+        "Proposal": {
+          "properties": {
+            "action": {
+              "title": "Action",
+              "type": "string"
+            },
+            "cohort": {
+              "$ref": "#/$defs/ProposalCohort"
+            },
+            "finding": {
+              "title": "Finding",
+              "type": "string"
+            },
+            "prediction": {
+              "title": "Prediction",
+              "type": "string"
+            }
+          },
+          "required": [
+            "action",
+            "cohort",
+            "finding",
+            "prediction"
+          ],
+          "title": "Proposal",
+          "type": "object"
+        },
+        "ProposalCohort": {
+          "properties": {
+            "field": {
+              "title": "Field",
+              "type": "string"
+            },
+            "tier": {
+              "title": "Tier",
+              "type": "string"
+            }
+          },
+          "required": [
+            "field",
+            "tier"
+          ],
+          "title": "ProposalCohort",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "proposals": {
+          "items": {
+            "$ref": "#/$defs/Proposal"
+          },
+          "title": "Proposals",
+          "type": "array"
+        }
+      },
+      "required": [
+        "proposals"
+      ],
+      "title": "ProposalSet",
+      "type": "object"
+    }
+  },
+  "model": "gemini-3.6-flash",
+  "output_text": "{\"proposals\":[]}"
+}

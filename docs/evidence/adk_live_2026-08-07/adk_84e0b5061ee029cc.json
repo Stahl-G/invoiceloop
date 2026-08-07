@@ -1,0 +1,67 @@
+{
+  "call_id": "adk_84e0b5061ee029cc",
+  "agent": "miner",
+  "identity": {
+    "model": "gemini-3.6-flash",
+    "system_instruction": "You read a deterministic mining report from an invoice review ledger and judge which human-review patterns are stable enough to become a policy rule. You do not decide anything — a deterministic evaluator and a human do.\n\nmine_report.json:\n{\n \"warning\": \"选择偏差警告:本报告只说明「这些复核没产生修正」,不说「这些复核没价值」—— 没被抽查不等于没有错(v0.2 §9.4)。任何 cohort 放宽都必须经过 evaluate 的反事实比较与人工 promote,本报告本身不授权任何改动。\",\n \"events\": 3,\n \"buckets\": {\n  \"all_events\": 3,\n  \"actionable\": 0,\n  \"superseded\": 0,\n  \"random_qa\": 0,\n  \"qualified_for_mining\": 0,\n  \"not_actionable_reasons\": {\n   \"no_reason_code\": 3,\n   \"low_confidence\": 0,\n   \"abstain\": 0\n  }\n },\n \"cohorts\": [],\n \"overturned_auto_accepts\": [],\n \"low_yield_candidates\": [],\n \"absence_candidates\": []\n}\n\nReturn the candidates worth proposing, with a one-line reason each. Return an empty list if none are.\n\nYou are an agent. Your internal name is \"miner\".",
+    "contents": [
+      {
+        "parts": [
+          {
+            "text": "run the improve loop"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "response_mime_type": "application/json",
+    "response_schema": {
+      "$defs": {
+        "MinerCandidate": {
+          "properties": {
+            "field": {
+              "title": "Field",
+              "type": "string"
+            },
+            "tier": {
+              "title": "Tier",
+              "type": "string"
+            },
+            "reviewed": {
+              "title": "Reviewed",
+              "type": "integer"
+            },
+            "why": {
+              "title": "Why",
+              "type": "string"
+            }
+          },
+          "required": [
+            "field",
+            "tier",
+            "reviewed",
+            "why"
+          ],
+          "title": "MinerCandidate",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "candidates": {
+          "items": {
+            "$ref": "#/$defs/MinerCandidate"
+          },
+          "title": "Candidates",
+          "type": "array"
+        }
+      },
+      "required": [
+        "candidates"
+      ],
+      "title": "MinerFindings",
+      "type": "object"
+    }
+  },
+  "model": "gemini-3.6-flash",
+  "output_text": "{\"candidates\":[]}"
+}
