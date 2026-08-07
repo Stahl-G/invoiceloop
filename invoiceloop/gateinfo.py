@@ -62,6 +62,12 @@ _INFO: dict[str, dict[str, dict[str, str]]] = {
             "fail": "Same number + same seller as another document — content conflict or suspected resubmission. Not a verdict: a human must look at both side by side; never counted into error rates.",
             "unavailable": "Not evaluated (missing number or seller — already recorded by presence checks).",
         },
+        "doctype_evidence": {
+            "intro": "Document type evidence: does the page's independent OCR contain a literal phrase that supports the extractor's invoice_type claim?",
+            "pass": "A supporting phrase was found on the page.",
+            "fail": "No literal support — type-conditional policy relaxations must not apply; unrelated fields keep their normal routes.",
+            "unavailable": "No type claim, unmapped class, or OCR unavailable — type-conditional rules stay off.",
+        },
     },
     "zh": {
         "arithmetic_consistency": {
@@ -104,6 +110,12 @@ _INFO: dict[str, dict[str, dict[str, str]]] = {
             "intro": "跨文档查重:本 run 的文档集里,两份发票是否同号同卖家。编号空间按卖家独立,所以分组键是(卖家, 票号);内容冲突与疑似重复提交都会报。",
             "fail": "与另一份文档同号同卖家 —— 内容冲突或疑似重复提交。这不是判决:需要人把两份并排看;不进错误率。",
             "unavailable": "未评估(缺票号或缺卖家 —— 缺口已由在场检查记过)。",
+        },
+        "doctype_evidence": {
+            "intro": "单据类型字面证据:独立 OCR 上是否出现支撑抽取器 invoice_type 声明的字面短语。",
+            "pass": "页面上找到了支撑短语。",
+            "fail": "无字面支撑 —— 不许启用类型级放宽;与类型无关的字段照常路由。",
+            "unavailable": "无类型声明、映不进词表、或 OCR 不可用 —— 类型级规则保持关闭。",
         },
     },
 }

@@ -99,6 +99,7 @@ def build_input_manifest(doc_ids: list[str], *, include_vision: bool = True) -> 
             json.dumps(extraction_schema(), sort_keys=True).encode()
         ).hexdigest()
     from .harness import load_active
+    from . import doctype
 
     active = load_active(derisk_root())
     manifest = {"layout": layout(), "schema_sha256": schema_sha256,
@@ -109,12 +110,15 @@ def build_input_manifest(doc_ids: list[str], *, include_vision: bool = True) -> 
     manifest["fingerprint"] = hashlib.sha256(canonical).hexdigest()
     # 执行身份 = 输入 + 代码 + harness + 路由引擎版本(v0.2 P0-4 /
     # 评审裁决二):同输入换策略/换代码 = 不同执行身份,不许重放
+    # doctype_digest:类型字面证据词表进执行身份 —— 改检查 = 新 run 代
+    # (阶段 C,docs/DOCTYPE_PLAN_2026-08-07.md)
     execution = {
         "input_fingerprint": manifest["fingerprint"],
         "code_revision": _code_revision(),
         "harness_id": active["harness_id"],
         "harness_digest": active["policy_digest"],
         "schema_digest": active.get("schema_digest") or "none",
+        "doctype_digest": doctype.digest(),
         "routing_engine": "routing-v1",
         "adaptive": _adaptive_token(derisk_root()),
     }

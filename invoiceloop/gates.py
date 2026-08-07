@@ -273,9 +273,49 @@ def run_gates(
                     f"同号同卖家同内容 —— 疑似重复提交,人确认",
                 ))
 
+    # ---- 单据类型字面证据(文档级):不进 evaluations 字段层(heldout_metrics
+    # 会展平污染 H4/H5)。结果进 document_checks;无证据 = 非阻断 finding
+    # (阶段 B:typedep 粒度 —— 不把整份文档 10 槽拖进队列)。
+    from . import doctype as _doctype
+
+    document_checks: dict[str, dict] = {}
+    for doc_id in doc_ids:
+        u = understand.get(doc_id)
+        if u is None:
+            continue
+        raw = u.data.get("invoice_type")
+        check = _doctype.check_document(
+            doc_id, None if raw is None else str(raw))
+        document_checks[doc_id] = check
+        if check["status"] == "fail":
+            acc.add(Finding(
+                "doctype_evidence", doc_id, None, "medium", "non-blocking",
+                "human",
+                "类型声明在页面上找不到字面证据 —— 不许用类型级放宽;"
+                "与类型无关的字段照常路由(阶段 B typedep 粒度)",
+                f"doctype:{doc_id}:{check.get('doc_class')}",
+                f"invoice_type={check.get('raw_type')!r} → "
+                f"{check.get('doc_class')} 无 OCR 字面支撑",
+            ))
+        elif check["status"] == "ocr_unavailable":
+            # 独立 OCR 缺失时文档级阻断已由 independent_ocr 记过;
+            # 这里只把类型检查记成跑不了,不叠第二条 blocking。
+            acc.add(Finding(
+                "doctype_evidence", doc_id, None, "medium", "non-blocking",
+                "human",
+                "类型字面证据检查因 OCR 不可用而未跑完",
+                f"doctype:{doc_id}",
+                "doctype_evidence: ocr_unavailable",
+            ))
+
     return {
-        "input_signature": {"ledger_sha256": ledger_sha256, "artifact_digest": artifact_digest},
+        "input_signature": {
+            "ledger_sha256": ledger_sha256,
+            "artifact_digest": artifact_digest,
+            "doctype_digest": _doctype.digest(),
+        },
         "evaluations": evaluations,
+        "document_checks": document_checks,
         "findings": acc.serialise(),
     }
 

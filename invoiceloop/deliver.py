@@ -45,6 +45,8 @@ def build_deliverable(run_dir: Path) -> dict:
         # 机检基础设施没跑);字段级阻断是每槽的正常路由,人已逐槽裁过
         if f["blocking"] and f.get("field") is None:
             blocking_by_doc.setdefault(f["doc_id"], []).append(f["gate_id"])
+    # 类型字面证据(阶段 C):旧 run 无 document_checks → 视为未知,不编造 pass
+    document_checks = gate_report.get("document_checks") or {}
     snapshot_id = load_or_derive_snapshot(run_dir)["review_snapshot_id"]
     slots = project(load_decisions(run_dir))
     # 本次 run 的策略(不是当前 active —— 晋升之后旧 run 的说法不许变);
@@ -67,6 +69,20 @@ def build_deliverable(run_dir: Path) -> dict:
         doc_id, field = row["doc_id"], row["field"]
         doc = docs.setdefault(doc_id, {"status": None, "fields": {},
                                        "blocking_reasons": []})
+        if "type_trust" not in doc:
+            check = document_checks.get(doc_id) or {}
+            st = check.get("status")
+            if st == "pass":
+                doc["type_trust"] = "evidenced"
+                doc["doc_class"] = check.get("doc_class")
+            elif st == "fail":
+                doc["type_trust"] = "untrusted"
+                doc["doc_class"] = check.get("doc_class")
+            elif st in ("no_claim", "unmapped", "ocr_unavailable"):
+                doc["type_trust"] = st
+                doc["doc_class"] = check.get("doc_class")
+            else:
+                doc["type_trust"] = "unknown"  # 旧 run / 未跑检查
         target = target_id_for(snapshot_id, doc_id, field)
         tip = (slots.get(target) or {}).get("tip")
 

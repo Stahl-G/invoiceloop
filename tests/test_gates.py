@@ -52,8 +52,14 @@ class TestContract:
             assert f["blocking"] == (f["blocking_level"] == "blocking")
 
     def test_input_signature_recorded(self):
+        from invoiceloop import doctype
         report = run(FULL_DATA)
-        assert report["input_signature"] == {"ledger_sha256": "x", "artifact_digest": "y"}
+        assert report["input_signature"] == {
+            "ledger_sha256": "x",
+            "artifact_digest": "y",
+            "doctype_digest": doctype.digest(),
+        }
+        assert "document_checks" in report
 
 
 class TestExtractionPresent:
