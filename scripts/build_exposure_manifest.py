@@ -7,7 +7,9 @@
 - 旧留出 100:docs/heldout_doc_list.json(H1–H6 + C3/C8/漂移分析都源于它,
   69 评后降级为回归/演化集);
 - SEALED-1 100:docs/sealed1_doc_list.json(封箱评测 + HITL + 泛化分析后
-  已降级为演化/回归集 —— 进 SEALED-2 前必须排除);
+  已降级为演化/回归集);
+- SEALED-2 100:docs/sealed2_doc_list.json(曾作晋升资格集;词表/原型污染后
+  已撤权退役 —— 进 SEALED-3 前必须排除);
 - vendored demo 3 份:invoiceloop/samples/pdfs/(demo、live 测试、录屏素材,
   是被打开/截图/分析最多的三份);
 - 测试 fixture:tests/ 全部用合成文档,无真实 DocILE id(2026-08-05 核查:
@@ -50,19 +52,26 @@ def main() -> None:
         (REPO / "docs" / "sealed1_doc_list.json").read_text())["doc_ids"]
     for doc_id in sealed1:
         add(doc_id, "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;"
-            "已降级为演化/回归集,不得进 SEALED-2)",
+            "已降级为演化/回归集,不得进后续封箱)",
             "docs/sealed1_doc_list.json")
+    sealed2 = json.loads(
+        (REPO / "docs" / "sealed2_doc_list.json").read_text())["doc_ids"]
+    for doc_id in sealed2:
+        add(doc_id, "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,"
+            "不得进 SEALED-3)",
+            "docs/sealed2_doc_list.json")
     for p in sorted((REPO / "invoiceloop" / "samples" / "pdfs").glob("*.pdf")):
         add(p.stem, "vendored demo 样本(demo/live 测试/录屏反复使用)",
             "invoiceloop/samples/pdfs/")
 
     manifest = {
-        "purpose": "封箱排除池(SEALED-2+):这些文档开发过程已暴露,不许进新封箱评测",
+        "purpose": "封箱排除池(SEALED-3+):这些文档开发过程已暴露,不许进新封箱评测",
         "generated": "scripts/build_exposure_manifest.py(确定性,可重算)",
         "counts": {
             "calibration_160": 160,
             "heldout_100": len(heldout),
             "sealed1_100": len(sealed1),
+            "sealed2_100": len(sealed2),
             "unique_total": len(entries),
         },
         "doc_ids": [entries[k] for k in sorted(entries)],

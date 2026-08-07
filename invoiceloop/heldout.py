@@ -113,13 +113,14 @@ def cmd_plan(workspace: Path, n: int = HELDOUT_N) -> list[str]:
 
 # ------------------------------------------------------------------ SEALED
 
-#: 抽样 PRNG 语境。SEALED-1 复算必须传 context="sealed1-v1";
-#: 新封箱默认 sealed2-v1,避免与 SEALED-1 撞同一随机流。
+#: 抽样 PRNG 语境。复算旧批必须传当时的 context;
+#: 新封箱默认 sealed3-v1,避免与 SEALED-1/2 撞同一随机流。
 SEALED_CONTEXTS = {
     "sealed1-v1": "invoiceloop-sealed1-v1",
     "sealed2-v1": "invoiceloop-sealed2-v1",
+    "sealed3-v1": "invoiceloop-sealed3-v1",
 }
-DEFAULT_SEALED_CONTEXT = "sealed2-v1"
+DEFAULT_SEALED_CONTEXT = "sealed3-v1"
 
 
 def sealed_pool() -> tuple[str, ...]:

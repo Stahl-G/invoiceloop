@@ -141,10 +141,10 @@ class TestSealedList:
             "与旧留出 100 互斥(暴露清单的子集,双保险)"
 
     def test_pool_shrinks_by_exposure(self):
-        # 暴露清单含旧留出 100 + SEALED-1 100(均 ⊂ heldout_pool)
+        # 暴露清单含旧留出 100 + SEALED-1 100 + SEALED-2 100(均 ⊂ heldout_pool)
         assert len(heldout.sealed_pool()) == \
-            len(heldout.heldout_pool()) - 200, \
-            "旧留出 100 + SEALED-1 100 必须从合格池中移除"
+            len(heldout.heldout_pool()) - 300, \
+            "旧留出 100 + SEALED-1 100 + SEALED-2 100 必须从合格池中移除"
 
     def test_sealed1_recompute_context(self):
         """SEALED-1 名单复算必须用 sealed1-v1 语境,不得被 sealed2 默认污染。"""

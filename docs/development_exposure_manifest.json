@@ -1,11 +1,12 @@
 {
- "purpose": "封箱排除池(SEALED-2+):这些文档开发过程已暴露,不许进新封箱评测",
+ "purpose": "封箱排除池(SEALED-3+):这些文档开发过程已暴露,不许进新封箱评测",
  "generated": "scripts/build_exposure_manifest.py(确定性,可重算)",
  "counts": {
   "calibration_160": 160,
   "heldout_100": 100,
   "sealed1_100": 100,
-  "unique_total": 360
+  "sealed2_100": 100,
+  "unique_total": 460
  },
  "doc_ids": [
   {
@@ -1473,8 +1474,17 @@
    "doc_id": "08564a1ef0f44863bf4b01be",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "086b0b4d815b42b69ac742d6",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -1488,10 +1498,19 @@
    ]
   },
   {
+   "doc_id": "0a264c8a0e204ae8868ec14f",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "0adfbe4baba7438ba8ab1713",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -1500,7 +1519,7 @@
    "doc_id": "0c56b86aedd445d8a845a287",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -1511,6 +1530,33 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "0cac49233f1648fabf90d0ee",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "0d50ad272d9140f185baa596",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "0e5092c3abbb4b9e85cfd2fb",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -1527,7 +1573,7 @@
    "doc_id": "0f1ca104aeed4a75b109d4e8",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -1536,7 +1582,7 @@
    "doc_id": "10067f2d14c54f45b4d11675",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -1551,11 +1597,38 @@
    ]
   },
   {
+   "doc_id": "12eb1b2292544172ba5e59e6",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "132ccb35754a4c2791fc03d5",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "1359f0a816d6422eb9b6a762",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "13761b15770d474e9a46f38f",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -1574,6 +1647,42 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "183b0374f1704ecbbc8d2f33",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "18439ef6749143139897637e",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "1925d1e1a8114287905a7864",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "1a22a0f5fcf840f683c84818",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -1608,7 +1717,7 @@
    "doc_id": "1f86b7aae6b0494e99113b12",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -1626,7 +1735,7 @@
    "doc_id": "22698eeb9d224750b1548d47",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -1644,7 +1753,7 @@
    "doc_id": "250d4fdc5b114f379d1d2c22",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -1653,7 +1762,7 @@
    "doc_id": "254b7845992547228487acc5",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -1668,11 +1777,29 @@
    ]
   },
   {
+   "doc_id": "265763b2c6f84984806f8eae",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "26d095ab3e774bd3ad18d9d5",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "274f4c2876b94394849debf5",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -1689,7 +1816,7 @@
    "doc_id": "28cec6830f7b43529a3ba378",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -1698,7 +1825,7 @@
    "doc_id": "294d78b9fdc44ff993bde143",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -1713,6 +1840,33 @@
    ]
   },
   {
+   "doc_id": "2b1312db3b094993abbd538e",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "2ca9a9e76ce546f498be428e",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "2cf882edf80e4e7682c63b23",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "2da12427d67f41baad26e7a7",
    "reasons": [
     {
@@ -1722,10 +1876,37 @@
    ]
   },
   {
+   "doc_id": "2dca54cef3fd43beb9e83c13",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "2eba50a5763f42e08279bd75",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "2efcfa4761254a039878d1f0",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "2f51e6ea8a384a6980ceca07",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -1734,7 +1915,7 @@
    "doc_id": "2f68f50595734c558720192c",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -1743,7 +1924,7 @@
    "doc_id": "2f7b3cfb6a1e491eaf5f7029",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -1752,7 +1933,7 @@
    "doc_id": "2f8e44ef734b47c7a051be3b",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -1761,7 +1942,7 @@
    "doc_id": "2fc175e2f49f4a1fa777598b",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -1772,6 +1953,15 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "31e9ded8e66340da8d1b2c85",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -1788,7 +1978,7 @@
    "doc_id": "3328230f6ce9455f9ae48224",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -1799,6 +1989,24 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "34fe381b6950405f85877cce",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "354333042b9e4b7cb27820bf",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -1815,7 +2023,7 @@
    "doc_id": "391cd6c1d61f42f39d266ab4",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -1824,8 +2032,17 @@
    "doc_id": "39dc02d91095494bb8b1da29",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "39fd2941088a4cd9864d8dbf",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -1842,8 +2059,26 @@
    "doc_id": "3a5499ec4e014045a5c774a6",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "3a8fa597bc6c42399db14052",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "3b57fd4e47d0472283b96397",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -1857,6 +2092,24 @@
    ]
   },
   {
+   "doc_id": "3d4fdc5028f14dc2900a6364",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "3d9951ee7e71443a9cb6d45c",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "3f18e6af97bb41b29ca25207",
    "reasons": [
     {
@@ -1866,11 +2119,38 @@
    ]
   },
   {
+   "doc_id": "3f2af66c127e4ee8a98b2009",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "3fc64c02dcf442c6a8d1b53e",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "4000a86055c0417fb444dc68",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "40532c4e2c6a42bca301ea58",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -1878,7 +2158,7 @@
    "doc_id": "4091d00062c74b84b9e45af3",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -1893,11 +2173,29 @@
    ]
   },
   {
+   "doc_id": "41efff0594164274b3fe655b",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "442e7b2628b04c479100e73a",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "45f1811ec4c74141b459f4ea",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -1911,10 +2209,19 @@
    ]
   },
   {
+   "doc_id": "4899eeffe2ee47cb9aee3541",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "4975a41e5b88457a976bbb78",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -1938,6 +2245,15 @@
    ]
   },
   {
+   "doc_id": "4e0aac7a35dc412f8911746d",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "4e5d197fe53e4762bbf6ae3d",
    "reasons": [
     {
@@ -1947,10 +2263,19 @@
    ]
   },
   {
+   "doc_id": "503f49c011c947c29a2cd255",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "50bbaa7c37374cc584cb06d3",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -1974,10 +2299,19 @@
    ]
   },
   {
+   "doc_id": "5458ffd5b2654b2f964337d0",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "5510cc65664d46a69ef906bf",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2001,10 +2335,19 @@
    ]
   },
   {
+   "doc_id": "59eec62d07814be1aafeb5db",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "5a9493430a9e49b49ae49ad0",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2019,10 +2362,28 @@
    ]
   },
   {
+   "doc_id": "5c36744c5a144fc6babf688b",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "5d60b52d028e4aaa9ee12bcc",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "5da5a0e2bded40ad8948d5eb",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2031,8 +2392,17 @@
    "doc_id": "5db8abd6665a4eec93f59e96",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "5e681745668544bba25efbbd",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2049,8 +2419,17 @@
    "doc_id": "5ff67a5505954989950400bd",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "60ac38cee797436d837eaa44",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2064,10 +2443,28 @@
    ]
   },
   {
+   "doc_id": "61a429b2922d41cd9c002b70",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "61b0d3a28d764b2fa75ea4c5",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "61c446666ea644e683e520d6",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2082,10 +2479,28 @@
    ]
   },
   {
+   "doc_id": "63e72797a71049f0bccba11c",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "64e423ac8ca2434eb859632e",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "65e34b0561a841339c6ef146",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2103,7 +2518,7 @@
    "doc_id": "66583cda46a344f683756e34",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2121,8 +2536,17 @@
    "doc_id": "699b369e9d414eb28dcb4d23",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "6a6b6a39b9914e72b943c579",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2139,7 +2563,7 @@
    "doc_id": "6b5ca42333b247b083bbcfa0",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2157,8 +2581,17 @@
    "doc_id": "6d3c39ad29f44fda85ebda6a",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "6dc350f594e94cec84e2a6f3",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2166,8 +2599,17 @@
    "doc_id": "6decf48ff2bc4b94bf2c04e7",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "6eb341f24f2b4cc1b45eb689",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2208,11 +2650,38 @@
    ]
   },
   {
+   "doc_id": "77ba81f4a62e4ee9a35ac6d5",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "78c1760ed76c49e89b95bec9",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "796b5ff94f82436a8113bd01",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "7a8366ed106f423e85aa3de3",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2229,7 +2698,7 @@
    "doc_id": "7dcd8801807544cba7c1fa34",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2244,10 +2713,19 @@
    ]
   },
   {
+   "doc_id": "801d44361c8f481eb51313eb",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "812b7e6213e0485ab99e9a48",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2265,7 +2743,7 @@
    "doc_id": "84841d69ba38451c8337757d",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2283,7 +2761,7 @@
    "doc_id": "863e3854266040d49a14cee0",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2292,7 +2770,7 @@
    "doc_id": "8697219373c84cb19a1da8b4",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2301,8 +2779,17 @@
    "doc_id": "86cf121fdcb44d9c942db92c",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "86d8030245fa4b28a746e47b",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2310,7 +2797,7 @@
    "doc_id": "86dcb611a1974c85a76f7ae6",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2321,6 +2808,15 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "87e4da43665346598da57410",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2337,8 +2833,17 @@
    "doc_id": "8c2273ca0acf4c52b31fe709",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "8c805d524e1c4ddea5eca7a2",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2364,8 +2869,17 @@
    "doc_id": "9051c9b9b65541f9ae2493f6",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "918004eb9d404fcfb73f25e1",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2373,8 +2887,17 @@
    "doc_id": "91b7c668b4a24ed5b0ac8e35",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "91dc5269429b44fb9cd26fc2",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2388,10 +2911,19 @@
    ]
   },
   {
+   "doc_id": "927248e02cff4efca86c8e7e",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "9366897ef8604a39b25e0ec8",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2409,7 +2941,7 @@
    "doc_id": "9516c656f9184251a2669378",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2418,8 +2950,17 @@
    "doc_id": "969fde2888b14bb99f7aa1f7",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "96e0f58a0ef6435daa4852ce",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2436,7 +2977,7 @@
    "doc_id": "99a96ebc8fc64662a80a990f",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2447,6 +2988,33 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "9a52926255a64fd1aa57c5f8",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "9ab3d13dba034bbba6dd1a79",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "9ab6841f3d4e457486bfc645",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2463,8 +3031,17 @@
    "doc_id": "9c89f2651d10430eba923a45",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "9df71768260847dc84015f01",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2478,11 +3055,29 @@
    ]
   },
   {
+   "doc_id": "9f33c0b3592940fd98d1cd72",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "9fadde216b7d49b1bb62085a",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "a0205ccea52149d492da3dd2",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2490,7 +3085,7 @@
    "doc_id": "a0ccc3e54ee54316a347f811",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2508,7 +3103,7 @@
    "doc_id": "a14811674f9e4b2c99bce2be",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2517,8 +3112,17 @@
    "doc_id": "a187ba31eae2481ca20cdc7a",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "a2e24c85a4af4318972fb0e2",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2532,11 +3136,38 @@
    ]
   },
   {
+   "doc_id": "a543304f3384484da4a67142",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "a59aa2424d7f46b98cc8090d",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "a69adae11ad848188d797da4",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "a76630d6f7f0414293b5ebfd",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2550,11 +3181,29 @@
    ]
   },
   {
+   "doc_id": "a9b12b8637f0498e96114239",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "ab5b46afc84c41ae82b2db90",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "acc86f9b0e544bb6b93d805c",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2571,7 +3220,7 @@
    "doc_id": "ae77ce0a6bac49d0989bada9",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2580,7 +3229,7 @@
    "doc_id": "af4d270d97cf4dc4bec18b1d",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2589,7 +3238,7 @@
    "doc_id": "afe032e87bdd43c2b158c6f9",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2604,10 +3253,19 @@
    ]
   },
   {
+   "doc_id": "b110e50fff9e4de2bd31ea73",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "b2784d5a07f84664919de89c",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2625,8 +3283,26 @@
    "doc_id": "b2e6fa6e24434b0dab627226",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "b45c2725a2204c03aa5b858a",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "b4a7e52977ee4482b65a5740",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2640,11 +3316,38 @@
    ]
   },
   {
+   "doc_id": "b533fab399a3478a93e47227",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "b5b4d5fb37b64428958cd7f5",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "b6279ff2da834d9ab3fecf07",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "b652f3ad04e94769b0c88d1c",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2670,7 +3373,7 @@
    "doc_id": "bbd6e70912004112b83dbe39",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2679,8 +3382,17 @@
    "doc_id": "bbdc085351b549178bdbfb1a",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "bc90438bc6b24b89999283ab",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2690,6 +3402,15 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "bd8da882c0d945e7974c3878",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2706,7 +3427,7 @@
    "doc_id": "c08bae6e22ef44eeb3f92cf8",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2724,7 +3445,7 @@
    "doc_id": "c19343b2784348c5b34b6d80",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2735,6 +3456,15 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "c4b4c5a1440e493dbd2b6b33",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2751,7 +3481,7 @@
    "doc_id": "c6a73292f5004df3afee5b72",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2760,8 +3490,26 @@
    "doc_id": "c80043eb417041e88c1c3bc7",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "c8146d486f6d46109e0cc5d5",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "c8d26800425448f1ae2115d1",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2778,7 +3526,7 @@
    "doc_id": "cb128af5bab94cca9ab40ac4",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2787,7 +3535,7 @@
    "doc_id": "cba91ce9767f46e09bd02b98",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2805,7 +3553,7 @@
    "doc_id": "cd75c9e34fe940feb44ccef1",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2823,8 +3571,17 @@
    "doc_id": "cdf65b6accc54facb0d8cf8e",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "ce6ab66ef43945ad9e7085fe",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2838,10 +3595,28 @@
    ]
   },
   {
+   "doc_id": "d04e832d926c4efdb0ea13bb",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "d264eaf836b642c6aae03d8b",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "d269a6bcfbe54ce0b6cc2b81",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2874,10 +3649,19 @@
    ]
   },
   {
+   "doc_id": "d875279da638445097f33572",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "d965aaae35104f1d8e2b3760",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2886,7 +3670,7 @@
    "doc_id": "dad52236b17e4b939524558a",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2904,7 +3688,7 @@
    "doc_id": "db2e81c790384a11bbde5194",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2913,7 +3697,7 @@
    "doc_id": "db60e02cb0074cd5baf3cf01",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2922,7 +3706,7 @@
    "doc_id": "dbdd03c16b814e13a412ce04",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2931,7 +3715,7 @@
    "doc_id": "ddfcaaa66c64422c93409374",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2949,8 +3733,26 @@
    "doc_id": "dedc334705bb4a1697e9b358",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "dff005614048422183f63a16",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "e008149e6a1a4619a73506de",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2967,8 +3769,17 @@
    "doc_id": "e09f45560d7143708b8b162c",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "e12004780d164ee9ba386f5f",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -2976,7 +3787,7 @@
    "doc_id": "e1a58dd3e11e490cbc1cb87f",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -2985,7 +3796,7 @@
    "doc_id": "e2517107ab9b4a859a2ae5c8",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -3003,8 +3814,26 @@
    "doc_id": "e37d9820e2b94f809defd83b",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "e4b2cc5f46c4435c92d539b1",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "e514ace79ddd4d3fa0033062",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -3021,7 +3850,7 @@
    "doc_id": "e765a01bde8b4bc38c0ace79",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -3039,8 +3868,17 @@
    "doc_id": "e804115bd684499ca577c6f2",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "e879f9c7796e4e24892fcdc0",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -3048,7 +3886,7 @@
    "doc_id": "e8d2da0e6738488888bcd53b",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -3066,8 +3904,17 @@
    "doc_id": "ea974676b77e469ca8c97708",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "eb25ee47999c4d069325fc23",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -3077,6 +3924,15 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "ec7c3c76460f4a99821d1ff5",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -3093,8 +3949,17 @@
    "doc_id": "ee07d38c385e43c3aba7c1f5",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "ee399af64a484ae396a4aeea",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -3111,7 +3976,7 @@
    "doc_id": "f1285c45438a4ded8679d21c",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -3120,7 +3985,7 @@
    "doc_id": "f1b0c5690ac9414dba5770aa",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -3129,7 +3994,7 @@
    "doc_id": "f2a028185da5413da07076e3",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -3138,7 +4003,7 @@
    "doc_id": "f2caad44263441f498fa72b5",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -3149,6 +4014,15 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "f40eef50d3754e0bb8920324",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -3165,7 +4039,7 @@
    "doc_id": "f6b2768c06404cdd8d510d4d",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -3174,7 +4048,7 @@
    "doc_id": "f6fa97a83b8246a196a5217b",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -3183,7 +4057,7 @@
    "doc_id": "f7b199fd711149feaf0044c8",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -3198,11 +4072,29 @@
    ]
   },
   {
+   "doc_id": "f87af344f9254256bdfaabfb",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "f973802bdbcb41be9a4c7a87",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "f9a32ed45b654dd18b2d4cc2",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -3210,7 +4102,7 @@
    "doc_id": "f9bc33f0c55746e28831654a",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
@@ -3237,8 +4129,17 @@
    "doc_id": "fc6dd357dcd64cf28a6f09f7",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "fc7554630cc24a2c8f9db32b",
+   "reasons": [
+    {
+     "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
+     "source": "docs/sealed2_doc_list.json"
     }
    ]
   },
@@ -3255,7 +4156,7 @@
    "doc_id": "fea9d968aa154d67950e01ad",
    "reasons": [
     {
-     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进 SEALED-2)",
+     "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
     }
    ]
