@@ -163,13 +163,15 @@ generic one.
 1. **`SequentialAgent` is deprecated in google-adk 2.6.2**, in favour of
    `Workflow`. `Workflow` is a different graph/edges API, not a drop-in. The code
    still uses `SequentialAgent`; it works, and the tests emit a DeprecationWarning.
-2. **The critic's judgement quality is unmeasured.** The tests establish the
-   authority boundary and the plumbing — that it receives the deterministic
-   counterfactual, and that its output is advisory. They say nothing about whether
-   it judges well.
-3. **The live proof ran on the demo corpus** (2 documents, 3 adjudications), where
-   all three models correctly returned empty lists because there was no pattern to
-   mine. Behaviour on a corpus with real review history is not yet measured.
+2. **The critic's judgement quality has one data point, not a measurement.**
+   Run on real review history it made a causal error — charging a baseline silent
+   error count to the candidate that did not cause it — and judged correctly once
+   the arithmetic moved into Python. Two proposals on one corpus is not a quality
+   measurement. See [§6c](#6c-real-review-history-evidence).
+3. **The counterfactual is a replay over the same 12 documents** the patterns were
+   mined from. The critic's own objection to both proposals was that 9–7 samples
+   may not extrapolate, and the 88-document measurement in
+   `LOOP_GENERALIZATION_2026-08-06.md` says it was right to worry.
 
 ## 6b. Live-call evidence
 
@@ -181,6 +183,32 @@ the negative controls are in
 The result that matters: **replaying with the credentials fully unset reproduces
 the live report with a zero diff**, while changing the model or the prompt is
 rejected with `ReplayRecordingMissing`.
+
+## 6c. Real review-history evidence
+
+The run above proved connectivity on a corpus with nothing to mine, so the
+proposer returned `[]` and **`improve.propose` was never once called with a
+model-authored cohort**. Everything downstream of the proposer was untested.
+
+Run again on 195 real review events across 346 adjudications (zero DWS credits —
+the history was already on disk), five defects surfaced immediately:
+
+| Defect | Why the demo corpus could not show it |
+|---|---|
+| The model may not send a cohort `id` (charter 1) and nobody assigned one — every proposal blocked | needs a proposal |
+| `kind` never passed, so absence patterns became `auto_accept` and **lost their mandatory QA probe** | needs a proposal |
+| No check that a proposed cohort was one the deterministic miner actually found | needs a proposal |
+| Not idempotent: a new candidate per run, whose directory name reached the critic's prompt and **broke replay** | needs a candidate to be created |
+| The critic charged a baseline silent-error count to the candidate that did not cause it | needs a counterfactual |
+
+Full write-up, before/after critic verdicts, and recordings:
+[`evidence/adk_real_2026-08-07/`](evidence/adk_real_2026-08-07/README.md).
+
+The design conclusion worth carrying: the critic's error was not fixed by a
+longer prompt. It was asked to compare baseline against candidate itself. Python
+now computes the deltas and hands it `improve.gate_verdict` — the pre-registered
+deterministic verdict — so the model argues only about what the gate cannot see:
+whether a rule is wider than the evidence behind it.
 
 ---
 

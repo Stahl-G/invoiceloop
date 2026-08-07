@@ -1,0 +1,203 @@
+{
+  "advisory": true,
+  "source": "Gemini_Multi_Agent_Improve_Loop",
+  "adk": {
+    "executed": true,
+    "runner": "google.adk.runners.Runner",
+    "app_name": "invoiceloop_improve",
+    "pipeline": "SequentialAgent(improve_pipeline)",
+    "event_authors": [
+      "miner",
+      "proposer",
+      "evaluator",
+      "critic"
+    ],
+    "state_keys": [
+      "counterfactual",
+      "critic",
+      "mine_report",
+      "miner",
+      "proposals"
+    ]
+  },
+  "model": "gemini-3.6-flash",
+  "miner_summary": {
+    "all_events": 195,
+    "actionable": 36,
+    "superseded": 3,
+    "random_qa": 8,
+    "qualified_for_mining": 31,
+    "not_actionable_reasons": {
+      "no_reason_code": 159,
+      "low_confidence": 0,
+      "abstain": 0
+    }
+  },
+  "proposals": [
+    {
+      "action": "ADD_ABSENT_RULE",
+      "cohort": {
+        "field": "total_vat",
+        "tier": "TIER1"
+      },
+      "finding": "High review volume with 100% absent/N/A outcomes and zero corrections across 9 reviews.",
+      "prediction": "Field is consistently absent; adding an absent rule will safely reduce manual reviews."
+    },
+    {
+      "action": "ADD_ABSENT_RULE",
+      "cohort": {
+        "field": "due_date",
+        "tier": "TIER2"
+      },
+      "finding": "100% confirmed absent rate across 7 reviews without any field value corrections.",
+      "prediction": "Field is consistently absent; adding an absent rule for this cohort will optimize processing."
+    }
+  ],
+  "counterfactual": [
+    {
+      "proposed": {
+        "field": "total_vat",
+        "tier": "TIER1"
+      },
+      "cohort": {
+        "id": "AE-total_vat",
+        "field": "total_vat"
+      },
+      "key": "{\"field\": \"total_vat\", \"tier\": \"TIER1\"}",
+      "finding": "High review volume with 100% absent/N/A outcomes and zero corrections across 9 reviews.",
+      "prediction": "Field is consistently absent; adding an absent rule will safely reduce manual reviews.",
+      "kind": "absent_expected",
+      "evaluation": {
+        "candidate": "HAR-0006",
+        "baseline_harness": "HAR-0004",
+        "candidate_policy_digest": "0073306c642791ea37bc42525df62fa407c208e70c3d0a42c66888dde8c47acd",
+        "baseline_policy_digest": "7c1a9ed9400009d1bb869225a0a47f4583aa7fd017b7246b963cda8cff7c92db",
+        "runs": [
+          {
+            "run_id": "run-0006",
+            "review_snapshot_id": "8bffcba35ee10044edfd494bb7599d09be85be857daa91333be6153178e8dfdf",
+            "routing_report_sha256": "b1a62a22554948e5ea0721cc05168bbe96f4dcc21672afe442380412bcafbef3",
+            "field_ledger_sha256": "91c7dc8ae8b7ee0296e9adc90fa86a5da5d58506c50a189fc26b3979c2e843fd",
+            "gate_report_sha256": "4998da6e1215b7b2e7e93722c5b6f2901344aa823ed8383eadf45efbfad41c40",
+            "raw_understand_sha256": "a90653bd54185e96dce211337b1939a1783dac1b49ae8a83e739a4b932291f93",
+            "adjudication_ledger_sha256": "4e812bc50cae494a72fe65c58d2c4eb1f355842c43961820b2d6e1679390c7dd",
+            "slots": 120,
+            "baseline_review": 68,
+            "candidate_review": 66,
+            "relaxed_slots": [
+              "dedc334705bb4a1697e9b358|seller_vat_id",
+              "f1b0c5690ac9414dba5770aa|seller_vat_id",
+              "f2caad44263441f498fa72b5|invoice_number",
+              "f7b199fd711149feaf0044c8|total_vat"
+            ]
+          }
+        ],
+        "evaluated_slots": 120,
+        "review_load_baseline": 0.5666666666666667,
+        "review_load_candidate": 0.55,
+        "delta_pp": -1.6666666666666667,
+        "safety_status": "scored",
+        "silent_absent_baseline": 0,
+        "silent_absent_candidate": 0,
+        "silent_wrong_baseline": 5,
+        "silent_wrong_candidate": 5,
+        "absent_hits_baseline": 10,
+        "absent_hits_candidate": 11,
+        "value_hits_baseline": 35,
+        "value_hits_candidate": 36,
+        "safety_note": "静默错按 DocILE 真值计(真值非空即计 silent_absent,含 $0.00 口径边界;与 docs/LOOP_GENERALIZATION_2026-08-06.md 同函数)。对外叙述应拆报真漏标 vs 口径争议,门内不等式不另开旁路。",
+        "note": "反事实重路由(不重跑抽取与门禁);静默错按 DocILE 真值计(真值非空即计 silent_absent,含 $0.00 口径边界;与 docs/LOOP_GENERALIZATION_2026-08-06.md 同函数)。对外叙述应拆报真漏标 vs 口径争议,门内不等式不另开旁路。",
+        "basis": "evo_truth_replay"
+      },
+      "blocking": false,
+      "candidate": "HAR-0006"
+    },
+    {
+      "proposed": {
+        "field": "due_date",
+        "tier": "TIER2"
+      },
+      "cohort": {
+        "id": "AE-due_date",
+        "field": "due_date"
+      },
+      "key": "{\"field\": \"due_date\", \"tier\": \"TIER2\"}",
+      "finding": "100% confirmed absent rate across 7 reviews without any field value corrections.",
+      "prediction": "Field is consistently absent; adding an absent rule for this cohort will optimize processing.",
+      "kind": "absent_expected",
+      "evaluation": {
+        "candidate": "HAR-0007",
+        "baseline_harness": "HAR-0004",
+        "candidate_policy_digest": "c092a8a8b387d8979e67551a931f7a221af5656dce77c517a525fa605a913a21",
+        "baseline_policy_digest": "7c1a9ed9400009d1bb869225a0a47f4583aa7fd017b7246b963cda8cff7c92db",
+        "runs": [
+          {
+            "run_id": "run-0006",
+            "review_snapshot_id": "8bffcba35ee10044edfd494bb7599d09be85be857daa91333be6153178e8dfdf",
+            "routing_report_sha256": "b1a62a22554948e5ea0721cc05168bbe96f4dcc21672afe442380412bcafbef3",
+            "field_ledger_sha256": "91c7dc8ae8b7ee0296e9adc90fa86a5da5d58506c50a189fc26b3979c2e843fd",
+            "gate_report_sha256": "4998da6e1215b7b2e7e93722c5b6f2901344aa823ed8383eadf45efbfad41c40",
+            "raw_understand_sha256": "a90653bd54185e96dce211337b1939a1783dac1b49ae8a83e739a4b932291f93",
+            "adjudication_ledger_sha256": "4e812bc50cae494a72fe65c58d2c4eb1f355842c43961820b2d6e1679390c7dd",
+            "slots": 120,
+            "baseline_review": 68,
+            "candidate_review": 63,
+            "relaxed_slots": [
+              "86dcb611a1974c85a76f7ae6|due_date",
+              "dedc334705bb4a1697e9b358|seller_vat_id",
+              "e09f45560d7143708b8b162c|due_date",
+              "f1b0c5690ac9414dba5770aa|due_date",
+              "f1b0c5690ac9414dba5770aa|seller_vat_id",
+              "f2caad44263441f498fa72b5|due_date",
+              "f2caad44263441f498fa72b5|invoice_number",
+              "f7b199fd711149feaf0044c8|total_vat"
+            ]
+          }
+        ],
+        "evaluated_slots": 120,
+        "review_load_baseline": 0.5666666666666667,
+        "review_load_candidate": 0.525,
+        "delta_pp": -4.166666666666666,
+        "safety_status": "scored",
+        "silent_absent_baseline": 0,
+        "silent_absent_candidate": 0,
+        "silent_wrong_baseline": 5,
+        "silent_wrong_candidate": 5,
+        "absent_hits_baseline": 10,
+        "absent_hits_candidate": 15,
+        "value_hits_baseline": 35,
+        "value_hits_candidate": 35,
+        "safety_note": "静默错按 DocILE 真值计(真值非空即计 silent_absent,含 $0.00 口径边界;与 docs/LOOP_GENERALIZATION_2026-08-06.md 同函数)。对外叙述应拆报真漏标 vs 口径争议,门内不等式不另开旁路。",
+        "note": "反事实重路由(不重跑抽取与门禁);静默错按 DocILE 真值计(真值非空即计 silent_absent,含 $0.00 口径边界;与 docs/LOOP_GENERALIZATION_2026-08-06.md 同函数)。对外叙述应拆报真漏标 vs 口径争议,门内不等式不另开旁路。",
+        "basis": "evo_truth_replay"
+      },
+      "blocking": false,
+      "candidate": "HAR-0007"
+    }
+  ],
+  "blocking_evaluations": 0,
+  "recommendations": [
+    {
+      "cohort_field": "total_vat",
+      "recommend_for_human_review": true,
+      "risk": "MEDIUM",
+      "reason": "Counterfactual replay demonstrates a 1.67 pp review load reduction without introducing silent errors. However, total_vat is a critical monetary field, and suppressing reviews based on 9 historical samples poses potential risk if non-zero tax items appear in future documents.",
+      "values_at_risk": [
+        "total_vat",
+        "vat_amount"
+      ]
+    },
+    {
+      "cohort_field": "due_date",
+      "recommend_for_human_review": true,
+      "risk": "LOW",
+      "reason": "Counterfactual replay yields a 4.17 pp review load drop with zero added silent errors across 120 evaluated slots. The rule is effective, but human review should confirm that payment due date extraction is not required for late-payment SLA enforcement.",
+      "values_at_risk": [
+        "due_date",
+        "payment_due_date"
+      ]
+    }
+  ],
+  "recommended_for_human_review": 2,
+  "authority": "advisory only — the model recommends, Python recomputes, Gate 2 and a human signature decide promotion"
+}

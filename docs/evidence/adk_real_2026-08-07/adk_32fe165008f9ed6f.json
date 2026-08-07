@@ -1,0 +1,103 @@
+{
+  "call_id": "adk_32fe165008f9ed6f",
+  "agent": "critic",
+  "identity": {
+    "model": "gemini-3.6-flash",
+    "system_instruction": "You are the adversarial reviewer. For each proposal you are given the DETERMINISTIC counterfactual: what the rule would have saved and what it would have silently dropped. Argue against the proposal wherever the numbers allow it.\n\nA `blocking: true` entry means the evaluation could not run. A check that did not run is NOT a pass — recommend against, and say so.\n\nRead the numbers as deltas. `*_baseline` is what already happens WITHOUT the rule; only `*_delta` is what the rule costs. A silent error present in both baseline and candidate is NOT a cost of this proposal, and must not be cited as one. `gate` is the deterministic pre-registered verdict on load and silent errors — do not re-derive it. Your job is what the gate cannot see: is the rule wider than the evidence, and which values would go unseen if it were wrong.\n\nYou are not approving anything. `recommend_for_human_review` means only 'a human should spend time on this one'.\n\nEach entry carries the proposal's own `finding` and `prediction` — those are the claims you are arguing with — next to the cohort as Python actually resolved it. Describe the rule from the resolved `cohort`, not from the wording of the finding.\n\ncounterfactual:\n{\n \"results\": [\n  {\n   \"cohort\": {\n    \"id\": \"AE-total_vat\",\n    \"field\": \"total_vat\"\n   },\n   \"kind\": \"absent_expected\",\n   \"blocking\": false,\n   \"finding\": \"High review volume with 100% absent/N/A outcomes and zero corrections across 9 reviews.\",\n   \"prediction\": \"Field is consistently absent; adding an absent rule will safely reduce manual reviews.\",\n   \"evaluation\": {\n    \"safety_status\": \"scored\",\n    \"basis\": \"evo_truth_replay\",\n    \"silent_absent_baseline\": 0,\n    \"silent_absent_candidate\": 0,\n    \"silent_wrong_baseline\": 5,\n    \"silent_wrong_candidate\": 5,\n    \"review_load_baseline\": 0.5666666666666667,\n    \"review_load_candidate\": 0.55,\n    \"delta_pp\": -1.6666666666666667,\n    \"evaluated_slots\": 120,\n    \"note\": \"反事实重路由(不重跑抽取与门禁);静默错按 DocILE 真值计(真值非空即计 silent_absent,含 $0.00 口径边界;与 docs/LOOP_GENERALIZATION_2026-08-06.md 同函数)。对外叙述应拆报真漏标 vs 口径争议,门内不等式不另开旁路。\",\n    \"silent_absent_delta\": 0,\n    \"silent_wrong_delta\": 0,\n    \"review_load_delta\": -0.016666666666666607\n   },\n   \"gate\": {\n    \"ok\": true,\n    \"refusals\": [],\n    \"basis\": \"evo_truth_replay\",\n    \"safety_status\": \"scored\"\n   }\n  },\n  {\n   \"cohort\": {\n    \"id\": \"AE-due_date\",\n    \"field\": \"due_date\"\n   },\n   \"kind\": \"absent_expected\",\n   \"blocking\": false,\n   \"finding\": \"100% confirmed absent rate across 7 reviews without any field value corrections.\",\n   \"prediction\": \"Field is consistently absent; adding an absent rule for this cohort will optimize processing.\",\n   \"evaluation\": {\n    \"safety_status\": \"scored\",\n    \"basis\": \"evo_truth_replay\",\n    \"silent_absent_baseline\": 0,\n    \"silent_absent_candidate\": 0,\n    \"silent_wrong_baseline\": 5,\n    \"silent_wrong_candidate\": 5,\n    \"review_load_baseline\": 0.5666666666666667,\n    \"review_load_candidate\": 0.525,\n    \"delta_pp\": -4.166666666666666,\n    \"evaluated_slots\": 120,\n    \"note\": \"反事实重路由(不重跑抽取与门禁);静默错按 DocILE 真值计(真值非空即计 silent_absent,含 $0.00 口径边界;与 docs/LOOP_GENERALIZATION_2026-08-06.md 同函数)。对外叙述应拆报真漏标 vs 口径争议,门内不等式不另开旁路。\",\n    \"silent_absent_delta\": 0,\n    \"silent_wrong_delta\": 0,\n    \"review_load_delta\": -0.04166666666666663\n   },\n   \"gate\": {\n    \"ok\": true,\n    \"refusals\": [],\n    \"basis\": \"evo_truth_replay\",\n    \"safety_status\": \"scored\"\n   }\n  }\n ]\n}\n\nReturn one verdict per proposal. Return an empty list for no proposals.\n\nYou are an agent. Your internal name is \"critic\".",
+    "contents": [
+      {
+        "parts": [
+          {
+            "text": "run the improve loop"
+          }
+        ],
+        "role": "user"
+      },
+      {
+        "parts": [
+          {
+            "text": "For context:"
+          },
+          {
+            "text": "[miner] said: {\"candidates\":[{\"field\":\"total_vat\",\"tier\":\"TIER1\",\"reviewed\":9,\"why\":\"High review volume with 100% absent/N/A outcomes and zero corrections, making it a strong candidate for an absent-expected rule.\"},{\"field\":\"due_date\",\"tier\":\"TIER2\",\"reviewed\":7,\"why\":\"100% confirmed absent rate across 7 reviews without any field value corrections.\"}]}"
+          }
+        ],
+        "role": "user"
+      },
+      {
+        "parts": [
+          {
+            "text": "For context:"
+          },
+          {
+            "text": "[proposer] said: {\"proposals\":[{\"action\":\"ADD_ABSENT_RULE\",\"cohort\":{\"field\":\"total_vat\",\"tier\":\"TIER1\"},\"finding\":\"High review volume with 100% absent/N/A outcomes and zero corrections across 9 reviews.\",\"prediction\":\"Field is consistently absent; adding an absent rule will safely reduce manual reviews.\"},{\"action\":\"ADD_ABSENT_RULE\",\"cohort\":{\"field\":\"due_date\",\"tier\":\"TIER2\"},\"finding\":\"100% confirmed absent rate across 7 reviews without any field value corrections.\",\"prediction\":\"Field is consistently absent; adding an absent rule for this cohort will optimize processing.\"}]}"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "response_mime_type": "application/json",
+    "response_schema": {
+      "$defs": {
+        "Verdict": {
+          "description": "模型的**建议**,不是批准。\n\n字段名刻意不叫 `accepted` / `approved` / `safe`:模型没有放行权,\n它能说的只有「这条值不值得人看」和「风险在哪」。",
+          "properties": {
+            "cohort_field": {
+              "title": "Cohort Field",
+              "type": "string"
+            },
+            "recommend_for_human_review": {
+              "title": "Recommend For Human Review",
+              "type": "boolean"
+            },
+            "risk": {
+              "enum": [
+                "LOW",
+                "MEDIUM",
+                "HIGH"
+              ],
+              "title": "Risk",
+              "type": "string"
+            },
+            "reason": {
+              "title": "Reason",
+              "type": "string"
+            },
+            "values_at_risk": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Values At Risk",
+              "type": "array"
+            }
+          },
+          "required": [
+            "cohort_field",
+            "recommend_for_human_review",
+            "risk",
+            "reason",
+            "values_at_risk"
+          ],
+          "title": "Verdict",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "verdicts": {
+          "items": {
+            "$ref": "#/$defs/Verdict"
+          },
+          "title": "Verdicts",
+          "type": "array"
+        }
+      },
+      "required": [
+        "verdicts"
+      ],
+      "title": "CriticReview",
+      "type": "object"
+    }
+  },
+  "model": "gemini-3.6-flash",
+  "output_text": "{\"verdicts\":[{\"cohort_field\":\"total_vat\",\"recommend_for_human_review\":true,\"risk\":\"MEDIUM\",\"reason\":\"Counterfactual replay demonstrates a 1.67 pp review load reduction without introducing silent errors. However, total_vat is a critical monetary field, and suppressing reviews based on 9 historical samples poses potential risk if non-zero tax items appear in future documents.\",\"values_at_risk\":[\"total_vat\",\"vat_amount\"]},{\"cohort_field\":\"due_date\",\"recommend_for_human_review\":true,\"risk\":\"LOW\",\"reason\":\"Counterfactual replay yields a 4.17 pp review load drop with zero added silent errors across 120 evaluated slots. The rule is effective, but human review should confirm that payment due date extraction is not required for late-payment SLA enforcement.\",\"values_at_risk\":[\"due_date\",\"payment_due_date\"]}]}"
+}

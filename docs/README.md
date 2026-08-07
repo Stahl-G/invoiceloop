@@ -14,6 +14,7 @@ says in English what each one contains, so you can decide whether to open it.
 | [`CLOUD_RUN.md`](CLOUD_RUN.md) | Deployment; why the public instance refuses every write; why the GCS path was deleted rather than fixed |
 | [`architecture.html`](architecture.html) | Architecture diagram — dark/light, exports to PNG/SVG |
 | [`evidence/adk_live_2026-08-07/`](evidence/adk_live_2026-08-07/) | First live `gemini-3.6-flash` call: recordings, inputs, outputs, and the two negative controls proving a stale recording is rejected |
+| [`evidence/adk_real_2026-08-07/`](evidence/adk_real_2026-08-07/) | The same loop on 195 real review events instead of a 3-adjudication demo. Five defects the demo corpus structurally could not reveal, including a critic that charged a baseline silent-error count to a candidate that did not cause it |
 | [`evidence/cloud_run_2026-08-07/`](evidence/cloud_run_2026-08-07/) | Deployed revision, image digest, IAM policy, remote smoke output |
 | [`HACKATHON_RUBRIC_v0.1.md`](HACKATHON_RUBRIC_v0.1.md) | Self-scoring rubric used to review this project against itself |
 
