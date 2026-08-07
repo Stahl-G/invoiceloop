@@ -202,6 +202,11 @@ def build_deliverable(run_dir: Path) -> dict:
     return {
         "run": run_dir.name,
         "review_snapshot_id": snapshot_id,
+        # 顶层记 harness —— 它此前只以 `source: "policy:HAR-000N"` 出现在被
+        # 策略放行的槽上,所以零 straight-through 的 run 里,决定「哪些槽
+        # 不用问人」的那份策略在交付物里完全不出现。冻结账本不在这里重记:
+        # field_ledger.json 已是 review_snapshot 的成分。
+        "harness_id": harness_id,
         "docs": dict(sorted(docs.items())),
         "summary": {
             "docs": len(docs), "by_status": by_status,
@@ -213,7 +218,9 @@ def build_deliverable(run_dir: Path) -> dict:
             "mean_fields_in_human_queue":
                 (sum(counts) / len(counts)) if counts else 0.0,
         },
-        "note": ("纯投影:最终值只来自 field_ledger 与裁决账本(support_matrix "
+        "note": ("harness_id 是产生本次路由的策略;冻结账本由 review_snapshot_id "
+                 "绑定,不在此重记。"
+                 "纯投影:最终值只来自 field_ledger 与裁决账本(support_matrix "
                  "不参与取值);unreviewed_corroborated = 多方印证但未逐个人看的 "
                  "TIER2 槽,如实标注;残余风险见 panel 校准限定;"
                  "字段级人工队列用 in_human_queue(不含 auto_absent),"

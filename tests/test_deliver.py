@@ -227,3 +227,38 @@ class TestPolicyAccept:
             "带文档级阻断的放行是单独一档,不许混进 released"
         assert "independent_ocr" in doc["release_caveats"], \
             "机检没跑过的放行不许看起来和机检全过的放行一样"
+
+
+class TestProvenanceAtTopLevel:
+    """下游拿到 deliverable.json 应当读得出「这是哪版策略下的放行」。"""
+
+    def test_harness_id_is_readable_without_a_straight_through_slot(self, ws):
+        """harness_id 此前只以 `source: "policy:HAR-000N"` 出现在被策略放行的
+        槽上。**一个零 straight-through 的 run 里它就完全不出现** —— 而决定
+        「哪些槽不用问人」的正是那份策略。出处不在工件里,就不可核。
+        """
+        from invoiceloop.deliver import build_deliverable
+
+        run_dir = ws
+        deliverable = build_deliverable(run_dir)
+
+        straight = [s for d in deliverable["docs"].values()
+                    for s in d["fields"].values()
+                    if str(s.get("source") or "").startswith("policy:")]
+        assert not straight, "这条测试要的是零 straight-through 的 run"
+
+        routing = json.loads(
+            (run_dir / "routing_report.json").read_text(encoding="utf-8"))
+        assert deliverable["harness_id"] == routing["harness_id"]
+
+    def test_frozen_ledger_is_not_restated(self, ws):
+        """`field_ledger.json` 已在 review_snapshot 的成分里 —— 顶层不再重复
+        记一遍。同一事实记两处,两处就会有一天不一致。
+        """
+        from invoiceloop.deliver import build_deliverable
+        from invoiceloop.snapshot import SNAPSHOT_COMPONENTS
+
+        assert "field_ledger.json" in SNAPSHOT_COMPONENTS
+        deliverable = build_deliverable(ws)
+        assert not [k for k in deliverable if "ledger" in k or "sha" in k]
+        assert deliverable["review_snapshot_id"]
