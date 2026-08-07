@@ -43,7 +43,7 @@
 ```bash
 docker build -t invoiceloop:local .
 docker run --rm -p 8080:8080 invoiceloop:local
-curl -fsS http://127.0.0.1:8080/healthz
+curl -fsS http://127.0.0.1:8080/healthz   # 容器内路径
 curl -fsS -o /dev/null -w '%{http_code}\n' -X POST http://127.0.0.1:8080/decide  # 期望 403
 ```
 
@@ -64,7 +64,12 @@ gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregi
 
 - 本地 CLI 默认 `--host 127.0.0.1`(loopback,不变)
 - 容器入口 `--host 0.0.0.0 --port $PORT`,默认 `--allowed-host .run.app`
-- 探针 `GET /healthz` 先于 Host 闸,且不跑 `doctor`(它会查研究语料)
+- 探针 `GET /_health`(外网)与 `GET /healthz`(容器内)先于 Host 闸,
+  且不跑 `doctor`(它会查研究语料)
+- **`/healthz` 在 Cloud Run 外网侧不可用** —— Google 前端在请求到达
+  Cloud Run 之前就把它吞掉并回自己的 404 页(2026-08-07 实测:同一部署下
+  `/healthzz` `/_health` `/livez` `/nope` 全都进到应用里)。容器内
+  HEALTHCHECK 打 `127.0.0.1` 不经过前端,`/healthz` 照常有效。
 - **Host 后缀白名单不是鉴权** —— 它只挡 DNS rebinding,别当访问控制用
 
 ## 取证

@@ -254,3 +254,18 @@ def test_writable_is_the_default(workspace):
     with _server(workspace) as port:
         status, body = _post(port, "/decide")
         assert status != 403 or b"read-only" not in body.lower()
+
+
+def test_health_probe_answers_on_a_path_google_does_not_intercept(workspace):
+    """`/healthz` 在 Cloud Run 上被 Google 前端吞掉,根本到不了容器。
+
+    2026-08-07 实测:`/healthz` 返回 Google 自己的 404 页(响应头里没有
+    `server: Google Frontend`),而 `/healthzz` `/_health` `/livez` `/nope`
+    全都进到应用里由我们 404。所以对外探针不能只挂 `/healthz`。
+    容器内 HEALTHCHECK 打 127.0.0.1 不经过前端,`/healthz` 仍然有效。
+    """
+    with _server(workspace, host="0.0.0.0", allowed_hosts={".run.app"}) as port:
+        for path in ("/healthz", "/_health"):
+            status, body = _get(port, path, host="evil.example")  # 先于 Host 闸
+            assert status == 200, f"{path} → {status}"
+            assert json.loads(body)["ok"] is True

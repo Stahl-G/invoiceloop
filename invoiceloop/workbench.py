@@ -2148,6 +2148,9 @@ class _Handler(BaseHTTPRequestHandler):
                 text = text[:cut] + self._READ_ONLY_BANNER + text[cut:]
         self._send(status, text.encode("utf-8"), "text/html; charset=utf-8", cookies)
 
+    #: 见 `_dispatch`:`/healthz` 在 Cloud Run 外网侧不可用
+    _PROBE_PATHS = ("/healthz", "/_health")
+
     def _redirect(self, location: str, cookies=None) -> None:
         self._send(303, b"", "text/plain", cookies, {"Location": location})
 
@@ -2163,8 +2166,11 @@ class _Handler(BaseHTTPRequestHandler):
 
         path, params = self._params()
         set_cookies: list = []
-        # 探针先于 Host 闸 —— Cloud Run / Docker HEALTHCHECK 不该被白名单绊倒
-        if method == "GET" and path == "/healthz":
+        # 探针先于 Host 闸 —— Cloud Run / Docker HEALTHCHECK 不该被白名单绊倒。
+        # 两条路径:`/healthz` 给容器内 HEALTHCHECK(打 127.0.0.1,不过前端),
+        # `/_health` 给外部 —— Google 前端会在到达 Cloud Run 之前吞掉 `/healthz`
+        # 并回自己的 404 页(2026-08-07 实测,见 tests 里那条注释)。
+        if method == "GET" and path in self._PROBE_PATHS:
             body = json.dumps({"ok": True, "service": "invoiceloop-workbench"}).encode()
             return self._send(200, body, "application/json; charset=utf-8")
         lang = self._lang(params, set_cookie=set_cookies)
