@@ -135,9 +135,12 @@ Protocols and results: [`docs/SEALED1_RESULTS.md`](docs/SEALED1_RESULTS.md),
 >
 > The revocation is **enforced in code, not stated in a document**
 > (`improve.SEALED_SET_REVOCATIONS`): the `sealed2_qualified` basis is now
-> unreachable, a promotion carrying the old marker records why it was refused,
-> and re-creating the marker file changes nothing. Deleting the marker files
-> would not have stopped the next person from writing a new one.
+> unreachable, and a promotion carrying the old marker records why it was
+> refused. The three marker files are deliberately **left on disk, untouched** —
+> deleting them would neither stop the next person from writing a new one nor
+> preserve the true fact that the evaluation did run. Verified against those live
+> markers: the one that names `HAR-0004` now yields the withdrawn wording where
+> it previously granted the upgrade.
 >
 > **Why SEALED-1 is not equally dead.** Its headline result — triage lift 4.03×
 > — was measured on 2026-08-03, before any of this existed. A finished

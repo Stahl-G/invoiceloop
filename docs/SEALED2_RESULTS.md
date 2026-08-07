@@ -84,12 +84,21 @@ INVOICELOOP_CORPUS=runs/sealed2-workspace \
 本文件即为 SEALED-2 **基线冻结点**。此后 scored promote 相对本基线做
 Gate 2(静默错不升 + 复核负载不升);人工确认后资格标记已落盘:
 
-- ~~`runs/hitl-sealed/improve/sealed2_qualified.ok`~~
-- ~~`runs/sealed2-workspace/improve/sealed2_qualified.ok`~~
-- ~~`runs/hitl-evo-b1/improve/sealed2_qualified.ok`~~
+- `runs/hitl-sealed/improve/sealed2_qualified.ok`
+- `runs/sealed2-workspace/improve/sealed2_qualified.ok`
+- `runs/hitl-evo-b1/improve/sealed2_qualified.ok`
 
-(三份标记文件现已不在盘上;**但撤销不靠删文件** —— 删掉的东西挡不住
-下一个人重新写一个。挡住它的是 `improve.SEALED_SET_REVOCATIONS`。)
+**这三份文件仍在盘上,内容原样未动,`harness_id` 都是 `HAR-0004`。**
+撤销**故意不靠删文件**:删掉挡不住下一个人重写一个,而且会把
+「当初确实跑过一次评测」这件事一并抹掉。挡住它的是
+`improve.SEALED_SET_REVOCATIONS`。实测(2026-08-07,对着盘上这三份真标记):
+
+```
+HAR-0004: marker_names_it=True  basis=evo_replay_only  revoked=True
+          「本候选持有 SEALED-2 资格标记,但该资格已于 2026-08-07 撤销……」
+```
+
+改动前同一个标记会把 basis 升成 `sealed2_qualified`。
 
 标记里的 `harness_id` 是**它资格化的那一个 harness**(本批是 `HAR-0004`)。
 ~~只有该 harness 自己晋升时 `basis` 才升为 `sealed2_qualified`~~ ——
