@@ -1,211 +1,189 @@
 # InvoiceLoop
 
-**发票抽取的支持关系,不是发票抽取的正确性。**
+**Verifiable support for invoice extraction — not a claim that the extraction is correct.**
 
-> **One-line pitch (EN):** InvoiceLoop turns Nutrient DWS invoice extraction
-> into a verifiable support matrix — every field is bound to page evidence,
-> checked by deterministic gates, and routed to a human only when the
-> machine cannot vouch for it — with a tamper-evident audit trail and a
-> guarded improvement loop that safely reduces review load over time.
-> *(English quickstart: see [安装 / Install](#安装).)*
+InvoiceLoop is a verification and review layer on top of
+[Nutrient DWS](https://www.nutrient.io/) invoice extraction. It does not assert
+that an extracted value is right. It makes every extracted value *answerable*:
+which region of the page it binds to, what an independent OCR reads in that
+region, what six deterministic checks found, and where the machine admits it
+does not know.
 
-每个抽出的字段带一条可机械验证的支持关系:它绑定到页面上哪块区域、
-那块区域的独立 OCR 说了什么、旁边印的标签是什么、六个确定性门禁各自的裁决、
-以及在哪里说不准。
+Fields the machine cannot vouch for go to a focused human queue. Everything —
+extraction, checks, routing, human decisions — lands in an append-only,
+hash-chained record that verifies offline.
 
-## 谁在用,错一个字段代价是什么
+**The deliverable is a support matrix, not a verdict.**
 
-第一用户是 **AP(应付账款)记账员**:他们今天的动作是逐张发票、逐个
-关键字段肉眼核对后再入 ERP。InvoiceLoop 替代的不是"看发票",而是
-**"确认那些机器已经能担保的字段"** —— 人只看机器担保不了的部分。
+<p align="center">
+  <a href="docs/architecture.html">Architecture diagram</a> ·
+  <a href="DISCLOSURE.md">Pre-existing work disclosure</a> ·
+  <a href="docs/ADK_INTEGRATION.md">Agent layer</a> ·
+  <a href="docs/CLOUD_RUN.md">Deployment</a>
+</p>
 
-关键字段错了不是小事,是钱和合规:
-
-- `total_gross` / `amount_due` 错 → **错付**(多付或少付,事后追回成本
-  远高于事前拦截);
-- `invoice_number` 错或重复 → **重复付款**(同一张票付两次,AP 最常见的
-  资金损失之一,跨文档查重 C8 抓的就是它);
-- `seller_vat_id` 错 → **税务申报问题**(抵扣凭证上的税号错,审计时
-  整批要回退);
-- `seller_name` / `buyer_name` 错(买卖双方抽反,实测案例)→ **付款
-  对象错误**,比金额错更难追。
-
-第二用户是**审计人员**:交付物里的每个值都能回答"凭什么信它",
-而且这个回答可以被离线重算(四层 verify + 带外 sha256 锚)。
-
-## 落地路径:deliverable.json 怎么进 ERP/AP
-
-每个 run 产出 `deliverable.json` —— 逐字段 `{value, status, source}`,
-整单 `{released / released_with_caveats / pending / blocked}`:
-
-- **released / released_with_caveats** → 下游 AP/ERP 直接入账
-  (status 为 accepted/corrected/policy_accepted 的字段带值;
-  confirmed_absent/policy_confirmed_absent 显式为空);
-- **pending / blocked** → 留在复核队列,不落下游;
-- 集成形态是**单文件契约 + 本地服务**:零 SDK 依赖,ERP 侧定时拉取
-  workspace 的 deliverable.json,或一个 webhook 适配器转发
-  (workbench 是 stdlib http.server,嵌进任何内网);
-- `source` 字段让每个进 ERP 的值可追溯到冻结声明 / 人工裁决 /
-  策略版本 —— 审计问询时不用再翻发票。
-
-人工负载实测(SEALED-1,100 份封箱集):放行决策负载从 82.9% 降到
-64.2%(HAR-0002,取消无冲突 TIER1 强制确认),安全性同证据配对无劣化;
-改进循环(absent_expected cohort 等)继续把重复确认转成策略。
-
-## 成本与延迟(实测,非估算)
-
-- **DWS credits**:understand 均值 ≈20/次、agentic ≈31/次;
-  100 份封箱集 200 次调用实耗 4,953 credits(≈49.5/份,双模式);
-- **延迟**(750 份存盘响应的 `processingTimeMs` 实测):
-  understand 中位 **9.1s**(p95 31.6s),agentic 中位 **11.9s**
-  (p95 35.5s),两模式串行 ≈ **21s/份**;本地门禁/冻结/矩阵为毫秒级,
-  不构成瓶颈;
-- **为什么两模式恒调、不做动态降档(默认路径)**:双模式分歧本身是六道门禁之一
-  (cross_mode_agreement),省掉 agentic 就等于拆掉这道门 ——
-  成本是信号的一部分,不是浪费。密封评测 / heldout / demo **必须**走默认双模式。
-- **L1 自适应(opt-in,不推荐)**:`ingest --adaptive` 先跑 understand,仅当
-  TIER1 缺值 / 算术失败 / 形态失败时才 escalate 整份 agentic。
-  **2026-08-06 在 88 份未见文档上实测:只省 2.3% 调用,被跳过的「干净」文档上
-  失去的 cross_mode 分歧槽有真值时 understand 全错(4/4)** —— 见
-  `docs/L1_ADAPTIVE_MEASURED_2026-08-06.md`。密封/留出抽取遇 `adaptive.json`
-  硬拒;默认路径与评测仍双模式全跑。
-
-## 它不做什么
-
-不承诺抽得准。在 DocILE 语料上的六轮预注册实验与 100 份留出集复核
-(`~/Developer/dws-derisk/`)发现:没有任何单一信号 —— 厂商置信度、算术一致性、
-双模式分歧、独立 OCR 引用、前沿模型读图 —— 能识别所有后果严重的抽取错误。
-
-InvoiceLoop 因此把 DWS 抽取与证据绑定、确定性检查、聚焦人工复核组合起来:
-交付物是**支持矩阵**,不是判决。
-
-## 为什么是发票
-
-商业简报的支持关系是语义的,验不了。发票的支持关系是**几何的** ——
-bbox 与页面区域的关系,可以用独立 OCR 逐词验证。
-
-## 血统
-
-BriefLoop 架构参考 v0.6.1 §3.6 支持充分性栈。该栈在 BriefLoop 中被标为实验性,
-语义门禁 §8.4 明写"尚未交付"。InvoiceLoop 在一个支持关系可机械验证的域里实现它。
-
-## 状态
-
-M0–M4 全部落地,两轮外部验证完成:
-
-- **SEALED-2 封箱评测(2026-08-06,`docs/SEALED2_RESULTS.md`)**:
-  当前唯一 final held-out / 晋升资格集(HAR-0004),H1–H7 全过(lift 3.19×);
-  已挂 `sealed2_qualified.ok`;结果驱动改动 = 本批作废;
-- **SEALED-1(2026-08-05,`docs/SEALED1_RESULTS.md`)**:已降级为回归/演化集;
-  lift 4.03×,H5/H6 未过线照登;
-- **验证轮(2026-08-02,`docs/VERIFICATION_2026-08-02.md`)**:
-  旧留出集 H1–H6 全过(lift 3.04×),人类验收五任务通过;
-- **改进层在环**:routing 策略版本化(Harness),人工晋升带 PROM 哈希链,
-  无冲突 TIER1 策略放行实测放行决策负载 −18.7pp(SEALED-1 第二臂);
-- **测试套件 370 全绿**:第六轮错位事故 454 行回归、对拍 dws-derisk
-  搬运保真、攻击链回归(promote 绕评/伪造指针/协调篡改全部钉死)。
-
-## English
-
-**What it is.** InvoiceLoop is a verification and review layer on top of
-Nutrient DWS invoice extraction. It does not claim extraction is correct —
-it makes every extracted field answerable: which page region it binds to,
-what an independent OCR says about that region, what six deterministic
-gates found, and where the machine admits it does not know. Fields the
-machine cannot vouch for go to a focused human queue; everything is
-recorded in an append-only, hash-chained audit trail that verifies offline
-(four layers, single-byte tamper-evident).
-
-**Why it matters.** Wrong `total_gross`/`amount_due` = mispayment; wrong or
-duplicated `invoice_number` = paying twice; wrong `seller_vat_id` = tax
-filing exposure. InvoiceLoop routes those risks to humans and lets the
-rest flow — measured on a drand-seeded sealed set of 100 unseen invoices
-(docs/SEALED1_RESULTS.md).
-
-**Quickstart (zero API, self-contained):**
+## Quickstart — zero API calls, no external data
 
 ```bash
-pip install -e ".[dev]" && python3 -m invoiceloop doctor
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+python3 -m invoiceloop doctor            # says what is missing; exit 1 if the product path is incomplete
 python3 -m invoiceloop demo --out demo-ws
 python3 -m invoiceloop workbench --workspace demo-ws   # http://127.0.0.1:8765
 ```
 
-Numbers you can recompute: triage lift 4.03× on the sealed set
-(pre-registered thresholds), TIER1 silent-error 9.62% vs 21.91% for a
-confidence-threshold baseline at a fixed operating point
-(table: docs/BASELINE_COMPARISON_SEALED1.md), decision load
-for release 82.9% → 64.2% under the promoted HAR-0002 policy — all from
-stored evidence, no API calls needed to verify.
+The demo ships three DocILE invoices with their DWS responses already on disk.
+Nothing calls the network. It ends with two documents `released`, one
+`released_with_caveats` (its OCR was blocked — a document released while a check
+could not run must never look as clean as one where every check passed).
 
-## 安装
+System dependency: poppler (`pdftotext` / `pdftoppm`; `brew install poppler`).
+tesseract is optional — without it, scanned pages block rather than pass silently.
+
+## Who this is for, and what a wrong field costs
+
+The first user is an **accounts-payable clerk** who today eyeballs each key field
+before it goes into the ERP. InvoiceLoop does not replace reading the invoice; it
+replaces **confirming the fields the machine can already vouch for**.
+
+| Wrong field | Consequence |
+|---|---|
+| `total_gross` / `amount_due` | Mispayment — recovering it afterwards costs far more than catching it |
+| `invoice_number` wrong or duplicated | Paying the same invoice twice — the cross-document duplicate check exists for this |
+| `seller_vat_id` | Tax filing exposure; an audit sends the batch back |
+| `seller_name` / `buyer_name` swapped | Payment to the wrong party — harder to unwind than a wrong amount. Observed in practice: an ad agency extracted where the broadcast station was the seller |
+
+The second user is an **auditor**: every value in the delivery answers "why should
+I believe this", and the answer recomputes offline.
+
+## What leaves the system
+
+Every run writes `deliverable.json` — one row per field as
+`{value, status, source}`, and a per-document status:
+
+- **`released` / `released_with_caveats`** → downstream AP/ERP can post it
+- **`pending` / `blocked`** → stays in the queue, never reaches downstream
+- `source` traces each value back to a frozen claim, a human decision, or a
+  named policy version — so an audit question does not mean re-opening the PDF
+
+Values come only from the frozen ledger and the adjudication ledger. **The support
+matrix is never the value source**, and human adjudication is an overlay on frozen
+evidence rather than a rewrite of it: a corrected field keeps the original
+extracted claim, the machine's verdict, and the decision that changed it.
+
+Integration is a **single-file contract plus a local service** — no SDK. The
+workbench is stdlib `http.server` and drops into any internal network.
+
+## What it does not do
+
+It does not promise accurate extraction. Six pre-registered experiment rounds on
+the DocILE corpus, plus a 100-document held-out review, found that **no single
+signal** — vendor confidence, arithmetic consistency, dual-mode disagreement,
+independent OCR citation, or a frontier model reading the page — identifies every
+consequential extraction error.
+
+The vendor agrees on the confidence point. Asked why `confidenceComponents.source`
+was `"no-logprobs"` on all 1,066 observations we measured, Nutrient's engineering
+confirmed that logprobs are disabled for the current model, and that correctness
+signals are "something you'd need to build on top." That is what this is.
+
+## Why invoices, and which invoices
+
+Support relations in a business brief are semantic, and cannot be checked.
+Support relations on an invoice are **geometric** — a bounding box against a page
+region, verifiable word by word with an independent OCR.
+
+That argument holds where an invoice is a *document*. It does not apply in
+jurisdictions that have moved to structured e-invoicing — mainland China's XML
+format, Italy's FatturaPA — where the data arrives already parsed and there is
+nothing to bind to a page. **This project targets US-style PDF invoices.**
+
+## The improvement loop, and its limits
+
+Review load falls by turning repeated human confirmations into a versioned
+routing policy (a *harness*), never by claiming better extraction. A candidate
+policy has to survive a deterministic counterfactual replay plus a human
+signature before it takes effect.
+
+An agent layer (Google ADK, `gemini-3.6-flash`) proposes and argues about
+candidates. It has no authority: it writes advisory reports only, Python
+recomputes every candidate, and promotion needs Gate 2 plus a signed human
+decision. See [`docs/ADK_INTEGRATION.md`](docs/ADK_INTEGRATION.md), which also
+lists what that layer has *not* been shown to do.
+
+## Numbers you can recompute
+
+All from stored evidence — verifying them needs no API calls.
+
+| | |
+|---|---|
+| Triage lift, SEALED-1 (100 sealed unseen invoices) | **4.03×** against pre-registered thresholds |
+| Decision load for release, SEALED-1 | **82.9% → 64.2%** under the promoted HAR-0002 policy |
+| TIER1 silent-error rate vs a confidence-threshold baseline | **9.62%** vs **21.91%** at a fixed operating point |
+| Test suite | **511 passing**, including a 454-row replay of a round-six misbinding incident and a point-by-point check against the original implementations |
+
+Protocols and results: [`docs/SEALED1_RESULTS.md`](docs/SEALED1_RESULTS.md),
+[`docs/BASELINE_COMPARISON_SEALED1.md`](docs/BASELINE_COMPARISON_SEALED1.md).
+
+> **On SEALED-2.** A second sealed evaluation exists
+> (`docs/SEALED2_RESULTS.md`, lift 3.19×), but that batch has since been used
+> during development and its "promotion-qualified" marker is **not** currently a
+> claim of generalisation to unseen data. Treat SEALED-1 as the held-out result
+> and SEALED-2 as a development/regression set until a fresh sealed round is run.
+
+## Everyday commands
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate   # macOS 系统 Python 拒全局 pip(PEP 668),先建 venv
-pip install -e ".[dev]"          # 或 pip install . 只装运行时(仅 requests 一个 PyPI 依赖)
-python3 -m invoiceloop doctor    # 环境自检:缺什么说什么,产品路径不齐 → 退出码 1
-```
+# Your own invoices: drop PDFs into workspace/input/pdfs/
+python3 -m invoiceloop ingest --workspace ws/         # local OCR + DWS extraction (needs DWS_API_KEY)
+python3 -m invoiceloop run --workspace ws/ --crops    # → ws/runs/run-NNNN, immutable
 
-系统依赖:poppler(`pdftotext`/`pdftoppm`,macOS `brew install poppler`);
-tesseract 可选(扫描件退路,没有它扫描件按宪章四阻断而不是静默跳过)。
+# Same input again replays the existing run; changed input opens a new generation.
+# Old runs are never rewritten.
 
-研究路径(`heldout`、校准复算、`run --out` 读存盘证据)另需 sibling 校准档案
-`~/Developer/dws-derisk`(`INVOICELOOP_CORPUS` 指向它);产品路径(workspace 全流程、
-demo、workbench)完全不需要它 —— 仓库自包含。
-研究测试(对拍 / 分诊集中度 / e2e)缺校准档案时自动跳过,评审机上约 40 条
-skip 属预期,不是失败。`heldout` 命令在运行时把 sibling 仓库插进 `sys.path`,
-换机即断,属开发侧工具,不走产品路径。
+python3 -m invoiceloop adjudicate --run ws/runs/run-0001 --doc <doc_id> --field total_gross \
+  --claim-id FC-0042 --decision accept --rationale "matches the page" \
+  --adjudicator <name> --decided-at 2026-08-02T10:00:00
+# Deciding the same field twice requires an explicit --supersedes.
 
-```bash
-# 两分钟 demo:内嵌示例语料跑通全流程 —— 零 API、零外部数据、零 sibling 仓库
-python3 -m invoiceloop demo --out demo-ws
-python3 -m invoiceloop workbench --workspace demo-ws   # http://127.0.0.1:8765 网页复核
-# Cloud Run 托管(可选 GCS):见 docs/CLOUD_RUN.md · ./scripts/deploy_cloud_run.sh
+python3 -m invoiceloop render --run ws/runs/run-0001   # rebuild the panel from artifacts (pure projection)
+python3 -m invoiceloop bundle --run ws/runs/run-0001   # self-contained: upstream PDF/OCR/raw + every derivative
+python3 -m invoiceloop verify ws/runs/run-0001/audit_bundle.zip   # offline; a single-byte edit anywhere is caught
 
-# 自己的发票:PDF 丢进 workspace/input/pdfs/(输入契约 §12)
-python3 -m invoiceloop ingest --workspace ws/    # 本地独立 OCR + DWS 抽取(需 DWS_API_KEY)
-python3 -m invoiceloop run --workspace ws/ --crops   # 产出在 ws/runs/run-NNNN(不可变,panel 标注「不在校准集内」)
-# 同一份输入再跑 = 重放既有 run;输入变了自动开新代;--new-run 强制新代。旧 run 永远原样保留。
-
-# 人工裁决(append-only,绑定完整复核快照)与交付(全量自包含 bundle)
-python3 -m invoiceloop adjudicate --run demo-ws/runs/run-0001 --doc <doc_id> --field total_gross \
-  --claim-id FC-0042 --decision accept --rationale "证据齐" \
-  --adjudicator <名字> --decided-at 2026-08-02T10:00:00
-#   二次决定同一字段须显式 --supersedes HD-0001;裁决后 panel 自动重渲(失败不丢裁决)
-python3 -m invoiceloop render --run demo-ws/runs/run-0001   # 随时从盘上工件重建 panel(纯投影)
-python3 -m invoiceloop bundle --run demo-ws/runs/run-0001   # 全量自包含:上游 PDF/OCR/raw + 全部派生物
-python3 -m invoiceloop verify demo-ws/runs/run-0001/audit_bundle.zip   # 离线三层校验:单点篡改(任一成员/哈希/快照/绑定)必被对应层抓住;包的真实性锚在带外公布的本包 sha256
-
-# H1 复核工作台:网页上直接复核 —— 每行四个决策按钮 + 修正值 + 问题/理由输入域
-python3 -m invoiceloop workbench --workspace ws/   # http://127.0.0.1:8765,仅本机 loopback
-# 上传 PDF → ingest → 复核队列(任务行+证据裁剪图+OCR+标签,默认摊开)→ 裁决(自动带 supersession)
-# → 交付报告(复核完成度+修正清单+残余风险声明)→ 打 bundle / 离线 verify
-
-# 读图(可选):整页渲染 → 读图模型作答 → 复核队列出现「读图建议」预填块
-python3 -m invoiceloop vision --workspace ws/    # 需 ANTHROPIC_API_KEY;作答是草稿,进输入指纹
-# 建议只预填表单:一致 → 「采用建议」一键填入(人仍要点提交);分歧 → 摊开各读者的值
-# OCR 受阻的文档上,读图是唯一幸存的机器信号(实测:它标中了 DWS 抽反的买卖双方)
-# run 会捕获 answers6.*.tsv 到本地工件;工作台与 bundle 不依赖之后可变的 vision 目录
-
-# 测试
 python3 -m pytest tests/
-
-# ── 研究路径(开发侧)────────────────────────────────
-# 以下命令读校准档案(~/Developer/dws-derisk,由 INVOICELOOP_CORPUS 指向;
-# 历史别名 INVOICELOOP_DWS_DERISK 仍有效)。评委与产品路径都不需要它们:
-python3 -m invoiceloop run --out runs/demo --crops        # 160 份校准存盘证据的全流程
-python3 -m invoiceloop heldout plan --workspace runs/heldout-workspace
-python3 -m invoiceloop heldout extract --workspace runs/heldout-workspace --budget 6000
 ```
 
-打开 `demo-ws/runs/run-0001/support_panel.html` —— 静态、离线、无需服务。
-复核队列按支持强度升序、分「需要裁决」与「印证行(抽检)」两节:
-队首就是系统明确表示自己不知道的地方;每行有任务行(核什么、DWS 读到什么),
-门禁 chip 悬停有一句话解释(查什么、这状态意味着什么)。
+Open `demo-ws/runs/run-0001/support_panel.html` — static, offline, no server. The
+review queue sorts by support strength, weakest first: the top of the queue is
+where the system says it does not know.
 
-文档:`ARCHITECTURE.md`(设计契约)/ `GOAL.md`(冲突时优化什么)/
-`docs/VERIFICATION_2026-08-02.md`(验证轮总录)/ `docs/HELDOUT.md`(留出集协议与结果)/
-`docs/H0_INTEGRITY_2026-08-03.md` + `docs/H1_WORKBENCH_2026-08-03.md`(完整性地基与工作台两轮)/
-`docs/TESTING.md` + `docs/TESTING_FACILITATOR.md`(人类验收协议与主持包)。
+## Repository layout
 
-校准语料与六轮实验证据:`~/Developer/dws-derisk/`(`REPORT.md` / `THRESHOLDS.md`)。
-本仓库引用的每个数字都可从该仓库零 API 重算。
+| | |
+|---|---|
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | The design contract. Written in Chinese |
+| [`GOAL.md`](GOAL.md) | What to optimise when the design docs run out. Chinese |
+| [`DISCLOSURE.md`](DISCLOSURE.md) | What pre-dates the hackathon submission period, and how to check it |
+| [`docs/architecture.html`](docs/architecture.html) | Architecture diagram (dark/light, exportable) |
+| [`docs/ADK_INTEGRATION.md`](docs/ADK_INTEGRATION.md) | The agent layer, its authority boundary, and its known limits |
+| [`docs/CLOUD_RUN.md`](docs/CLOUD_RUN.md) | Deployment, and why the public instance is read-only |
+| `docs/*_2026-*.md` | Dated research records — experiment logs, mostly Chinese. See [`docs/README.md`](docs/README.md) for an English index |
+
+**A note on language.** Reader-facing documentation is English. The dated research
+records and most code comments are in Chinese, because they are a working
+laboratory notebook: they record which hypotheses were falsified and which
+assumptions turned out wrong, and translating them risks losing the point they
+were written to preserve. `docs/README.md` says in English what each one contains.
+
+## Lineage
+
+The support-sufficiency stack is adapted from BriefLoop architecture reference
+v0.6.1 §3.6, where it is marked experimental and its semantic gate is explicitly
+"not delivered". InvoiceLoop implements it in a domain where the support relation
+is mechanically checkable.
+
+The calibration corpus and six rounds of experiment evidence live in a sibling
+archive, `~/Developer/dws-derisk/` — 5,680 DocILE PDFs (Rossum's public invoice
+set, MIT-licensed) and 321 stored DWS responses. It is **not required** for the
+product path: demo, workbench, run, bundle and verify are all self-contained.
+Research tests skip cleanly when it is absent.

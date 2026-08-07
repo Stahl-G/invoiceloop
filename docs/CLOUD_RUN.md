@@ -1,79 +1,92 @@
-# Cloud Run 部署
+# Cloud Run deployment
 
-## 它解决什么,以及**不**解决什么
+## What it gives you, and what it does not
 
 | | |
 |---|---|
-| ✅ 强制项「Google Cloud 基础设施服务」 | Cloud Run 托管 revision + `.run.app` URL |
-| ✅ 评委点得开 | 镜像内烤好 `demo` workspace,冷启动即开队列 |
-| ❌ **不是**持久化 | Cloud Run 实例是临时的,文件系统随回收消失 |
-| ❌ **不是**真的 HITL | 公开实例只读;真实裁决只在本地可写工作台上进行 |
-| ❌ **不让产品变好** | 信任内核是确定性 Python,本地跑得一模一样 |
+| ✅ The "Google Cloud infrastructure service" requirement | A Cloud Run revision and a `.run.app` URL |
+| ✅ Something a reader can click | The demo workspace is baked into the image; the queue opens on a cold start |
+| ❌ **Not** persistence | Cloud Run instances are ephemeral; the filesystem is gone at recycle |
+| ❌ **Not** real human-in-the-loop | The public instance is read-only; real adjudication happens on a local writable workbench |
+| ❌ **Not** a better product | The trust kernel is deterministic Python and behaves identically on a laptop |
 
-对外只能说「合成演示部署在 Cloud Run」。**不许说**「系统跑在云上」
-或「云端持久化」(宪章六)。
+The honest external claim is "a synthetic demo is deployed on Cloud Run." Not
+"the system runs in the cloud", and not "cloud persistence".
 
-## 公开实例必须只读
+## The public instance must be read-only
 
-工作台有九条写入路由,其中 `POST /decide` 追加的是**人工裁决账本** ——
-「某个人看过并判了」的证词。`--allow-unauthenticated` + 可写 =
-任何人都能伪造一条人类裁决。
+The workbench has nine write routes. `POST /decide` appends to the **adjudication
+ledger** — the record that *a person looked at this and judged*.
+`--allow-unauthenticated` plus a writable service means anyone on the internet can
+forge that testimony.
 
-所以容器入口默认加 `--read-only`:全部 POST 返回 403,每一页顶部有横幅
-说明。`INVOICELOOP_READ_ONLY=0` 能关,但那**只在私有 IAM 部署下才成立**。
+So the container entrypoint passes `--read-only` by default: every POST returns
+403, and every page carries a banner explaining why. `INVOICELOOP_READ_ONLY=0`
+turns it off, but that is **only defensible behind private IAM**.
 
-录视频时分两个镜头:HITL 那段拍**本地**可写工作台(真在裁决),
-「已部署」那段拍 `.run.app`。两个都诚实。
+For a demo recording, use two shots: the local writable workbench for the
+human-in-the-loop segment (a real adjudication happening), and the `.run.app` URL
+for the deployment segment. Both are true.
 
-## 没有 GCS
+## There is no GCS
 
-演示 workspace 在 `docker build` 时就 `invoiceloop demo` 烤进镜像,运行期
-不取任何外部数据。上一版有一条可选的 GCS 拉取,已整个删除:
+The demo workspace is baked in at `docker build` time by `invoiceloop demo`, so
+nothing is fetched at run time. An optional GCS pull used to exist and was deleted
+outright:
 
-- `python3 -m invoiceloop cloud pull … || true` —— 认证失败、SDK 缺失、
-  包损坏全被吞掉,然后**静默拿 demo 数据顶替真数据**。这正是这个项目
-  存在的目的所要防的事(宪章四)。
-- `tar.extractall(dest)` 无成员校验 —— 路径穿越。
-- 文档说的「持久化」不成立:入口只 pull 不 push,写入永远不会被保存。
+- `python3 -m invoiceloop cloud pull … || true` swallowed everything — a missing
+  SDK, a failed credential, a corrupt archive — and then **silently substituted a
+  demo workspace for the real data the operator asked for.** That is precisely the
+  failure this project exists to prevent.
+- `tar.extractall(dest)` filtered no members — path traversal.
+- The advertised "persistence" was never real: the entrypoint pulled and never
+  pushed, so anything written in the container was lost at recycle anyway.
 
-删掉这条路径,三个问题同时消失,少一个服务、少一个失败面。
+Deleting the path removed all three problems and one service. Cloud Run alone
+satisfies the requirement.
 
-## 本地验镜像
+## Verify the image locally
 
 ```bash
 docker build -t invoiceloop:local .
 docker run --rm -p 8080:8080 invoiceloop:local
-curl -fsS http://127.0.0.1:8080/healthz   # 容器内路径
-curl -fsS -o /dev/null -w '%{http_code}\n' -X POST http://127.0.0.1:8080/decide  # 期望 403
+curl -fsS http://127.0.0.1:8080/healthz                                          # in-container path
+curl -fsS -o /dev/null -w '%{http_code}\n' -X POST http://127.0.0.1:8080/decide  # expect 403
 ```
 
-## 部署
+## Deploy
 
 ```bash
-# 一次性(需要项目已开计费)
+# once, on a billing-enabled project
 gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
 
 ./scripts/deploy_cloud_run.sh
-# 或 PROJECT=… REGION=… SERVICE=… ./scripts/deploy_cloud_run.sh
+# or: PROJECT=… REGION=… SERVICE=… ./scripts/deploy_cloud_run.sh
 ```
 
-脚本固定带 `INVOICELOOP_READ_ONLY=1`。`--allow-unauthenticated` 只有在这个
-前提下才是安全的。
+The script always sets `INVOICELOOP_READ_ONLY=1`. That is what makes
+`--allow-unauthenticated` safe.
 
-## 绑定与探针
+## Binding and probes
 
-- 本地 CLI 默认 `--host 127.0.0.1`(loopback,不变)
-- 容器入口 `--host 0.0.0.0 --port $PORT`,默认 `--allowed-host .run.app`
-- 探针 `GET /_health`(外网)与 `GET /healthz`(容器内)先于 Host 闸,
-  且不跑 `doctor`(它会查研究语料)
-- **`/healthz` 在 Cloud Run 外网侧不可用** —— Google 前端在请求到达
-  Cloud Run 之前就把它吞掉并回自己的 404 页(2026-08-07 实测:同一部署下
-  `/healthzz` `/_health` `/livez` `/nope` 全都进到应用里)。容器内
-  HEALTHCHECK 打 `127.0.0.1` 不经过前端,`/healthz` 照常有效。
-- **Host 后缀白名单不是鉴权** —— 它只挡 DNS rebinding,别当访问控制用
+- Local CLI defaults to `--host 127.0.0.1` (loopback), unchanged
+- The container entrypoint uses `--host 0.0.0.0 --port $PORT` and
+  `--allowed-host .run.app`
+- `GET /_health` (external) and `GET /healthz` (in-container) are answered before
+  the Host gate, and neither runs `doctor` — that would look for the research corpus
+- **`/healthz` does not work from outside on Cloud Run.** Google's frontend
+  intercepts it before the request reaches the service and returns its own 404.
+  Measured on the live deployment: `/healthzz`, `/_health`, `/livez` and `/nope`
+  all reached the application, and only `/healthz` did not. The in-container
+  `HEALTHCHECK` hits `127.0.0.1` and never crosses the frontend, so it is unaffected.
+- **The Host suffix allowlist is not authentication.** It blocks DNS rebinding.
+  Do not use it as access control.
 
-## 取证
+## Evidence
 
-部署后要留下:project / service / revision / image digest / URL / 时间戳 /
-远端 smoke 输出 / 控制台截图,放 `docs/evidence/cloud_run_<date>/`。
-**拿到这些之前,任何地方都不许写「Google Cloud 强制项已满足」。**
+A deployment must leave behind: project, service, revision, image digest, URL,
+timestamp, remote smoke output, and a console screenshot, under
+`docs/evidence/cloud_run_<date>/`. Until those exist, nothing anywhere should say
+the Google Cloud requirement is satisfied.
+
+See [`evidence/cloud_run_2026-08-07/`](evidence/cloud_run_2026-08-07/README.md).

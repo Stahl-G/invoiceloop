@@ -1,72 +1,79 @@
-# Gemini 3.6-flash 实时调用取证(2026-08-07)
+# Live Gemini 3.6-flash call (2026-08-07)
 
-在此之前,ADK 层的全部测试都跑在脚本化模型或人造录音上,所以不能说
-「接通了 Gemini」。这份目录是第一次真实调用的落盘证据。
+Until this run, every test of the agent layer used a scripted model or a stored
+recording, so "we integrated Gemini" was not something the artifacts could
+support. This directory is the first real call, on the record.
 
-## 跑的是什么
+## What ran
 
 ```bash
 python3 -m invoiceloop agents improve-loop --workspace runs/adk-live
 ```
 
-`Runner.run_async()` 驱动 `SequentialAgent(improve_pipeline)`,四阶段全部执行,
-其中三个 `LlmAgent` 各发一次真实请求。
+`Runner.run_async()` drives `SequentialAgent(improve_pipeline)`. All four stages
+execute; the three `LlmAgent` stages each issue one real request.
 
-| 项 | 值 |
+| | |
 |---|---|
-| 模型 | `gemini-3.6-flash` |
-| 端点 | Gemini Developer API(`google-genai` 2.17.0) |
-| 框架 | `google-adk` 2.6.2 |
-| 真实请求数 | 3(miner / proposer / critic) |
-| 墙钟 | 15.3s |
-| 语料 | `invoiceloop demo` 内嵌 2 份 PDF,3 条人工裁决 |
+| Model | `gemini-3.6-flash` |
+| Endpoint | Gemini Developer API via `google-genai` 2.17.0 |
+| Framework | `google-adk` 2.6.2 |
+| Real requests | 3 (miner / proposer / critic) |
+| Wall clock | 15.3s |
+| Corpus | The bundled `invoiceloop demo` set — 2 PDFs, 3 adjudications |
 
-## 文件
+## Files
 
-| 文件 | 内容 |
+| File | Contents |
 |---|---|
-| `adk_84e0b5061ee029cc.json` | miner 的请求身份 + 响应 |
-| `adk_3d87b1a694adf736.json` | proposer 的请求身份 + 响应 |
-| `adk_c43819abc8f3b53a.json` | critic 的请求身份 + 响应 |
-| `mine_report.json` | 三次调用的输入 |
-| `adk_loop_report.json` | 产出(纯建议) |
+| `adk_84e0b5061ee029cc.json` | miner — request identity and response |
+| `adk_3d87b1a694adf736.json` | proposer — request identity and response |
+| `adk_c43819abc8f3b53a.json` | critic — request identity and response |
+| `mine_report.json` | The input to all three |
+| `adk_loop_report.json` | The output (advisory only) |
 
-每份录音的 `identity` 字段带全部身份分量:
-`model` / `system_instruction` / `contents` / `response_schema` / `response_mime_type`。
-文件名就是这些分量的 sha256 前 16 位。
+Each recording carries an `identity` block with every component of the request:
+`model`, `system_instruction`, `contents`, `response_schema`, `response_mime_type`.
+The filename is the first 16 hex of the SHA-256 over exactly those components.
 
-## 结果说了什么
+## What the result says
 
-三个模型都返回空列表:`{"candidates":[]}` → `{"proposals":[]}` → `{"verdicts":[]}`。
+All three models returned empty lists: `{"candidates":[]}` → `{"proposals":[]}` →
+`{"verdicts":[]}`.
 
-**这是对的,不是失败。** demo 语料只有 2 份文档、3 条裁决,形不成任何
-「高频复核零修正」模式(`improve mine` 同样给出 `cohorts: 0`)。模型没有
-为了显得有用而编一条规则出来。要看非空的循环,需要一个有真实复核历史的
-workspace。
+**That is the right answer, not a failure.** The demo corpus is two documents and
+three adjudications — far too little to form any "reviewed repeatedly, never
+corrected" pattern, and the deterministic `improve mine` finds no cohorts either.
+The models did not invent a rule in order to look useful. Seeing a non-empty loop
+requires a workspace with real review history.
 
-## 复算(零 API,不需要密钥)
+## Reproduce with no credentials
 
-把本目录的三份录音放进某个 workspace 的 `agent_calls/`,然后:
+Put the three recordings in a workspace's `agent_calls/`, then:
 
 ```bash
 env -u GEMINI_API_KEY -u GOOGLE_API_KEY \
   INVOICELOOP_REPLAY=1 python3 -m invoiceloop agents improve-loop --workspace <ws>
 ```
 
-实测:**在完全没有凭据的环境下**跑通,产出与实时报告
-`diff` 零差异。
+Measured: this runs to completion **with no credentials present at all**, and the
+report `diff`s clean against the live one.
 
-## 身份绑定的反证(在真实录音上做的)
+## Negative controls, run against these same recordings
 
-| 改动 | 结果 |
+| Change | Result |
 |---|---|
-| `--model gemini-3.5-flash` | `ReplayRecordingMissing: adk_506fd273d67f2ede` ✅ 拒绝 |
-| `mine_report.events` 改成 999(→ 改了提示词) | `ReplayRecordingMissing: adk_d947a753ce1c78e4` ✅ 拒绝 |
+| `--model gemini-3.5-flash` | `ReplayRecordingMissing: adk_506fd273d67f2ede` — refused |
+| `mine_report.events` edited to 999 (so the prompt changes) | `ReplayRecordingMissing: adk_d947a753ce1c78e4` — refused |
 
-上一版的手写 call_id(`critic_{field}`)在这两种情况下都会**照常返回旧录音**。
+The previous hand-written call ids (`critic_{field}`) carried neither the model nor
+the prompt in their identity, and would have returned the stale recording in both
+cases as if it were this call's answer.
 
-## 还不能说的话
+## What still cannot be claimed
 
-- 不能说「Critic 判得准」。这三次调用没有任何提案可判。权限与管道被测试
-  钉死了,判断质量**没有测量**(宪章六)。
-- 不能说「循环在真实语料上有效」。这是一次 demo 语料上的连通性取证。
+- Not that the critic judges *well*. There were no proposals for it to judge here.
+  The tests pin the authority boundary and the plumbing — that it receives the
+  deterministic counterfactual, and that its output is advisory — not the quality
+  of its judgement.
+- Not that the loop works on real data. This is a connectivity proof on a demo corpus.
