@@ -47,7 +47,9 @@ def digest() -> str:
             name: {"pattern": pat, "phrases": list(phrases)}
             for name, (pat, phrases) in CLASSES.items()
         },
-        "engine": "doctype-v1",
+        # v2 = 2026-08-07 词表去污(删七个 DocILE 派生 token)。
+        # 改版本 → 改 digest → 改执行指纹:去污前后的 run 不同代,不许混算。
+        "engine": "doctype-v2",
     }
     return hashlib.sha256(
         json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()
@@ -95,25 +97,33 @@ def check_document(doc_id: str, raw_type: str | None) -> dict:
 #: 证据短语吃的是词级 OCR。两者是**不同的东西**,不许合并:前者是模型的
 #: 声明,后者是页面的事实,这道门比的就是它们对不对得上。
 #:
-#: 顺序有意义 —— 先匹配到的类胜出。`credit` 必须排在 `invoice` 前面,
-#: 否则 "billing discrepancy/credit request" 会被 billing 抢走。
+#: 顺序有意义 —— 先匹配到的类胜出。`credit_note` 必须排在 `invoice` 前面
+#: ("Credit Note against Invoice 12345" 两类都命中);`confirmation` 必须排在
+#: `purchase_order` 前("Order Confirmation" 否则被 `\border\b` 抢走)。
+#:
+#: **判别 token 只许是一般应付账款词汇,不许是校准语料里的拼法。**
+#: 2026-08-07 去污(doctype-v2)删掉七个 DocILE 派生 token ——
+#: `discrepancy` / `worksheet` / `printout` / `traffic` / `broadcast` /
+#: `affidavit` / `billing`。逐 token 消融实测:七个全是死票,一起删也
+#: **零份改判**(S1 未人工 88 与 S2 100 皆 0),因为吃下它们的那些串本来
+#: 就含 `credit` / `order` / `contract` / `invoice`。留着的唯一效果是让
+#: `unmapped=0` 看起来是测出来的 —— 那是构造出来的。
+#: 复算:`python3 scripts/doctype_vocab_ablation.py`
 CLASSES: dict[str, tuple[str, tuple[str, ...]]] = {
     "credit_note": (
-        r"credit|rebate|discrepancy|refund",
+        r"credit|rebate|refund",
         ("credit memo", "credit note", "credit memorandum", "credit", "rebate"),
     ),
     "proforma": (
         r"pro\s*-?\s*forma",
         ("proforma", "pro forma"),
     ),
-    # confirmation 必须排在 purchase_order 前 —— 否则 "Order Confirmation"
-    # 会被 \border\b 抢走。
     "confirmation": (
         r"confirmation|confirm",
         ("confirmation", "confirm"),
     ),
     "purchase_order": (
-        r"\border\b|worksheet|printout|traffic",
+        r"\border\b",
         ("purchase order", "order"),
     ),
     "estimate": (
@@ -121,15 +131,19 @@ CLASSES: dict[str, tuple[str, tuple[str, ...]]] = {
         ("estimate", "quotation", "quote"),
     ),
     "contract": (
-        r"contract|agreement|broadcast",
+        r"contract|agreement",
         ("contract", "agreement"),
     ),
+    # `receipt` 留下:它是本类的本名,不是语料派生。去污记录一度把它列进
+    # 待删名单 —— 实测删掉会让 S2 里字面写着 "Receipt" / "Transaction
+    # Receipt" 的两份变 unmapped。`\bcheck\b` 与 `donation` 确实是 S1 派生
+    # 且**载荷**(共 3 份),删不掉,只能照登(见 DOCTYPE_EVIDENCE §去污)。
     "receipt": (
         r"receipt|\bcheck\b|donation",
         ("receipt", "received", "check"),
     ),
     "invoice": (
-        r"invoice|voucher|sale|affidavit|billing",
+        r"invoice|voucher|sale",
         ("invoice", "bill"),
     ),
 }

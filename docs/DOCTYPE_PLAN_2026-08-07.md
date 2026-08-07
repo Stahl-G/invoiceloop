@@ -101,8 +101,10 @@ routing 给全部 10 槽 `block`,那 SEALED-2 上 8 份 × 10 槽 = **80 槽**�
 ## 3. 分阶段计划(每阶段独立完整,阶段间有判据)
 
 ### 阶段 A — 词表 + 证据(纯函数,不碰流水线)
-- `tests/test_doctype.py`:分词边界、词表顺序(`credit` 必须先于 `invoice`,
-  否则 "billing discrepancy/credit request" 被 billing 抢走)、
+- `tests/test_doctype.py`:分词边界、词表顺序(`credit_note` 必须先于 `invoice`,
+  否则 "Credit Note against Invoice 12345" 被 invoice 抢走 —— 2026-08-07 去污
+  前这条用的例子是 "billing discrepancy/credit request",靠的是 `billing` 在
+  invoice 侧,而那两个 token 都是语料派生且已删,见 DOCTYPE_EVIDENCE §词表去污)、
   无证据返回 None、多词短语的 bbox 合并、`NO_CLAIM` 与 `UNMAPPED` 语义不同。
 - 落一份 `docs/DOCTYPE_EVIDENCE_2026-08-07.md`:两个集上的覆盖率与 13 份阻断名单,
   附零 API 复算脚本。

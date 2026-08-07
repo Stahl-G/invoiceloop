@@ -19,18 +19,50 @@ class TestClassify:
 
     def test_traffic_order_maps_to_purchase_order(self):
         """页面实为 traffic order 时,若模型如实写了,映进 purchase_order。
-        (SEALED-2 阻断集里模型常谎报 invoice —— 那是证据门要抓的。)"""
+        (SEALED-2 阻断集里模型常谎报 invoice —— 那是证据门要抓的。)
+
+        走的是通用 `\\border\\b`,**不是** `traffic` —— 去污后该 token 已删,
+        这条仍成立,说明它当初就是死票。"""
         assert doctype.classify("new traffic order form") == "purchase_order"
 
     def test_credit_before_invoice(self):
-        """'billing discrepancy/credit request' 必须进 credit_note,不能被 billing 抢走。"""
-        assert doctype.classify("billing discrepancy/credit request") == "credit_note"
+        """两个类都命中时,`credit_note` 必须先于 `invoice`(匹配顺序)。
+
+        去污前这条用的例子是 'billing discrepancy/credit request',靠的是
+        `billing` 在 invoice 侧 —— 那两个 token 都是 S2 派生且已删,例子
+        就不再检验顺序了。换成一个**天然同时含两类词**的串。"""
+        assert doctype.classify("Credit Note against Invoice 12345") == "credit_note"
         assert doctype.classify("Credit Memorandum") == "credit_note"
         assert doctype.classify("credit memo") == "credit_note"
 
-    def test_invoice_billing_alone(self):
-        assert doctype.classify("billing") == "invoice"
+    def test_bare_billing_is_unmapped_not_guessed_as_invoice(self):
+        """裸 'billing' 不是单据类型名 —— 转人工,不猜成 invoice。
+
+        `billing` 当初只因为 S2 里有 'official billing invoice' 才进词表,
+        而那个串本来就靠 `invoice` 命中(实测:删 `billing` 零份改判)。
+        留着它的唯一效果,是把一个说不清是什么的声明**猜**成发票。"""
+        assert doctype.classify("billing") == doctype.UNMAPPED
+        assert doctype.classify("official billing invoice") == "invoice"
         assert doctype.classify("Invoice") == "invoice"
+
+    def test_no_docile_jargon_left_in_the_vocabulary(self):
+        """七个 DocILE 语料派生 token 不许回来(实测均为死票,删了零改判)。
+
+        它们只在校准语料的自由文本里出现过,不属于任何一般应付账款词表。
+        留着会让 `unmapped=0` 看起来是测出来的,其实是构造出来的。"""
+        patterns = " ".join(pat for pat, _ in doctype.CLASSES.values())
+        for token in ("discrepancy", "worksheet", "printout", "traffic",
+                      "broadcast", "affidavit", "billing"):
+            assert token not in patterns, f"{token} 又回到词表里了"
+
+    def test_receipt_keeps_its_own_name(self):
+        """`receipt` 留下 —— 它是该类的本名,不是语料派生。
+
+        去污记录一度把它列进待删的五个 token。实测:删掉它,SEALED-2 里
+        字面写着 'Receipt' / 'Transaction Receipt' 的两份变成 unmapped。
+        一个不认识 "receipt" 的 receipt 类不是去污,是自残。"""
+        assert doctype.classify("Receipt") == "receipt"
+        assert doctype.classify("Transaction Receipt") == "receipt"
 
     def test_proforma_separate(self):
         """词表冻结:proforma 单独成类,不并进 invoice。"""
