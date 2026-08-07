@@ -40,24 +40,46 @@ def _doc_ids() -> list[str]:
     )["doc_ids"]
 
 
-def _seller_spans() -> dict[str, list[dict]]:
+def _seller_spans() -> tuple[dict[str, list[dict]], dict[str, dict]]:
+    """→ (按文档分组的 seller span, span_id → span 索引)。"""
     path = REPO / "runs" / "sealed2" / "evidence_span_registry.json"
-    out: dict[str, list[dict]] = {}
+    by_doc: dict[str, list[dict]] = {}
+    by_id: dict[str, dict] = {}
     for s in json.loads(path.read_text()):
+        by_id[s["span_id"]] = s
         if s.get("field") == "seller_name" and s.get("bbox_rel"):
-            out.setdefault(s["doc_id"], []).append(s)
-    return out
+            by_doc.setdefault(s["doc_id"], []).append(s)
+    return by_doc, by_id
 
 
-def _seller_claims() -> dict[str, str]:
+def _seller_claims() -> dict[str, list[dict]]:
+    """每份文档的全部 seller_name claim —— 不折叠。
+
+    SEALED-2 上 93 份里有 80 份有 **两条** seller_name claim(双模式:
+    `dws_agentic` 与 `dws_understand`)。早先版本按 doc_id 覆写只留最后
+    一条,再配 `spans[doc_id][0]`,claim 的值与 span 的位置可能来自不同
+    模式。现在保留全部,由 `span_ids` 严格绑定。
+    """
     ledger = json.loads(
         (REPO / "runs" / "sealed2" / "field_ledger.json").read_text()
     )
-    out = {}
+    out: dict[str, list[dict]] = {}
     for c in ledger["claims"]:
         if c.get("field") == "seller_name" and c.get("value") not in (None, ""):
-            out[c["doc_id"]] = c["value"]
+            out.setdefault(c["doc_id"], []).append(c)
     return out
+
+
+def _bound_pairs(claims: list[dict], by_id: dict[str, dict]) -> list[tuple[dict, dict]]:
+    """(claim, span) —— span 必须由该 claim 自己的 span_ids 指名。"""
+    pairs = []
+    for c in claims:
+        for sid in c.get("span_ids") or []:
+            s = by_id.get(sid)
+            if s and s.get("field") == "seller_name" and s.get("bbox_rel"):
+                pairs.append((c, s))
+                break
+    return pairs
 
 
 def _party_match(a: str | None, b: str | None) -> bool | None:
@@ -67,7 +89,7 @@ def _party_match(a: str | None, b: str | None) -> bool | None:
 
 
 def measure(doc_ids: list[str]) -> dict:
-    spans = _seller_spans()
+    spans, span_by_id = _seller_spans()
     claims = _seller_claims()
     rows: list[dict] = []
     primary_n = primary_correct = 0
@@ -79,6 +101,7 @@ def measure(doc_ids: list[str]) -> dict:
     skip = {
         "ocr_unavailable": 0,
         "no_seller_span": 0,
+        "no_bound_span": 0,
         "no_gt_or_claim": 0,
         "no_same_page_label": 0,
     }
@@ -95,8 +118,6 @@ def measure(doc_ids: list[str]) -> dict:
 
         ss = spans.get(doc_id)
         gt = truth(doc_id).get("seller_name")
-        pred = claims.get(doc_id)
-        matched = _party_match(pred, gt)
 
         # 旁证 A:真值 vendor bbox 最近标签是否卖方侧(不依赖抽取)
         ann = derisk_root() / "data" / "docile" / "annotations" / f"{doc_id}.json"
@@ -117,56 +138,72 @@ def measure(doc_ids: list[str]) -> dict:
             rows.append({"doc_id": doc_id, "status": "no_seller_span",
                          "n_labels": len(labels)})
             continue
-        if matched is None:
-            skip["no_gt_or_claim"] += 1
-            rows.append({"doc_id": doc_id, "status": "no_gt_or_claim",
+
+        # 一份文档可有多条 seller_name claim(双模式)。每条只配自己
+        # span_ids 指名的 span —— 不用 spans[doc_id][0]。
+        pairs = _bound_pairs(claims.get(doc_id) or [], span_by_id)
+        if not pairs:
+            skip["no_bound_span"] += 1
+            rows.append({"doc_id": doc_id, "status": "no_bound_span",
                          "n_labels": len(labels)})
             continue
 
-        span = ss[0]
-        nearest = sd.nearest_label(span["bbox_rel"], span["page"], labels)
-        row = {
-            "doc_id": doc_id,
-            "status": "scored" if nearest else "no_same_page_label",
-            "n_labels": len(labels),
-            "label_names": sorted({l["name"] for l in labels}),
-            "pred": pred,
-            "gt": gt,
-            "pred_matches_gt": matched,
-            "nearest": None if not nearest else {
-                "name": nearest["name"],
-                "side": nearest["side"],
-                "dist": nearest["dist"],
-            },
-        }
+        for claim, span in pairs:
+            pred = claim["value"]
+            matched = _party_match(pred, gt)
+            if matched is None:
+                skip["no_gt_or_claim"] += 1
+                rows.append({"doc_id": doc_id, "status": "no_gt_or_claim",
+                             "claim_id": claim["claim_id"],
+                             "n_labels": len(labels)})
+                continue
 
-        if nearest is None:
-            skip["no_same_page_label"] += 1
+            nearest = sd.nearest_label(span["bbox_rel"], span["page"], labels)
+            row = {
+                "doc_id": doc_id,
+                "claim_id": claim["claim_id"],
+                "drafted_by": claim.get("drafted_by"),
+                "span_id": span["span_id"],
+                "status": "scored" if nearest else "no_same_page_label",
+                "n_labels": len(labels),
+                "label_names": sorted({l["name"] for l in labels}),
+                "pred": pred,
+                "gt": gt,
+                "pred_matches_gt": matched,
+                "nearest": None if not nearest else {
+                    "name": nearest["name"],
+                    "side": nearest["side"],
+                    "dist": nearest["dist"],
+                },
+            }
+
+            if nearest is None:
+                skip["no_same_page_label"] += 1
+                rows.append(row)
+                continue
+
+            primary_n += 1
+            expect = sd.predict_match_from_side(nearest["side"])
+            ok = expect == matched
+            if ok:
+                primary_correct += 1
+            row["expect_match"] = expect
+            row["correct"] = ok
             rows.append(row)
-            continue
 
-        primary_n += 1
-        expect = sd.predict_match_from_side(nearest["side"])
-        ok = expect == matched
-        if ok:
-            primary_correct += 1
-        row["expect_match"] = expect
-        row["correct"] = ok
-        rows.append(row)
+            n20 = sd.nearest_label(
+                span["bbox_rel"], span["page"], labels, max_dist=0.20
+            )
+            if n20:
+                variants["maxdist_0_20"]["n"] += 1
+                if sd.predict_match_from_side(n20["side"]) == matched:
+                    variants["maxdist_0_20"]["correct"] += 1
 
-        n20 = sd.nearest_label(
-            span["bbox_rel"], span["page"], labels, max_dist=0.20
-        )
-        if n20:
-            variants["maxdist_0_20"]["n"] += 1
-            if sd.predict_match_from_side(n20["side"]) == matched:
-                variants["maxdist_0_20"]["correct"] += 1
-
-        side = sd.closer_side(span["bbox_rel"], span["page"], labels)
-        if side:
-            variants["both_sides_closer"]["n"] += 1
-            if sd.predict_match_from_side(side) == matched:
-                variants["both_sides_closer"]["correct"] += 1
+            side = sd.closer_side(span["bbox_rel"], span["page"], labels)
+            if side:
+                variants["both_sides_closer"]["n"] += 1
+                if sd.predict_match_from_side(side) == matched:
+                    variants["both_sides_closer"]["correct"] += 1
 
     acc = primary_correct / primary_n if primary_n else None
     var_out = {}
@@ -193,10 +230,13 @@ def measure(doc_ids: list[str]) -> dict:
         "variants": var_out,
         "skip": skip,
         "coverage": {
-            "docs_with_any_label": sum(
-                1 for r in rows if r.get("n_labels", 0) > 0
-            ),
-            "docs_scored_primary": primary_n,
+            "docs_with_any_label": len({
+                r["doc_id"] for r in rows if r.get("n_labels", 0) > 0
+            }),
+            "claims_scored_primary": primary_n,
+            "docs_scored_primary": len({
+                r["doc_id"] for r in rows if r.get("status") == "scored"
+            }),
         },
         "rows": rows,
     }

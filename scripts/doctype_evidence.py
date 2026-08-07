@@ -68,7 +68,9 @@ def measure(doc_ids: list[str]) -> dict:
         "unmapped": unmapped,
         "ocr_miss": ocr_miss,
         "blocked": blocked,
-        "wrong_declaration_rate":
+        # 名字要说清它测的是什么:页面上找不到字面支撑的比例。
+        # 不是「声明错了」—— 那要人看语义(宪章六)。
+        "no_literal_evidence_rate":
             len(blocked) / with_claim if with_claim else None,
     }
 

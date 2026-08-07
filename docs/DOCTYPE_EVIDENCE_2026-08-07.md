@@ -25,10 +25,21 @@ INVOICELOOP_CORPUS=runs/sealed2-workspace python3 scripts/doctype_evidence.py --
 | SEALED-1 未人工 88 | 88 | 86 | **81** | **94.2%** | 5 (5.8%) |
 | SEALED-2 | 100 | 99 | **90** | **90.9%** | 9 (9.1%) |
 
-`unmapped=0`(两集):词表吃得下全部自由文本拼法。`no_claim` 为模型未返回 `invoice_type`。
+`unmapped=0`(两集)。`no_claim` 为模型未返回 `invoice_type`。
 
-**对外口径**:抽取器类型声明在封箱集上约 **8–9% 找不到页面字面支撑**(SEALED-2 9/99);
-不是「类型检查能修好付款静默错」,那是另一回事(见计划 §0)。
+> **⚠ 这张表是样本内的,不是留出测量。** 冻结词表时我扫过 SEALED-2 的
+> 自由文本拼法,`discrepancy` / `printout` / `traffic` / `receipt` / `billing`
+> 五个 token **只因为 S2 里出现过才被写进去**。所以「`unmapped=0`」是
+> **构造出来的**,不是测出来的 —— 换一个没看过的集合,该数字不成立。
+> 去掉这五个 token 重算,SEALED-2 变成 **≈91% 有证据 + 2 份 unmapped**
+> (unmapped 会显式转人工,不会被猜成 invoice,属于优雅降级)。
+> 词表尚未去污 —— 见文末「未了项」。
+
+**口径**:抽取器类型声明在这两个集上约 **8–9% 找不到页面字面支撑**
+(SEALED-2 9/99),**且这个百分比带样本内污染**。
+「找不到字面支撑」是一条可复算的支持关系判定,**不等于**「模型分类错了」——
+语义对错仍由人看(宪章六)。也不是「类型检查能修好付款静默错」,
+那是另一回事(见计划 §0)。
 
 ## SEALED-2 阻断名单(9)
 
@@ -52,8 +63,9 @@ INVOICELOOP_CORPUS=runs/sealed2-workspace python3 scripts/doctype_evidence.py --
 ## 与「付款静默错 22%」脱钩(照登纠正)
 
 零触达集上 13 个静默错值**零个与贷项符号有关**;主体认错(`seller_name`)占 6/13。
-类型证据门禁的价值是:**抓住模型谎报 invoice 的文档**,不是直接消掉那 13 个金额错。
-阶段 D 已处理主体方向并 **KILL**(51.8% < 80%,见
+类型证据门禁标出的是**类型声明在页面上找不到字面支撑的文档**,
+它不直接消掉那 13 个金额错。
+阶段 D 已处理主体方向并 **KILL**(51.6% < 80%,见
 `docs/DOCTYPE_STAGE_D_2026-08-07.md`);贷项符号检查**不做**。
 
 ## 阶段 A 边界
@@ -61,3 +73,11 @@ INVOICELOOP_CORPUS=runs/sealed2-workspace python3 scripts/doctype_evidence.py --
 - 本阶段**不接入**门禁 / 路由 / 指纹。
 - 测试:`tests/test_doctype.py`(词序、边界、bbox 合并、`NO_CLAIM`≠`UNMAPPED`)。
 - 下一步:阶段 B 回答 Q1(文档级裁决落点)与 Q2(阻断粒度对负载的影响)。
+
+## 未了项(阻断本文数字进任何对外材料)
+
+1. **词表去污**:删掉 `discrepancy` / `printout` / `traffic` / `receipt` /
+   `billing` 五个 S2 派生 token,`engine` 升版本,重跑本文全部数字。
+   会改 `doctype.digest()` → 改执行指纹 → 旧 run 与新 run 不同代。
+2. 阻断名单里只有 **4/9** 逐份看过(表中标「抽查」的四份)。
+   其余 5 份**未逐份裁决**,不得当作已确认的误分类。
