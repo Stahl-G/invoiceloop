@@ -1,0 +1,329 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "InvoiceLoop",
+    "subtitle": "Extraction correctness is untrustworthy; support relations are verifiable. The deliverable is a support matrix, not a verdict.",
+    "output": "architecture.html"
+  },
+  "components": [
+    {
+      "id": "pdf",
+      "type": "external",
+      "label": "Invoice PDF",
+      "sublabel": "any document type",
+      "pos": [
+        40,
+        330
+      ],
+      "size": [
+        116,
+        60
+      ]
+    },
+    {
+      "id": "dws",
+      "type": "external",
+      "label": "Nutrient DWS",
+      "sublabel": "core extraction",
+      "pos": [
+        196,
+        330
+      ],
+      "size": [
+        140,
+        64
+      ],
+      "tag": "understand + agentic"
+    },
+    {
+      "id": "drafts",
+      "type": "messagebus",
+      "label": "field_drafts.json",
+      "sublabel": "values, no IDs",
+      "pos": [
+        376,
+        330
+      ],
+      "size": [
+        148,
+        60
+      ]
+    },
+    {
+      "id": "freeze",
+      "type": "security",
+      "label": "Freeze Transaction",
+      "sublabel": "Python assigns FC IDs",
+      "pos": [
+        584,
+        330
+      ],
+      "size": [
+        156,
+        64
+      ],
+      "tag": "single writer"
+    },
+    {
+      "id": "gates",
+      "type": "backend",
+      "label": "6 Gates",
+      "sublabel": "deterministic checks",
+      "pos": [
+        790,
+        330
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "matrix",
+      "type": "backend",
+      "label": "Support Matrix",
+      "sublabel": "evidence, not verdicts",
+      "pos": [
+        980,
+        330
+      ],
+      "size": [
+        150,
+        60
+      ]
+    },
+    {
+      "id": "route",
+      "type": "backend",
+      "label": "Routing",
+      "sublabel": "per active harness",
+      "pos": [
+        1180,
+        330
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "human",
+      "type": "frontend",
+      "label": "Review Workbench",
+      "sublabel": "a person decides",
+      "pos": [
+        1180,
+        500
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "ledger",
+      "type": "database",
+      "label": "Adjudication Ledger",
+      "sublabel": "append-only",
+      "pos": [
+        960,
+        500
+      ],
+      "size": [
+        160,
+        60
+      ]
+    },
+    {
+      "id": "adk",
+      "type": "cloud",
+      "label": "ADK Runner",
+      "sublabel": "Gemini 3.6-flash",
+      "pos": [
+        500,
+        120
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "miner→proposer→evaluator→critic"
+    },
+    {
+      "id": "advisory",
+      "type": "messagebus",
+      "label": "adk_loop_report",
+      "sublabel": "advisory only",
+      "pos": [
+        720,
+        120
+      ],
+      "size": [
+        148,
+        60
+      ]
+    },
+    {
+      "id": "promote",
+      "type": "security",
+      "label": "Gate 2 + signature",
+      "sublabel": "only writer of active",
+      "pos": [
+        960,
+        120
+      ],
+      "size": [
+        156,
+        64
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "security-group",
+      "label": "Trust Kernel — deterministic Python. No model writes a byte here.",
+      "wraps": [
+        "freeze",
+        "gates",
+        "matrix",
+        "route"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Improvement loop — the model proposes, it never approves",
+      "wraps": [
+        "adk",
+        "advisory",
+        "promote"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Cloud Run: read-only demo  ·  Local: writable HITL",
+      "wraps": [
+        "human",
+        "ledger"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": "pdf",
+      "to": "dws",
+      "variant": "emphasis"
+    },
+    {
+      "from": "dws",
+      "to": "drafts",
+      "variant": "emphasis"
+    },
+    {
+      "from": "drafts",
+      "to": "freeze",
+      "label": "un-ID'd draft",
+      "variant": "emphasis",
+      "labelDy": -24
+    },
+    {
+      "from": "freeze",
+      "to": "gates",
+      "variant": "emphasis"
+    },
+    {
+      "from": "gates",
+      "to": "matrix",
+      "variant": "emphasis"
+    },
+    {
+      "from": "matrix",
+      "to": "route",
+      "variant": "emphasis"
+    },
+    {
+      "from": "route",
+      "to": "human",
+      "label": "needs a human",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 62
+    },
+    {
+      "from": "human",
+      "to": "ledger"
+    },
+    {
+      "from": "ledger",
+      "to": "adk",
+      "label": "review history",
+      "variant": "dashed",
+      "fromSide": "left",
+      "toSide": "left",
+      "via": [
+        [
+          430,
+          530
+        ],
+        [
+          430,
+          152
+        ]
+      ],
+      "labelAt": [
+        430,
+        300
+      ]
+    },
+    {
+      "from": "adk",
+      "to": "advisory"
+    },
+    {
+      "from": "advisory",
+      "to": "promote",
+      "label": "a person signs",
+      "variant": "security"
+    },
+    {
+      "from": "promote",
+      "to": "route",
+      "label": "new harness",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 60
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "What DWS does",
+      "items": [
+        "Carries the core extraction in both modes",
+        "Confidence is grounding-only — the vendor confirms it means 'found on the page', not 'correct'",
+        "So correctness signals are built on top, here"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "What is verifiable",
+      "items": [
+        "extraction_present · field_wellformed · arithmetic_consistency",
+        "citation_holds · cross_mode_agreement · visual_corroboration",
+        "A check that could not run is blocking, never a pass"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Where authority stops",
+      "items": [
+        "Models write drafts with no IDs and advisory reports",
+        "Python assigns every ID and freezes the ledger",
+        "Promotion needs Gate 2 plus a human signature",
+        "Public deploy refuses all nine write routes"
+      ]
+    }
+  ]
+}
