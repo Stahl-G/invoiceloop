@@ -1,4 +1,4 @@
-"""ADK Seller Party Identification Agent (invoiceloop/agents/party.py).
+"""Seller Party Identification Agent (Gemini GenAI SDK).
 
 Targets the #1 silent error category (6/13 silent errors in the zero-touch set):
 Agency vs. Station seller_name confusion (e.g. Regional Reps vs WARU-AM).
@@ -20,7 +20,7 @@ from .runtime import call_gemini_model
 
 
 class PartyIdentificationAgent:
-    """ADK Agent analyzing spatial OCR neighborhoods to distinguish seller vs. agency."""
+    """Gemini agent analyzing spatial OCR neighborhoods to distinguish seller vs. agency."""
 
     def __init__(self, workspace: Path | str | None = None):
         self.workspace = Path(workspace) if workspace else Path.cwd()

@@ -1,30 +1,25 @@
-# InvoiceLoop - Cloud Run & GKE Agent Runtime Container
+# InvoiceLoop — Cloud Run & Container Runtime
 FROM python:3.12-slim
 
 # System dependencies: poppler-utils (pdftotext, pdftoppm, pdfinfo)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     poppler-utils \
     curl \
-    git \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install InvoiceLoop package & runtime dependencies
-COPY pyproject.toml .
+# Install InvoiceLoop package with Gemini/ADK dependencies
+COPY pyproject.toml README.md ./
 COPY invoiceloop ./invoiceloop
-COPY README.md .
 
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir -e ".[gemini]"
 
-# Environment Defaults
 ENV PYTHONUNBUFFERED=1
-ENV PORT=8765
 
-EXPOSE 8765
+# Cloud Run injects PORT; workbench reads it (default 8765).
+# Do NOT hardcode ENV PORT — Cloud Run's value must win.
+EXPOSE 8080
 
-# Self-check health and default startup command
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD python3 -m invoiceloop doctor || exit 1
-
-CMD ["python3", "-m", "invoiceloop", "workbench", "--workspace", "demo-ws"]
+# Workspace path passed via environment; no demo-ws baked in.
+CMD ["sh", "-c", "python3 -m invoiceloop workbench --workspace ${WORKSPACE:-/data/workspace}"]

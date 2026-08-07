@@ -41,13 +41,14 @@ InvoiceLoop combines adaptive AI multi-agent orchestration (powered by **Google 
 
 ## 2. ADK Agents Division of Labor
 
-The ADK Layer is organized into specialized, autonomous Agents:
+The GenAI Layer is organized into specialized, autonomous Agents:
 
 ### A. Multi-Agent Improve Loop (`invoiceloop/agents/improve_loop.py`)
+This pipeline is orchestrated using Google ADK `SequentialAgent` and `LoopAgent`.
 - **MinerAgent**: Scans mine reports and adjudication ledger patterns.
 - **ProposerAgent**: Formulates candidate policy cohorts and schema description diffs.
-- **CriticAgent (Adversarial Agent)**: Evaluates proposed cohorts to ensure true ground-truth values are protected. Specifically trained to independently reject invalid cohorts (such as the `due_date` cohort that saved 37 review slots at the cost of dropping genuine due dates).
-- **EvaluatorNode**: Triggers deterministic `improve.evaluate()` counterfactual re-routing.
+- **CriticAgent (Adversarial Agent)**: Evaluates proposed cohorts using **Gemini Structured Output** (`CriticVerdict`). It receives counterfactual evidence (slots saved, silent errors introduced) from the deterministic `improve.evaluate()` routing simulation. If a proposal risks dropping genuine values (e.g. saving 37 review slots at the cost of dropping 5 genuine due dates), the Critic Agent rejects the proposal.
+- **EvaluatorNode**: Triggers the actual deterministic evaluation.
 
 ### B. Seller Party Identification Agent (`invoiceloop/agents/party.py`)
 - Addresses the #1 silent error category (6/13 silent errors in the zero-touch test set: agency vs. broadcast station/seller confusion, e.g. *Regional Reps* vs *WARU-AM*).
@@ -63,17 +64,19 @@ The ADK Layer is organized into specialized, autonomous Agents:
 ## 3. Strict Governance & Authority Isolation
 
 1. **Single-Writer Discipline**:
-   - ADK Agents **only write un-ID'd draft claims or suggestions**.
+   - ADK/Gemini Agents **only write un-ID'd draft claims or suggestions**.
    - Model outputs NEVER contain authority IDs (`claim_id`, `decision_id`, `run_id`).
    - Python transactions (`freeze.py`, `adjudicate.py`) assign IDs and append to the immutable ledger.
 
 2. **Deterministic Gate Enforcement**:
    - Deterministic Gate checks (C1–C6) cannot be bypassed or skipped by LLM Agents.
    - An unperformed check is recorded as a blocking infrastructure failure, not a pass.
+   - Missing Gemini API credentials result in an explicit failure, not a silent stub response.
 
 3. **Zero-API Offline Replay**:
-   - All live API interactions log to `workspace/raw/agents/{call_id}.json`.
+   - All live API interactions log to `workspace/agent_calls/{call_id}.json`.
    - `INVOICELOOP_REPLAY=1` enables 100% offline, deterministic replay across the entire test suite.
+   - If a recording is missing during replay, the system fails explicitly (Constitution Rule 4).
 
 ---
 
@@ -82,5 +85,5 @@ The ADK Layer is organized into specialized, autonomous Agents:
 InvoiceLoop provides a multi-stage Dockerfile:
 - System Dependencies: `poppler-utils` (`pdftotext`, `pdftoppm`, `pdfinfo`).
 - Python Runtime: 3.12-slim.
-- Port: `8765` for Workbench loopback and ERP delivery integration.
+- Port: `8080` (Cloud Run default) for Workbench loopback and ERP delivery integration.
 - Deployment Targets: Google Cloud Run, GKE, or local Docker containers.

@@ -1,4 +1,4 @@
-"""ADK Vision Reader Agent (invoiceloop/agents/vision.py).
+"""Vision Reader Agent (Gemini GenAI SDK).
 
 Formulates targeted visual query prompts when fields are OCR-blocked or unsupported.
 
@@ -17,7 +17,7 @@ from .runtime import call_gemini_model
 
 
 class VisionReaderAgent:
-    """ADK Agent formulating targeted visual prompts for OCR-blocked document slots."""
+    """Gemini agent formulating targeted visual prompts for OCR-blocked document slots."""
 
     def __init__(self, workspace: Path | str | None = None):
         self.workspace = Path(workspace) if workspace else Path.cwd()
