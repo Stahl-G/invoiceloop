@@ -3,7 +3,7 @@
   "diagram_type": "architecture",
   "meta": {
     "title": "InvoiceLoop",
-    "subtitle": "Extraction correctness is untrustworthy; support relations are verifiable. The deliverable is a support matrix, not a verdict.",
+    "subtitle": "The core deliverable is a support matrix, not a correctness verdict. Human adjudication is an overlay on frozen evidence, never a rewrite of it.",
     "output": "architecture.html"
   },
   "components": [
@@ -113,8 +113,8 @@
       "label": "Review Workbench",
       "sublabel": "a person decides",
       "pos": [
-        1180,
-        500
+        1010,
+        470
       ],
       "size": [
         150,
@@ -127,8 +127,8 @@
       "label": "Adjudication Ledger",
       "sublabel": "append-only",
       "pos": [
-        960,
-        500
+        790,
+        470
       ],
       "size": [
         160,
@@ -177,6 +177,21 @@
         156,
         64
       ]
+    },
+    {
+      "id": "deliverable",
+      "type": "database",
+      "label": "deliverable.json",
+      "sublabel": "final-value projection",
+      "pos": [
+        1180,
+        620
+      ],
+      "size": [
+        168,
+        64
+      ],
+      "tag": "status + source per slot"
     }
   ],
   "boundaries": [
@@ -248,11 +263,13 @@
       "variant": "emphasis",
       "fromSide": "bottom",
       "toSide": "top",
-      "labelDy": 62
+      "labelDy": 44
     },
     {
       "from": "human",
-      "to": "ledger"
+      "to": "ledger",
+      "fromSide": "left",
+      "toSide": "right"
     },
     {
       "from": "ledger",
@@ -263,16 +280,16 @@
       "toSide": "left",
       "via": [
         [
-          430,
-          530
+          380,
+          500
         ],
         [
-          430,
+          380,
           152
         ]
       ],
       "labelAt": [
-        430,
+        380,
         300
       ]
     },
@@ -294,6 +311,41 @@
       "fromSide": "bottom",
       "toSide": "top",
       "labelDy": 60
+    },
+    {
+      "from": "route",
+      "to": "deliverable",
+      "label": "straight-through",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "via": [
+        [
+          1264,
+          570
+        ]
+      ],
+      "labelAt": [
+        1300,
+        560
+      ]
+    },
+    {
+      "from": "ledger",
+      "to": "deliverable",
+      "label": "overlay",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "via": [
+        [
+          870,
+          652
+        ]
+      ],
+      "labelAt": [
+        1010,
+        640
+      ]
     }
   ],
   "cards": [
@@ -323,6 +375,16 @@
         "Python assigns every ID and freezes the ledger",
         "Promotion needs Gate 2 plus a human signature",
         "Public deploy refuses all nine write routes"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "What leaves the system",
+      "items": [
+        "deliverable.json — one row per field with a status and a source",
+        "Values come only from the frozen ledger and the adjudication ledger; the support matrix is never the value source",
+        "A corrected field keeps the extracted claim, the machine verdict and the decision that changed it",
+        "Documents released while a check could not run are marked released_with_caveats, never plain released"
       ]
     }
   ]

@@ -527,12 +527,12 @@
         <div class="pulse-dot"></div>
         <h1>InvoiceLoop</h1>
       </div>
-      <p class="subtitle">Extraction correctness is untrustworthy; support relations are verifiable. The deliverable is a support matrix, not a verdict.</p>
+      <p class="subtitle">The core deliverable is a support matrix, not a correctness verdict. Human adjudication is an overlay on frozen evidence, never a rewrite of it.</p>
     </div>
 
     <!-- Main Diagram -->
     <div class="diagram-container">
-      <svg viewBox="0 0 1400 652" role="img" aria-label="InvoiceLoop — Extraction correctness is untrustworthy; support relations are verifiable. The deliverable is a support matrix, not a verdict. (architecture diagram)">
+      <svg viewBox="0 0 1388 752" role="img" aria-label="InvoiceLoop — The core deliverable is a support matrix, not a correctness verdict. Human adjudication is an overlay on frozen evidence, never a rewrite of it. (architecture diagram)">
         <!-- Definitions -->
         <defs>
           <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -562,8 +562,8 @@
         <rect x="470" y="90" width="676" height="114" rx="12" class="c-region" stroke-width="1"/>
         <text x="478" y="108" class="t-cloud" font-size="9" font-weight="600">Improvement loop — the model proposes, it never approves</text>
 
-        <rect x="930" y="470" width="430" height="114" rx="12" class="c-region" stroke-width="1"/>
-        <text x="938" y="488" class="t-cloud" font-size="9" font-weight="600">Cloud Run: read-only demo  ·  Local: writable HITL</text>
+        <rect x="760" y="440" width="430" height="114" rx="12" class="c-region" stroke-width="1"/>
+        <text x="768" y="458" class="t-cloud" font-size="9" font-weight="600">Cloud Run: read-only demo  ·  Local: writable HITL</text>
 
         <!-- Connection paths (before components for correct z-order) -->
         <path d="M 156 360 L 196 362" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
@@ -572,12 +572,14 @@
         <path d="M 740 362 L 790 360" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path d="M 930 360 L 980 360" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path d="M 1130 360 L 1180 360" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 1245 390 L 1247.5 390 Q 1250 390 1250 392.5 L 1250 497.5 Q 1250 500 1252.5 500 L 1255 500" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 1180 532 L 1120 530" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path d="M 960 530 L 438 530 Q 430 530 430 522 L 430 160 Q 430 152 438 152 L 500 152" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+        <path d="M 1245 390 L 1173 390 Q 1165 390 1165 398 L 1165 462 Q 1165 470 1157 470 L 1085 470" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 1010 502 L 950 500" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path d="M 790 500 L 388 500 Q 380 500 380 492 L 380 160 Q 380 152 388 152 L 500 152" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
         <path d="M 650 152 L 720 150" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         <path d="M 868 150 L 960 152" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
         <path d="M 1038 184 L 1133.5 184 Q 1141.5 184 1141.5 192 L 1141.5 322 Q 1141.5 330 1149.5 330 L 1245 330" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+        <path d="M 1245 390 L 1263.1602209944751 562.0441988950276 Q 1264 570 1264 578 L 1264 620" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 870 530 L 870 644 Q 870 652 878 652 L 1180 652" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
 
         <!-- Components -->
         <rect x="40" y="330" width="116" height="60" rx="6" class="c-mask"/>
@@ -617,15 +619,15 @@
         <text x="1245" y="358" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Routing</text>
         <text x="1245" y="374" class="t-muted" font-size="9" text-anchor="middle">per active harness</text>
 
-        <rect x="1180" y="500" width="150" height="64" rx="6" class="c-mask"/>
-        <rect x="1180" y="500" width="150" height="64" rx="6" class="c-frontend" stroke-width="1.5"/>
-        <text x="1255" y="530" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Review Workbench</text>
-        <text x="1255" y="546" class="t-muted" font-size="9" text-anchor="middle">a person decides</text>
+        <rect x="1010" y="470" width="150" height="64" rx="6" class="c-mask"/>
+        <rect x="1010" y="470" width="150" height="64" rx="6" class="c-frontend" stroke-width="1.5"/>
+        <text x="1085" y="500" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Review Workbench</text>
+        <text x="1085" y="516" class="t-muted" font-size="9" text-anchor="middle">a person decides</text>
 
-        <rect x="960" y="500" width="160" height="60" rx="6" class="c-mask"/>
-        <rect x="960" y="500" width="160" height="60" rx="6" class="c-database" stroke-width="1.5"/>
-        <text x="1040" y="528" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Adjudication Ledger</text>
-        <text x="1040" y="544" class="t-muted" font-size="9" text-anchor="middle">append-only</text>
+        <rect x="790" y="470" width="160" height="60" rx="6" class="c-mask"/>
+        <rect x="790" y="470" width="160" height="60" rx="6" class="c-database" stroke-width="1.5"/>
+        <text x="870" y="498" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Adjudication Ledger</text>
+        <text x="870" y="514" class="t-muted" font-size="9" text-anchor="middle">append-only</text>
 
         <rect x="500" y="120" width="150" height="64" rx="6" class="c-mask"/>
         <rect x="500" y="120" width="150" height="64" rx="6" class="c-cloud" stroke-width="1.5"/>
@@ -643,6 +645,12 @@
         <text x="1038" y="150" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Gate 2 + signature</text>
         <text x="1038" y="166" class="t-muted" font-size="9" text-anchor="middle">only writer of active</text>
 
+        <rect x="1180" y="620" width="168" height="64" rx="6" class="c-mask"/>
+        <rect x="1180" y="620" width="168" height="64" rx="6" class="c-database" stroke-width="1.5"/>
+        <text x="1264" y="650" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">deliverable.json</text>
+        <text x="1264" y="666" class="t-muted" font-size="9" text-anchor="middle">final-value projection</text>
+        <text x="1264" y="676" class="t-database" font-size="7" text-anchor="middle">status + source per slot</text>
+
         <!-- Connection labels -->
 
 
@@ -651,33 +659,37 @@
 
 
 
-        <rect x="1213.8" y="487" width="72.4" height="14" rx="3" class="c-mask"/>
-        <text x="1250" y="497" class="t-backend" font-size="8" text-anchor="middle">needs a human</text>
+        <rect x="1128.8" y="454" width="72.4" height="14" rx="3" class="c-mask"/>
+        <text x="1165" y="464" class="t-backend" font-size="8" text-anchor="middle">needs a human</text>
 
-        <rect x="391.4" y="290" width="77.2" height="14" rx="3" class="c-mask"/>
-        <text x="430" y="300" class="t-messagebus" font-size="8" text-anchor="middle">review history</text>
+        <rect x="341.4" y="290" width="77.2" height="14" rx="3" class="c-mask"/>
+        <text x="380" y="300" class="t-messagebus" font-size="8" text-anchor="middle">review history</text>
 
         <rect x="875.4" y="130" width="77.2" height="14" rx="3" class="c-mask"/>
         <text x="914" y="140" class="t-security" font-size="8" text-anchor="middle">a person signs</text>
         <rect x="1110.1" y="297" width="62.8" height="14" rx="3" class="c-mask"/>
         <text x="1141.5" y="307" class="t-messagebus" font-size="8" text-anchor="middle">new harness</text>
+        <rect x="1256.6" y="550" width="86.8" height="14" rx="3" class="c-mask"/>
+        <text x="1300" y="560" class="t-backend" font-size="8" text-anchor="middle">straight-through</text>
+        <rect x="988.2" y="630" width="43.6" height="14" rx="3" class="c-mask"/>
+        <text x="1010" y="640" class="t-muted" font-size="8" text-anchor="middle">overlay</text>
 
         <!-- Legend -->
-        <text x="40" y="623" class="t-primary" font-size="9" font-weight="600">Legend</text>
-        <rect x="40" y="628" width="14" height="9" rx="2" class="c-external" stroke-width="1"/>
-        <text x="60" y="636" class="t-muted" font-size="8">External</text>
-        <rect x="138" y="628" width="14" height="9" rx="2" class="c-messagebus" stroke-width="1"/>
-        <text x="158" y="636" class="t-muted" font-size="8">Message bus</text>
-        <rect x="251" y="628" width="14" height="9" rx="2" class="c-security" stroke-width="1"/>
-        <text x="271" y="636" class="t-muted" font-size="8">Security</text>
-        <rect x="349" y="628" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
-        <text x="369" y="636" class="t-muted" font-size="8">Backend</text>
-        <rect x="442" y="628" width="14" height="9" rx="2" class="c-frontend" stroke-width="1"/>
-        <text x="462" y="636" class="t-muted" font-size="8">Frontend</text>
-        <rect x="540" y="628" width="14" height="9" rx="2" class="c-database" stroke-width="1"/>
-        <text x="560" y="636" class="t-muted" font-size="8">Database</text>
-        <rect x="638" y="628" width="14" height="9" rx="2" class="c-cloud" stroke-width="1"/>
-        <text x="658" y="636" class="t-muted" font-size="8">Cloud</text>
+        <text x="40" y="723" class="t-primary" font-size="9" font-weight="600">Legend</text>
+        <rect x="40" y="728" width="14" height="9" rx="2" class="c-external" stroke-width="1"/>
+        <text x="60" y="736" class="t-muted" font-size="8">External</text>
+        <rect x="138" y="728" width="14" height="9" rx="2" class="c-messagebus" stroke-width="1"/>
+        <text x="158" y="736" class="t-muted" font-size="8">Message bus</text>
+        <rect x="251" y="728" width="14" height="9" rx="2" class="c-security" stroke-width="1"/>
+        <text x="271" y="736" class="t-muted" font-size="8">Security</text>
+        <rect x="349" y="728" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
+        <text x="369" y="736" class="t-muted" font-size="8">Backend</text>
+        <rect x="442" y="728" width="14" height="9" rx="2" class="c-frontend" stroke-width="1"/>
+        <text x="462" y="736" class="t-muted" font-size="8">Frontend</text>
+        <rect x="540" y="728" width="14" height="9" rx="2" class="c-database" stroke-width="1"/>
+        <text x="560" y="736" class="t-muted" font-size="8">Database</text>
+        <rect x="638" y="728" width="14" height="9" rx="2" class="c-cloud" stroke-width="1"/>
+        <text x="658" y="736" class="t-muted" font-size="8">Cloud</text>
       </svg>
     </div>
 
@@ -717,6 +729,19 @@
           <li>&bull; Python assigns every ID and freezes the ledger</li>
           <li>&bull; Promotion needs Gate 2 plus a human signature</li>
           <li>&bull; Public deploy refuses all nine write routes</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot amber"></div>
+          <h3>What leaves the system</h3>
+        </div>
+        <ul>
+          <li>&bull; deliverable.json — one row per field with a status and a source</li>
+          <li>&bull; Values come only from the frozen ledger and the adjudication ledger; the support matrix is never the value source</li>
+          <li>&bull; A corrected field keeps the extracted claim, the machine verdict and the decision that changed it</li>
+          <li>&bull; Documents released while a check could not run are marked released_with_caveats, never plain released</li>
         </ul>
       </div>
     </div>
