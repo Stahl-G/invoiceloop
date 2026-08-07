@@ -51,6 +51,7 @@ def cmd_doctor() -> int:
         ("dws", "DWS 抽取(ingest --do-extract / 工作台抽取)"),
         ("nutrient", "签名封缄 invoiceloop seal(缺则回退 DWS_API_KEY)"),
         ("anthropic", "读图 vision 与顾问层 suggest"),
+        ("gemini", "Gemini API 与 ADK Agent 编排层"),
     ):
         source = creds.get(purpose)
         check(f"credentials:{purpose}", source is not None, False,

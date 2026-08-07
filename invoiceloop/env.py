@@ -41,6 +41,9 @@ ALIASES: dict[str, tuple[str, ...]] = {
                         "ANTHROPIC_DEFAULT_SONNET_MODEL_NAME",
                         "ANTHROPIC_DEFAULT_SONNET_MODEL",
                         "ANTHROPIC_DEFAULT_HAIKU_MODEL"),
+    "gemini": ("GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINI_AUTH_TOKEN"),
+    "gemini_base": ("GEMINI_BASE_URL", "GOOGLE_GENAI_BASE_URL"),
+    "gemini_model": ("GEMINI_MODEL", "GOOGLE_GENAI_MODEL"),
 }
 
 
