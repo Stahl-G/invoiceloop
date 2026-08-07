@@ -66,14 +66,41 @@ def find_env_file(start: Path | str | None = None) -> Path | None:
 
     向上找是为了 workspace 在子目录时也能用到项目根那一份;
     找到第一个就停,不合并多份 —— 两份 .env 谁赢会变成玄学。
+
+    **符号链接**:`Path.resolve()` 会把 `repo/runs/ws` 跟到
+    `invoiceloop-data/runs/ws`,再往上永远碰不到 `repo/.env`
+    (2026-08-07 ADK 真跑时踩到)。因此先沿**逻辑路径**向上走,
+    再试 resolve 后的路径;若 start 已是 resolve 过的外部目录,
+    最后回退到 cwd(你从哪启动 CLI,哪份项目 .env 生效)。
     """
     if _files_disabled():
         return None
-    here = Path(start or Path.cwd()).resolve()
-    for directory in (here, *here.parents):
-        candidate = directory / ENV_FILENAME
-        if candidate.is_file():
-            return candidate
+
+    roots: list[Path] = []
+    if start is not None:
+        p = Path(start)
+        if not p.is_absolute():
+            p = Path.cwd() / p
+        roots.append(p)
+        try:
+            roots.append(p.resolve())
+        except OSError:
+            pass
+    roots.append(Path.cwd())
+    try:
+        roots.append(Path.cwd().resolve())
+    except OSError:
+        pass
+
+    seen: set[Path] = set()
+    for root in roots:
+        for directory in (root, *root.parents):
+            if directory in seen:
+                continue
+            seen.add(directory)
+            candidate = directory / ENV_FILENAME
+            if candidate.is_file():
+                return candidate
     return None
 
 

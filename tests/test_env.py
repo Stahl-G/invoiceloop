@@ -48,6 +48,39 @@ class TestLookup:
         monkeypatch.chdir(deep)
         assert env.credential("dws") == "k"
 
+    def test_workspace_under_symlinked_runs_still_finds_project_env(
+            self, no_legacy, monkeypatch):
+        """`runs/` → sibling data dir 时 resolve 会走出仓库根;必须仍能找到项目 .env。
+
+        实测(2026-08-07):workspace = repo/runs/adk-real → resolve 到
+        invoiceloop-data/runs/…,向上走永远碰不到 repo/.env,于是 ADK 只能靠
+        进程环境硬塞 key。查找应先走**逻辑路径**(不 resolve),再回退。
+        """
+        repo = no_legacy / "repo"
+        data = no_legacy / "data"
+        (repo / "runs").mkdir(parents=True)
+        (data / "runs" / "ws").mkdir(parents=True)
+        (repo / ".env").write_text("GEMINI_API_KEY=from-repo", encoding="utf-8")
+        (repo / "runs").rmdir()
+        (repo / "runs").symlink_to(data / "runs")
+        monkeypatch.chdir(repo)
+        # 逻辑路径仍在 repo 下;resolve 后落到 data/
+        logical = repo / "runs" / "ws"
+        assert logical.resolve() == (data / "runs" / "ws").resolve()
+        assert env.find_env_file(logical) == repo / ".env"
+        assert env.credential("gemini", workspace=logical) == "from-repo"
+
+    def test_resolved_workspace_falls_back_to_cwd_project_env(
+            self, no_legacy, monkeypatch):
+        """调用方若已 .resolve() 掉符号链接,仍可从 cwd(仓库根)找到 .env。"""
+        repo = no_legacy / "repo"
+        data = no_legacy / "data" / "ws"
+        repo.mkdir()
+        data.mkdir(parents=True)
+        (repo / ".env").write_text("GEMINI_API_KEY=via-cwd", encoding="utf-8")
+        monkeypatch.chdir(repo)
+        assert env.credential("gemini", workspace=data.resolve()) == "via-cwd"
+
     def test_missing_everything_is_none_not_an_exception(self, no_legacy,
                                                          monkeypatch):
         monkeypatch.chdir(no_legacy)
