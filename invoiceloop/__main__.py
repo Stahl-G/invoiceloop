@@ -87,6 +87,9 @@ def _main() -> None:
     p_wb.add_argument("--allowed-host", action="append", default=[],
                       dest="allowed_hosts",
                       help="公开绑定时可选 Host 白名单(可重复;支持 .run.app 后缀)")
+    p_wb.add_argument("--read-only", action="store_true",
+                      help="拒绝全部 POST(403)。公开演示必须开 —— 裁决账本是"
+                           "人的证词,公网可写等于允许伪造")
 
     p_demo = sub.add_parser("demo", help="内嵌示例语料 → 完整 run(零 API、零外部数据)")
     p_demo.add_argument("--out", type=Path, required=True, help="demo workspace 落点(必须不存在或为空)")
@@ -293,7 +296,8 @@ def _main() -> None:
 
         raise SystemExit(cmd_workbench(
             args.workspace, args.port,
-            host=args.host, allowed_hosts=args.allowed_hosts or None))
+            host=args.host, allowed_hosts=args.allowed_hosts or None,
+            read_only=args.read_only))
     elif args.command == "demo":
         from .demo import cmd_demo
 

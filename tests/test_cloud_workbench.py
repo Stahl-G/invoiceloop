@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import contextlib
 import http.client
 import json
 import threading
+import urllib.parse
 
 import pytest
 
@@ -162,3 +164,110 @@ def test_cloud_pull_fails_loud_without_sdk(tmp_path):
             cs.pull("gs://bucket/prefix", tmp_path / "ws")
     finally:
         cs._client = original
+
+
+# ── 只读模式:公开演示不许写裁决账本 ──────────────────────────────
+
+#: 工作台上全部写入路由。裁决账本是「某个人看过并判了」的证词 ——
+#: 公网可写等于任何人都能伪造一条人类裁决。
+POST_ROUTES = ["/decide", "/upload", "/ingest", "/bundle", "/verify",
+               "/improve/adopt", "/improve/adopt-schema",
+               "/improve/evaluate", "/improve/promote"]
+
+
+@contextlib.contextmanager
+def _server(workspace, **kw):
+    from invoiceloop.workbench import make_server
+
+    srv = make_server(workspace, 0, **kw)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        yield srv.server_address[1]
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+def _post(port, path, host="127.0.0.1", body=""):
+    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+    conn.request("POST", path, body=body, headers={
+        "Host": host, "Content-Type": "application/x-www-form-urlencoded",
+        "Content-Length": str(len(body))})
+    r = conn.getresponse()
+    return r.status, r.read()
+
+
+def _get(port, path, host="127.0.0.1"):
+    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+    conn.request("GET", path, headers={"Host": host})
+    r = conn.getresponse()
+    return r.status, r.read()
+
+
+def test_read_only_refuses_every_write_route(workspace):
+    with _server(workspace, read_only=True) as port:
+        for path in POST_ROUTES:
+            status, body = _post(port, path)
+            assert status == 403, f"{path} 在只读模式下没有被拒(得到 {status})"
+
+
+def _decide_body(claim_id: str) -> str:
+    """一份**真的会写账本**的 /decide 表单。
+
+    空 POST 在任何模式下都会被参数校验挡掉,拿它测只读等于什么都没测
+    (第一版就是这样,变异测试抓到)。
+    """
+    return urllib.parse.urlencode({
+        "run": RUN, "claim_id": claim_id, "doc": DOC,
+        "field": "invoice_number", "decision": "accept",
+        "rationale": "值与页面一致", "adjudicator": "judge",
+    })
+
+
+def _claim_id(workspace) -> str:
+    ledger = json.loads(
+        (workspace / "runs" / RUN / "field_ledger.json").read_text())
+    return next(c["claim_id"] for c in ledger["claims"]
+                if c["field"] == "invoice_number")
+
+
+def test_the_decide_payload_really_writes_when_writable(workspace):
+    """先证明这份表单在可写模式下确实追加账本 —— 否则下一条测试是空的。"""
+    path = workspace / "runs" / RUN / "adjudication_ledger.jsonl"
+    before = path.read_bytes() if path.exists() else None
+    with _server(workspace) as port:
+        status, _ = _post(port, "/decide", body=_decide_body(_claim_id(workspace)))
+    assert status in (200, 303), status
+    assert path.exists() and path.read_bytes() != before
+
+
+def test_read_only_leaves_the_decision_ledger_byte_identical(workspace):
+    path = workspace / "runs" / RUN / "adjudication_ledger.jsonl"
+    before = path.read_bytes() if path.exists() else None
+
+    with _server(workspace, read_only=True) as port:
+        status, _ = _post(port, "/decide", body=_decide_body(_claim_id(workspace)))
+
+    assert status == 403
+    after = path.read_bytes() if path.exists() else None
+    assert after == before
+
+
+def test_read_only_still_serves_the_queue(workspace):
+    with _server(workspace, read_only=True) as port:
+        status, _ = _get(port, "/queue")
+        assert status == 200
+
+
+def test_read_only_page_discloses_that_it_is_read_only(workspace):
+    """评委不能以为自己在真的裁决 —— 页面必须说清楚(宪章六)。"""
+    with _server(workspace, read_only=True) as port:
+        _, body = _get(port, "/queue")
+    assert b"read-only" in body.lower() or "只读".encode() in body
+
+
+def test_writable_is_the_default(workspace):
+    """默认不是只读 —— 本地 HITL 必须照常能写。"""
+    with _server(workspace) as port:
+        status, body = _post(port, "/decide")
+        assert status != 403 or b"read-only" not in body.lower()

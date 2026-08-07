@@ -2090,6 +2090,10 @@ class _Handler(BaseHTTPRequestHandler):
             elif host not in allowed:
                 raise _HttpError(403, f"Host {host!r} 不在 loopback 白名单 —— "
                                       f"这通常是 DNS rebinding 的特征,已拒")
+        if method == "POST" and getattr(self.server, "read_only", False):
+            raise _HttpError(
+                403, "read-only demo —— 本实例不接受任何写入。"
+                     "裁决账本只在本地可写运行的工作台上追加。")
         if method == "POST":
             origin = self._host_of(self.headers.get("Origin"))
             if origin is None:
@@ -2125,7 +2129,23 @@ class _Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    #: 只读横幅。放在 `_html` 而不是某个页面里 —— 每一页都必须说,
+    #: 否则评委可能以为自己刚才真的裁决了什么(宪章六)。
+    _READ_ONLY_BANNER = (
+        '<div style="background:#7a2e00;color:#fff;padding:8px 14px;'
+        'font:600 13px/1.5 system-ui,sans-serif" role="status">'
+        'read-only demo · 只读演示 —— 这个实例不接受任何写入。'
+        '裁决、采纳、晋升都会被拒(403)。'
+        '真实 HITL 只在本地可写运行的工作台上进行。</div>'
+    )
+
     def _html(self, status: int, text: str, cookies=None) -> None:
+        if getattr(self.server, "read_only", False):
+            marker = "<body>" if "<body>" in text else "<body "
+            idx = text.find(marker)
+            if idx >= 0:
+                cut = text.index(">", idx) + 1
+                text = text[:cut] + self._READ_ONLY_BANNER + text[cut:]
         self._send(status, text.encode("utf-8"), "text/html; charset=utf-8", cookies)
 
     def _redirect(self, location: str, cookies=None) -> None:
@@ -2549,12 +2569,16 @@ def make_server(
     *,
     host: str = HOST,
     allowed_hosts: set[str] | None = None,
+    read_only: bool = False,
 ) -> ThreadingHTTPServer:
     """起工作台 HTTP 服务。
 
     默认绑 127.0.0.1(loopback)。Cloud Run / Docker 需显式 `host="0.0.0.0"`;
     公开绑定时 Host 闸放宽(可再用 `allowed_hosts` / `.run.app` 后缀收紧)。
     本地评委路径不要公开绑定 —— 要给人看离线结果走 audit bundle。
+
+    `read_only=True` 拒绝**全部** POST。公开演示必须开它:裁决账本是
+    「某个人看过并判了」的证词,公网可写等于任何人都能伪造一条人类裁决。
     """
     import os
 
@@ -2581,6 +2605,7 @@ def make_server(
     server.public = public
     server.allowed_hosts = hosts
     server.bind_host = host
+    server.read_only = read_only
     return server
 
 
@@ -2590,6 +2615,7 @@ def cmd_workbench(
     *,
     host: str = HOST,
     allowed_hosts: list[str] | None = None,
+    read_only: bool = False,
 ) -> int:
     bind_port = resolve_port(port)
     allow = set(allowed_hosts) if allowed_hosts else None
@@ -2599,10 +2625,15 @@ def cmd_workbench(
     extra = os.environ.get("INVOICELOOP_ALLOWED_HOSTS", "").strip()
     if extra:
         allow = (allow or set()) | {h.strip().lower() for h in extra.split(",") if h.strip()}
-    server = make_server(workspace, bind_port, host=host, allowed_hosts=allow)
+    read_only = read_only or os.environ.get(
+        "INVOICELOOP_READ_ONLY", "") in ("1", "true", "TRUE")
+    server = make_server(workspace, bind_port, host=host, allowed_hosts=allow,
+                         read_only=read_only)
     addr_host = "127.0.0.1" if host in PUBLIC_BIND_HOSTS else host
     url = f"http://{addr_host}:{server.server_address[1]}"
     mode = "公开绑定(Cloud Run/容器)" if server.public else "仅本机 loopback"
+    if read_only:
+        mode += ",只读(POST 一律 403)"
     print(f"InvoiceLoop 工作台:{url}({mode},Ctrl-C 停止)")
     try:
         server.serve_forever()
