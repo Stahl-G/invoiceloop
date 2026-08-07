@@ -300,16 +300,69 @@ class TestPromoteSafetyGate:
             finding="FIND-AE", prediction="p", kind="absent_expected")
         improve.evaluate(ws, "HAR-0002")
 
-    def test_sealed2_marker_naming_this_candidate_upgrades_basis(
+    def test_sealed2_marker_no_longer_upgrades_because_the_set_is_revoked(
             self, ws, monkeypatch):
+        """2026-08-07 起,点名本候选的标记也**不再**升级口径。
+
+        `sealed2_qualified` 那句口径的主语是「**未见**封箱集」。SEALED-2 已在
+        开发期被反复使用(doctype 词表照着它的自由文本拼法写、阶段 D 原型对着
+        它评分),留出性没了 —— 主语不成立,整句就不成立,与标记点没点名无关。
+        留出一旦破了就永久破了,所以撤销记在代码里:重新造一个标记也没用。
+        """
         self._scored_candidate(ws, monkeypatch)
         improve.mark_sealed2_qualified(ws, harness_id="HAR-0002",
                                        note="SEALED-2 跑的就是它")
         record = improve.promote(ws, "HAR-0002", approved_by="y",
-                                 rationale="SEALED-2 资格已挂",
+                                 rationale="标记在,但资格集已撤销",
                                  approved_at=DECIDED)
-        assert record["basis"] == "sealed2_qualified"
+        assert record["basis"] == "evo_truth_replay", \
+            "资格集撤销后不许再升到 sealed2_qualified"
         assert record["gate"] == "pareto_gated"
+
+    def test_revoked_qualification_says_withdrawn_not_never_evaluated(
+            self, ws, monkeypatch):
+        """撤销 ≠ 没跑过。两种状态的口径文案必须不同。
+
+        SEALED-2 **跑过**,过了 Gate 2;失效的是那个集的留出性。写成
+        「仍未经封箱资格集评测」是另一句假话,而且它暗示「去跑一次就能升」——
+        实际上这条升级路径已经关了。
+        """
+        self._scored_candidate(ws, monkeypatch)
+        improve.mark_sealed2_qualified(ws, harness_id="HAR-0002", note="")
+        marked = improve.promote(ws, "HAR-0002", approved_by="y",
+                                 rationale="有标记",
+                                 approved_at=DECIDED)
+        assert marked["sealed2_revoked"] is not None
+        assert "撤销" in marked["claim_limits"]
+        assert "2026-08-07" in marked["claim_limits"]
+
+    def test_no_marker_still_reads_as_never_qualified(self, ws, monkeypatch):
+        """没标记的候选,口径不该说「资格被撤销」—— 它从来没有过资格。"""
+        self._scored_candidate(ws, monkeypatch)
+        record = improve.promote(ws, "HAR-0002", approved_by="y",
+                                 rationale="从没挂过标记",
+                                 approved_at=DECIDED)
+        assert record["basis"] == "evo_truth_replay"
+        assert record["sealed2_revoked"] is None
+        assert "撤销" not in record["claim_limits"]
+
+    def test_sealed2_qualified_wording_is_unreachable(self):
+        """没有任何输入组合能再让 gate_verdict 吐出未见封箱集那句口径。
+
+        这条是给未来的自己:撤销必须是**机制**,不是文档里的一句提醒。
+        """
+        for scored in (True, False):
+            for reextract in (True, False):
+                ev = {
+                    "basis": "reextract_sample" if reextract else None,
+                    "safety_status": "scored" if scored else "unscored",
+                    "silent_absent_baseline": 0, "silent_absent_candidate": 0,
+                    "silent_wrong_baseline": 0, "silent_wrong_candidate": 0,
+                    "review_load_baseline": 1.0, "review_load_candidate": 1.0,
+                }
+                v = improve.gate_verdict(ev, sealed2_qualified=True)
+                assert v["basis"] != "sealed2_qualified", (scored, reextract)
+                assert "未见封箱集上负载不升" not in v["claim_limits"]
 
     def test_sealed2_marker_for_another_harness_does_not_transfer(
             self, ws, monkeypatch):

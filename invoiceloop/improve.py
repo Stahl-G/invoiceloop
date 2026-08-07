@@ -879,20 +879,46 @@ _CLAIM_LIMITS = {
         "仍未经未见封箱资格集(SEALED-2)评测 —— "
         "不得声称「在未见数据上减少人工」。"
     ),
-    ("sealed2_qualified", False): (
-        "已在 SEALED-2 资格集上通过 Gate 2(静默错不升)+ 负载不升;"
-        "公开口径可说「在未见封箱集上负载不升且静默错不升」,"
-        "仍不得把 SEALED-1/HITL 当 final held-out。"
-    ),
     ("reextract_sample", True): (
         "schema 候选经样本重抽评测;公开口径限本样本 + Gate 2 数字,"
-        "未经 SEALED-2 全量前不得声称未见封箱减负。"
-    ),
-    ("sealed2_qualified", True): (
-        "已在 SEALED-2 资格集上通过 Gate 2(静默错不升)+ 负载不升;"
-        "公开口径可说「在未见封箱集上负载不升且静默错不升」。"
+        "不得声称未见封箱减负(唯一的封箱资格集 SEALED-2 已撤销)。"
     ),
 }
+
+#: (basis, reextract) → 标记在但资格集已撤销时的口径。**与「没跑过」分开写**:
+#: SEALED-2 跑过且过了 Gate 2,失效的是那个集的留出性,不是那次评测。
+#: 写成「仍未经封箱资格集评测」会暗示「去跑一次就能升」—— 那条路已经关了。
+_CLAIM_LIMITS_REVOKED = (
+    "本候选持有 SEALED-2 资格标记,但**该资格已于 2026-08-07 撤销**:"
+    "SEALED-2 在开发期被反复使用,留出性已破,"
+    "「在未见封箱集上……」这句的主语不再成立。"
+    "公开口径退回本 workspace 真值范围;"
+    "要恢复未见封箱口径,须换一个冻结后才见到的新集(SEALED-3)。"
+)
+
+#: 封箱资格集的留出状态。**留出一旦破了就永久破了**,所以这条记在代码里
+#: 而不是文档里 —— 口径升级是代码判的,提醒管不住一个重新造出来的标记文件。
+#:
+#: 撤销 SEALED-2 的理由是可点验的,不是谨慎起见:
+#:   - `doctype.CLASSES` 的判别 token 是照着 S2 的 `invoice_type` 自由文本
+#:     拼法写的(见 docs/DOCTYPE_EVIDENCE_2026-08-07.md §词表去污);
+#:   - 阶段 D 主体方向原型直接对着 S2 的 93/95 份评分并据此 KILL;
+#:   - S2 阻断名单里有 4 份被逐页看过。
+#: 三条都发生在「资格集」这个身份之下,任何一条都足以让它不再是未见集。
+SEALED_SET_REVOCATIONS: dict[str, dict[str, str]] = {
+    "SEALED-2": {
+        "revoked_on": "2026-08-07",
+        "reason": "开发期反复使用:doctype 词表照其自由文本拼法写、"
+                  "阶段 D 原型对其评分、阻断名单 4 份逐页看过",
+        "recorded_in": "docs/SEALED2_RESULTS.md",
+    },
+}
+
+
+def sealed_set_revocation(name: str = "SEALED-2") -> dict[str, str] | None:
+    """该封箱集的留出资格是否已被撤销。撤销了就返回撤销记录,否则 None。"""
+    rec = SEALED_SET_REVOCATIONS.get(name)
+    return dict(rec) if rec else None
 
 
 def sealed2_qualifies(workspace: Path, candidate_id: str) -> bool:
@@ -952,13 +978,15 @@ def gate_verdict(evaluation: dict, *, sealed2_qualified: bool = False) -> dict:
             refusals.append(
                 "Gate 3 拒绝:review_load 上升 —— 安全门通过也不能用更高人工负载换")
 
+    # 资格集撤销后,标记点没点名都不再升级 basis —— 那句口径的主语
+    # (「未见封箱集」)已经不成立,与标记本身无关。
+    revoked = sealed_set_revocation("SEALED-2") if sealed2_qualified else None
+
     if reextract:
         gate = "pareto_gated" if scored else "reextract_eval"
-        basis = "sealed2_qualified" if (sealed2_qualified and scored) \
-            else "reextract_sample"
+        basis = "reextract_sample"
     elif scored:
-        gate = "pareto_gated"
-        basis = "sealed2_qualified" if sealed2_qualified else "evo_truth_replay"
+        gate, basis = "pareto_gated", "evo_truth_replay"
     else:
         gate, basis = "eval_reexecuted", "evo_replay_only"
     return {
@@ -966,7 +994,11 @@ def gate_verdict(evaluation: dict, *, sealed2_qualified: bool = False) -> dict:
         "refusals": refusals,
         "gate": gate,
         "basis": basis,
-        "claim_limits": _CLAIM_LIMITS[(basis, reextract)],
+        # 撤销要**看得见**:退级不许静默(宪章四)。持标记的候选拿到的是
+        # 「资格被撤销」的文案,不是「从来没跑过」的那句。
+        "sealed2_revoked": revoked,
+        "claim_limits": (_CLAIM_LIMITS_REVOKED if revoked
+                         else _CLAIM_LIMITS[(basis, reextract)]),
         "safety_status": safety_status,
     }
 
@@ -1108,6 +1140,9 @@ def promote(workspace: Path, candidate_id: str, *, approved_by: str,
         "gate": gate,
         "basis": basis,
         "claim_limits": claim_limits,
+        # 候选持有 SEALED-2 标记但资格集已撤销时,把撤销记录钉进晋升记录:
+        # 退级理由要留在账本里,不能只活在当时那次 gate_verdict 的返回值里。
+        "sealed2_revoked": verdict["sealed2_revoked"],
         "safety_status": safety_status,
         "approved_by": approved_by.strip(),
         "approved_at": approved_at.strip(),
@@ -1193,10 +1228,18 @@ def mark_sealed2_qualified(workspace: Path, *, harness_id: str,
                            note: str = "") -> Path:
     """人工确认 SEALED-2 评测已过 Gate 2 后,给**具体某个 harness** 挂资格标记。
 
-    `harness_id` 是必填的:它是这次 SEALED-2 评测实际跑的那个 harness。
-    只有它自己晋升时 basis 才升为 `sealed2_qualified`;之后从它派生出来的
-    新候选**不继承**这个资格 —— 新候选要这个口径,得自己在 SEALED-2 上跑。
-    本函数不跑评测、不调 API —— 只落盘标记。
+    **2026-08-07 起这个标记不再升级任何口径。** SEALED-2 的留出资格已撤销
+    (`SEALED_SET_REVOCATIONS`),所以 `gate_verdict` 见到标记时给的是
+    「资格已撤销」文案,basis 停在 `evo_truth_replay`。
+
+    那为什么函数还留着、还写盘?因为**标记记录的是「那次评测确实跑过」**,
+    这件事是真的,不该抹掉;失效的是它当初买到的那句口径。而且真正该钉死的
+    性质是「文件在也不升级」—— 让写入口存在、并证明写出来的标记是惰性的,
+    比把写入口拆掉更硬:手写一个文件同样绕不过去
+    (见 `test_sealed2_qualified_wording_is_unreachable`)。
+
+    `harness_id` 仍是必填:它是这次评测实际跑的那个 harness,标记从不跨候选
+    转移。本函数不跑评测、不调 API —— 只落盘标记。
     """
     workspace = Path(workspace)
     if not str(harness_id).strip():

@@ -25,8 +25,8 @@ result missed the pre-registered line.
 | File | What it is |
 |---|---|
 | `HELDOUT.md` | Held-out protocol, frozen before any API call |
-| `SEALED1_PROTOCOL.md` / `SEALED1_RESULTS.md` | 100 drand-seeded unseen invoices. Triage lift 4.03×; decision load 82.9% → 64.2%. **The held-out result this project stands on** |
-| `SEALED2_PROTOCOL.md` / `SEALED2_RESULTS.md` | Second sealed batch, lift 3.19×. Since used during development — treat as a regression set, not as evidence of generalisation |
+| `SEALED1_PROTOCOL.md` / `SEALED1_RESULTS.md` | 100 drand-seeded unseen invoices. Triage lift 4.03×; decision load 82.9% → 64.2%. **The held-out result this project stands on** — measured 2026-08-03, before the exposure that has since spent both sets for *new* measurements |
+| `SEALED2_PROTOCOL.md` / `SEALED2_RESULTS.md` | Second sealed batch, lift 3.19×. **Held-out status revoked 2026-08-07** — the protocol's own clause 3 fired. Enforced in `improve.SEALED_SET_REVOCATIONS`, not merely written down |
 | `FIELD_COVERAGE.md` | Which fields are scored, frozen before SEALED-2 |
 | `BASELINE_COMPARISON_SEALED1.md` | Against a confidence-threshold baseline at a fixed operating point: TIER1 silent error 9.62% vs 21.91% |
 | `BASELINE_COMPARISON.md` / `R0_BASELINE_2026-08-05.md` | Earlier baseline work |
@@ -47,7 +47,7 @@ result missed the pre-registered line.
 | File | What it is |
 |---|---|
 | `DOCTYPE_PLAN_2026-08-07.md` | The plan, opening with two of the author's own claims that the data falsified |
-| `DOCTYPE_EVIDENCE_2026-08-07.md` | Does the model's document-type claim have literal page support? ~91–94%. Carries an in-sample contamination warning: five vocabulary tokens were derived from SEALED-2 |
+| `DOCTYPE_EVIDENCE_2026-08-07.md` | Does the model's document-type claim have literal page support? ~91–94%. Also the de-contamination: seven corpus-derived tokens removed after ablation showed all seven decided nothing — and the correction of the removal list, which had named one token that should stay and missed three that should go |
 | `DOCTYPE_STAGE_B_2026-08-07.md` | Where a document-level verdict can live without breaking replay |
 | `DOCTYPE_STAGE_D_2026-08-07.md` | **A negative result.** A pre-registered label-geometry rule for seller/buyer direction scored 51.6% against an 80% kill line, and was killed. Also records a binding defect found afterwards, and the recomputation that followed |
 

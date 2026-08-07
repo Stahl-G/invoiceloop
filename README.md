@@ -125,11 +125,30 @@ All from stored evidence — verifying them needs no API calls.
 Protocols and results: [`docs/SEALED1_RESULTS.md`](docs/SEALED1_RESULTS.md),
 [`docs/BASELINE_COMPARISON_SEALED1.md`](docs/BASELINE_COMPARISON_SEALED1.md).
 
-> **On SEALED-2.** A second sealed evaluation exists
-> (`docs/SEALED2_RESULTS.md`, lift 3.19×), but that batch has since been used
-> during development and its "promotion-qualified" marker is **not** currently a
-> claim of generalisation to unseen data. Treat SEALED-1 as the held-out result
-> and SEALED-2 as a development/regression set until a fresh sealed round is run.
+> **On SEALED-2 — held-out status revoked 2026-08-07.** A second sealed
+> evaluation exists (`docs/SEALED2_RESULTS.md`, lift 3.19×) and its numbers are
+> real, but the batch was subsequently used during development: the document-type
+> vocabulary was written by reading its free-text spellings, and a Stage D
+> prototype was scored against it. The SEALED-2 protocol pre-registered exactly
+> this as a disqualifying event, so the qualification is withdrawn — not as a
+> judgement call, but as the pre-registered consequence firing.
+>
+> The revocation is **enforced in code, not stated in a document**
+> (`improve.SEALED_SET_REVOCATIONS`): the `sealed2_qualified` basis is now
+> unreachable, a promotion carrying the old marker records why it was refused,
+> and re-creating the marker file changes nothing. Deleting the marker files
+> would not have stopped the next person from writing a new one.
+>
+> **Why SEALED-1 is not equally dead.** Its headline result — triage lift 4.03×
+> — was measured on 2026-08-03, before any of this existed. A finished
+> measurement is not retroactively invalidated by later exposure. What *is* spent
+> is SEALED-1's use for **new** held-out measurements: four load-bearing tokens in
+> the same vocabulary (`donation`, `\bcheck\b`, `sale`, `rebate`) come from its
+> spellings too.
+>
+> So: SEALED-1's 4.03× stands as a past result, and **no set is currently
+> available as a held-out set at all.** Until a fresh sealed round is drawn,
+> nothing here supports a sentence that begins "on unseen data".
 
 ## Everyday commands
 
