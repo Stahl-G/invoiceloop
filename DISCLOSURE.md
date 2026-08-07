@@ -13,10 +13,15 @@ This repository was created on **2026-08-01 at 10:24 PT**, roughly 47 hours befo
 the Submission Period opened. It is not a pre-existing product entering a hackathon;
 it is a project that started two days early.
 
-| | Commits |
+| Commits reachable from `main` | |
 |---|---|
-| Before 2026-08-03 09:00 PT | **46** |
-| During the Submission Period | **89** |
+| Before 2026-08-03 09:00 PT | **42** |
+| During the Submission Period | **93** |
+
+(Counting every branch that ever existed locally, including four commits on an
+abandoned side branch that was never merged, the split is 46 / 93. The numbers
+above are the ones you can reproduce from this repository, so they are the ones
+stated here.)
 
 All three mandatory requirements — Gemini 3.5+, a Google Agent Framework, and a
 Google Cloud infrastructure service — were built during the Submission Period, on
@@ -110,13 +115,13 @@ question is the submission.
 
 ```bash
 # Commits before the Submission Period opened (2026-08-03 09:00 PT = 16:00 UTC)
-git log --all --until="2026-08-03T16:00:00Z" --date=iso --pretty='%ad %h %s'
+git log main --until="2026-08-03T16:00:00Z" --date=iso --pretty='%ad %h %s'
 
 # Commits during it
-git log --all --since="2026-08-03T16:00:00Z" --oneline | wc -l
+git log main --since="2026-08-03T16:00:00Z" --oneline | wc -l
 
 # When any given module first appeared
-git log --all --diff-filter=A --date=iso --pretty='%ad %h' -- invoiceloop/agents/
+git log main --diff-filter=A --date=iso --pretty='%ad %h' -- invoiceloop/agents/
 ```
 
 If anything in this file turns out to be wrong, the git history is the authority,
