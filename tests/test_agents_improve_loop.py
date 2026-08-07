@@ -9,6 +9,10 @@ import json
 
 import pytest
 
+# ADK/GenAI 是可选依赖(`pip install -e ".[gemini]"`)。没装就跳过,
+# 不要让整个 tests/ 收集不起来 —— 干净 clone 必须能跑通测试。
+pytest.importorskip("google.adk", reason="需要 invoiceloop[gemini]")
+
 from invoiceloop.agents.improve_loop import cohort_key, run_improve_loop
 from invoiceloop.agents.runtime import ReplayRecordingMissing
 from tests.test_agents_adk_pipeline import ScriptedLlm, _script, _workspace
