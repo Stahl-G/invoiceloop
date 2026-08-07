@@ -18,6 +18,65 @@ import shutil
 from importlib import resources
 from pathlib import Path
 
+#: 演示裁决的署名。裁决账本是「某个人看过并判了」的证词,而演示里的裁决
+#: 不是人做的 —— 署名必须让任何人一眼看出来不是人。不要改成像人名的东西。
+DEMO_ADJUDICATOR = "demo-fixture (not a human review)"
+
+_DEMO_RATIONALE = (
+    "seeded by `invoiceloop demo` as a fixture so the delivery projection has "
+    "something to project — no person looked at this row"
+)
+
+
+def _seed_review(run_dir: Path) -> int:
+    """把演示 run 里待裁决的槽逐条判掉,让至少一份文档走到出口。
+
+    为什么要有这一步:`deliverable.json` 从 2026-08-05 起每次 run 都写,
+    但内嵌语料跑完全部是 `pending`,于是公开演示上评委只看得到待办队列,
+    看不到系统交付什么。存在但不可见,对读者而言约等于不存在。
+
+    为什么这不是伪造:决策全部走 `adjudicate_and_render` 的正常路径(同样
+    的三重校验、同样的哈希链),署名与理由都写明是夹具。出处在工件里,
+    可核 —— 这正是这个项目对「谁判的」的一贯要求。
+    """
+    from .adjudicate import adjudicate_and_render
+    from .deliver import build_deliverable
+
+    seeded = 0
+    while True:                              # 每轮重算,直到不再有进展
+        deliverable = build_deliverable(run_dir)
+        todo = [
+            (doc_id, field)
+            for doc_id, doc in deliverable["docs"].items()
+            for field, slot in doc["fields"].items()
+            if slot["status"] in ("pending", "pending_tier1")
+        ]
+        if not todo:
+            break
+        before_round = seeded
+        ledger = json.loads((run_dir / "field_ledger.json").read_text(encoding="utf-8"))
+        claims = {(c["doc_id"], c["field"]): c["claim_id"] for c in ledger["claims"]}
+        for doc_id, field in todo:
+            claim_id = claims.get((doc_id, field))
+            kwargs = dict(
+                doc_id=doc_id, field=field,
+                # claim_id 永远显式传(缺省时为 None)—— append_adjudication
+                # 把它设成 keyword-only 必填,正是为了逼调用方表态
+                claim_id=claim_id,
+                rationale=_DEMO_RATIONALE, adjudicator=DEMO_ADJUDICATOR,
+                decided_at="2026-08-07T12:00:00+00:00",
+                # 有冻结 claim 就接受它;没有就是页面上确实没这个字段
+                decision="accept" if claim_id else "confirm_absent",
+            )
+            try:
+                adjudicate_and_render(run_dir, **kwargs)
+                seeded += 1
+            except Exception:  # noqa: BLE001 —— 判不了的槽留 pending,如实显示
+                pass
+        if seeded == before_round:           # 一轮下来一条都没判成 —— 停
+            break
+    return seeded
+
 
 def _copy_samples(ws: Path) -> None:
     src = resources.files("invoiceloop") / "samples"
@@ -55,6 +114,7 @@ def cmd_demo(out: Path) -> None:
                     include_vision=True, out_of_calibration=True)
         (out / "runs" / "current.json").write_text(
             json.dumps({"run": "run-0001"}, ensure_ascii=False) + "\n", encoding="utf-8")
+        seeded = _seed_review(run_dir)
     finally:
         for key, value in prev.items():
             if value is None:
@@ -70,12 +130,19 @@ def cmd_demo(out: Path) -> None:
     else:
         note = ("本机 poppler 从退化扫描件也抽出了文字层,三份全流程正常;"
                 "046e0c49 的展品是读图门对「买卖双方抽反」的 warning(数据决定)")
+    from .deliver import build_deliverable
+
+    delivered = build_deliverable(run_dir)
     print(json.dumps({
         "workspace": str(out),
         "run_dir": str(run_dir),
         "panel": str(paths["panel"]),
         "docs": doc_ids,
         "ocr_blocked": blocked_ids,
+        "seeded_decisions": seeded,
+        "seeded_by": DEMO_ADJUDICATOR,
+        "delivery_status": delivered["summary"]["by_status"],
+        "deliverable": str(run_dir / "deliverable.json"),
         "next": f"python3 -m invoiceloop workbench --workspace {out}",
         "note": note,
     }, ensure_ascii=False, indent=1))

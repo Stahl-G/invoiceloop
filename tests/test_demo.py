@@ -89,3 +89,47 @@ class TestDemoEndToEnd:
 
         assert os.environ["INVOICELOOP_CORPUS"] == "/original/corpus", \
             "库调用不许留下环境副作用"
+
+
+@pytest.mark.skipif(not POPPLER, reason="需要 poppler")
+class TestDemoReachesTheTerminus:
+    """演示必须走到出口。
+
+    出口(`deliverable.json`)从 2026-08-05 起就在代码里,但 demo 语料跑完
+    `by_status` 是 `{"pending": 3}` —— 三份文档全部未决。于是公开演示上
+    评委看到的永远是一个待办队列,看不到系统交付什么。存在但不可见,
+    对读者而言约等于不存在。
+    """
+
+    def test_at_least_one_document_reaches_release(self, tmp_path):
+        from invoiceloop.demo import cmd_demo
+
+        ws = tmp_path / "ws"
+        cmd_demo(ws)
+        deliverable = json.loads(
+            (ws / "runs" / "run-0001" / "deliverable.json").read_text(encoding="utf-8"))
+
+        released = [d for d, v in deliverable["docs"].items()
+                    if v["status"] in ("released", "released_with_caveats")]
+        assert released, (
+            f"没有任何文档走到出口:{deliverable['summary']['by_status']}")
+
+    def test_seeded_decisions_never_impersonate_a_human_reviewer(self, tmp_path):
+        """裁决账本是「某个人看过并判了」的证词。
+
+        演示里的裁决不是人做的,所以署名必须让任何人一眼看出来不是人 ——
+        这条比「演示好看」重要。
+        """
+        from invoiceloop.demo import DEMO_ADJUDICATOR, cmd_demo
+
+        ws = tmp_path / "ws"
+        cmd_demo(ws)
+        ledger = (ws / "runs" / "run-0001" / "adjudication_ledger.jsonl")
+        entries = [json.loads(x) for x in ledger.read_text().splitlines() if x.strip()]
+
+        assert entries, "没有种子裁决"
+        assert "demo" in DEMO_ADJUDICATOR and "fixture" in DEMO_ADJUDICATOR
+        for e in entries:
+            assert e["adjudicator"] == DEMO_ADJUDICATOR, (
+                f"演示裁决署了别的名字:{e['adjudicator']!r}")
+            assert "fixture" in e["rationale"].lower(), "理由里必须写明是夹具"
