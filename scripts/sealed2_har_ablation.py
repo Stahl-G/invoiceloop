@@ -1,7 +1,19 @@
 """SEALED-2 同证据、仅换 HAR 重跑矩阵(零 API)。
 
-冻结 runs/sealed2 的 ledger + gate_report + spans,只重建 routing/matrix。
-用法:
+⚠️ 已作废 —— 用 `scripts/sealed2_har_ablation_v2.py`。
+
+本脚本冻结 `runs/sealed2/gate_report.json` 只重建 routing/matrix,但那份报告
+是在 HAR-0004 下产出的:`gates.py:322` 在跑门禁时就把 cohort 字段的
+`extraction_present` 改写成 `expected_absent` 并把 finding 降为非阻断
+(129 槽:seller_vat_id 85 + total_vat 44)。`matrix.build_matrix` 逐字消费
+门禁裁决、从不按本臂 policy 重推,所以非 HAR-0004 的臂全部继承了 HAR-0004
+的改写,负载被系统性低估。
+
+证伪:HAR-0001 的 `absent_expected_cohorts` 是 None,而 `routing.py:108`
+只在 `expected_absent` 时才路由 auto_absent —— 它的 machine_absent 只能是 0,
+本脚本报了 117。修正后 HAR-0001 是 561/1000 (56.1%),不是 444 (44.4%)。
+
+用法(仅供复现该缺陷):
   INVOICELOOP_CORPUS=runs/sealed2-workspace python3 scripts/sealed2_har_ablation.py
 """
 from __future__ import annotations
