@@ -13,15 +13,15 @@ This repository was created on **2026-08-01 at 10:24 PT**, roughly 47 hours befo
 the Submission Period opened. It is not a pre-existing product entering a hackathon;
 it is a project that started two days early.
 
-| Commits reachable from `main` | |
-|---|---|
-| Before 2026-08-03 09:00 PT | **42** |
-| During the Submission Period | **93** |
+**42 commits on `main` pre-date 2026-08-03 09:00 PT.** That number is frozen —
+nothing can be added to the past. Everything after it was written during the
+Submission Period; the current count grows with every commit, so it is not stated
+here as a fixed figure. Count it yourself with the command at the bottom.
 
-(Counting every branch that ever existed locally, including four commits on an
-abandoned side branch that was never merged, the split is 46 / 93. The numbers
-above are the ones you can reproduce from this repository, so they are the ones
-stated here.)
+(Counting every branch that ever existed locally — including four commits on an
+abandoned side branch that was never merged and is not published — the pre-period
+figure is 46. The 42 above is what this repository can show you, so it is the one
+stated.)
 
 All three mandatory requirements — Gemini 3.5+, a Google Agent Framework, and a
 Google Cloud infrastructure service — were built during the Submission Period, on
