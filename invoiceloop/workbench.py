@@ -27,10 +27,15 @@ Route contract (tests/test_workbench.py is the authority):
     POST /decide /upload?filename= /ingest /bundle /verify (raw bytes)
 
 /adjudicate is a Gradescope-style single-slot page: the left column renders the
-full page with a bbox highlight overlay (frozen binding in a solid green line, the
-DWS citation in a dashed purple one); the right column holds the verdict card and
-the decision form (the same form fields and the same /decide endpoint as the
-queue page); a refused submission re-renders *this same page* with HTTP 400 —
+full page with bbox highlight overlays (frozen binding in a solid green line,
+DWS citation in a dashed purple one, and passing literal document-type evidence
+in a dotted green one). The right column reads only the frozen
+`gate_report.document_checks` result and presents document class as context: it
+never changes buttons, preselects a decision, or removes a slot. Runs created
+before that key existed are shown as not measured; the workbench never backfills
+a modern result into their history. The right column also holds the decision form
+(the same form fields and the same /decide endpoint as the queue page); a refused
+submission re-renders *this same page* with HTTP 400 —
 everything the reviewer typed is filled back in and the reason is shown beside
 the form, in interface words rather than the raw exception (the exception text
 itself is unchanged; it belongs to API callers and logs). The footer navigates to
@@ -46,6 +51,7 @@ from __future__ import annotations
 import hashlib
 import html
 import json
+import math
 import re
 import urllib.parse
 from dataclasses import dataclass
@@ -262,6 +268,28 @@ _T = {
         "value_here": "Value found here (corroborating):",
         "cited_here": "DWS pointed here (for review):",
         "no_citation": "No citation region — see full page:",
+        "doctype_title": "Document type",
+        "doctype_pass": "Page-evidenced type: {label}. This is context only; "
+                        "whether the field applies is still your decision.",
+        "doctype_proof": "literal “{phrase}” · p{page}",
+        "doctype_fail": "DWS proposed {label}, but there is no literal page "
+                        "evidence. Do not use that type to judge field "
+                        "applicability.",
+        "doctype_no_claim": "DWS gave no document type. Judge this field from "
+                            "the page.",
+        "doctype_unmapped": "DWS type “{raw}” is outside the controlled "
+                            "vocabulary. Judge this field from the page.",
+        "doctype_ocr_unavailable": "Document type could not be checked because "
+                                    "independent OCR is unavailable. Not checked "
+                                    "is not a pass.",
+        "doctype_not_measured": "This run did not execute the document-type "
+                                "check. A later check cannot be backfilled as "
+                                "the result at review time.",
+        "doctype_not_checked": "This run has document-type checks, but none for "
+                               "this document. Do not infer a type.",
+        "doctype_malformed": "The frozen type check says pass, but its literal "
+                             "evidence is incomplete. Do not use the type.",
+        "legend_doctype": "literal document-type evidence",
         "task_with_value": "Task: verify the {label} on the page — "
                            "DWS read “{value}”. Is it there? Is it right?",
         "task_no_value": "Task: DWS gave no {label} — look for it on the page: "
@@ -503,6 +531,24 @@ _T = {
         "value_here": "值落在这里(印证):",
         "cited_here": "DWS 指向这里(复核用):",
         "no_citation": "无引用区,看整页:",
+        "doctype_title": "单据类型",
+        "doctype_pass": "页面字面证据支持类别:{label}。这只提供上下文;"
+                        "字段是否适用仍由你判断。",
+        "doctype_proof": "字面“{phrase}” · 第 {page} 页",
+        "doctype_fail": "DWS 自报为{label},但没有页面字面证据。"
+                        "不得用它判断字段适用性。",
+        "doctype_no_claim": "DWS 没给单据类型;请只按页面判断本字段。",
+        "doctype_unmapped": "DWS 类型“{raw}”不在受控词表;"
+                            "请只按页面判断本字段。",
+        "doctype_ocr_unavailable": "独立 OCR 不可用,单据类型检查没跑完。"
+                                    "没查过不等于通过。",
+        "doctype_not_measured": "本 run 未执行单据类型检查;"
+                                "后来的检查不能补算成当时的结果。",
+        "doctype_not_checked": "本 run 有单据类型检查,但没有这份文档的结果;"
+                               "不得猜类型。",
+        "doctype_malformed": "冻结结果写着类型检查通过,但字面证据不完整;"
+                             "不得使用该类型。",
+        "legend_doctype": "单据类型字面证据",
         "task_with_value": "任务:在页面上核对{label} —— DWS 读到“{value}”。"
                            "页面上有吗?对不对?",
         "task_no_value": "任务:DWS 没给出{label} —— 请在页面上找:"
@@ -886,6 +932,20 @@ _STRENGTH_LABEL = {
            "corroborated": "corroborated"},
     "zh": {"unsupported": "无支持", "single_source": "单一来源", "corroborated": "多方印证"},
 }
+_DOCTYPE_LABEL = {
+    "en": {
+        "credit_note": "Credit note", "proforma": "Pro forma invoice",
+        "confirmation": "Order confirmation",
+        "purchase_order": "Purchase order", "estimate": "Estimate / quote",
+        "contract": "Contract", "receipt": "Receipt", "invoice": "Invoice",
+    },
+    "zh": {
+        "credit_note": "贷记单", "proforma": "形式发票",
+        "confirmation": "订单确认", "purchase_order": "采购订单",
+        "estimate": "报价 / 估价单", "contract": "合同",
+        "receipt": "收据", "invoice": "发票",
+    },
+}
 _GATE_SHORT = {
     "arithmetic_consistency": ("arith", "算术"),
     "field_wellformed": ("form", "形态"),
@@ -958,6 +1018,12 @@ class RunCtx:
         self.manifest = _load("run_manifest.json", {})
         self.matrix = _load("support_matrix.json", {"rows": [], "summary": {}})
         self.gate_report = _load("gate_report.json", {"findings": []})
+        # Presence of the top-level key is itself historical evidence.  Runs
+        # created before doctype landed must stay "not measured"; the UI may
+        # not recompute a modern check and present it as part of an old run.
+        raw_document_checks = self.gate_report.get("document_checks")
+        self.has_document_checks = "document_checks" in self.gate_report
+        self.document_checks = raw_document_checks
         self.spans = _load("evidence_span_registry.json", [])
         self.ledger = _load("field_ledger.json", {"claims": []})
         self.snapshot_id = load_or_derive_snapshot(self.dir)["review_snapshot_id"]
@@ -1219,6 +1285,98 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         if code == "recorded_stale":
             text += _esc(params.get("run", [""])[0])
         return text
+
+    @staticmethod
+    def _doctype_check(ctx: RunCtx, doc_id: str) -> tuple[str, dict]:
+        """Return the frozen document check, never an on-demand recomputation."""
+        if not ctx.has_document_checks:
+            return "not_measured", {}
+        if not isinstance(ctx.document_checks, dict):
+            return "not_checked", {}
+        check = ctx.document_checks.get(doc_id)
+        if not isinstance(check, dict):
+            return "not_checked", {}
+        status = str(check.get("status") or "not_checked")
+        if status not in {
+                "pass", "fail", "no_claim", "unmapped", "ocr_unavailable"}:
+            return "not_checked", {}
+        return status, check
+
+    @classmethod
+    def _doctype_overlay(cls, ctx: RunCtx, doc_id: str) -> dict | None:
+        """Validated, presentation-only geometry from a frozen passing check.
+
+        `doctype.find_evidence` stores zero-based OCR pages and nested relative
+        bboxes.  Workbench page images are one-based and use flat rectangles.
+        Malformed artifact data fails closed: no class evidence is drawn or
+        described as usable.
+        """
+        status, check = cls._doctype_check(ctx, doc_id)
+        evidence = check.get("evidence") if status == "pass" else None
+        if check.get("doc_class") not in _DOCTYPE_LABEL["en"]:
+            return None
+        if not isinstance(evidence, dict):
+            return None
+        try:
+            raw_page = evidence["page"]
+            if isinstance(raw_page, bool) or not isinstance(raw_page, int):
+                return None
+            page = raw_page + 1
+            (x0, y0), (x1, y1) = evidence["bbox"]
+            rect = tuple(float(v) for v in (x0, y0, x1, y1))
+        except (KeyError, TypeError, ValueError):
+            return None
+        if page < 1 or not all(math.isfinite(v) for v in rect):
+            return None
+        x0, y0, x1, y1 = rect
+        if not (0.0 <= x0 <= x1 <= 1.0 and 0.0 <= y0 <= y1 <= 1.0):
+            return None
+        phrase = evidence.get("phrase")
+        if not isinstance(phrase, str) or not phrase.strip():
+            return None
+        return {"page": page, "bbox_rel": rect, "phrase": phrase.strip()}
+
+    @classmethod
+    def _doctype_html(cls, lang: str, ctx: RunCtx, row: dict) -> str:
+        """Document-class context for HITL, with no decision-side effects."""
+        status, check = cls._doctype_check(ctx, row["doc_id"])
+        doc_class = check.get("doc_class")
+        label = _DOCTYPE_LABEL[lang].get(str(doc_class), str(doc_class or "—"))
+        css = "unavailable"
+        proof = ""
+        if status == "pass":
+            evidence = cls._doctype_overlay(ctx, row["doc_id"])
+            if evidence is None:
+                status = "malformed"
+                text = _t(lang, "doctype_malformed")
+                css = "warn"
+            else:
+                text = _t(lang, "doctype_pass", label=label)
+                proof_text = _t(
+                    lang, "doctype_proof", phrase=evidence["phrase"],
+                    page=evidence["page"])
+                proof = (f'<span class="wb-doctype-proof">'
+                         f'{_esc(proof_text)}</span>')
+                css = "pass"
+        elif status == "fail":
+            text = _t(lang, "doctype_fail", label=label)
+            css = "warn"
+        elif status == "unmapped":
+            text = _t(lang, "doctype_unmapped",
+                      raw=str(check.get("raw_type") or "—"))
+            css = "warn"
+        else:
+            key = {
+                "no_claim": "doctype_no_claim",
+                "ocr_unavailable": "doctype_ocr_unavailable",
+                "not_measured": "doctype_not_measured",
+                "not_checked": "doctype_not_checked",
+            }[status]
+            text = _t(lang, key)
+        return (f'<div class="wb-doctype {css}" '
+                f'data-doctype-status="{_esc(status)}">'
+                f'<b>{_esc(_t(lang, "doctype_title"))}</b>'
+                f'<span>{_esc(text)}</span>{proof}</div>')
 
     def _gates_html(self, lang: str, row: dict) -> str:
         """六道门禁逐项 chip,悬停一句话解释(gateinfo.tooltip 给文案)。"""
@@ -1589,23 +1747,27 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                      page: int | None = None) -> str:
         """左栏:整页渲染 + bbox overlay(不重渲染图片,相对坐标 → CSS 百分比)。
 
-        两类框两种颜色:span_ids = 冻结绑定(机检确定性,绿实线);
-        cited_span_ids = DWS 指向(advisory,紫虚线)—— 颜色纪律与全站一致,
-        图例注明。多页文档给页码切换(服务器端 ?page=,零 JS 依赖):
-        默认落在 span 所在页,没有 span 就第 1 页。
+        三类框保持可区分:span_ids = 冻结绑定(机检确定性,绿实线);
+        cited_span_ids = DWS 指向(advisory,紫虚线);通过的 doctype 字面证据
+        = 绿点线。类型框只提供上下文,不改表单。多页文档给页码切换
+        (服务器端 ?page=,零 JS 依赖):默认落在证据所在页,没有证据就第 1 页。
         """
         doc = row["doc_id"]
         containing = [ctx.spans_by_id[s] for s in row["span_ids"]
                       if s in ctx.spans_by_id]
         cited = [ctx.spans_by_id[s] for s in row.get("cited_span_ids", [])
                  if s in ctx.spans_by_id and s not in row["span_ids"]]
+        doctype_evidence = self._doctype_overlay(ctx, doc)
         pages_dir = ctx.dir / "pages"
         available = sorted(
             int(p.stem.rsplit("-", 1)[1])
             for p in pages_dir.glob(f"{doc}-*.png")
             if p.stem.rsplit("-", 1)[1].isdigit()) if pages_dir.is_dir() else []
-        span_pages = sorted({s["page"] for s in containing + cited
-                             if s.get("bbox_rel")})
+        span_pages = {s["page"] for s in containing + cited
+                      if s.get("bbox_rel")}
+        if doctype_evidence is not None:
+            span_pages.add(doctype_evidence["page"])
+        span_pages = sorted(span_pages)
         current = page if page in available else (
             span_pages[0] if span_pages else (available[0] if available else 1))
         tabs = ""
@@ -1623,7 +1785,13 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         if img.is_file():
             src = f"/files/{ctx.name}/pages/{urllib.parse.quote(img.name)}"
             overlays = []
-            for spans, cls in ((containing, "wb-hl-bind"), (cited, "wb-hl-cited")):
+            overlay_groups = (
+                (containing, "wb-hl-bind"),
+                (cited, "wb-hl-cited"),
+                (([doctype_evidence] if doctype_evidence else []),
+                 "wb-hl-doctype"),
+            )
+            for spans, cls in overlay_groups:
                 for s in spans:
                     rect = s.get("bbox_rel")
                     if not rect or s.get("page") != current:
@@ -1634,8 +1802,8 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                              f"height:{max(y1 - y0, 0.0) * 100:.3f}%")
                     overlays.append(
                         f'<div class="wb-hl {cls}" style="{style}" '
-                        f'title="{_esc(s["span_id"])} · '
-                        f'{_esc(s.get("printed_label", ""))}"></div>')
+                        f'title="{_esc(s.get("span_id", "doctype_evidence"))} · '
+                        f'{_esc(s.get("printed_label", s.get("phrase", "")))}"></div>')
             blocks.append(
                 f'<figure class="wb-page-wrap"><figcaption class="wb-page-cap">'
                 f'{_esc(doc[:8])} · p{current}{tabs}</figcaption>'
@@ -1658,6 +1826,10 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
             legend_items.append(
                 f'<span class="wb-legend-item"><span class="wb-legend-swatch cited">'
                 f'</span>{_esc(_t(lang, "legend_cited"))}</span>')
+        if doctype_evidence:
+            legend_items.append(
+                f'<span class="wb-legend-item"><span class="wb-legend-swatch doctype">'
+                f'</span>{_esc(_t(lang, "legend_doctype"))}</span>')
         legend = (f'<div class="wb-legend">{"".join(legend_items)}</div>'
                   if legend_items else "")
         if not blocks:
@@ -1700,6 +1872,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 <span class="wb-field">{_esc(label)}<span class="wb-raw">{_esc(field)}</span></span>
 {self._status_chip(lang, tip, conflict)}
 </div>
+{self._doctype_html(lang, ctx, row)}
 <div class="wb-task">{_esc(task)}</div>
 {why}
 <div class="wb-adj-verdict">

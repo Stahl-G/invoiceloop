@@ -866,6 +866,36 @@ a:hover { text-decoration: underline; }
     font-size: 13.5px;
     color: var(--wb-ink-soft);
 }
+.wb-doctype {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 8px;
+    border: 1px solid var(--wb-unavail-line);
+    border-radius: var(--wb-radius-sm);
+    background: var(--wb-unavail-wash);
+    color: var(--wb-ink-soft);
+    padding: 7px 10px;
+    margin: 5px 0;
+    font-size: 12.5px;
+    line-height: 1.45;
+}
+.wb-doctype b { color: var(--wb-ink); }
+.wb-doctype.pass {
+    border-color: var(--wb-pass-line);
+    background: var(--wb-pass-wash);
+}
+.wb-doctype.pass b { color: var(--wb-pass); }
+.wb-doctype.warn {
+    border-color: var(--wb-warn-line);
+    background: var(--wb-warn-wash);
+}
+.wb-doctype.warn b { color: var(--wb-warn); }
+.wb-doctype-proof {
+    font-family: var(--wb-font-mono);
+    color: var(--wb-muted);
+    font-size: 11.5px;
+}
 
 /* ==========================================================================
    Gradescope 风格裁决页:左整页证据 / 右判定卡 / 底栏导航
@@ -979,6 +1009,11 @@ a:hover { text-decoration: underline; }
     outline-offset: 2px;
     background: transparent;
 }
+.wb-hl-doctype {
+    outline: 1.5px dotted var(--wb-pass);
+    outline-offset: 4px;
+    background: transparent;
+}
 .wb-page-stage.wb-hl-off .wb-hl { display: none; }
 .wb-legend {
     display: flex;
@@ -1002,6 +1037,10 @@ a:hover { text-decoration: underline; }
 .wb-legend-swatch.cited {
     border: 1.5px dashed var(--wb-advisory);
     background: rgba(109, 75, 196, 0.08);
+}
+.wb-legend-swatch.doctype {
+    border: 1.5px dotted var(--wb-pass);
+    background: var(--wb-pass-wash);
 }
 
 /* 底栏:上一条 / 下一条未裁决 + 进度,sticky 贴底 */
@@ -1095,6 +1134,12 @@ a:hover { text-decoration: underline; }
 .wb-compact .wb-adj-card { padding: 10px 14px; }
 .wb-compact .wb-row-head { margin-bottom: 4px; gap: 6px 10px; }
 .wb-compact .wb-task { font-size: 12.5px; margin: 2px 0; line-height: 1.45; }
+.wb-compact .wb-doctype {
+    padding: 5px 8px;
+    margin: 3px 0;
+    font-size: 12px;
+    line-height: 1.4;
+}
 .wb-compact .wb-adj-verdict { padding: 7px 10px; margin: 5px 0; }
 .wb-compact .wb-adj-kv { margin: 3px 0; gap: 5px 9px; }
 .wb-compact .wb-gates { gap: 4px; margin: 5px 0; }

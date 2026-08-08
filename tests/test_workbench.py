@@ -776,13 +776,30 @@ def _inject_spans(workspace: Path) -> None:
     (run / "pages" / f"{DOC}-1.png").write_bytes(b"\x89PNG fake")
 
 
+def _set_document_check(workspace: Path, check: dict | None,
+                        *, remove_key: bool = False) -> None:
+    """Patch only the fixture's frozen gate report; never recompute doctype.
+
+    `remove_key=True` reproduces a pre-doctype run.  A concrete check reproduces
+    a current run whose document-level result was frozen by gates.run_gates.
+    """
+    path = workspace / "runs" / RUN / "gate_report.json"
+    report = json.loads(path.read_text(encoding="utf-8"))
+    if remove_key:
+        report.pop("document_checks", None)
+    else:
+        report["document_checks"] = {DOC: check}
+    path.write_text(json.dumps(report), encoding="utf-8")
+
+
 class TestAdjudicatePage:
     """/adjudicate 单槽裁决页:左整页 + overlay,右判定卡 + 表单,底栏导航。
 
     钉死的契约(布局可演进,这些不许松):
     - 决策表单与队列页同一套字段名、同一个 /decide 端点 —— 裁决语义唯一;
     - span bbox 以绝对定位 overlay div 呈现,不重渲染图片;
-    - 冻结绑定(span_ids)与 DWS 引用(cited_span_ids)两类框可区分且有图例;
+    - 冻结绑定、DWS 引用、doctype 字面证据三类框可区分且有图例;
+    - doctype 只给上下文,不改按钮、不预选、不删槽;
     - 底栏按分诊序导航上一条/下一条未裁决,进度是真实计数。
     """
 
@@ -823,6 +840,101 @@ class TestAdjudicatePage:
             f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross&lang=en")
         assert "frozen binding (span_ids)" in text
         assert "DWS citation (cited_span_ids)" in text
+
+    def test_evidenced_doctype_is_context_and_a_literal_page_overlay(
+            self, workspace, server):
+        """A frozen pass helps the reviewer recognise the document class,
+        while remaining context: it cannot choose or remove a decision.
+        """
+        _inject_spans(workspace)
+        before = _req(
+            server, "GET",
+            f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross&lang=zh",
+        )[2]
+        _set_document_check(workspace, {
+            "gate_id": "doctype_evidence",
+            "raw_type": "Purchase Order",
+            "doc_class": "purchase_order",
+            "status": "pass",
+            "evidence": {
+                "phrase": "purchase order", "page": 0,
+                "bbox": [[0.05, 0.06], [0.25, 0.10]], "words": 2,
+            },
+        })
+
+        _, _, text = _req(
+            server, "GET",
+            f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross&lang=zh",
+        )
+
+        assert "采购订单" in text and "purchase order" in text
+        assert "字段是否适用仍由你判断" in text, \
+            "doctype 是复核上下文,不是替人裁 applicability"
+        mark = re.search(
+            r'class="wb-hl wb-hl-doctype" style="([^"]+)"', text)
+        assert mark, "页面字面类型证据必须能在整页上圈出来"
+        assert "left:5.000%" in mark.group(1) \
+            and "top:6.000%" in mark.group(1)
+        assert "单据类型字面证据" in text
+
+        decisions = lambda page: re.findall(
+            r'<input type="radio" name="decision" value="([^"]+)"', page)
+        assert decisions(text) == decisions(before), \
+            "显示 doctype 不许改变按钮集合、预填答案或裁决语义"
+        assert not re.search(
+            r'<input type="radio" name="decision"[^>]* checked', text), \
+            "类别上下文不许替复核者预选答案"
+
+    def test_untrusted_doctype_warns_and_never_draws_evidence(
+            self, workspace, server):
+        _inject_spans(workspace)
+        _set_document_check(workspace, {
+            "gate_id": "doctype_evidence", "raw_type": "Contract",
+            "doc_class": "contract", "status": "fail", "evidence": None,
+        })
+
+        _, _, text = _req(
+            server, "GET",
+            f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross&lang=zh",
+        )
+
+        assert "合同" in text and "没有页面字面证据" in text
+        assert "不得用它判断字段适用性" in text
+        assert "wb-hl-doctype" not in text, \
+            "模型自报类型没有独立 OCR 支持时不许画成证据"
+
+    def test_old_run_says_doctype_was_not_measured(self, workspace, server):
+        """The UI must not backfill a new check into an old frozen run."""
+        _set_document_check(workspace, None, remove_key=True)
+
+        _, _, text = _req(
+            server, "GET",
+            f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross&lang=zh",
+        )
+
+        assert "本 run 未执行单据类型检查" in text
+        assert "不能补算成当时的结果" in text
+        assert "wb-hl-doctype" not in text
+
+    def test_malformed_passing_doctype_fails_closed(self, workspace, server):
+        _inject_spans(workspace)
+        _set_document_check(workspace, {
+            "gate_id": "doctype_evidence", "raw_type": "Mystery",
+            "doc_class": "made_up_class", "status": "pass",
+            "evidence": {
+                "phrase": "mystery", "page": 0,
+                "bbox": [[0.05, 0.06], [0.25, 0.10]], "words": 1,
+            },
+        })
+
+        _, _, text = _req(
+            server, "GET",
+            f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross&lang=zh",
+        )
+
+        assert "字面证据不完整" in text
+        assert "wb-hl-doctype" not in text, \
+            "未知类即使伪造 pass 也不许进入受信展示"
 
     def test_highlights_do_not_cover_text_and_can_be_hidden(self, workspace,
                                                              server):
