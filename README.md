@@ -117,13 +117,26 @@ All from stored evidence — verifying them needs no API calls.
 
 | | |
 |---|---|
+| Triage lift, SEALED-3 (100 sealed unseen documents) | **3.75x**; H1 passed, but qualification failed because one annotated `seller_vat_id` was silently auto-absented |
+| Human queue, paired SEALED-3 replay | **62.4% -> 52.7%** for HAR-0001 -> HAR-0004, with silent-absence count **0 -> 1** |
 | Triage lift, SEALED-1 (100 sealed unseen invoices) | **4.03×** against pre-registered thresholds |
 | Decision load for release, SEALED-1 | **82.9% → 64.2%** under the promoted HAR-0002 policy |
 | TIER1 silent-error rate vs a confidence-threshold baseline | **9.62%** vs **21.91%** at a fixed operating point |
-| Test suite | **511 passing**, including a 454-row replay of a round-six misbinding incident and a point-by-point check against the original implementations |
+| Test suite | **622 passing**, including a 454-row replay of a round-six misbinding incident and a point-by-point check against the original implementations |
 
-Protocols and results: [`docs/SEALED1_RESULTS.md`](docs/SEALED1_RESULTS.md),
+Protocols and results: [`docs/SEALED3_RESULTS.md`](docs/SEALED3_RESULTS.md),
+[`docs/SEALED1_RESULTS.md`](docs/SEALED1_RESULTS.md),
 [`docs/BASELINE_COMPARISON_SEALED1.md`](docs/BASELINE_COMPARISON_SEALED1.md).
+
+> **SEALED-3 — valid unseen measurement, qualification failed.** Seven frozen
+> arms consumed the same 100-document evidence in one non-adaptive batch. The
+> primary HAR-0004 arm reduced the human queue by 9.7 percentage points and
+> reproduced triage lift at 3.75x, but it silently auto-absented one annotated
+> seller tax identifier that HAR-0001 kept in review. The pre-registered P1 gate
+> therefore failed. No qualification marker was written. An unpromoted ADK
+> `due_date` candidate saved another 3.3 points but added five more silent
+> absences, so it was rejected. See the result for the exact paired counts and
+> the newly exposed workload-metric defect.
 
 > **On SEALED-2 — held-out status revoked 2026-08-07.** A second sealed
 > evaluation exists (`docs/SEALED2_RESULTS.md`, lift 3.19×) and its numbers are
@@ -149,9 +162,10 @@ Protocols and results: [`docs/SEALED1_RESULTS.md`](docs/SEALED1_RESULTS.md),
 > the same vocabulary (`donation`, `\bcheck\b`, `sale`, `rebate`) come from its
 > spellings too.
 >
-> So: SEALED-1's 4.03× stands as a past result, and **no set is currently
-> available as a held-out set at all.** Until a fresh sealed round is drawn,
-> nothing here supports a sentence that begins "on unseen data".
+> So: SEALED-1's 4.03x remains a past result, while SEALED-3 supports the
+> narrower, revision-bound result stated above. **No existing set is available
+> for another new held-out measurement**: SEALED-3 was spent by this one-shot
+> opening, and any fix inspired by its failures needs SEALED-4.
 
 ## Everyday commands
 

@@ -1,0 +1,56 @@
+{
+ "protocol_version": "sealed3-multiharness-v1",
+ "opened_at_commit": "447acf0699d7815fcd69ba8d9922feaf569f65aa",
+ "plan_sha256": "9b275801349e3f684b29748a1db50882c6dcaad8ca25df88c6923bcecbf9702e",
+ "batch_complete_sha256": "e54552f5f34a183ccc392bc31878ae15cd6c6588b5848e73e79e58fd6e486eef",
+ "metrics_sha256": "687caa608c00e71850d5f29716d2aa79886af4e7695dd052e281759eaa6ed1f6",
+ "audit_bundle_sha256": "6b2d4d1ff679598f9861c80b77fa933d54b474c66790c65eff55cdc38497a3c9",
+ "n_docs": 100,
+ "n_slots": 1000,
+ "invariants": {
+  "same_input_fingerprint": true,
+  "same_upstream_artifacts": true,
+  "repeat_runs_byte_identical": true
+ },
+ "primary": {
+  "arm_id": "P-HAR-0004",
+  "harness_id": "HAR-0004",
+  "H1_lift": 3.75,
+  "H2_coverage_at_46": 0.7732793522267206,
+  "H3_requires_recall": 0.7611336032388664,
+  "H4_missing_rate": 0.161,
+  "H5_citation_failure_rate": 0.15346534653465346,
+  "H6_freeze_rejection_rate": 0.34407484407484407,
+  "H7_bundle_verify": true,
+  "human_queue": 527,
+  "human_queue_rate": 0.527,
+  "documents_touched": 99,
+  "machine_absent": 106,
+  "silent_absent": 1,
+  "silent_wrong": 59
+ },
+ "arms": [
+  {"arm_id": "B0-HAR-0001", "human_queue": 624, "machine_absent": 0, "documents_touched": 100, "silent_absent": 0, "silent_wrong": 59, "absent_hits": 0, "value_hits": 320},
+  {"arm_id": "B1-HAR-0002", "human_queue": 632, "machine_absent": 0, "documents_touched": 100, "silent_absent": 0, "silent_wrong": 57, "absent_hits": 0, "value_hits": 314},
+  {"arm_id": "B2-HAR-0003", "human_queue": 572, "machine_absent": 71, "documents_touched": 100, "silent_absent": 1, "silent_wrong": 58, "absent_hits": 71, "value_hits": 306},
+  {"arm_id": "P-HAR-0004", "human_queue": 527, "machine_absent": 106, "documents_touched": 99, "silent_absent": 1, "silent_wrong": 59, "absent_hits": 106, "value_hits": 312},
+  {"arm_id": "P-REPEAT-HAR-0004", "human_queue": 527, "machine_absent": 106, "documents_touched": 99, "silent_absent": 1, "silent_wrong": 59, "absent_hits": 106, "value_hits": 312},
+  {"arm_id": "A1-HAR-0006", "human_queue": 531, "machine_absent": 101, "documents_touched": 100, "silent_absent": 1, "silent_wrong": 58, "absent_hits": 101, "value_hits": 313},
+  {"arm_id": "A2-HAR-0007", "human_queue": 494, "machine_absent": 143, "documents_touched": 100, "silent_absent": 6, "silent_wrong": 59, "absent_hits": 143, "value_hits": 310}
+ ],
+ "qualification": {
+  "status": "FAIL",
+  "H5": "FAIL",
+  "P1_silent_absent_not_up": false,
+  "P1_silent_wrong_not_up": true,
+  "P2_human_queue_not_up": true,
+  "marker_written": false
+ },
+ "human_adjudication_accuracy": "NOT_MEASURED",
+ "new_findings": [
+  "HAR-0004 silently auto-absented one annotated seller_vat_id on a doctype-confirmed credit_note.",
+  "HAR-0007 saved 33 queue slots but added five due_date silent absences versus HAR-0004.",
+  "deliverable.summary.decision_load_for_release remained 0.828 in every arm and contradicts its own field statuses.",
+  "Harness identity re-randomizes QA samples, so lineage deltas are whole-harness effects rather than pure cohort effects."
+ ]
+}

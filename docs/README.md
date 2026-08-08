@@ -26,7 +26,9 @@ result missed the pre-registered line.
 | File | What it is |
 |---|---|
 | `HELDOUT.md` | Held-out protocol, frozen before any API call |
-| `SEALED1_PROTOCOL.md` / `SEALED1_RESULTS.md` | 100 drand-seeded unseen invoices. Triage lift 4.03×; decision load 82.9% → 64.2%. **The held-out result this project stands on** — measured 2026-08-03, before the exposure that has since spent both sets for *new* measurements |
+| `SEALED3_PROTOCOL.md` / `SEALED3_MULTIHARNESS_ADDENDUM_2026-08-08.md` / `SEALED3_RESULTS.md` | 100 drand-seeded unseen documents, opened once under six frozen harnesses plus an exact repeat. HAR-0004 cut the human queue 62.4% -> 52.7% and reproduced 3.75x triage lift, but one new silent absence failed the pre-registered qualification gate. The ADK due-date candidate saved another 3.3pp at the cost of five more silent absences |
+| `evidence/sealed3_multiharness_2026-08-08/` | Git-frozen routing policies and a compact machine-readable result summary; the full run/bundle stays in the research data directory and is content-addressed from the result |
+| `SEALED1_PROTOCOL.md` / `SEALED1_RESULTS.md` | Historical 100-document sealed result: triage lift 4.03×; decision load 82.9% → 64.2%. Measured 2026-08-03 before later exposure; still valid for that revision, but spent for new measurements |
 | `SEALED2_PROTOCOL.md` / `SEALED2_RESULTS.md` | Second sealed batch, lift 3.19×. **Held-out status revoked 2026-08-07** — the protocol's own clause 3 fired. Enforced in `improve.SEALED_SET_REVOCATIONS`, not merely written down |
 | `FIELD_COVERAGE.md` | Which fields are scored, frozen before SEALED-2 |
 | `BASELINE_COMPARISON_SEALED1.md` | Against a confidence-threshold baseline at a fixed operating point: TIER1 silent error 9.62% vs 21.91% |

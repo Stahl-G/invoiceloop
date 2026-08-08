@@ -170,8 +170,9 @@ generic one.
    measurement. See [§6c](#6c-real-review-history-evidence).
 3. **The counterfactual is a replay over the same 12 documents** the patterns were
    mined from. The critic's own objection to both proposals was that 9–7 samples
-   may not extrapolate, and the 88-document measurement in
-   `LOOP_GENERALIZATION_2026-08-06.md` says it was right to worry.
+   may not extrapolate. The 88-document measurement in
+   `LOOP_GENERALIZATION_2026-08-06.md`, followed by the SEALED-3 result below,
+   says it was right to worry.
 
 ## 6b. Live-call evidence
 
@@ -210,6 +211,24 @@ now computes the deltas and hands it `improve.gate_verdict` — the pre-register
 deterministic verdict — so the model argues only about what the gate cannot see:
 whether a rule is wider than the evidence behind it.
 
+## 6d. Frozen ADK candidates on SEALED-3
+
+Two already-existing, unpromoted ADK candidates were frozen before SEALED-3 was
+opened and evaluated alongside the active policy. No ADK call occurred during
+the opening, and neither candidate could change active state.
+
+| Candidate | Compared with HAR-0004 | Human queue | Silent absence | Outcome |
+|---|---|---:|---:|---|
+| HAR-0006, duplicate `total_vat` absence cohort | near-placebo; harness identity still re-randomises QA samples | +4 slots | no change | no workload benefit; do not promote |
+| HAR-0007, add `due_date` absence cohort | actual proposed relaxation | -33 slots (-3.3pp) | **+5** | deterministic safety gate rejects promotion |
+
+This is evidence for the authority boundary, not a broad ADK quality score. One
+candidate did nothing useful; the other found a real workload reduction but was
+unsafe on unseen truth. Letting the agent auto-promote would have silently
+dropped five annotated due dates. The full one-shot result, including the
+primary arm's own failed qualification gate, is in
+[`SEALED3_RESULTS.md`](SEALED3_RESULTS.md).
+
 ---
 
 ## 7. Reproduce
@@ -218,5 +237,5 @@ whether a rule is wider than the evidence behind it.
 python3 -m pytest tests/test_agents_adk_pipeline.py -q
 ```
 
-Ten tests, no network. They skip cleanly if `pip install -e ".[gemini]"` has not
+Nineteen tests, no network. They skip cleanly if `pip install -e ".[gemini]"` has not
 been run.
