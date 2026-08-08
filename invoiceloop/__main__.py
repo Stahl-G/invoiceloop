@@ -90,6 +90,10 @@ def _main() -> None:
     p_wb.add_argument("--read-only", action="store_true",
                       help="拒绝全部 POST(403)。公开演示必须开 —— 裁决账本是"
                            "人的证词,公网可写等于允许伪造")
+    p_wb.add_argument(
+        "--review-scope", type=Path, default=None,
+        help="JSON 槽位白名单({slots:[doc|field,...]}):同时限制队列、导航和"
+             "裁决写入口;用于抽样复核")
 
     p_demo = sub.add_parser("demo", help="内嵌示例语料 → 完整 run(零 API、零外部数据)")
     p_demo.add_argument("--out", type=Path, required=True, help="demo workspace 落点(必须不存在或为空)")
@@ -294,7 +298,7 @@ def _main() -> None:
         raise SystemExit(cmd_workbench(
             args.workspace, args.port,
             host=args.host, allowed_hosts=args.allowed_hosts or None,
-            read_only=args.read_only))
+            read_only=args.read_only, review_scope=args.review_scope))
     elif args.command == "demo":
         from .demo import cmd_demo
 

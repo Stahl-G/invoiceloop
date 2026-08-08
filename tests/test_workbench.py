@@ -824,6 +824,35 @@ class TestAdjudicatePage:
         assert "frozen binding (span_ids)" in text
         assert "DWS citation (cited_span_ids)" in text
 
+    def test_highlights_do_not_cover_text_and_can_be_hidden(self, workspace,
+                                                             server):
+        """框线画在 bbox 外侧,并提供隐藏框/打开原图两条退路。
+
+        2026-08-08 人工复核实测:极扁的 span 与字同高,即使 1.5px 边框也会
+        直接压在数字上。修复不能只再缩一点线宽;描边必须移到框外,且复核者
+        随时能看无覆盖的原图。
+        """
+        _inject_spans(workspace)
+        _, _, text = _req(
+            server, "GET",
+            f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross&lang=zh")
+        assert 'class="wb-hl-toggle"' in text, "页面上要能一键隐藏所有框"
+        assert 'class="wb-page-clean"' in text and 'target="_blank"' in text, \
+            "JS 失效时也要能打开没有 overlay 的原图"
+        assert f'href="/files/{RUN}/pages/{DOC}-1.png"' in text
+
+        _, _, css = _req(server, "GET", "/assets.css")
+        bind = re.search(r"[.]wb-hl-bind\s*{([^}]+)}", css, re.S).group(1)
+        cited = re.search(r"[.]wb-hl-cited\s*{([^}]+)}", css, re.S).group(1)
+        for block in (bind, cited):
+            assert "outline" in block and "outline-offset" in block, \
+                "描边要移到 bbox 外,不能压住 bbox 里的字"
+            assert "background: transparent" in block, "高亮层不再给文字罩色"
+            assert "border:" not in block, "bbox 自身不能再向内吃掉文字"
+        _, _, js = _req(server, "GET", "/assets.js")
+        assert "wb-hl-off" in js and "aria-pressed" in js, \
+            "隐藏按钮必须真的切换 overlay,并向辅助技术报告状态"
+
     def test_nav_progress_and_prev_next(self, workspace, server):
         ordered = _queue_order(workspace)
         cur = ordered[1]  # 取第二条:前后都有未裁决,两个方向都测得到
@@ -970,6 +999,109 @@ class TestAdjudicatePage:
         assert f"run={RUN}" in href and f"doc={DOC}" in href \
             and "field=total_gross" in href and "lang=en" in href, \
             f"切换链接必须保留当前槽位参数,实际:{href}"
+
+
+@pytest.fixture
+def scoped_server(workspace):
+    """只准复核两个槽,且顺序故意与全队列相反。"""
+    from invoiceloop.workbench import make_server
+
+    ordered = _queue_order(workspace)
+    chosen = [ordered[-1], ordered[0]]
+    slots = [f"{r['doc_id']}|{r['field']}" for r in chosen]
+    scope = workspace / "review-scope.json"
+    scope.write_text(json.dumps({"slots": slots}), encoding="utf-8")
+    srv = make_server(workspace, 0, review_scope=scope)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    yield srv.server_address[1], chosen, ordered[1]
+    srv.shutdown()
+    srv.server_close()
+
+
+class TestReviewScope:
+    """实验抽样是写权限边界,不只是另一张静态索引页。
+
+    2026-08-08 原工作台仍在 1000 槽 run 上导航,导致 H2 留下 1 条样本外
+    裁决。scope 必须同时约束队列、上一条/下一条和 POST 写入口;只隐藏链接
+    仍可由旧标签页或手改 URL 越界。
+    """
+
+    def test_queue_and_navigation_use_exact_scope_order(self, workspace,
+                                                         scoped_server):
+        port, chosen, outside = scoped_server
+        _, _, queue = _req(port, "GET", f"/queue?run={RUN}&lang=zh")
+        assert "已复核 0 / 2" in queue, "分母必须是抽样槽数,不是整个 run"
+        for row in chosen:
+            assert f'row-{row["doc_id"]}-{row["field"]}' in queue
+        assert f'row-{outside["doc_id"]}-{outside["field"]}' not in queue
+
+        first, second = chosen
+        _, _, page = _req(
+            port, "GET",
+            f"/adjudicate?run={RUN}&doc={first['doc_id']}"
+            f"&field={first['field']}&lang=zh")
+        assert "第 1 / 2 条 · 已裁决 0" in page
+        assert f"doc={second['doc_id']}&field={second['field']}" in page, \
+            "下一条必须按 scope 文件顺序走,不能掉回全 run 的分诊序"
+        assert "限定复核范围:2 槽" in page, "页面要持续告诉人当前有写入边界"
+
+    def test_manual_get_and_post_outside_scope_are_blocked(self, workspace,
+                                                            scoped_server):
+        port, _, outside = scoped_server
+        path = (f"/adjudicate?run={RUN}&doc={outside['doc_id']}"
+                f"&field={outside['field']}&lang=zh")
+        status, _, text = _req(port, "GET", path)
+        assert status == 409 and "限定复核范围" in text
+
+        form = {"run": RUN, "doc": outside["doc_id"],
+                "field": outside["field"], "claim_id": "",
+                "decision": "abstain", "corrected_value": "",
+                "rationale": "旧标签页", "adjudicator": "alice",
+                "supersedes": "", "lang": "zh"}
+        status, _, text = _req(
+            port, "POST", "/decide", body=urlencode(form).encode(),
+            headers={"Content-Type": "application/x-www-form-urlencoded"})
+        assert status == 409 and "限定复核范围" in text
+        assert _ledger(workspace) == [], "越界 POST 不能留一行账本"
+
+    def test_submit_advances_within_scope(self, workspace, scoped_server):
+        port, chosen, _ = scoped_server
+        first, second = chosen
+        assert first["field"] == "total_gross", \
+            "fixture 依赖现有队尾的有声明槽,若排序变了请显式重选"
+        status, headers, _ = _decide(port, next="adjudicate")
+        assert status == 303
+        loc = headers["location"]
+        assert f"field={second['field']}" in loc
+        assert "field=total_gross" not in loc
+        assert len(_ledger(workspace)) == 1
+
+    def test_scope_loader_rejects_duplicates(self, workspace):
+        from invoiceloop.workbench import load_review_scope
+
+        path = workspace / "bad-scope.json"
+        path.write_text(json.dumps({"slots": ["a|b", "a|b"]}),
+                        encoding="utf-8")
+        with pytest.raises(ValueError, match="重复"):
+            load_review_scope(path)
+
+    def test_scope_run_mismatch_is_blocking(self, workspace):
+        from invoiceloop.workbench import make_server
+
+        scope = workspace / "wrong-run-scope.json"
+        scope.write_text(json.dumps({"slots": ["missing-doc|amount_due"]}),
+                         encoding="utf-8")
+        srv = make_server(workspace, 0, review_scope=scope)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            status, _, text = _req(
+                srv.server_address[1], "GET", f"/queue?run={RUN}&lang=zh")
+        finally:
+            srv.shutdown()
+            srv.server_close()
+        assert status == 409 and "当前 run 不存在" in text
+        assert _ledger(workspace) == [], \
+            "scope 与 run 对不上是阻断,不能退回全队列或偷偷忽略缺口"
 
 
 class TestQueueSearch:

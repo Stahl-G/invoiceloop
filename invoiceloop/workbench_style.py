@@ -161,6 +161,13 @@ a:hover { text-decoration: underline; }
     background: var(--wb-warn-wash);
     color: var(--wb-warn);
 }
+.wb-scope {
+    border-bottom: 1px solid var(--wb-action-line);
+    background: var(--wb-action-wash);
+    color: var(--wb-ink-soft);
+    padding: 6px 24px;
+    font: 600 12px/1.4 var(--wb-font-mono);
+}
 
 /* ---- 进度条(宽度由服务器内联 style 给百分比) ---- */
 .wb-progress {
@@ -934,20 +941,45 @@ a:hover { text-decoration: underline; }
     line-height: 0;  /* img 基线缝隙 */
 }
 .wb-page { display: block; width: 100%; height: auto; }
-/* 高亮框:看得见但不挡字(2026-08-06 用户实测:3px 太粗,糊住文本)——
-   细描边 + 极淡填充;冻结绑定 = 绿实线(机检确定性);
-   DWS 引用 = 紫虚线(advisory)。 */
-.wb-hl { position: absolute; border-radius: 2px; }
+.wb-page-tools {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 7px;
+    font-size: 12px;
+}
+.wb-hl-toggle, .wb-page-clean {
+    border: 1px solid var(--wb-line);
+    border-radius: var(--wb-radius-sm);
+    background: var(--wb-surface);
+    color: var(--wb-ink-soft);
+    font: inherit;
+    line-height: 1.3;
+    padding: 4px 8px;
+    cursor: pointer;
+    text-decoration: none;
+}
+.wb-hl-toggle:hover, .wb-page-clean:hover { border-color: var(--wb-muted); }
+/* 高亮框不能占用 bbox 内的任何像素:极扁的金额/日期 span 与字同高,
+   1.5px border 仍会直接压住数字(2026-08-08 人工复核实测)。outline
+   画在 bbox 外,透明底不再罩字;冻结绑定 = 绿实线,引用 = 紫虚线。 */
+.wb-hl {
+    position: absolute;
+    border-radius: 2px;
+    box-sizing: border-box;
+    pointer-events: none;
+}
 .wb-hl-bind {
-    border: 1.5px solid var(--wb-pass);
-    background: rgba(44, 122, 75, 0.08);
-    box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.5);
+    outline: 1.5px solid var(--wb-pass);
+    outline-offset: 2px;
+    background: transparent;
 }
 .wb-hl-cited {
-    border: 1.5px dashed var(--wb-advisory);
-    background: rgba(109, 75, 196, 0.08);
-    box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.5);
+    outline: 1.5px dashed var(--wb-advisory);
+    outline-offset: 2px;
+    background: transparent;
 }
+.wb-page-stage.wb-hl-off .wb-hl { display: none; }
 .wb-legend {
     display: flex;
     flex-wrap: wrap;
@@ -1032,7 +1064,8 @@ a:hover { text-decoration: underline; }
     line-height: 1.4;
 }
 .wb-compact .wb-banner,
-.wb-compact .wb-notice {
+.wb-compact .wb-notice,
+.wb-compact .wb-scope {
     padding: 5px 14px;
     margin: 4px auto;
     font-size: 12px;

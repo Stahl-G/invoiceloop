@@ -15,6 +15,9 @@ Shape decisions, pinned; do not quietly change them:
   a person supplying the time. An adjudication is human input, not a recomputed
   artifact, so this does not violate "artifacts never read the wall clock"; run
   artifacts remain fully deterministic.
+- **A review scope is a write boundary, not a visual filter** — when supplied at
+  server start, the same ordered allowlist constrains queue rendering, navigation,
+  direct slot URLs, and `/decide`.
 - Visual discipline borrowed from briefloop-prototypes: DWS/model values are purple
   (advisory, never green), human confirmation is blue, deterministic pass is green,
   blocked is red, unavailable is grey.
@@ -40,18 +43,19 @@ are identical, and a refusal lands on this page either way.
 
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import re
-
-from . import plainwords as _pw
 import urllib.parse
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from . import __version__
+from . import plainwords as _pw
 from .gateinfo import tooltip as _gate_tooltip
 from .ingest import sanitise_doc_id
 from .review import load_decisions, project, target_id_for
@@ -324,12 +328,18 @@ _T = {
         "page_view": "Page evidence",
         "legend_bind": "frozen binding (span_ids)",
         "legend_cited": "DWS citation (cited_span_ids)",
+        "hide_highlights": "Hide highlights",
+        "show_highlights": "Show highlights",
+        "open_clean_image": "Open clean image",
         "no_page": "No rendered page for this document — use the evidence "
                    "crops on the right.",
         "prev_pending": "← previous undecided",
         "next_pending": "next undecided →",
         "none_pending": "no more undecided",
         "queue_pos": "slot {x} / {n} · {y} decided",
+        "review_scope": "Review scope: {n} slots · {name} · sha256 {digest}",
+        "scope_outside": "This slot is outside the active review scope: {doc}/{field}",
+        "scope_missing": "The review scope contains slots missing from this run: {slots}",
         "judgement": "InvoiceLoop assessment",
         "frozen_value": "Frozen value",
         "no_claim": "(no claim)",
@@ -550,11 +560,17 @@ _T = {
         "page_view": "页面证据",
         "legend_bind": "冻结绑定(span_ids)",
         "legend_cited": "DWS 引用(cited_span_ids)",
+        "hide_highlights": "隐藏高亮框",
+        "show_highlights": "显示高亮框",
+        "open_clean_image": "打开无框原图",
         "no_page": "本文档没有整页渲染 —— 用右侧的证据裁剪图复核。",
         "prev_pending": "← 上一条未裁决",
         "next_pending": "下一条未裁决 →",
         "none_pending": "没有未裁决的了",
         "queue_pos": "第 {x} / {n} 条 · 已裁决 {y}",
+        "review_scope": "限定复核范围:{n} 槽 · {name} · sha256 {digest}",
+        "scope_outside": "这个槽不在当前限定复核范围内:{doc}/{field}",
+        "scope_missing": "限定复核范围含有当前 run 不存在的槽:{slots}",
         "judgement": "InvoiceLoop 判定",
         "frozen_value": "冻结值",
         "no_claim": "(无声明)",
@@ -654,6 +670,18 @@ document.addEventListener('change', function (e) {
   wbReasonSync(form, e.target.value);
 });
 document.addEventListener('click', function (e) {
+  // 扁 bbox 的框线即使画在外侧,复核者也应能随时看完全无覆盖的原图。
+  // 切换只改呈现,不改 span、裁决或任何持久状态。
+  var hl = e.target.closest('.wb-hl-toggle');
+  if (hl) {
+    var figure = hl.closest('.wb-page-wrap');
+    var stage = figure && figure.querySelector('.wb-page-stage');
+    if (!stage) return;
+    var off = stage.classList.toggle('wb-hl-off');
+    hl.setAttribute('aria-pressed', off ? 'true' : 'false');
+    hl.textContent = off ? hl.dataset.show : hl.dataset.hide;
+    return;
+  }
   // 一键快路:人看了页面,点一下就完成「原值正确」并跳下一条。
   // 预填决策/修正值/理由 → armed 置位 → requestSubmit(绕过二段确认:
   // 按钮自己的文案就是确认语义)。仍是人逐槽点击,账本照记。
@@ -872,6 +900,47 @@ _VERDICT = {"pass": ("pass", "过"), "warning": ("warn", "警"),
 
 # ---------------------------------------------------------------------- 加载
 
+@dataclass(frozen=True)
+class ReviewScope:
+    """Server-start review boundary loaded from a frozen slot list.
+
+    This is not a visual filter.  It constrains every queue/navigation read and
+    the `/decide` write path.  Otherwise a stale tab can write outside an
+    experiment even when the index page only links to sampled slots.
+    """
+
+    source: Path
+    slots: tuple[tuple[str, str], ...]
+    sha256: str
+
+
+def load_review_scope(path: Path | str) -> ReviewScope:
+    """Read `{\"slots\": [\"doc|field\", ...]}` as an ordered write boundary."""
+    source = Path(path).resolve()
+    raw = source.read_bytes()
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"review scope 不是合法 JSON:{source}") from exc
+    values = payload.get("slots") if isinstance(payload, dict) else payload
+    if not isinstance(values, list) or not values:
+        raise ValueError("review scope 必须含非空 slots 列表")
+    slots: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for value in values:
+        if not isinstance(value, str) or value.count("|") != 1:
+            raise ValueError(f"review scope 槽位必须是 doc|field,收到 {value!r}")
+        doc, field = value.split("|", 1)
+        if not doc or not field or value != value.strip():
+            raise ValueError(f"review scope 槽位必须是非空 doc|field,收到 {value!r}")
+        key = (doc, field)
+        if key in seen:
+            raise ValueError(f"review scope 有重复槽位:{value}")
+        seen.add(key)
+        slots.append(key)
+    return ReviewScope(source=source, slots=tuple(slots),
+                       sha256=hashlib.sha256(raw).hexdigest())
+
 class RunCtx:
     """一个 run 目录的读取视图。run 不可变 + 裁决只追加 → 每请求现读现投,
     demo 规模下足够快,而且永远不会看到缓存的旧投影。"""
@@ -921,8 +990,49 @@ class RunCtx:
 # ---------------------------------------------------------------------- 页面
 
 class Workbench:
-    def __init__(self, workspace: Path):
+    def __init__(self, workspace: Path,
+                 review_scope: Path | str | ReviewScope | None = None):
         self.ws = Path(workspace)
+        self.review_scope = (review_scope if isinstance(review_scope, ReviewScope)
+                             else load_review_scope(review_scope)
+                             if review_scope is not None else None)
+        self._review_keys = (frozenset(self.review_scope.slots)
+                             if self.review_scope else frozenset())
+
+    def _scope_banner(self, lang: str) -> str:
+        if self.review_scope is None:
+            return ""
+        text = _t(lang, "review_scope", n=len(self.review_scope.slots),
+                  name=self.review_scope.source.name,
+                  digest=self.review_scope.sha256[:12])
+        return f'<div class="wb-scope" role="status">{_esc(text)}</div>'
+
+    def review_order(self, ctx: RunCtx, lang: str = "zh") -> list[dict]:
+        """Rows this server may review, in the scope file's exact order."""
+        ordered = self._queue_order(ctx)
+        if self.review_scope is None:
+            return ordered
+        by_key = {(r["doc_id"], r["field"]): r for r in ordered}
+        missing = [f"{doc}|{field}" for doc, field in self.review_scope.slots
+                   if (doc, field) not in by_key]
+        if missing:
+            shown = ", ".join(missing[:5]) + (" …" if len(missing) > 5 else "")
+            raise _HttpError(409, _t(lang, "scope_missing", slots=shown),
+                             run=ctx.name)
+        return [by_key[key] for key in self.review_scope.slots]
+
+    def require_review_slot(self, run_dir: Path, doc: str, field: str,
+                            lang: str = "zh") -> None:
+        """Refuse writes from stale tabs or hand-edited URLs outside the scope."""
+        if self.review_scope is None:
+            return
+        ctx = RunCtx(run_dir)
+        # Validate the whole scope against this run before testing membership;
+        # a scope/run mismatch is a blocking configuration error, not a 404.
+        self.review_order(ctx, lang)
+        if (doc, field) not in self._review_keys:
+            raise _HttpError(409, _t(lang, "scope_outside", doc=doc, field=field),
+                             run=ctx.name)
 
     # ---- run 定位
     def runs(self) -> list[Path]:
@@ -1026,7 +1136,7 @@ class Workbench:
 <span class="wb-lang"><a href="{lang_href}">{"中文" if other == "zh" else "EN"}</a></span>
 </div></div>
 <div class="wb-thesis">{_esc(_t(lang, 'thesis'))}</div>
-{notice_html}{ooc_html}
+{self._scope_banner(lang)}{notice_html}{ooc_html}
 <main class="wb-main">{body}</main>
 <script src="/assets.js"></script>
 </body></html>"""
@@ -1034,7 +1144,7 @@ class Workbench:
     # ---- 复核队列
     def queue_page(self, lang: str, run_dir: Path, params: dict) -> str:
         ctx = RunCtx(run_dir)
-        rows = ctx.matrix["rows"]
+        rows = self.review_order(ctx, lang)
         decided = sum(1 for r in rows if (ctx.slot(r["doc_id"], r["field"]) or {}).get("tip"))
         filter_ = params.get("filter", ["all"])[0]
         query = params.get("q", [""])[0].strip().lower()
@@ -1438,11 +1548,17 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         ctx = RunCtx(run_dir)
         doc = params.get("doc", [""])[0]
         field = params.get("field", [""])[0]
-        row = next((r for r in ctx.matrix["rows"]
+        ordered = self.review_order(ctx, lang)
+        row = next((r for r in ordered
                     if r["doc_id"] == doc and r["field"] == field), None)
         if row is None:
+            exists = any(r["doc_id"] == doc and r["field"] == field
+                         for r in ctx.matrix["rows"])
+            if exists and self.review_scope is not None:
+                raise _HttpError(
+                    409, _t(lang, "scope_outside", doc=doc, field=field),
+                    run=ctx.name)
             raise _HttpError(404, f"槽位不存在:{doc}/{field}", run=ctx.name)
-        ordered = self._queue_order(ctx)
         idx = next(i for i, r in enumerate(ordered)
                    if r["doc_id"] == doc and r["field"] == field)
         slot = ctx.slot(doc, field)
@@ -1523,6 +1639,13 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
             blocks.append(
                 f'<figure class="wb-page-wrap"><figcaption class="wb-page-cap">'
                 f'{_esc(doc[:8])} · p{current}{tabs}</figcaption>'
+                f'<div class="wb-page-tools">'
+                f'<button type="button" class="wb-hl-toggle" aria-pressed="false" '
+                f'data-hide="{_esc(_t(lang, "hide_highlights"))}" '
+                f'data-show="{_esc(_t(lang, "show_highlights"))}">'
+                f'{_esc(_t(lang, "hide_highlights"))}</button>'
+                f'<a class="wb-page-clean" href="{src}" target="_blank" '
+                f'rel="noopener">{_esc(_t(lang, "open_clean_image"))}</a></div>'
                 f'<div class="wb-page-stage">'
                 f'<img class="wb-page" src="{src}" alt="{_esc(doc)} p{current}">'
                 f'{"".join(overlays)}</div></figure>')
@@ -2424,6 +2547,11 @@ class _Handler(BaseHTTPRequestHandler):
         run = self.bench.get_run(run_name)
         if run is None:
             raise _HttpError(404, f"run 不存在:{run_name}")
+        doc = form.get("doc", [""])[0]
+        field = form.get("field", [""])[0]
+        # review scope 是写权限边界,不是页面过滤。旧标签页或手改 POST
+        # 同样不能越过它(2026-08-08 H2 实测留下 1 条样本外裁决)。
+        self.bench.require_review_slot(run, doc, field, lang)
         decided_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
         rationale = form.get("rationale", [""])[0].strip()
         adjudicator = form.get("adjudicator", [""])[0].strip()
@@ -2435,8 +2563,8 @@ class _Handler(BaseHTTPRequestHandler):
             result = adjudicate_and_render(
                 run,
                 claim_id=form.get("claim_id", [""])[0] or None,
-                doc_id=form.get("doc", [""])[0],
-                field=form.get("field", [""])[0],
+                doc_id=doc,
+                field=field,
                 decision=form.get("decision", [""])[0],
                 corrected_value=form.get("corrected_value", [""])[0] or None,
                 rationale=rationale,
@@ -2457,8 +2585,7 @@ class _Handler(BaseHTTPRequestHandler):
             # 裁决页提交:推进到分诊序里的下一个未裁决槽位;没有了就回队列。
             # 裁决本身一字未差 —— 只是落点不同(Gradescope 式流水作业)
             loc = self._next_adjudicate_url(
-                run, form.get("doc", [""])[0], form.get("field", [""])[0],
-                lang, notice)
+                run, doc, field, lang, notice)
         else:
             anchor = f"#row-{form.get('doc', [''])[0]}-{form.get('field', [''])[0]}"
             loc = f"/queue?run={run_name}&lang={lang}&notice={notice}{anchor}"
@@ -2495,7 +2622,7 @@ class _Handler(BaseHTTPRequestHandler):
     def _next_adjudicate_url(self, run: Path, doc: str, field: str,
                              lang: str, notice: str) -> str:
         ctx = RunCtx(run)
-        ordered = Workbench._queue_order(ctx)
+        ordered = self.bench.review_order(ctx, lang)
         idx = next((i for i, r in enumerate(ordered)
                     if r["doc_id"] == doc and r["field"] == field), -1)
         following = ordered[idx + 1:] if idx >= 0 else ordered
@@ -2763,6 +2890,7 @@ def make_server(
     host: str = HOST,
     allowed_hosts: set[str] | None = None,
     read_only: bool = False,
+    review_scope: Path | str | None = None,
 ) -> ThreadingHTTPServer:
     """起工作台 HTTP 服务。
 
@@ -2792,9 +2920,11 @@ def make_server(
         hosts = set(allowed_hosts) if allowed_hosts is not None else set(_ALLOWED_HOSTS)
         if not hosts:
             hosts = set(_ALLOWED_HOSTS)
+    # 先读并校验 scope,再占端口;坏 JSON 不该留下一个无人关闭的 socket。
+    bench = Workbench(workspace, review_scope=review_scope)
     server = ThreadingHTTPServer((host, port), _Handler)
     server.daemon_threads = True
-    server.bench = Workbench(workspace)
+    server.bench = bench
     server.public = public
     server.allowed_hosts = hosts
     server.bind_host = host
@@ -2809,6 +2939,7 @@ def cmd_workbench(
     host: str = HOST,
     allowed_hosts: list[str] | None = None,
     read_only: bool = False,
+    review_scope: Path | None = None,
 ) -> int:
     bind_port = resolve_port(port)
     allow = set(allowed_hosts) if allowed_hosts else None
@@ -2821,12 +2952,15 @@ def cmd_workbench(
     read_only = read_only or os.environ.get(
         "INVOICELOOP_READ_ONLY", "") in ("1", "true", "TRUE")
     server = make_server(workspace, bind_port, host=host, allowed_hosts=allow,
-                         read_only=read_only)
+                         read_only=read_only, review_scope=review_scope)
     addr_host = "127.0.0.1" if host in PUBLIC_BIND_HOSTS else host
     url = f"http://{addr_host}:{server.server_address[1]}"
     mode = "公开绑定(Cloud Run/容器)" if server.public else "仅本机 loopback"
     if read_only:
         mode += ",只读(POST 一律 403)"
+    if server.bench.review_scope is not None:
+        scope = server.bench.review_scope
+        mode += f",限定复核 {len(scope.slots)} 槽({scope.source.name})"
     print(f"InvoiceLoop 工作台:{url}({mode},Ctrl-C 停止)")
     try:
         server.serve_forever()
