@@ -44,6 +44,9 @@ Decision = Literal["accept", "confirm_absent", "not_applicable",
 #: 裁决者标识前缀。**永不与人混淆** —— 账本里一眼能分出哪条是机器判的。
 AGENT_PREFIX = "agent:"
 
+#: ADK app 名。与 improve 循环分开 —— 两条链的会话不该混在一个 app 下。
+ARM_APP = "invoiceloop_arm_ta"
+
 #: 无声明的槽不许带 claim_id(append_adjudication 的语义拆分)
 _NO_CLAIM_DECISIONS = ("confirm_absent", "not_applicable")
 
@@ -105,6 +108,99 @@ def record_draft(run_dir: Path, key: str, draft: AdjudicationDraft, *,
         reason_code=draft.reason_code,
         reviewer_confidence=draft.reviewer_confidence,
     )
+
+
+#: 给 agent 的任务说明。写法纪律:**与 workbench 给人的信息同构** ——
+#: 六个决策中性列出、语义照 adjudicate.py 的定义抄,不暗示哪个该多用,
+#: 不提任何期望分布(预注册 §8 就是防这个)。
+ADJUDICATOR_SYSTEM = """\
+You are adjudicating ONE field slot of one accounts-payable document, the same
+task a human reviewer does at this workbench.
+
+You are shown: the value the extractor produced (empty means it produced none),
+what the deterministic gates concluded, which regions of the page the value was
+bound to, the full page image, and a crop of each bound region.
+
+Choose exactly ONE decision. The semantics are fixed and not interchangeable:
+
+- accept          — the extracted value is correct for this field.
+- correct         — a value belongs here but the extracted one is wrong; give
+                    corrected_value.
+- reject          — the extracted value is wrong and you are not supplying a
+                    replacement.
+- confirm_absent  — THIS document genuinely does not carry this field.
+- not_applicable  — this CLASS of document has no such concept (e.g. a field
+                    that only exists for a different document type).
+- abstain         — the evidence shown does not let you decide.
+
+confirm_absent and not_applicable are different claims: the first is about this
+page, the second is about the kind of document. Do not use one for the other.
+
+reason_code must be one of: WRONG_VALUE, WRONG_FIELD_MAPPING,
+BAD_SOURCE_BINDING, MISSING_EXTRACTION, NORMALIZATION_ERROR,
+ROUTING_FALSE_NEGATIVE, ROUTING_FALSE_POSITIVE, CONFIRMED_ABSENT,
+NOT_APPLICABLE, AMBIGUOUS_DOCUMENT, PROVIDER_FAILURE, REVIEWER_PREFERENCE,
+OTHER. It must be consistent with the decision: CONFIRMED_ABSENT only with
+confirm_absent, NOT_APPLICABLE only with not_applicable, WRONG_VALUE only with
+correct or reject.
+
+rationale: state what on the page led you there, for someone reading the ledger
+later. reviewer_confidence: high, medium or low.
+"""
+
+
+def make_adk_judge(*, model: str, workspace: Path):
+    """→ judge(pack, images) -> AdjudicationDraft,经真 ADK(LlmAgent + Runner)。
+
+    录放走 `adk_replay.replay_callbacks`:它的请求身份把 `contents` 整份
+    (含内联图像字节)哈希进摘要,所以图换了就是另一次调用,重放不会
+    张冠李戴。Agent 与 Runner 只建一次,200 槽复用。
+    """
+    import asyncio
+
+    from google.adk.agents import LlmAgent
+    from google.adk.runners import Runner
+    from google.adk.sessions import InMemorySessionService
+    from google.genai import types
+
+    from .adk_replay import replay_callbacks
+    from .runtime import export_credential_for_adk
+
+    export_credential_for_adk(workspace)
+    before, after = replay_callbacks(workspace)
+    agent = LlmAgent(
+        name="adjudicator", model=model,
+        instruction=ADJUDICATOR_SYSTEM,
+        output_schema=AdjudicationDraft,
+        output_key="adjudication",
+        before_model_callback=before, after_model_callback=after,
+    )
+
+    async def _once(pack: dict, images: list[bytes]) -> AdjudicationDraft:
+        service = InMemorySessionService()
+        session_id = f"slot-{pack['doc_id']}-{pack['field']}"
+        await service.create_session(app_name=ARM_APP, user_id="arm-ta",
+                                     session_id=session_id, state={})
+        runner = Runner(app_name=ARM_APP, agent=agent, session_service=service)
+        parts = [types.Part(text=json.dumps(pack, ensure_ascii=False, indent=1))]
+        for blob in images:
+            parts.append(types.Part.from_bytes(data=blob, mime_type="image/png"))
+        async for _ in runner.run_async(
+            user_id="arm-ta", session_id=session_id,
+            new_message=types.Content(role="user", parts=parts),
+        ):
+            pass
+        session = await service.get_session(
+            app_name=ARM_APP, user_id="arm-ta", session_id=session_id)
+        raw = dict(session.state).get("adjudication")
+        if raw is None:
+            raise RuntimeError("ADK 没给出 adjudication —— 不许当成弃权")
+        return AdjudicationDraft.model_validate(raw)
+
+    def judge(pack: dict, images: list[bytes]) -> AdjudicationDraft:
+        return asyncio.run(_once(pack, images))
+
+    return judge
 
 
 def run_arm(run_dir: Path, slots: list[str], *,

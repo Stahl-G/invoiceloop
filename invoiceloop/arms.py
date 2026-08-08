@@ -19,7 +19,9 @@ produce a very good agent score.
 
 from __future__ import annotations
 
+import json
 import random
+from pathlib import Path
 
 #: 抽样 PRNG 语境。与 heldout.SEALED_CONTEXTS 同一套做法:换实验换语境,
 #: 免得两个实验从同一条随机流上取样。
@@ -66,3 +68,66 @@ def slot_pack(matrix: dict, key: str) -> dict:
     if row is None:
         raise KeyError(f"槽位不存在:{key}")
     return {f: row[f] for f in PACK_FIELDS if f in row}
+
+
+# ------------------------------------------------------------------ 视觉证据
+
+def visual_pack(run_dir: Path, workspace: Path, key: str, out_dir: Path,
+                *, registry: list[dict] | None = None) -> list[Path]:
+    """一个槽的图像证据,**顺序确定**:先整页,再按 span_id 排序的裁切图。
+
+    顺序确定是重放身份的前提(`slot_call_id` 把图像顺序也哈希进去)。
+
+    人在 workbench 上看到的是整页 + CSS 画的框;agent 拿到的是同一张整页
+    加每个 span 区域的裁切图。**同样的证据,呈现方式不同** —— 这台机器上
+    没有 PIL/PyMuPDF,只有 poppler,把框烧进图里要新增依赖(GOAL.md §5:
+    新增依赖前先问它挡住哪个具体故障)。这条不对称照登进结果文档。
+
+    渲染不出来就少给,不抛 —— 缺图是要人看见的形状,不是要 200 槽一起崩
+    (evidence.render_pages 同一条纪律)。
+    """
+    from . import evidence
+
+    run_dir, workspace, out_dir = Path(run_dir), Path(workspace), Path(out_dir)
+    matrix = json.loads(
+        (run_dir / "support_matrix.json").read_text(encoding="utf-8"))
+    row = next((r for r in matrix["rows"] if slot_key(r) == key), None)
+    if row is None:
+        raise KeyError(f"槽位不存在:{key}")
+    if registry is None:
+        registry = json.loads(
+            (run_dir / "evidence_span_registry.json").read_text(encoding="utf-8"))
+    by_id = {s["span_id"]: s for s in registry}
+
+    doc = row["doc_id"]
+    pdf = workspace / "input" / "pdfs" / f"{doc}.pdf"
+    # 绑定 span 与 DWS 指向 span 都给 —— 复核者两种框都看得到
+    span_ids = sorted(set(row.get("span_ids") or [])
+                      | set(row.get("cited_span_ids") or []))
+    spans = [by_id[s] for s in span_ids if s in by_id]
+
+    pages_dir = out_dir / "pages" / doc
+    if not pages_dir.is_dir():
+        evidence.render_pages(pdf, pages_dir)
+    wanted = sorted({s["page"] for s in spans if s.get("bbox_rel")}) or [1]
+    images: list[Path] = []
+    for page_no in wanted:
+        hit = sorted(pages_dir.glob(f"{doc}-*{page_no}.png"))
+        exact = [p for p in hit
+                 if p.stem.rsplit("-", 1)[-1].lstrip("0") == str(page_no)]
+        if exact:
+            images.append(exact[0])
+
+    crops_dir = out_dir / "crops"
+    crops_dir.mkdir(parents=True, exist_ok=True)
+    for s in spans:
+        if not s.get("bbox_rel"):
+            continue
+        stem = crops_dir / f"{doc}-{s['span_id']}"
+        existing = sorted(stem.parent.glob(f"{stem.name}-*.png"))
+        if not existing:
+            evidence.render_crop(pdf, s["page"], s["bbox_rel"], stem)
+            existing = sorted(stem.parent.glob(f"{stem.name}-*.png"))
+        if existing:
+            images.append(existing[0])
+    return images
