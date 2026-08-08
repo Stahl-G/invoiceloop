@@ -112,6 +112,49 @@ DWS 交回了同一行的 AE 名字。**这不是填写错误,是词表与挖掘
 助手向复核者说明了实际成因,已记入 `runs/arm-h2/advised_slots.json`,
 M3 须同时报含/不含该槽的数字。
 
+### 第三道缝:C3 结构性看不见「到期日被绑到开票日」
+
+2026-08-08 在 `f40eef50…|due_date` 上撞到。该文档:
+
+| 字段 | 冻结值 | span_ids | 算术门 | 双模式门 |
+|---|---|---|---|---|
+| issue_date | `June 30, 1999` | `ES-0743, ES-0744` | pass | pass |
+| due_date | `June 30, 1999` | `ES-0743, ES-0744` | **pass** | **fail** |
+
+两个槽绑在**同一对 span** 上 —— 页面上那处是 `Invoice Date: June 30, 1999`,
+没有任何到期日栏。
+
+C3 的判据是 `date_ymd(issued) > date_ymd(expires)`([gates.py:96](../invoiceloop/gates.py:96)),
+用的是严格大于。两个日期**相等**时 `>` 为假,C3 判 pass。也就是说
+「到期日被绑到开票日」这一类错位,C3 **在结构上永远抓不到**,不是这次漏了。
+
+抓住它的是 `cross_mode_agreement`(双模式:拒)。**多门禁设计在这里被实测
+验证了一次**:一道门对某类错位天然失明,另一道门补上 —— 这正是六门并列
+而不是择优的理由。值得写进交付材料。
+
+要不要把 C3 改成 `>=` 是另一件事,**不在本实验里动**:C3 是预注册冻结的
+判据,改它会让所有既有数字失去可比性。且 `>=` 会误伤合法的「货到付款
+/ 当日到期」单据 —— 那是需要证据支持的判断,不是一个符号。
+
+### 循环处理不了「按付款条款推算到期日」(2026-08-08 记)
+
+同一槽引出的问题:页面条款写「Interest will be charged monthly on invoices
+unpaid after 30 days from date of receipt」。复核者问这条规则能不能进循环。
+
+**不能,三层都不能:**
+
+1. `lint_policy` 只放行 cohort 条目与 `qa.absent_expected_rate`
+   ([improve.py:240](../invoiceloop/improve.py:240)),表达不了任何计算;
+2. `propose_schema` 只能改字段 description —— 那是让**抽取器**去推算,
+   而项目的立场恰恰是抽取器的推算不可信;且 schema 候选必须走
+   `evaluate --reextract` 烧 credits 重抽([improve.py:1061](../invoiceloop/improve.py:1061));
+3. 派生逻辑属于 `gates.py` / `matrix.py` 的代码,不属于策略面。
+
+**更硬的理由:输入本身不在页面上。** 条款的起算点是 *date of receipt*,
+不是开票日;页面上没有收到日。所以「开票日 + 30 天」这个推算连输入都
+凑不齐,推出来的日期既没有 span、也没有可点验的起点。按宪章六,这个值
+系统不能说。业务规则层可以有这条规则,验证层不能。
+
 ### 复核者中途发现的两个界面缺陷
 
 两个都已开为独立后台任务,**实验期间不合入** —— 中途改变复核者看到的东西,
