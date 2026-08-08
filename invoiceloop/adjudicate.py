@@ -115,6 +115,10 @@ def append_adjudication(
     run_dir = Path(run_dir)
     if decision not in DECISIONS:
         raise ValueError(f"decision 必须是 {DECISIONS} 之一,收到 {decision!r}")
+    if not isinstance(rationale, str) or not rationale.strip():
+        raise ValueError(
+            "rationale 不能为空 —— 裁决理由会原文进入改进循环,"
+            "必须把发现的问题或判断依据写清")
     if decision == "correct":
         if not (corrected_value and corrected_value.strip()):
             raise ValueError("correct 必须带 corrected_value —— 修正值是什么必须写出来")

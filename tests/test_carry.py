@@ -96,6 +96,27 @@ class TestCarry:
             "combo 表 1:1 蕴含的心码,不是编数据"
         assert by_field["seller_vat_id"]["adjudicator"] == "stahl"
 
+    def test_legacy_blank_rationale_is_not_carried(self, ws):
+        """旧账本缺理由时显式留给人重看,不伪造携带理由。"""
+        r1 = ws / "runs" / "run-0001"
+        adjudicate.append_adjudication(
+            r1, claim_id=_claim_id(r1, "total_gross"), doc_id=DOC,
+            field="total_gross", decision="accept", rationale="旧版原有理由",
+            adjudicator="stahl", decided_at=WHEN)
+        ledger_path = r1 / "adjudication_ledger.jsonl"
+        legacy = json.loads(ledger_path.read_text())
+        legacy["rationale"] = " \t"
+        ledger_path.write_text(
+            json.dumps(legacy, ensure_ascii=False) + "\n", encoding="utf-8")
+
+        r2 = _run(ws, "run-0002")
+        report = carry_forward(r2, decided_at=WHEN)
+
+        assert report["carried"] == 0, report
+        assert report["skipped_missing_rationale"] == 1, report
+        assert not (r2 / "adjudication_ledger.jsonl").read_text().strip(), \
+            "缺理由的旧裁决不能被前缀洗成非空理由"
+
     def test_new_claim_blocks_absent_carry(self, ws):
         """确认缺失之后新 run 该槽有了声明 = 证据变了,不许携带,回人重看。
         形状:total_gross 有 understand 声明且在队列(双模式分歧),

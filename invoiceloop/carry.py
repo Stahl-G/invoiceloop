@@ -14,6 +14,8 @@ fabricating human review. The carry rule is mechanical and checkable:
 - confirm_absent / not_applicable: the new run has **no** understand claim for
   that slot (a claim appearing means the evidence changed — back to the human);
 - abstain never carries (undecided is undecided);
+- legacy records without a non-blank rationale never carry; the report exposes
+  the gap and leaves the slot for human review instead of inventing a rationale;
 - every carried record keeps carried_from_decision_id. It is not a new human
   judgement; it is the mechanical transport of one person's judgement about one
   unchanged body of evidence, and the ledger says so plainly.
@@ -65,7 +67,7 @@ def _claim_matches(src_claim: dict | None, dst_claim: dict | None) -> bool:
 def carry_forward(dst_run: Path, *, decided_at: str) -> dict:
     """把同一 workspace 内**更早** run 的裁决按规则携带进 dst_run。
 
-    返回计数报告{carried, skipped_changed, no_prior, skipped_auto}。
+    返回计数报告,包含 carried/skipped_changed/skipped_missing_rationale 等。
     decided_at 由人给(执行 carry 这个动作就是人在给时间,与工作台同纪律)。
     """
     dst_run = Path(dst_run)
@@ -89,7 +91,8 @@ def carry_forward(dst_run: Path, *, decided_at: str) -> dict:
                for k, v in _raw_values(p).items()}
     dst_raw = _raw_values(dst_run)
 
-    report = {"carried": 0, "skipped_changed": 0, "no_prior": 0,
+    report = {"carried": 0, "skipped_changed": 0,
+              "skipped_missing_rationale": 0, "no_prior": 0,
               "skipped_auto": 0, "kept_qa_fresh": 0, "by_decision": {}}
     for (doc_id, field), route in sorted(routes.items()):
         if route in ("auto_accept", "auto_absent"):
@@ -135,12 +138,17 @@ def carry_forward(dst_run: Path, *, decided_at: str) -> dict:
             reason_code = "CONFIRMED_ABSENT"  # combo 表 1:1 蕴含,不是编
         elif reason_code is None and decision == "not_applicable":
             reason_code = "NOT_APPLICABLE"
+        source_rationale = tip.get("rationale")
+        if not isinstance(source_rationale, str) or not source_rationale.strip():
+            # 旧账本的理由缺口不能靠携带前缀洗成非空;留在队列里让人重看。
+            report["skipped_missing_rationale"] += 1
+            continue
         adj.append_adjudication(
             dst_run,
             claim_id=claim_id,
             doc_id=doc_id, field=field,
             decision=decision,
-            rationale=f"[carried from {tip['decision_id']}] {tip['rationale']}",
+            rationale=f"[carried from {tip['decision_id']}] {source_rationale}",
             adjudicator=tip["adjudicator"],
             decided_at=decided_at,
             corrected_value=corrected,

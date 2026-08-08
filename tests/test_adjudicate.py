@@ -123,6 +123,13 @@ class TestValidation:
         with pytest.raises(ValueError, match="decision"):
             _append(run_dir, decision="looks-good")
 
+    def test_blank_rationale_is_refused_without_writing(self, run_dir):
+        for rationale in ("", " \t\n"):
+            with pytest.raises(ValueError, match="rationale.*改进循环"):
+                _append(run_dir, rationale=rationale)
+        assert not (run_dir / "adjudication_ledger.jsonl").exists(), \
+            "校验失败不能留下裁决账本"
+
     def test_correct_requires_corrected_value(self, run_dir):
         with pytest.raises(ValueError, match="corrected_value"):
             _append(run_dir, decision="correct")
