@@ -36,8 +36,12 @@ _DECIDED_AT_RE = re.compile(r"^20\d\d-\d\d-\d\dT.*(Z|[+]00:00)$")
 
 
 def _ocr_payload() -> dict:
+    # "INVOICE" 是单据类型的**页面字面证据**。没有它,doctype 判 no_claim,
+    # 改进层就挖不出任何类别×字段的缺席候选(mine 只收类型证据通过的事件),
+    # 工作台的改进页也就永远是空的。
     words = [
-        ("INV-42", 0.10), ("Total", 0.20), ("100.00", 0.30), ("Gross", 0.40),
+        ("INVOICE", 0.02), ("INV-42", 0.10), ("Total", 0.20),
+        ("100.00", 0.30), ("Gross", 0.40),
     ]
     return {"pages": [{
         "page_idx": 0, "dimensions": [612, 792],
@@ -52,7 +56,8 @@ def _record(doc_id: str, mode: str) -> dict:
     return {"doc_id": doc_id, "document": f"{doc_id}.pdf", "mode": mode,
             "http_status": 200,
             "body": {"output": {
-                "data": {"invoice_number": "INV-42", "total_gross": "100.00"},
+                "data": {"invoice_number": "INV-42", "total_gross": "100.00",
+                         "invoice_type": "Invoice"},
                 "metadata": {},
                 "pages": [{"page": 1, "width": 612, "height": 792}]}}}
 
@@ -455,14 +460,40 @@ class TestTaskLines:
 
     def test_row_states_the_task_in_plain_language(self, workspace, server):
         _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=zh&filter=all")
-        assert "任务:在页面上核对" in text, "有值的行要说出核什么、DWS 读到什么"
+        assert "正确映射为" in text, "有值的行要说出 DWS 把什么读成了哪个字段"
         assert "买方名称" in text, "字段要有人类名字,不只是 buyer_name"
-        assert "任务:DWS 没给出" in text, "无值的行要说出补录路径"
+        assert "请检查页面是否明确写出" in text, "无值的行要说出补录路径"
         assert "buyer_name" in text, "原始字段名保留(小字),对账用"
 
     def test_task_line_english_default(self, workspace, server):
         _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=en&filter=all")
-        assert "Task: verify the" in text and "Buyer name" in text
+        assert "Task: page evidence supports" in text and "Buyer name" in text
+
+    def test_task_line_asks_about_mapping_not_mere_presence(
+            self, workspace, server):
+        """任务措辞必须问「这个值是不是这个字段的」,不是「页面上有没有」。
+
+        两条已裁定口径的直接产物:值出现在页面上不等于映射对
+        (WRONG_FIELD_MAPPING),以及缺的字段不许从邻栏或付款条款推导出来
+        (docs/ARM_RUN_LOG_2026-08-08.md 口径裁定之二)。
+        """
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=en&filter=all")
+        assert "not merely" in text, "有值的行要点破「出现在页面上」不算数"
+        assert "derive it from payment terms or another field" in text, \
+            "无值的行要挡住从付款条款/邻栏推导"
+
+    def test_document_class_never_licenses_an_assumed_absence(
+            self, workspace, server):
+        """认出类别之后,任务措辞必须**明确禁止**用类别当缺席的理由。
+
+        SEALED-3 主臂唯一的静默缺席就是这条:doctype 正确认出 credit note,
+        而「这类单据没有税号」这个无条件假设吞掉了一个真有值的 seller_vat_id
+        (docs/SEALED3_RESULTS.md §4)。类别是上下文,不是答案。
+        """
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=zh&filter=all")
+        assert "不要仅凭单据类别假定缺失" in text
+        _, _, en = _req(server, "GET", f"/queue?run={RUN}&lang=en&filter=all")
+        assert "Do not assume it is absent from the document type" in en
 
     def test_limitation_codes_are_humanized(self, workspace, server):
         from invoiceloop.workbench import _lim
@@ -870,6 +901,9 @@ class TestAdjudicatePage:
         assert "采购订单" in text and "purchase order" in text
         assert "字段是否适用仍由你判断" in text, \
             "doctype 是复核上下文,不是替人裁 applicability"
+        assert "DWS 是否把“100.00”正确映射为总额" in text
+        assert "不只是确认这个值出现在页面上" in text, \
+            "类别化问题只提醒核对字段映射,不能暗示裁决答案"
         mark = re.search(
             r'class="wb-hl wb-hl-doctype" style="([^"]+)"', text)
         assert mark, "页面字面类型证据必须能在整页上圈出来"
@@ -884,6 +918,35 @@ class TestAdjudicatePage:
         assert not re.search(
             r'<input type="radio" name="decision"[^>]* checked', text), \
             "类别上下文不许替复核者预选答案"
+
+        _, _, queue = _req(server, "GET", f"/queue?run={RUN}&lang=zh")
+        assert "DWS 是否把“100.00”正确映射为总额" in queue, \
+            "队列页和单槽页必须共用同一类条件问题生成器"
+
+    def test_evidenced_doctype_rephrases_an_empty_slot_without_assuming_absence(
+            self, workspace, server):
+        _set_document_check(workspace, {
+            "gate_id": "doctype_evidence",
+            "raw_type": "Purchase Order",
+            "doc_class": "purchase_order",
+            "status": "pass",
+            "evidence": {
+                "phrase": "purchase order", "page": 0,
+                "bbox": [[0.05, 0.06], [0.25, 0.10]], "words": 2,
+            },
+        })
+
+        _, _, text = _req(
+            server, "GET",
+            f"/adjudicate?run={RUN}&doc={DOC}&field=buyer_name&lang=zh",
+        )
+
+        assert "页面字面证据支持这是采购订单" in text
+        assert "检查页面是否明确写出买方名称" in text
+        assert "不要仅凭单据类别假定缺失" in text
+        assert "不要从付款条款或其他字段推算" in text
+        assert not re.search(
+            r'<input type="radio" name="decision"[^>]* checked', text)
 
     def test_untrusted_doctype_warns_and_never_draws_evidence(
             self, workspace, server):
@@ -902,6 +965,9 @@ class TestAdjudicatePage:
         assert "不得用它判断字段适用性" in text
         assert "wb-hl-doctype" not in text, \
             "模型自报类型没有独立 OCR 支持时不许画成证据"
+        assert "页面字面证据支持这是合同" not in text
+        assert "请确认该值确实属于总额" in text, \
+            "不可信类别必须回退为不带类别的通用问题"
 
     def test_old_run_says_doctype_was_not_measured(self, workspace, server):
         """The UI must not backfill a new check into an old frozen run."""
@@ -1254,9 +1320,24 @@ class TestImproveLoopPage:
 
     def _adopt(self, port, **over) -> tuple[int, dict, str]:
         form = {"run": RUN, "lang": "zh", "kind": "absent_expected",
-                "c_field": "seller_vat_id", "cohort_id": "AC-VAT",
-                "finding": "12 份里反复 confirm_absent",
+                "c_doc_class": "invoice", "c_field": "seller_vat_id",
+                "finding": "12 份 invoice 里反复 confirm_absent",
                 "prediction": "负载下降;风险是把真有值的槽误判成缺席"}
+        form.update(over)
+        return _imp_post(port, "/improve/adopt", form)
+
+    def _adopt_accept(self, port, **over) -> tuple[int, dict, str]:
+        """自动放行候选 —— 晋升路径的测试用它。
+
+        类别缺席候选在没有真值的 workspace 上会被 Gate 2 硬拒(见
+        test_class_absence_candidate_cannot_be_promoted_without_truth),
+        拿它测「晋升记下了人的原话」只会测到拒绝,测不到记录。
+        """
+        form = {"run": RUN, "lang": "zh",
+                "kind": "auto_accept", "c_field": "total_gross",
+                "c_strength": "corroborated", "cohort_id": "AC-GROSS",
+                "finding": "多方印证的含税额从没被改过",
+                "prediction": "负载下降;风险是放过一个错值"}
         form.update(over)
         return _imp_post(port, "/improve/adopt", form)
 
@@ -1278,15 +1359,25 @@ class TestImproveLoopPage:
         assert not (workspace / "improve" / "promotions").exists()
 
     def test_adopt_refuses_a_nameless_cohort(self, workspace, server):
-        status, _, _ = self._adopt(server, cohort_id="")
+        status, _, _ = self._adopt_accept(server, cohort_id="")
         assert status == 400
+
+    def test_adopt_refuses_an_absence_rule_with_no_document_class(
+            self, workspace, server):
+        """缺席规则的名字由 Python 从类别×字段生成,所以界面不给起名框 ——
+        但没给类别就必须当场拒:不带类别的缺席规则对所有单据生效。"""
+        status, _, body = self._adopt(server, c_doc_class="")
+        assert status == 400
+        assert "哪一类单据" in body
 
     def test_adopt_refuses_a_cohort_with_no_features(self, workspace, server):
         status, _, _ = self._adopt(server, c_field="")
         assert status == 400, "没有 cohort 特征就没有可路由的东西"
 
     def test_promote_requires_a_name_and_a_reason(self, workspace, server):
-        self._adopt(server)
+        # 用一个**能**晋升的候选:否则 400 可能来自安全门而不是缺署名,
+        # 这条断言就测不到它要测的东西了。
+        self._adopt_accept(server)
         base = {"run": RUN, "lang": "zh", "candidate": "HAR-0002",
                 "approved_at": "2026-08-06T12:00:00Z"}
         no_name, _, _ = _imp_post(server, "/improve/promote",
@@ -1298,8 +1389,27 @@ class TestImproveLoopPage:
         assert no_name == 400 and no_why == 400, \
             "网页入口不许比 CLI 松:署名与理由都是硬要求"
 
-    def test_promote_records_the_humans_own_words(self, workspace, server):
+    def test_class_absence_candidate_cannot_be_promoted_without_truth(
+            self, workspace, server):
+        """会自动判缺席的规则,拿不到真值评分就不许生效 —— 硬拒,不是警告。
+
+        一个被误判成缺席的槽再也不会有人看,所以它没有 QA 兜底可依赖。
+        SEALED-3 主臂就栽在这里:规则本身「看起来只减负」,代价是一个真有
+        值的税号被静默吞掉(docs/SEALED3_RESULTS.md §4)。
+        """
         self._adopt(server)
+        status, _, body = _imp_post(server, "/improve/promote", {
+            "run": RUN, "lang": "zh", "candidate": "HAR-0002",
+            "approved_by": "alice", "rationale": "我认了这个风险",
+            "approved_at": "2026-08-06T12:00:00Z"})
+        assert status == 400, "署名和理由齐全也不行 —— 人签不掉一个没测过的缺席规则"
+        assert "真值评分" in body
+        from invoiceloop.harness import load_active
+        assert load_active(workspace)["harness_id"] == "HAR-0001", \
+            "被拒的晋升不许改动 active harness"
+
+    def test_promote_records_the_humans_own_words(self, workspace, server):
+        self._adopt_accept(server)
         status, headers, _ = _imp_post(server, "/improve/promote", {
             "run": RUN, "lang": "zh", "candidate": "HAR-0002",
             "approved_by": "alice", "rationale": "接受 QA 抽检的残余风险",
@@ -1317,11 +1427,27 @@ class TestImproveLoopPage:
         self._adopt(server)
         _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
         assert "需要你过目的字段" in text, "试算结果必须摆出来"
-        # 无真值的 workspace:不许显示「安全检查通过」(宪章四:没跑 ≠ 通过)
-        assert "安全检查没跑" in text
+        # 无真值的 workspace:不许显示「安全检查通过」(宪章四:没跑 ≠ 通过)。
+        # 类别缺席规则更进一步 —— 它不是「没跑,结论未知」,而是**明确拒绝**:
+        # 一条会自动判缺席的规则,没拿到真值评分就不许生效。
+        assert "安全检查不通过" in text
+        assert "未取得 QA 前真值评分" in text, "拒绝要说清是哪一关没过"
         assert "安全检查通过" not in text
         # 工程标识不在正文里,收进技术细节折叠区
         assert "技术细节" in text and "HAR-0002" in text
+
+    def test_unscoreable_non_absence_candidate_still_says_not_run(
+            self, workspace, server):
+        """没有真值时,**非**缺席候选仍是「没跑」而不是「拒绝」。
+
+        两者不能混:自动放行错值有 QA 抽检兜底,自动判缺席没有 ——
+        缺席一旦判错,那个槽再也不会有人看。所以只有后者升级成硬拒绝。
+        """
+        self._adopt(server, kind="auto_accept", c_doc_class="",
+                    c_strength="corroborated", cohort_id="AC-GROSS")
+        _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert "安全检查没跑" in text
+        assert "安全检查通过" not in text
 
     def test_schema_candidate_is_not_auto_evaluated(self, workspace, server):
         """schema 候选要真重抽才评得了,那要花钱 —— 不许替人按下去。"""
@@ -1344,8 +1470,9 @@ class TestImproveLoopPage:
         就成了旧 active。这是真实会出现的状态(第一次在工作台上跑通闭环时,
         HAR-0002/0003 正是这样挂在页面上,还各带一个注定被拒的晋升表单)。
         """
-        self._adopt(server)                        # HAR-0002,parent=HAR-0001
-        self._adopt(server, cohort_id="AC-VAT-2")  # HAR-0003,parent=HAR-0001
+        self._adopt_accept(server)                 # HAR-0002,parent=HAR-0001
+        self._adopt_accept(server, c_field="total_net",
+                           cohort_id="AC-NET")     # HAR-0003,parent=HAR-0001
         _imp_post(server, "/improve/promote", {
             "run": RUN, "lang": "zh", "candidate": "HAR-0002",
             "approved_by": "alice", "rationale": "r",

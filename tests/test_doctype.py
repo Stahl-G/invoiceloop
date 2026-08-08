@@ -83,6 +83,27 @@ class TestClassify:
         assert doctype.classify("Broadcast Agreement") == "contract"
         assert doctype.classify("Order Confirmation") == "confirmation"
 
+    def test_trusted_class_requires_complete_frozen_literal_evidence(self):
+        good = {
+            "status": "pass", "doc_class": "purchase_order",
+            "evidence": {
+                "phrase": "purchase order", "page": 0,
+                "bbox": [[0.1, 0.2], [0.4, 0.3]], "words": 2,
+            },
+        }
+        assert doctype.trusted_class(good) == "purchase_order"
+
+        for broken in (
+            {**good, "status": "fail"},
+            {**good, "doc_class": "invented"},
+            {**good, "evidence": None},
+            {**good, "evidence": {**good["evidence"], "phrase": ""}},
+            {**good, "evidence": {**good["evidence"], "page": True}},
+            {**good, "evidence": {**good["evidence"], "bbox": [[0.4, 0.2], [0.1, 0.3]]}},
+            {**good, "evidence": {**good["evidence"], "bbox": [[-0.1, 0.2], [0.4, 0.3]]}},
+        ):
+            assert doctype.trusted_class(broken) is None
+
 
 def _fake_words(doc_id: str):
     """一页假 OCR:抬头 CREDIT MEMO,后面有 invoice 字样。"""

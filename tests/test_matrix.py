@@ -17,6 +17,12 @@ def _gates(verdicts):
              "seller_vat_id", "total_net", "total_vat", "total_gross", "amount_due")}}}
 
 
+def _trusted_check(doc_class="purchase_order"):
+    return {"status": "pass", "doc_class": doc_class,
+            "evidence": {"phrase": "purchase order", "page": 0,
+                         "bbox": [[0.1, 0.1], [0.3, 0.2]], "words": 2}}
+
+
 class TestApplicability:
     DISPUTED = {"total_net": "8,500.00", "total_gross": "10,000.00", "amount_due": "8,500.00"}
 
@@ -58,6 +64,33 @@ class TestApplicability:
         out, _routing = matrix.build_matrix(["doc-a"], understand={"doc-a": u}, claims=[],
                                   rejections=[], gate_report=_gates({}), vision_answers={})
         assert all(r["applicability"] == "matches" for r in out["rows"])
+
+    def test_frozen_type_facts_drive_the_same_class_absence_match(self):
+        data = {"invoice_type": "Purchase Order", "due_date": None}
+        u = make_response("doc-a", "understand", data)
+        report = _gates({"extraction_present": "fail"})
+        report["document_checks"] = {"doc-a": _trusted_check()}
+        policy = {
+            "harness_id": "HAR-C",
+            "release_tier1_explicit": False,
+            "absent_expected_cohorts": [{
+                "id": "AE-purchase_order-due_date",
+                "doc_class": "purchase_order", "field": "due_date",
+            }],
+            "qa": {"seed": "s", "sampler_version": 2,
+                   "absent_expected_rate": 0},
+        }
+        out, routing = matrix.build_matrix(
+            ["doc-a"], understand={"doc-a": u}, claims=[], rejections=[],
+            gate_report=report, vision_answers={}, policy=policy,
+            harness_id="HAR-C")
+        row = next(r for r in out["rows"] if r["field"] == "due_date")
+        route = next(r for r in routing["routes"] if r["field"] == "due_date")
+        assert row["doc_class"] == "purchase_order"
+        assert row["doctype_status"] == "pass"
+        assert row["gate_verdicts"]["extraction_present"] == "expected_absent"
+        assert row["applicability_rule_id"] == "AE-purchase_order-due_date"
+        assert route["applicability_rule_id"] == "AE-purchase_order-due_date"
 
 
 class TestBlockingAttachment:

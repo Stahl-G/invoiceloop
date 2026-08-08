@@ -35,6 +35,12 @@ def compile_events(run_dir: Path) -> list[dict]:
     harness_id = "HAR-0001"
     if routing_path.exists():
         harness_id = json.loads(routing_path.read_text(encoding="utf-8"))["harness_id"]
+    gate_path = run_dir / "gate_report.json"
+    document_checks = {}
+    if gate_path.exists():
+        gate = json.loads(gate_path.read_text(encoding="utf-8"))
+        raw_checks = gate.get("document_checks")
+        document_checks = raw_checks if isinstance(raw_checks, dict) else {}
 
     events = []
     superseded_ids = {d.get("supersedes_decision_id") for d in decisions
@@ -42,6 +48,10 @@ def compile_events(run_dir: Path) -> list[dict]:
     for i, d in enumerate(decisions, start=1):
         row = rows.get((d["doc_id"], d["field"]), {})
         reason_codes = row.get("reason_codes", [])
+        from .doctype import trusted_class
+
+        check = document_checks.get(d["doc_id"])
+        doc_class = trusted_class(check)
         events.append({
             "feedback_id": f"FB-{i:06d}",
             "decision_id": d["decision_id"],
@@ -50,6 +60,10 @@ def compile_events(run_dir: Path) -> list[dict]:
             "harness_id": harness_id,
             "doc_id": d["doc_id"],
             "field": d["field"],
+            # 类别只有冻结字面证据完整通过时才进入改进特征。模型自报、
+            # fail/unmapped/no_claim/旧 run 一律不给 mine 猜。
+            "doctype_status": "pass" if doc_class is not None else "untrusted",
+            "doc_class": doc_class,
             "tier": "TIER1" if d["field"] in TIER1 else "TIER2",
             "claim_id": d.get("claim_id"),
             "route": row.get("route"),

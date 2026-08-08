@@ -236,9 +236,8 @@ def run(
         ledger_sha256=ledger["sha256"], artifact_digest=artifact_digest,
         ocr_blocked=frozenset(d for d in doc_ids if not ocr_ok[d]),
         duplicate_groups=dup_groups,
-        absent_expected=frozenset(
-            c["field"] for c in active["policy"].get("absent_expected_cohorts", [])
-            if c.get("field")),
+        absent_expected_cohorts=active["policy"].get(
+            "absent_expected_cohorts", []),
         agentic_optional=agentic_optional,
     )
     _write_json(out_dir / "gate_report.json", gate_report)

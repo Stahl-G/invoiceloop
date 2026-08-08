@@ -65,6 +65,75 @@ class TestDocumentChecks:
         assert "__document__" not in report["evaluations"]["doc-a"]
         assert set(report["evaluations"]["doc-a"]) == set(FIELDS)
 
+    def test_class_absence_rule_needs_the_frozen_literal_type(self,
+                                                              positioned_corpus):
+        from invoiceloop import ocr
+
+        path = ocr.ocr_path("doc-a")
+        blob = json.loads(path.read_text())
+        blob["pages"][0]["blocks"][0]["lines"][0]["words"].extend([
+            {"value": "PURCHASE", "confidence": 0.99,
+             "geometry": [[0.50, 0.05], [0.62, 0.08]],
+             "snapped_geometry": [[0.50, 0.05], [0.62, 0.08]]},
+            {"value": "ORDER", "confidence": 0.99,
+             "geometry": [[0.63, 0.05], [0.72, 0.08]],
+             "snapped_geometry": [[0.63, 0.05], [0.72, 0.08]]},
+        ])
+        path.write_text(json.dumps(blob))
+        ocr.load_ocr.cache_clear()
+        data = {**FULL_DATA, "invoice_type": "Purchase Order",
+                "due_date": None}
+        u = make_response("doc-a", "understand", data)
+        a = make_response("doc-a", "agentic", dict(data))
+        report = gates.run_gates(
+            ["doc-a"], understand={"doc-a": u}, agentic={"doc-a": a},
+            vision_answers={}, ledger_sha256="x", artifact_digest="y",
+            absent_expected_cohorts=[{
+                "id": "AE-purchase_order-due_date",
+                "doc_class": "purchase_order", "field": "due_date",
+            }],
+        )
+        assert report["document_checks"]["doc-a"]["status"] == "pass"
+        assert report["evaluations"]["doc-a"]["due_date"][
+            "extraction_present"] == "expected_absent"
+        finding = next(f for f in report["findings"]
+                       if f["field"] == "due_date"
+                       and f["gate_id"] == "extraction_present")
+        assert finding["blocking"] is False
+
+        mismatch = gates.run_gates(
+            ["doc-a"], understand={"doc-a": u}, agentic={"doc-a": a},
+            vision_answers={}, ledger_sha256="x", artifact_digest="y",
+            absent_expected_cohorts=[{
+                "id": "AE-confirmation-due_date",
+                "doc_class": "confirmation", "field": "due_date",
+            }],
+        )
+        assert mismatch["evaluations"]["doc-a"]["due_date"][
+            "extraction_present"] == "fail"
+
+    def test_malformed_passing_type_cannot_activate_a_rule(
+            self, positioned_corpus, monkeypatch):
+        monkeypatch.setattr(doctype, "check_document", lambda *_: {
+            "status": "pass", "doc_class": "purchase_order",
+            "evidence": {"phrase": "purchase order", "page": 0,
+                         "bbox": None},
+        })
+        data = {**FULL_DATA, "invoice_type": "Purchase Order",
+                "due_date": None}
+        u = make_response("doc-a", "understand", data)
+        a = make_response("doc-a", "agentic", dict(data))
+        report = gates.run_gates(
+            ["doc-a"], understand={"doc-a": u}, agentic={"doc-a": a},
+            vision_answers={}, ledger_sha256="x", artifact_digest="y",
+            absent_expected_cohorts=[{
+                "id": "AE-purchase_order-due_date",
+                "doc_class": "purchase_order", "field": "due_date",
+            }],
+        )
+        assert report["evaluations"]["doc-a"]["due_date"][
+            "extraction_present"] == "fail"
+
 
 class TestDeliverTypeTrust:
     def test_untrusted_on_deliverable(self, tmp_path):

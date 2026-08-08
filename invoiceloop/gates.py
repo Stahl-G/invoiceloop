@@ -176,6 +176,7 @@ def run_gates(
     ocr_blocked: frozenset[str] = frozenset(),
     duplicate_groups: list[dict] | None = None,
     absent_expected: frozenset[str] = frozenset(),
+    absent_expected_cohorts: list[dict] | None = None,
     agentic_optional: frozenset[str] = frozenset(),
 ) -> dict:
     """门禁事务(§5.3):绑定确切工件哈希后运行;签名对不上则拒绝执行由调用方检查。
@@ -186,8 +187,9 @@ def run_gates(
     duplicate_groups:crossdoc.duplicate_groups 的产出 —— 跨文档查重(C8)。
     不是第七道门(六门叙事不变):它是文档集维度的检查,只在涉案文档的
     invoice_number 行盖 fail 裁决 + 记 non-blocking finding,人裁,不进错误率。
-    absent_expected:策略声明「预期缺失」的字段(改进层 absent_expected
-    cohort 的字段集,来自 policy 不是代码)—— 缺值不再是阻断发现:
+    absent_expected:仅为旧调用/旧策略重放保留的全局字段集合。
+    absent_expected_cohorts:精确的 ``doc_class × field`` 规则。类型必须由
+    本次冻结的 document_checks 字面证据通过后才可匹配。缺值不再是阻断发现:
     裁决记 expected_absent,finding 降为 info 级非阻断。缺值的**事实**
     照记(verdict 不是 pass),只是后果从「必须人裁」变成「政策确认缺失」。
     agentic_optional:L1 adaptive 故意跳过 agentic 的文档 —— 缺 agentic
@@ -196,6 +198,25 @@ def run_gates(
     """
     acc = GateAccumulator()
     evaluations: dict[str, dict[str, dict[str, str]]] = {}
+
+    # 类型门必须先冻结,字段门才有资格消费它。只计算一次;下面仍在旧位置
+    # 追加 findings,以免无关 run 的 finding ID 因内部重排而漂移。
+    from . import doctype as _doctype
+    from .routing import match_absent_expected
+
+    document_checks: dict[str, dict] = {}
+    for doc_id in doc_ids:
+        u = understand.get(doc_id)
+        if u is None:
+            continue
+        raw = u.data.get("invoice_type")
+        document_checks[doc_id] = _doctype.check_document(
+            doc_id, None if raw is None else str(raw))
+
+    absence_policy = {"absent_expected_cohorts": [
+        *(absent_expected_cohorts or []),
+        *({"field": field_name} for field_name in sorted(absent_expected)),
+    ]}
 
     for doc_id in doc_ids:
         u = understand.get(doc_id)
@@ -221,9 +242,24 @@ def run_gates(
                 per_field[f] = {g: UNAVAILABLE for g in GATE_IDS}
             evaluations[doc_id] = per_field
             continue
+        check = document_checks.get(doc_id)
+        trusted = _doctype.trusted_class(check)
+        raw_status = check.get("status") if isinstance(check, dict) else None
+        type_facts = {
+            "doctype_status": ("pass" if trusted is not None
+                               else "malformed" if raw_status == "pass"
+                               else str(raw_status or "not_measured")),
+            "doc_class": trusted,
+        }
+        matched_absent = {
+            field_name: rule
+            for field_name in FIELDS
+            if (rule := match_absent_expected(
+                {**type_facts, "field": field_name}, absence_policy)) is not None
+        }
         try:
             _evaluate_doc(doc_id, u, a, vision_answers, acc, per_field,
-                          absent_expected=absent_expected,
+                          absent_expected=matched_absent,
                           agentic_optional=doc_id in agentic_optional)
         except Exception as exc:  # noqa: BLE001 —— 门禁自己出错也是阻断发现
             # 宪章四:一个门禁崩在一份文档上,不许带垮整批,也不许假装评过
@@ -270,17 +306,10 @@ def run_gates(
     # ---- 单据类型字面证据(文档级):不进 evaluations 字段层(heldout_metrics
     # 会展平污染 H4/H5)。结果进 document_checks;无证据 = 非阻断 finding
     # (阶段 B:typedep 粒度 —— 不把整份文档 10 槽拖进队列)。
-    from . import doctype as _doctype
-
-    document_checks: dict[str, dict] = {}
     for doc_id in doc_ids:
-        u = understand.get(doc_id)
-        if u is None:
+        check = document_checks.get(doc_id)
+        if check is None:
             continue
-        raw = u.data.get("invoice_type")
-        check = _doctype.check_document(
-            doc_id, None if raw is None else str(raw))
-        document_checks[doc_id] = check
         if check["status"] == "fail":
             acc.add(Finding(
                 "doctype_evidence", doc_id, None, "medium", "non-blocking",
@@ -321,10 +350,11 @@ def _evaluate_doc(
     vision_answers: dict[str, dict[tuple[str, str], dict]],
     acc: GateAccumulator,
     per_field: dict[str, dict[str, str]],
-    absent_expected: frozenset[str] = frozenset(),
+    absent_expected: dict[str, dict] | None = None,
     agentic_optional: bool = False,
 ) -> None:
     """评估一份文档的六个门禁;异常由 run_gates 记成阻断发现。"""
+    absent_expected = absent_expected or {}
     if a is None and not agentic_optional:
         acc.add(Finding(
             "cross_mode_agreement", doc_id, None, "high", "blocking",
@@ -353,13 +383,17 @@ def _evaluate_doc(
         if present:
             verdicts["extraction_present"] = PASS
         elif field_name in absent_expected:
+            rule = absent_expected[field_name]
+            rule_id = rule.get("id")
             verdicts["extraction_present"] = "expected_absent"
             acc.add(Finding(
                 "extraction_present", doc_id, field_name, "info", "non_blocking",
                 "none", "策略声明的预期缺失字段(如美国发票无 VAT);"
                         "QA 抽检盯着这批缺席是否真的成立",
-                f"doc:{doc_id}/field:{field_name}",
-                "DWS 未返回该字段的值(策略:预期缺失)",
+                (f"policy:{rule_id}" if rule_id
+                 else f"doc:{doc_id}/field:{field_name}"),
+                ("DWS 未返回该字段的值(策略:预期缺失"
+                 f"{f' {rule_id}' if rule_id else ''})"),
             ))
         else:
             verdicts["extraction_present"] = FAIL

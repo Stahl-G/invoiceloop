@@ -86,12 +86,22 @@ def _checked_file(path: Path, expected: str, *, label: str) -> Path:
     return path
 
 
-def load_plan(plan_path: Path, *, repo_root: Path | None = None) -> dict:
+def load_plan(plan_path: Path, *, repo_root: Path | None = None,
+              verify_frozen_files: bool = True) -> dict:
     """Load and fully validate a committed multi-harness plan.
 
     The returned dictionary contains private ``_loaded_*`` values for the
     runner.  Those values are derived from pinned files; they are never written
     back to the protocol artifact.
+
+    ``verify_frozen_files`` 钉的是**代码修订**,不是协议内容。跑批必须验 ——
+    拿漂移过的代码执行一份冻结计划,产出的数字不属于它声称的那次冻结 ——
+    所以默认 True,运行路径(`run_batch`)不许关。
+
+    读一份**历史**计划是另一回事:SEALED-3 的计划钉在 447acf0,此后任何一次
+    正常开发都会让这些哈希对不上,那不是计划坏了。要核对历史计划的代码钉,
+    应该和它开箱那个 commit 的 blob 比,不是和当前工作树比
+    (见 tests/test_sealed_batch.py)。
     """
     plan_path = Path(plan_path).resolve()
     repo_root = Path(repo_root or Path(__file__).resolve().parent.parent).resolve()
@@ -252,8 +262,9 @@ def load_plan(plan_path: Path, *, repo_root: Path | None = None) -> dict:
             raise BatchPlanError(f"frozen_file 路径缺失或重复:{relative!r}")
         frozen_paths.add(relative)
         path = _repo_path(repo_root, relative, label="frozen_file.path")
-        _checked_file(path, str(item.get("sha256", "")),
-                      label=f"frozen_file:{relative}")
+        if verify_frozen_files:
+            _checked_file(path, str(item.get("sha256", "")),
+                          label=f"frozen_file:{relative}")
 
     return {
         **plan,

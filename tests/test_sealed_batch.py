@@ -293,12 +293,56 @@ def test_score_refuses_partial_batch(tmp_path):
         score_completed_batch(batch, corpus_root=tmp_path, repo_root=tmp_path)
 
 
+#: SEALED-3 开箱的那次修订(docs/SEALED3_RESULTS.md 抬头写的同一个)。
+#: 它是历史事实,不随后续开发变化。
+SEALED3_OPENED_AT = "447acf0699d7815fcd69ba8d9922feaf569f65aa"
+
+
 def test_committed_sealed3_plan_is_self_consistent():
+    """协议内容自洽:名单、臂、policy 钉。
+
+    这里**不**验 frozen_files 的代码哈希。那些钉的是 447acf0 的代码,
+    此后任何一次正常开发都会让它们对不上工作树 —— 那不是计划坏了。
+    代码钉的历史正确性由下一条测试对着开箱 commit 的 blob 验。
+    """
     repo = Path(__file__).resolve().parent.parent
     plan = load_plan(repo / "docs" / "sealed3_multiharness_plan.json",
-                     repo_root=repo)
+                     repo_root=repo, verify_frozen_files=False)
 
     assert len(plan["_doc_ids"]) == 100
     assert len(plan["_loaded_arms"]) == 7
     assert plan["primary_arm_id"] == "P-HAR-0004"
     assert plan["qualification_baseline_arm_id"] == "B0-HAR-0001"
+
+
+def test_sealed3_code_pins_match_the_revision_it_was_opened_at():
+    """SEALED-3 的数字属于 447acf0 —— 对着那个 commit 的 blob 验,永远成立。
+
+    对工作树验只在开箱当天成立;对开箱 commit 验才是那份结果实际声称的东西。
+    """
+    import subprocess
+
+    repo = Path(__file__).resolve().parent.parent
+    plan = json.loads(
+        (repo / "docs" / "sealed3_multiharness_plan.json").read_text(
+            encoding="utf-8"))
+
+    probe = subprocess.run(
+        ["git", "-C", str(repo), "cat-file", "-e", f"{SEALED3_OPENED_AT}^{{commit}}"],
+        capture_output=True)
+    if probe.returncode != 0:
+        pytest.skip("开箱 commit 不在本地历史里(浅克隆),无法核对代码钉")
+
+    drifted = []
+    for item in plan["frozen_files"]:
+        blob = subprocess.run(
+            ["git", "-C", str(repo), "show",
+             f"{SEALED3_OPENED_AT}:{item['path']}"],
+            capture_output=True)
+        assert blob.returncode == 0, f"{item['path']} 不在开箱 commit 里"
+        actual = hashlib.sha256(blob.stdout).hexdigest()
+        if actual != item["sha256"]:
+            drifted.append(f"{item['path']}: 钉 {item['sha256']} ≠ {actual}")
+    assert not drifted, (
+        "冻结计划钉的代码哈希与开箱 commit 对不上 —— "
+        "SEALED-3 的数字就不属于它声称的那次修订:\n" + "\n".join(drifted))

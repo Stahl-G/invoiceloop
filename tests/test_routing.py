@@ -203,6 +203,18 @@ class TestAbsentExpectedCohort:
                     {"id": "AE1", "field": "seller_vat_id"}],
                 "qa": {"seed": "t", "absent_expected_rate": qa_rate}}
 
+    def _class_policy(self, *, doc_class="purchase_order", qa_rate=0.0,
+                      harness_id="HAR-T"):
+        return {"harness_id": harness_id,
+                "release_tier1_explicit": False,
+                "absent_expected_cohorts": [{
+                    "id": "AE-purchase_order-due_date",
+                    "doc_class": doc_class,
+                    "field": "due_date",
+                }],
+                "qa": {"seed": "t", "sampler_version": 2,
+                       "absent_expected_rate": qa_rate}}
+
     def test_auto_absent_route(self):
         from invoiceloop.routing import route_slots
 
@@ -247,3 +259,64 @@ class TestAbsentExpectedCohort:
         out2 = apply_absent_expected(facts, {"harness_id": "H"})
         assert out2[0]["gate_verdicts"]["extraction_present"] == "fail", \
             "没有 cohort 的策略不动任何事实(零行为变化)"
+
+    def test_class_rule_requires_an_exact_trusted_class(self):
+        from invoiceloop.routing import apply_absent_expected
+
+        base = self._slot(field="due_date", absent=False)
+        base["gate_verdicts"]["extraction_present"] = "fail"
+        policy = self._class_policy()
+
+        matched = apply_absent_expected([
+            {**base, "doctype_status": "pass",
+             "doc_class": "purchase_order"}], policy)[0]
+        assert matched["gate_verdicts"]["extraction_present"] == \
+            "expected_absent"
+        assert matched["applicability_rule_id"] == \
+            "AE-purchase_order-due_date"
+
+        for slot in (
+            {**base, "doctype_status": "pass", "doc_class": "invoice"},
+            {**base, "doctype_status": "fail",
+             "doc_class": "purchase_order"},
+            {**base, "doctype_status": "not_measured",
+             "doc_class": None},
+        ):
+            unchanged = apply_absent_expected([slot], policy)[0]
+            assert unchanged["gate_verdicts"]["extraction_present"] == "fail"
+            assert unchanged.get("applicability_rule_id") is None
+
+    def test_class_rule_route_names_the_exact_rule(self):
+        from invoiceloop.routing import apply_absent_expected, route_slots
+
+        slot = self._slot(field="due_date", absent=False,
+                          doctype_status="pass",
+                          doc_class="purchase_order")
+        slot["gate_verdicts"]["extraction_present"] = "fail"
+        policy = self._class_policy()
+        (r,) = route_slots(apply_absent_expected([slot], policy), policy,
+                           tier_of=_tier)
+        assert r["route"] == "auto_absent"
+        assert r["applicability_rule_id"] == \
+            "AE-purchase_order-due_date"
+        assert r["reason_codes"] == [
+            "EXPECTED_ABSENT:AE-purchase_order-due_date"]
+
+    def test_sampler_v2_ignores_harness_id_for_the_same_rule(self):
+        from invoiceloop.routing import apply_absent_expected, route_slots
+
+        slots = []
+        for i in range(100):
+            slot = self._slot(field="due_date", absent=False,
+                              doc_id=f"doc-{i}", doctype_status="pass",
+                              doc_class="purchase_order")
+            slot["gate_verdicts"]["extraction_present"] = "fail"
+            slots.append(slot)
+        p1 = self._class_policy(qa_rate=0.2, harness_id="HAR-A")
+        p2 = self._class_policy(qa_rate=0.2, harness_id="HAR-B")
+        routes1 = route_slots(apply_absent_expected(slots, p1), p1,
+                              tier_of=_tier)
+        routes2 = route_slots(apply_absent_expected(slots, p2), p2,
+                              tier_of=_tier)
+        assert [r["route"] for r in routes1] == [r["route"] for r in routes2]
+        assert 0 < sum(r["route"] == "review" for r in routes1) < 100

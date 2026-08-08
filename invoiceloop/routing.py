@@ -52,7 +52,8 @@ def _matches_cohort(slot: dict, cohort: dict, tier_of) -> bool:
     return True
 
 
-def _qa_hit(policy: dict, doc_id: str, field: str, kind: str) -> bool:
+def _qa_hit(policy: dict, doc_id: str, field: str, kind: str,
+            identity: str = "") -> bool:
     """确定性 QA 抽样(评审裁决四):哈希采样,不是随机数 ——
 
     同 seed + harness + doc + field 永远同一结果;不受遍历顺序影响;
@@ -63,10 +64,37 @@ def _qa_hit(policy: dict, doc_id: str, field: str, kind: str) -> bool:
     rate = float(qa.get(f"{kind}_rate", 0.0))
     if rate <= 0.0:
         return False
-    key = (f"{qa.get('seed', '')}|{policy.get('harness_id', '')}"
-           f"|{doc_id}|{field}|qa-hash-v1")
+    if qa.get("sampler_version") == 2:
+        # v2 deliberately excludes harness_id.  A shared rule therefore probes
+        # the same document/field slots in baseline, candidate and repeat arms.
+        key = (f"{qa.get('seed', '')}|{kind}|{identity}|{doc_id}|{field}"
+               "|qa-hash-v2")
+    else:
+        # Frozen legacy replay: preserve the original identity byte for byte.
+        key = (f"{qa.get('seed', '')}|{policy.get('harness_id', '')}"
+               f"|{doc_id}|{field}|qa-hash-v1")
     digest = hashlib.sha256(key.encode()).digest()
     return int.from_bytes(digest[:8], "big") / 2**64 < rate
+
+
+def match_absent_expected(slot: dict, policy: dict) -> dict | None:
+    """Return the one exact absent rule applicable to ``slot``.
+
+    Historical ``{id, field}`` cohorts remain global solely for replay.  New
+    ``{id, doc_class, field}`` rules require a trusted frozen document class;
+    callers obtain that trust status from ``doctype.trusted_class`` rather than
+    from the extractor's free-text type claim.
+    """
+    for rule in policy.get("absent_expected_cohorts") or []:
+        if rule.get("field") != slot.get("field"):
+            continue
+        rule_class = rule.get("doc_class")
+        if rule_class is None:  # legacy replay only
+            return rule
+        if (slot.get("doctype_status") == "pass"
+                and slot.get("doc_class") == rule_class):
+            return rule
+    return None
 
 
 def apply_absent_expected(facts: list[dict], policy: dict) -> list[dict]:
@@ -74,16 +102,22 @@ def apply_absent_expected(facts: list[dict], policy: dict) -> list[dict]:
     fail → expected_absent)。run 时这是 run_gates 在 gate_report 里直接
     写的;反事实评测(evaluate)拿旧 gate_report 重放时需要同一变换 ——
     两处同一函数,不许各写一份。"""
-    fields = {c.get("field")
-              for c in (policy.get("absent_expected_cohorts") or [])}
-    if not fields:
+    rules = policy.get("absent_expected_cohorts") or []
+    if not rules:
         return facts
     out = []
     for s in facts:
-        if s["field"] in fields \
-                and s["gate_verdicts"].get("extraction_present") == "fail":
-            s = {**s, "gate_verdicts": {
-                **s["gate_verdicts"], "extraction_present": "expected_absent"}}
+        rule = match_absent_expected(s, policy)
+        if rule is not None:
+            if s["gate_verdicts"].get("extraction_present") == "fail":
+                s = {**s, "gate_verdicts": {
+                    **s["gate_verdicts"],
+                    "extraction_present": "expected_absent"}}
+            # Legacy reports did not contain this key.  Preserve exact replay;
+            # class-conditional v2 rules make their authority explicit.
+            if (s["gate_verdicts"].get("extraction_present")
+                    == "expected_absent" and rule.get("doc_class") is not None):
+                s = {**s, "applicability_rule_id": rule.get("id")}
         out.append(s)
     return out
 
@@ -103,6 +137,10 @@ def route_slots(slots: list[dict], policy: dict, *, tier_of) -> list[dict]:
     cohorts = policy.get("auto_accept_cohorts") or []
     out = []
     for s in slots:
+        absent_rule = match_absent_expected(s, policy)
+        rule_id = (absent_rule.get("id")
+                   if absent_rule and absent_rule.get("doc_class") is not None
+                   else s.get("applicability_rule_id"))
         fails, warns = _verdict_flags(s["gate_verdicts"])
         disputed = s["applicability"] == "label_convention_disputed"
         hard = bool(fails) or s["strength"] == "unsupported" or disputed \
@@ -111,24 +149,32 @@ def route_slots(slots: list[dict], policy: dict, *, tier_of) -> list[dict]:
         if s["doc_blocked"]:
             route, codes = "block", ["INFRA_BLOCKED"]
         elif (s["gate_verdicts"].get("extraction_present") == "expected_absent"
+                and absent_rule is not None
                 and not fails and not s["slot_blocking"]):
             # 预期缺失(absent_expected cohort,政策词表第二类):
             # 缺值的事实已在门禁层照记(verdict=expected_absent,非 pass),
             # 这里给的是后果 —— 政策确认缺失,不进人工队列;
             # QA 抽样(默认 20%)盯着「缺席是否真的成立」
-            if _qa_hit(policy, s["doc_id"], s["field"], "absent_expected"):
+            identity = str(rule_id or s["field"])
+            if _qa_hit(policy, s["doc_id"], s["field"], "absent_expected",
+                       identity):
                 route = "review"
-                codes = [f"EXPECTED_ABSENT:{s['field']}",
-                         f"QA_SAMPLE:expected_absent"]
+                if rule_id:
+                    codes = [f"EXPECTED_ABSENT:{rule_id}",
+                             f"QA_SAMPLE:{rule_id}"]
+                else:
+                    codes = [f"EXPECTED_ABSENT:{s['field']}",
+                             f"QA_SAMPLE:expected_absent"]
             else:
                 route = "auto_absent"
-                codes = [f"EXPECTED_ABSENT:{s['field']}"]
+                codes = [f"EXPECTED_ABSENT:{rule_id or s['field']}"]
         elif not hard:
             cohort = next((c for c in cohorts
                            if _matches_cohort(s, c, tier_of)), None)
             if cohort is not None:
                 cid = cohort.get("id", "?")
-                if _qa_hit(policy, s["doc_id"], s["field"], "cohort_relax"):
+                if _qa_hit(policy, s["doc_id"], s["field"], "cohort_relax",
+                           str(cid)):
                     route = "review"
                     codes = [f"POLICY_ACCEPT:{cid}", f"QA_SAMPLE:{cid}"]
                 else:
@@ -140,6 +186,7 @@ def route_slots(slots: list[dict], policy: dict, *, tier_of) -> list[dict]:
             elif (not policy.get("release_tier1_explicit", True)
                     and tier_of(s["field"]) == "TIER1"
                     and _qa_hit(policy, s["doc_id"], s["field"],
+                                "policy_accepted_tier1",
                                 "policy_accepted_tier1")):
                 # 策略放行的 TIER1 槽按 5% 抽检进人工队列
                 route = "review"
@@ -155,8 +202,11 @@ def route_slots(slots: list[dict], policy: dict, *, tier_of) -> list[dict]:
             codes = [f"GATE_FAIL:{g}" for g in fails]
         else:  # disputed
             route, codes = "review", ["LABEL_CONVENTION_DISPUTED"]
-        out.append({"doc_id": s["doc_id"], "field": s["field"],
-                    "route": route, "reason_codes": codes})
+        routed = {"doc_id": s["doc_id"], "field": s["field"],
+                  "route": route, "reason_codes": codes}
+        if rule_id is not None:
+            routed["applicability_rule_id"] = rule_id
+        out.append(routed)
     return out
 
 

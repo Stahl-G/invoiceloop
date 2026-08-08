@@ -33,10 +33,12 @@ def ws(tmp_path, monkeypatch):
         "page_idx": 0, "dimensions": [612, 792],
         "blocks": [{"lines": [{"words": [
             {"value": v, "confidence": 0.99, "geometry": [[x, 0.1], [x + 0.08, 0.13]]}
-            for v, x in (("INV-42", 0.10), ("Total", 0.20), ("100.00", 0.30))]}]}],
+            for v, x in (("INV-42", 0.10), ("Total", 0.20),
+                         ("100.00", 0.30), ("INVOICE", 0.40))]}]}],
     }]}))
     (d / "raw").mkdir()
-    data = {"invoice_number": "INV-42", "total_gross": "100.00"}
+    data = {"invoice_number": "INV-42", "total_gross": "100.00",
+            "invoice_type": "Invoice"}
     for mode in ("understand", "agentic"):
         (d / "raw" / f"{DOC}.{mode}.json").write_text(json.dumps(
             {"doc_id": DOC, "document": f"{DOC}.pdf", "mode": mode,
@@ -74,6 +76,8 @@ class TestFeedbackAndMine:
         assert e["harness_id"] == "HAR-0001"
         assert e["reason_code"] == "ROUTING_FALSE_POSITIVE"
         assert e["tier"] == "TIER1" and e["route"] is not None
+        assert e["doctype_status"] == "pass"
+        assert e["doc_class"] == "invoice"
 
     def test_reason_code_must_be_from_minimal_set(self, ws):
         with pytest.raises(ValueError, match="最小心码集"):
@@ -257,12 +261,14 @@ class TestPromoteSafetyGate:
             ws, DOC, {"invoice_number": "INV-42", "seller_vat_id": "DE123"})
         pin_corpus(monkeypatch, ws)
         improve.propose(
-            ws, cohort={"id": "AE1", "field": "seller_vat_id"},
+            ws, cohort={"doc_class": "invoice", "field": "seller_vat_id"},
             finding="FIND-AE", prediction="p", kind="absent_expected")
         result = improve.evaluate(ws, "HAR-0002")
         assert result["safety_status"] == "scored"
-        assert result["silent_absent_candidate"] > result["silent_absent_baseline"]
-        with pytest.raises(ValueError, match="Gate 2.*silent_absent"):
+        assert result["absent_rule_matches_candidate"] == 1
+        assert result["absent_rule_truth_conflicts_candidate"] == 1, \
+            "即使危险槽恰好被 QA 探针抽中,QA 前真值冲突也必须抓住"
+        with pytest.raises(ValueError, match="Gate 2.*QA 前"):
             improve.promote(ws, "HAR-0002", approved_by="y", rationale="r",
                             approved_at=DECIDED)
 
@@ -274,12 +280,14 @@ class TestPromoteSafetyGate:
         write_annotation_stub(ws, DOC, {"invoice_number": "INV-42"})
         pin_corpus(monkeypatch, ws)
         improve.propose(
-            ws, cohort={"id": "AE1", "field": "seller_vat_id"},
+            ws, cohort={"doc_class": "invoice", "field": "seller_vat_id"},
             finding="FIND-AE", prediction="p", kind="absent_expected")
         result = improve.evaluate(ws, "HAR-0002")
         assert result["safety_status"] == "scored"
         assert result["silent_absent_candidate"] <= result["silent_absent_baseline"]
         assert result["silent_wrong_candidate"] <= result["silent_wrong_baseline"]
+        assert result["absent_rule_truth_status"] == "scored"
+        assert result["absent_rule_truth_conflicts_candidate"] == 0
         assert result["review_load_candidate"] <= result["review_load_baseline"]
         record = improve.promote(ws, "HAR-0002", approved_by="y",
                                  rationale="真值本就空,预期缺失安全",
@@ -296,7 +304,7 @@ class TestPromoteSafetyGate:
         pin_corpus(monkeypatch, ws)
         (ws / "improve").mkdir(exist_ok=True)
         improve.propose(
-            ws, cohort={"id": "AE1", "field": "seller_vat_id"},
+            ws, cohort={"doc_class": "invoice", "field": "seller_vat_id"},
             finding="FIND-AE", prediction="p", kind="absent_expected")
         improve.evaluate(ws, "HAR-0002")
 
@@ -635,11 +643,23 @@ class TestAbsentExpectedLoop:
 
     def test_full_loop(self, ws):
         from invoiceloop import deliver
+        from invoiceloop.safety_metrics import write_annotation_stub
+
+        # 新类别缺席规则没有真值评分不得晋升;这份记录里 VAT 字段确实未标。
+        write_annotation_stub(ws, DOC, {"invoice_number": "INV-42"})
 
         cand = improve.propose(
-            ws, cohort={"id": "AE1", "field": "seller_vat_id"},
+            ws, cohort={"doc_class": "invoice", "field": "seller_vat_id"},
             finding="FIND-AE:seller_vat_id 的确认缺失占满队列(美国发票无 VAT)",
             prediction="seller_vat_id 缺值槽出队", kind="absent_expected")
+        policy = json.loads((cand / "routing_policy.json").read_text())
+        rule = policy["absent_expected_cohorts"][-1]
+        assert rule == {"id": "AE-invoice-seller_vat_id",
+                        "doc_class": "invoice",
+                        "field": "seller_vat_id"}, \
+            "规则 ID 只能由 Python 从受控类别和字段派生"
+        assert policy["qa"]["sampler_version"] == 2
+        assert policy["qa"]["absent_expected_rate"] >= 0.20
         result = improve.evaluate(ws, "HAR-0002")
         assert result["review_load_candidate"] \
             <= result["review_load_baseline"], "预期缺失只许减负载"
@@ -662,7 +682,7 @@ class TestAbsentExpectedLoop:
                      if r["field"] == "seller_vat_id")
         assert route["route"] in ("auto_absent", "review"), route
         if route["route"] == "review":
-            assert "QA_SAMPLE:expected_absent" in route["reason_codes"], \
+            assert "QA_SAMPLE:AE-invoice-seller_vat_id" in route["reason_codes"], \
                 "预期缺失进人工只许是 QA 抽检"
         d = deliver.build_deliverable(ws / "runs" / "run-0002")
         slot = d["docs"][DOC]["fields"]["seller_vat_id"]
@@ -673,6 +693,18 @@ class TestAbsentExpectedLoop:
 
     def test_lint_guards_absent_whitelist(self, ws):
         with pytest.raises(ValueError, match="doc_id"):
-            improve.propose(ws, cohort={"id": "AE1", "field": "seller_vat_id",
+            improve.propose(ws, cohort={"doc_class": "invoice",
+                                        "field": "seller_vat_id",
                                         "doc_id": "046e0c49"},
                             finding="F", prediction="p", kind="absent_expected")
+
+    def test_new_absent_rule_requires_a_controlled_class(self, ws):
+        with pytest.raises(ValueError, match="doc_class"):
+            improve.propose(ws, cohort={"field": "seller_vat_id"},
+                            finding="F", prediction="p",
+                            kind="absent_expected")
+        with pytest.raises(ValueError, match="受控类别"):
+            improve.propose(ws, cohort={"doc_class": "*",
+                                        "field": "seller_vat_id"},
+                            finding="F", prediction="p",
+                            kind="absent_expected")

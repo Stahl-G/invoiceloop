@@ -19,8 +19,9 @@ from .routing import policy_digest
 
 #: cohort 允许的特征键(linter 白名单;其余一律拒)
 _COHORT_KEYS = ("id", "field", "tier", "strength")
-#: 预期缺失 cohort 的词表更窄:只有 field 有意义(缺失没有 strength)
-_ABSENT_KEYS = ("id", "field")
+#: 新预期缺失规则必须精确到受控类别×字段。旧 ``{id, field}`` 条目只在
+#: parent 中原样继承时获准重放;任何新候选都不能再写全局缺席。
+_ABSENT_KEYS = ("id", "doc_class", "field")
 _STRENGTHS = ("unsupported", "single_source", "corroborated")
 
 _SELECTION_BIAS_WARNING = (
@@ -105,10 +106,14 @@ def mine(workspace: Path) -> dict:
     # seller_vat_id 的 confirm_absent 占了整整一类人工 —— 这类重复
     # 「页面上没有」的确认应该由 absent_expected cohort 接走):
     # 某字段的合格事件里 confirm_absent/not_applicable ≥3 且占 ≥80%
-    by_field: dict[str, dict] = {}
+    by_class_field: dict[tuple[str, str], dict] = {}
     for e in qualified:
-        f = by_field.setdefault(e["field"], {"field": e["field"], "total": 0,
-                                             "absentish": 0, "notes": []})
+        if e.get("doctype_status") != "pass" or not e.get("doc_class"):
+            continue
+        key = (e["doc_class"], e["field"])
+        f = by_class_field.setdefault(key, {
+            "doc_class": e["doc_class"], "field": e["field"],
+            "total": 0, "absentish": 0, "notes": []})
         f["total"] += 1
         if e["human_action"] in ("confirm_absent", "not_applicable"):
             f["absentish"] += 1
@@ -120,8 +125,9 @@ def mine(workspace: Path) -> dict:
     absence_candidates = [
         {**f, "share": f["absentish"] / f["total"],
          "suggested": {"kind": "absent_expected",
-                       "cohort": {"field": f["field"]}}}
-        for f in by_field.values()
+                       "cohort": {"doc_class": f["doc_class"],
+                                  "field": f["field"]}}}
+        for f in by_class_field.values()
         if f["absentish"] >= 3 and f["absentish"] / f["total"] >= 0.8
     ]
     # 撤销信号(2026-08-06):被策略自动放行、又被人推翻的槽。
@@ -226,15 +232,16 @@ def lint_policy(parent: dict, candidate: dict) -> list[str]:
                    "harness_id", "version"):
             continue  # cohorts 单独查;harness_id/version 是身份字段,必然变
         if key == "qa":
-            # 唯一允许的 qa 变化:新增 absent_expected_rate(预期缺失的
-            # 抽检探针率)—— 其余键一律不许动
+            # 类别缺席规则同时切到 sampler v2:跨 harness 的同一规则必须
+            # 命中同一批探针。其余 QA 配置不许借机改动。
             pq, cq = parent.get("qa") or {}, candidate.get("qa") or {}
             changed = {k for k in set(pq) | set(cq)
                        if pq.get(k) != cq.get(k)}
-            if changed - {"absent_expected_rate"}:
+            allowed = {"absent_expected_rate", "sampler_version"}
+            if changed - allowed:
                 violations.append(
-                    f"候选改了 qa 的 {sorted(changed - {'absent_expected_rate'})}"
-                    " —— 只许新增 absent_expected_rate")
+                    f"候选改了 qa 的 {sorted(changed - allowed)}"
+                    " —— 类别缺席候选只许设置探针率与 sampler_version")
             continue
         if parent.get(key) != candidate.get(key):
             violations.append(f"候选改了 {key} —— 第一版只允许加 cohorts")
@@ -255,23 +262,58 @@ def lint_policy(parent: dict, candidate: dict) -> list[str]:
             violations.append(f"cohort tier {cohort['tier']!r} 非法")
         if cohort.get("strength") and cohort["strength"] not in _STRENGTHS:
             violations.append(f"cohort strength {cohort['strength']!r} 非法")
-    absent_parent_ids = {c.get("id")
-                         for c in parent.get("absent_expected_cohorts", [])}
+    violations.extend(_absent_structure_violations(parent, candidate))
+    return violations
+
+
+def _absent_structure_violations(parent: dict, candidate: dict) -> list[str]:
+    """预期缺失规则的结构约束 —— 机器可判,所以人类署名候选也受它约束。
+
+    `register_policy` 让人有权决定「这条规则该不该生效」,但无权把类别
+    缺席写成无条件规则、无权自己编规则 ID、无权关掉 QA 探针。
+    `lint_policy` 调用同一个函数,判据只有一份。
+
+    2026-08-09:上一版把这层实现成「筛 lint_policy 输出里含『预期缺失』/
+    『sampler_version』的句子」,于是人改 qa 的 policy_accepted_tier1_rate
+    也被判成缺席违规(test_carry::test_qa_probes_stay_fresh)。按字符串
+    反推判据不是判据。
+    """
+    from .doctype import CLASSES
+
+    violations: list[str] = []
+    absent_parent = {c.get("id"): c
+                     for c in parent.get("absent_expected_cohorts", [])}
+    new_absent = []
     for cohort in candidate.get("absent_expected_cohorts", []):
+        if cohort.get("id") in absent_parent \
+                and cohort == absent_parent[cohort.get("id")]:
+            continue  # 冻结历史条目原样重放,包括旧 {id, field}
         if set(cohort) - set(_ABSENT_KEYS):
             violations.append(
                 f"预期缺失 cohort 带了 {_names(set(cohort) - set(_ABSENT_KEYS))}"
-                f" —— 它是字段级规则:「这个字段在这类发票上本来就没有」"
-                f"是字段的属性,与证据强度、TIER 无关,所以只认 "
+                f" —— 它是类别×字段规则,与证据强度、TIER 无关,所以只认 "
                 f"{_names(_ABSENT_KEYS)}。去掉那几个再采纳。")
             continue
-        if cohort.get("id") in absent_parent_ids:
-            continue
+        new_absent.append(cohort)
         if not cohort.get("id"):
             violations.append("预期缺失 cohort 缺 id")
+        expected_id = f"AE-{cohort.get('doc_class')}-{cohort.get('field')}"
+        if cohort.get("id") != expected_id:
+            violations.append(
+                f"预期缺失 cohort id 必须由 Python 生成 {expected_id!r}")
+        if cohort.get("doc_class") not in CLASSES:
+            violations.append(
+                f"预期缺失 cohort doc_class {cohort.get('doc_class')!r}"
+                " 不是受控类别")
         if cohort.get("field") not in FIELDS:
             violations.append(
                 f"预期缺失 cohort field {cohort.get('field')!r} 不是受评字段")
+    if new_absent:
+        qa = candidate.get("qa") or {}
+        if float(qa.get("absent_expected_rate", 0.0)) < 0.20:
+            violations.append("类别缺席规则必须保留至少 20% 人工探针")
+        if qa.get("sampler_version") != 2:
+            violations.append("类别缺席规则必须使用 sampler_version=2")
     return violations
 
 
@@ -354,12 +396,31 @@ def propose(workspace: Path, *, cohort: dict, finding: str,
     active = load_active(workspace)
     parent = active["policy"]
     if kind == "absent_expected":
+        from .doctype import CLASSES
+
+        extra = set(cohort) - {"doc_class", "field"}
+        if extra:
+            raise ValueError(refusal_text([
+                f"预期缺失 cohort 带了 {_names(extra)} —— 模型不写规则 ID,"
+                "只许选择 doc_class 与 field"]))
+        doc_class = cohort.get("doc_class")
+        field_name = cohort.get("field")
+        if doc_class not in CLASSES:
+            raise ValueError(refusal_text([
+                f"预期缺失 cohort doc_class {doc_class!r} 不是受控类别"]))
+        if field_name not in FIELDS:
+            raise ValueError(refusal_text([
+                f"预期缺失 cohort field {field_name!r} 不是受评字段"]))
+        cohort = {"id": f"AE-{doc_class}-{field_name}",
+                  "doc_class": doc_class, "field": field_name}
         candidate = {**parent,
                      "absent_expected_cohorts":
                      parent.get("absent_expected_cohorts", []) + [cohort]}
         # 预期缺失必须带 QA 探针(缺席是否成立要持续观测)
         qa = dict(candidate.get("qa") or {})
-        qa.setdefault("absent_expected_rate", 0.20)
+        qa["absent_expected_rate"] = max(
+            float(qa.get("absent_expected_rate", 0.0)), 0.20)
+        qa["sampler_version"] = 2
         candidate["qa"] = qa
     elif kind == "auto_accept":
         candidate = {**parent,
@@ -385,6 +446,10 @@ def register_policy(workspace: Path, *, overrides: dict, finding: str,
     workspace = Path(workspace)
     active = load_active(workspace)
     candidate = {**active["policy"], **overrides}
+    # 人有权决定规则是否该生效,但无权绕过可机器检查的结构/探针约束。
+    absent_related = _absent_structure_violations(active["policy"], candidate)
+    if absent_related:
+        raise ValueError(refusal_text(absent_related))
     return _scaffold_candidate(workspace, candidate, finding=finding,
                                prediction=prediction,
                                provenance="human_authored")
@@ -439,13 +504,19 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
     promote Gate 2 使用;无标注则 safety_status=unscored。
     """
     from .harness import load_active
-    from .routing import apply_absent_expected, route_slots
+    from .routing import (
+        apply_absent_expected,
+        match_absent_expected,
+        route_slots,
+    )
     from .safety_metrics import (
         SAFETY_NOTE_SCORED,
         SAFETY_NOTE_UNSCORED,
+        annotation_record_available,
         annotations_available,
         empty_counts,
         score_routes,
+        truth,
     )
 
     workspace = Path(workspace)
@@ -467,6 +538,12 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
     base_route_rows: list[dict] = []
     cand_route_rows: list[dict] = []
     understand_by_doc: dict[str, dict | None] = {}
+    absent_intrinsic = {
+        "baseline": {"matches": 0, "truth_conflicts": 0,
+                     "missing_truth_docs": set()},
+        "candidate": {"matches": 0, "truth_conflicts": 0,
+                      "missing_truth_docs": set()},
+    }
     for run_dir in runs:
         if not (run_dir / "event_log.jsonl").exists():
             continue
@@ -479,11 +556,6 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
         gate = json.loads(
             (run_dir / "gate_report.json").read_text(encoding="utf-8"))
         raw_root = Path(run_manifest.get("derisk_root") or workspace) / "raw"
-        # 预期缺失变换要作用在两层(同一策略语义,run 时由 run_gates 一次完成):
-        # verdict fail → expected_absent(apply_absent_expected)+ 对应的
-        # blocking finding 撤销(候选策略下它是 info 级非阻断)
-        absent_fields = {c.get("field") for c in
-                         (cand_policy.get("absent_expected_cohorts") or [])}
         facts = []
         for doc in run_manifest.get("docs", []):
             all_docs.append(doc)
@@ -498,20 +570,55 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
             understand_by_doc[doc] = udata
             from .matrix import derive_document_records, facts_of
 
+            from .doctype import trusted_class
+
+            document_check = (gate.get("document_checks") or {}).get(doc)
+            trusted = trusted_class(document_check)
+            raw_status = (document_check or {}).get("status") \
+                if isinstance(document_check, dict) else None
+            type_facts = {
+                "doctype_status": ("pass" if trusted is not None
+                                   else "malformed" if raw_status == "pass"
+                                   else str(raw_status or "not_measured")),
+                "doc_class": trusted,
+            }
+            matched_fields = {
+                field_name for field_name in FIELDS
+                if match_absent_expected(
+                    {**type_facts, "field": field_name}, cand_policy)
+                is not None
+            }
+
             blocking = [
                 f for f in gate.get("findings", [])
                 if f.get("blocking") and f.get("doc_id") == doc
-                and not (absent_fields
-                         and f.get("gate_id") == "extraction_present"
-                         and f.get("field") in absent_fields)]
-            facts.extend(facts_of(r) for r in derive_document_records(
+                and not (f.get("gate_id") == "extraction_present"
+                         and f.get("field") in matched_fields)]
+            doc_facts = [facts_of(r) for r in derive_document_records(
                 doc,
                 doc_claims=[c for c in ledger.get("claims", [])
                             if c["doc_id"] == doc],
                 doc_rejections=[],
                 gate_evaluations=gate.get("evaluations", {}).get(doc, {}),
                 doc_blocking_findings=blocking,
-                understand_data=udata))
+                understand_data=udata,
+                document_check=document_check)]
+            facts.extend(doc_facts)
+            for label, policy in (("baseline", active["policy"]),
+                                  ("candidate", cand_policy)):
+                for fact in doc_facts:
+                    rule = match_absent_expected(fact, policy)
+                    if rule is None or rule.get("doc_class") is None:
+                        continue
+                    value = (udata or {}).get(fact["field"])
+                    if value is not None and str(value).strip() != "":
+                        continue
+                    bucket = absent_intrinsic[label]
+                    bucket["matches"] += 1
+                    if not annotation_record_available(doc):
+                        bucket["missing_truth_docs"].add(doc)
+                    elif truth(doc).get(fact["field"]) is not None:
+                        bucket["truth_conflicts"] += 1
         routing_path = run_dir / "routing_report.json"
         if routing_path.exists():
             stored = json.loads(routing_path.read_text(encoding="utf-8"))
@@ -575,6 +682,18 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
         cand_counts = empty_counts()
         safety_note = SAFETY_NOTE_UNSCORED
 
+    class_rule_count = sum(
+        1 for rule in cand_policy.get("absent_expected_cohorts") or []
+        if rule.get("doc_class") is not None)
+    candidate_intrinsic = absent_intrinsic["candidate"]
+    if class_rule_count == 0:
+        absent_truth_status = "not_applicable"
+    elif (candidate_intrinsic["matches"] > 0
+          and not candidate_intrinsic["missing_truth_docs"]):
+        absent_truth_status = "scored"
+    else:
+        absent_truth_status = "unscored"
+
     return {
         "candidate": candidate_id,
         "baseline_harness": active["harness_id"],
@@ -588,6 +707,21 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
         "review_load_candidate": total_cand / max(total_slots, 1),
         "delta_pp": (total_cand - total_base) / max(total_slots, 1) * 100,
         "safety_status": "scored" if scored else "unscored",
+        # Gate 2 的 QA 前口径:即使危险槽恰好被 20% 探针抽中、最终没有
+        # silent_absent,真值冲突仍在这里被机械抓住。
+        "class_absent_rule_count": class_rule_count,
+        "absent_rule_truth_status": absent_truth_status,
+        "absent_rule_matches_baseline":
+            absent_intrinsic["baseline"]["matches"],
+        "absent_rule_matches_candidate": candidate_intrinsic["matches"],
+        "absent_rule_truth_conflicts_baseline": (
+            absent_intrinsic["baseline"]["truth_conflicts"]
+            if not absent_intrinsic["baseline"]["missing_truth_docs"] else None),
+        "absent_rule_truth_conflicts_candidate": (
+            candidate_intrinsic["truth_conflicts"]
+            if absent_truth_status == "scored" else None),
+        "absent_rule_unscored_docs": sorted(
+            candidate_intrinsic["missing_truth_docs"]),
         "silent_absent_baseline":
             base_counts["silent_absent"] if scored else None,
         "silent_absent_candidate":
@@ -670,7 +804,11 @@ def _evaluate_reextract(workspace: Path, candidate_id: str, *,
     from .dws_client import extract_to_raw
     from .harness import load_active, schema_digest
     from .ocr import pdf_path
-    from .routing import apply_absent_expected, route_slots
+    from .routing import (
+        apply_absent_expected,
+        match_absent_expected,
+        route_slots,
+    )
     from .safety_metrics import (
         SAFETY_NOTE_SCORED, SAFETY_NOTE_UNSCORED,
         annotations_available, empty_counts, score_routes,
@@ -754,22 +892,42 @@ def _evaluate_reextract(workspace: Path, candidate_id: str, *,
         break
 
     for doc in sample_ids:
-        for label, udata, sink in (
-            ("base", old_understand.get(doc), base_rows),
-            ("cand", understand_by_doc.get(doc), cand_rows),
+        for label, udata, sink, policy in (
+            ("base", old_understand.get(doc), base_rows, active["policy"]),
+            ("cand", understand_by_doc.get(doc), cand_rows, cand_policy),
         ):
+            document_check = (gate.get("document_checks") or {}).get(doc)
+            from .doctype import trusted_class
+
+            trusted = trusted_class(document_check)
+            raw_status = (document_check or {}).get("status") \
+                if isinstance(document_check, dict) else None
+            type_facts = {
+                "doctype_status": ("pass" if trusted is not None
+                                   else "malformed" if raw_status == "pass"
+                                   else str(raw_status or "not_measured")),
+                "doc_class": trusted,
+            }
+            matched_fields = {
+                field_name for field_name in FIELDS
+                if match_absent_expected(
+                    {**type_facts, "field": field_name}, policy) is not None
+            }
             blocking = [f for f in gate.get("findings", [])
-                        if f.get("blocking") and f.get("doc_id") == doc]
+                        if f.get("blocking") and f.get("doc_id") == doc
+                        and not (f.get("gate_id") == "extraction_present"
+                                 and f.get("field") in matched_fields)]
             facts = [facts_of(r) for r in derive_document_records(
                 doc,
                 doc_claims=[c for c in ledger_claims if c["doc_id"] == doc],
                 doc_rejections=[],
                 gate_evaluations=gate.get("evaluations", {}).get(doc, {}),
                 doc_blocking_findings=blocking,
-                understand_data=udata)]
+                understand_data=udata,
+                document_check=(gate.get("document_checks") or {}).get(doc))]
             routes = route_slots(
-                apply_absent_expected(facts, cand_policy),
-                cand_policy, tier_of=_tier_of)
+                apply_absent_expected(facts, policy),
+                policy, tier_of=_tier_of)
             sink.extend({"doc_id": r["doc_id"], "field": r["field"],
                          "route": r["route"]} for r in routes)
 
@@ -962,6 +1120,17 @@ def gate_verdict(evaluation: dict, *, sealed2_qualified: bool = False) -> dict:
     reextract = basis_in == "reextract_sample"
 
     refusals: list[str] = []
+    if evaluation.get("class_absent_rule_count", 0):
+        intrinsic_status = evaluation.get("absent_rule_truth_status")
+        if intrinsic_status != "scored":
+            refusals.append(
+                "Gate 2 拒绝:类别缺席规则未取得 QA 前真值评分"
+                "(零匹配或标注记录不完整),不能给安全结论")
+        elif evaluation.get("absent_rule_truth_conflicts_candidate", 0) > 0:
+            refusals.append(
+                "Gate 2 拒绝:类别缺席规则在 QA 前命中 "
+                f"{evaluation['absent_rule_truth_conflicts_candidate']} 个"
+                "真值实际存在槽;探针抽中不能掩盖冲突")
     if scored:
         sa_b = evaluation["silent_absent_baseline"]
         sa_c = evaluation["silent_absent_candidate"]
@@ -1110,6 +1279,9 @@ def promote(workspace: Path, candidate_id: str, *, approved_by: str,
     safety_status = verdict["safety_status"]
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    absent_related = _absent_structure_violations(active["policy"], cand_policy)
+    if absent_related:
+        raise ValueError(refusal_text(absent_related))
     if manifest.get("provenance") != "human_authored":
         # 机器提议的候选:cohort 白名单 lint 是硬边界;人类署名候选的
         # 约束是署名 + 上面的评测重算门(一个不少)

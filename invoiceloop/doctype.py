@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from typing import Iterable
 
@@ -154,6 +155,47 @@ NO_CLAIM = "no_claim"
 UNMAPPED = "unmapped"
 
 _WORD = re.compile(r"[a-z0-9]+")
+
+
+def trusted_class(check: object) -> str | None:
+    """Return a controlled class only for a complete frozen literal hit.
+
+    Consumers must not turn a bare model-authored ``doc_class`` into policy
+    input.  This validator is the common trust boundary for routing,
+    counterfactual evaluation, bundle verification and presentation: malformed
+    old artifacts fail closed instead of being repaired on read.
+    """
+    if not isinstance(check, dict) or check.get("status") != "pass":
+        return None
+    doc_class = check.get("doc_class")
+    if doc_class not in CLASSES:
+        return None
+    evidence = check.get("evidence")
+    if not isinstance(evidence, dict):
+        return None
+    phrase = evidence.get("phrase")
+    page = evidence.get("page")
+    bbox = evidence.get("bbox")
+    if not isinstance(phrase, str) or not phrase.strip():
+        return None
+    if isinstance(page, bool) or not isinstance(page, int) or page < 0:
+        return None
+    try:
+        if not isinstance(bbox, (list, tuple)) or len(bbox) != 2:
+            return None
+        if any(not isinstance(point, (list, tuple)) or len(point) != 2
+               for point in bbox):
+            return None
+        (x0, y0), (x1, y1) = bbox
+        coords = tuple(float(v) for v in (x0, y0, x1, y1))
+    except (TypeError, ValueError):
+        return None
+    if not all(math.isfinite(v) for v in coords):
+        return None
+    x0, y0, x1, y1 = coords
+    if not (0.0 <= x0 <= x1 <= 1.0 and 0.0 <= y0 <= y1 <= 1.0):
+        return None
+    return doc_class
 
 
 def _tokens(text: str) -> list[str]:

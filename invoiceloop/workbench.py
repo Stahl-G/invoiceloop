@@ -290,10 +290,21 @@ _T = {
         "doctype_malformed": "The frozen type check says pass, but its literal "
                              "evidence is incomplete. Do not use the type.",
         "legend_doctype": "literal document-type evidence",
-        "task_with_value": "Task: verify the {label} on the page — "
-                           "DWS read “{value}”. Is it there? Is it right?",
-        "task_no_value": "Task: DWS gave no {label} — look for it on the page: "
-                         "“Correct” to supply it, “Abstain” if truly absent or illegible.",
+        "task_with_value": "Task: DWS read “{value}” as {label}. Confirm that "
+                           "the value actually belongs to this field, not merely "
+                           "that it appears somewhere on the page.",
+        "task_no_value": "Task: DWS gave no {label}. Check whether the page "
+                         "states it explicitly; do not derive it from another "
+                         "field or from payment terms.",
+        "task_doctype_with_value": "Task: page evidence supports that this is "
+                                   "a {doctype}. Check whether DWS correctly "
+                                   "mapped “{value}” to {label}, not merely "
+                                   "whether the value appears on the page.",
+        "task_doctype_no_value": "Task: page evidence supports that this is a "
+                                 "{doctype}. Check whether the page explicitly "
+                                 "states {label}. Do not assume it is absent "
+                                 "from the document type, or derive it from "
+                                 "payment terms or another field.",
         "lim_value_not_in_cited_span": "value not found in DWS's cited region (possible misplacement)",
         "lim_draft_rejected_at_freeze": "draft rejected at freeze (value doesn't bind to this document)",
         "lim_dws_returned_no_value": "DWS returned no value for this field",
@@ -549,10 +560,17 @@ _T = {
         "doctype_malformed": "冻结结果写着类型检查通过,但字面证据不完整;"
                              "不得使用该类型。",
         "legend_doctype": "单据类型字面证据",
-        "task_with_value": "任务:在页面上核对{label} —— DWS 读到“{value}”。"
-                           "页面上有吗?对不对?",
-        "task_no_value": "任务:DWS 没给出{label} —— 请在页面上找:"
-                         "有就「修正」补录,确实没有或看不清就「弃权」。",
+        "task_with_value": "任务:DWS 把“{value}”读成{label}。"
+                           "请确认该值确实属于{label},不只是出现在页面上。",
+        "task_no_value": "任务:DWS 没给出{label}。请检查页面是否明确写出;"
+                         "不要从相邻字段或付款条款推算。",
+        "task_doctype_with_value": "任务:页面字面证据支持这是{doctype}。"
+                                   "请确认 DWS 是否把“{value}”正确映射为{label},"
+                                   "不只是确认这个值出现在页面上。",
+        "task_doctype_no_value": "任务:页面字面证据支持这是{doctype}。"
+                                 "请检查页面是否明确写出{label};"
+                                 "不要仅凭单据类别假定缺失,"
+                                 "也不要从付款条款或其他字段推算。",
         "lim_value_not_in_cited_span": "值不在 DWS 指的引用区里(可能错位)",
         "lim_draft_rejected_at_freeze": "草稿在冻结时被拒(值绑不进本文档)",
         "lim_dws_returned_no_value": "DWS 没返回这个字段",
@@ -1387,6 +1405,33 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
             for g, v in sorted(row["gate_verdicts"].items())
         )
 
+    @classmethod
+    def _task_text(cls, lang: str, ctx: RunCtx, row: dict) -> str:
+        """Neutral review question, specialised only by frozen type evidence.
+
+        A passing status alone is not enough: `_doctype_overlay` revalidates the
+        controlled class, literal phrase and geometry.  Any malformed or
+        untrusted type falls back to the generic wording.  This helper is shared
+        by the queue and single-slot views so explanatory context cannot drift
+        into two different review contracts.
+        """
+        label = _FIELD_LABEL[lang].get(row["field"], row["field"])
+        value = row.get("value")
+        status, check = cls._doctype_check(ctx, row["doc_id"])
+        evidence = cls._doctype_overlay(ctx, row["doc_id"]) \
+            if status == "pass" else None
+        doc_class = check.get("doc_class")
+        if evidence is not None and doc_class in _DOCTYPE_LABEL[lang]:
+            doctype_label = _DOCTYPE_LABEL[lang][doc_class]
+            if value in (None, ""):
+                return _t(lang, "task_doctype_no_value", label=label,
+                          doctype=doctype_label)
+            return _t(lang, "task_doctype_with_value", label=label,
+                      value=value, doctype=doctype_label)
+        if value in (None, ""):
+            return _t(lang, "task_no_value", label=label)
+        return _t(lang, "task_with_value", label=label, value=value)
+
     def _status_chip(self, lang: str, tip: dict | None, conflict: bool) -> str:
         """裁决状态 chip:冲突 / 已裁决(蓝,human-confirmed)/ 待复核(灰)。"""
         if conflict:
@@ -1418,8 +1463,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                     f"&field={urllib.parse.quote(field)}&lang={lang}")
 
         label = _FIELD_LABEL[lang].get(field, field)
-        task = (_t(lang, "task_no_value", label=label) if value in (None, "")
-                else _t(lang, "task_with_value", label=label, value=value))
+        task = self._task_text(lang, ctx, row)
         return f"""<div class="wb-row" id="{_esc(anchor)}">
 <div class="wb-row-head">
 <span class="wb-doc" title="{_esc(doc)}">{_esc(doc[:8])}</span>
@@ -1857,8 +1901,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
             value_html = f'<span class="wb-value">{_esc(value)}</span>'
         strength = row["support_strength"]
         label = _FIELD_LABEL[lang].get(field, field)
-        task = (_t(lang, "task_no_value", label=label) if value in (None, "")
-                else _t(lang, "task_with_value", label=label, value=value))
+        task = self._task_text(lang, ctx, row)
         tiers = " · ".join(row.get("source_tiers") or []) or "—"
         applicability = row.get("applicability") or "—"
         policy = ""
@@ -2921,12 +2964,23 @@ class _Handler(BaseHTTPRequestHandler):
                   if k.startswith("c_") and v and v[0]}
         if not cohort:
             raise _HttpError(400, "草稿没有 cohort 特征 —— 采纳不了")
-        cohort_id = (form.get("cohort_id", [""])[0] or "").strip()
-        if not cohort_id:
-            raise _HttpError(400, "给候选起个名字")
         kind = form.get("kind", ["auto_accept"])[0]
+        if kind == "absent_expected":
+            # 类别缺席规则的 ID 由 Python 从 doc_class × field 生成(宪章一:
+            # 模型不写 ID),所以这里**不能**把界面上的 cohort_id 递进去 ——
+            # 递了就是 propose 的白名单外键,必被拒。
+            if not cohort.get("doc_class"):
+                raise _HttpError(
+                    400, "缺席规则要说清是哪一类单据 —— 不带类别就是"
+                         "「所有单据都没有这个字段」,那条规则会静默吞掉"
+                         "真有值的槽")
+        else:
+            cohort_id = (form.get("cohort_id", [""])[0] or "").strip()
+            if not cohort_id:
+                raise _HttpError(400, "给候选起个名字")
+            cohort = {"id": cohort_id, **cohort}
         cand_dir = improve.propose(
-            self.bench.ws, cohort={"id": cohort_id, **cohort},
+            self.bench.ws, cohort=cohort,
             finding=(form.get("finding", [""])[0] or "").strip(),
             prediction=(form.get("prediction", [""])[0] or "").strip(),
             kind=kind)

@@ -48,14 +48,20 @@ _COHORT_ACTIONS = ("auto_accept", "absent_expected", "revoke")
 _SCHEMA_ACTIONS = ("schema_description",)
 ACTIONS = _COHORT_ACTIONS + _SCHEMA_ACTIONS
 #: cohort 只许引用通用特征 —— 与 improve._COHORT_KEYS 同源,不许放宽。
-#: **按动作分开**:absent_expected 是字段级规则(「这个字段在这类发票上
-#: 本来就没有」是字段的属性,与证据强度、TIER 无关),improve._ABSENT_KEYS
-#: 只认 field。2026-08-06 之前两类共用一张表,于是模型给 absent_expected
-#: 配上 tier/strength,人在工作台点「采纳」必被 lint 拒 ——
-#: **草稿在构造上就不可能被采纳**。校验层要和下游同一口径,否则它放行的
-#: 东西下游照样拒,人白点一次。
+#: **按动作分开**:absent_expected 是**类别×字段**规则,与证据强度、TIER
+#: 无关,improve._ABSENT_KEYS 只认 doc_class + field。2026-08-06 之前两类
+#: 共用一张表,于是模型给 absent_expected 配上 tier/strength,人在工作台点
+#: 「采纳」必被 lint 拒 —— **草稿在构造上就不可能被采纳**。校验层要和下游
+#: 同一口径,否则它放行的东西下游照样拒,人白点一次。
+#:
+#: 2026-08-09 加 doc_class:SEALED-3 主臂唯一的静默缺席,是一张 credit note
+#: 上真有值的 seller_vat_id 被一条无条件缺席规则吞掉。少了 doc_class 的
+#: absent_expected 就是那条无条件规则,所以它整条丢弃而不是剪掉 —— 剪掉会
+#: 得到一个「通过了校验」的全局规则,正是要禁的东西。
 _ALLOWED_COHORT_KEYS = ("field", "tier", "strength")
-_ALLOWED_ABSENT_KEYS = ("field",)
+_ALLOWED_ABSENT_KEYS = ("doc_class", "field")
+#: 两张表的并集 = 策略词表;不在并集里的键(doc_id、具体金额)整条丢弃。
+_VOCABULARY = tuple(dict.fromkeys(_ALLOWED_COHORT_KEYS + _ALLOWED_ABSENT_KEYS))
 
 
 #: description 上限 —— 提示词是发给 DWS 的,不是让模型写小作文的地方
@@ -75,10 +81,13 @@ _PROMPT = """你在读一份发票复核系统的 cohort 统计、当前抽取�
 
 **A. 路由策略(cohort)** —— action 为:
 - `auto_accept`:该 cohort 可自动放行
-- `absent_expected`:该字段的缺失是预期的(如美国发票没有 VAT 号)
+- `absent_expected`:**这一类单据上**该字段的缺失是预期的
+  (如美国的 invoice 通常没有 VAT 号)
 - `revoke`:应撤销某条已生效的放松
-cohort 只能用 field / tier / strength 描述,禁止出现 doc_id、具体金额、
-具体发票号等单文档特征。
+auto_accept / revoke 用 field / tier / strength 描述;
+**absent_expected 必须同时给 doc_class 和 field**,受控类别只有:
+{classes}
+禁止出现 doc_id、具体金额、具体发票号等单文档特征。
 
 **B. 抽取字段描述(schema)** —— action 为 `schema_description`。
 给出 field 与新的英文 description。用在这种情况:笔记显示抽取器**根本没返回值**
@@ -102,7 +111,7 @@ cohort 只能用 field / tier / strength 描述,禁止出现 doc_id、具体金�
 
 按这个 JSON 结构回答,不要有别的文字:
 {"suggestions": [
-  {"action": "absent_expected", "cohort": {"field": "..."},
+  {"action": "absent_expected", "cohort": {"doc_class": "...", "field": "..."},
    "finding": "你从笔记里读到的事实", "prediction": "采纳后你预期会发生什么",
    "confidence": "high|medium|low", "cites": [0, 3]},
   {"action": "schema_description", "field": "...",
@@ -136,6 +145,17 @@ def _packet(report: dict, schema: dict | None = None) -> tuple[str, list[dict]]:
             f"拒绝{c['rejected']} 确认缺失{c['confirmed_absent']}")
         for n in c.get("notes", []):
             notes.append({**n, "field": c["field"]})
+    if report.get("absence_candidates"):
+        # absent_expected 建议必须带 doc_class,而 cohort 统计一栏没有类别。
+        # 不把这一节喂进去,模型就没有材料写出一条能被采纳的缺席规则。
+        lines.append("\n## 按「单据类别 × 字段」看的确认缺失(absent_expected "
+                     "的改动对象;类别来自页面字面证据,不是抽取器自报)\n")
+        for a in report["absence_candidates"]:
+            lines.append(
+                f"- doc_class={a['doc_class']} field={a['field']}"
+                f"(中文名「{_pw.field(a['field'])}」) "
+                f"合格复核{a['total']} 其中确认缺失{a['absentish']}"
+                f"(占 {a['share']:.0%})")
     if report.get("overturned_auto_accepts"):
         lines.append("\n## 自动放行被人推翻(收紧信号,优先看)\n")
         for o in report["overturned_auto_accepts"]:
@@ -197,7 +217,7 @@ def validate(raw: dict, notes: list[dict]) -> tuple[list[dict], list[str]]:
             #   2. 在词表里、但这个动作用不上的(absent_expected 配了
             #      tier/strength)—— 剪掉即可。形状用错不是内容有问题,
             #      丢整条 = 一条有出处的建议因为多写两个字被扔了。
-            outside = [k for k in cohort if k not in _ALLOWED_COHORT_KEYS]
+            outside = [k for k in cohort if k not in _VOCABULARY]
             if outside:
                 dropped.append(
                     f"{label}:cohort 出现非白名单键 {outside} —— "
@@ -214,8 +234,25 @@ def validate(raw: dict, notes: list[dict]) -> tuple[list[dict], list[str]]:
                     continue
                 dropped.append(
                     f"{label}:已剪掉 {action} 用不上的特征"
-                    f"({'、'.join(extra)}),建议保留;它是字段级规则,只认 "
+                    f"({'、'.join(extra)}),建议保留;它只认 "
                     f"{'、'.join(allowed)}")
+            if action == "absent_expected":
+                # 缺 doc_class 不是形状写错,是**规则本身写宽了**:它会对每
+                # 一类单据生效。剪不出一条正确规则来,只能丢整条。
+                from .doctype import CLASSES
+
+                doc_class = cohort.get("doc_class")
+                if doc_class is None:
+                    dropped.append(
+                        f"{label}:预期缺失建议没说是哪一类单据 —— "
+                        f"不带类别就是「所有单据都没有这个字段」,"
+                        f"那条规则会把真有值的槽静默吞掉,不收")
+                    continue
+                if doc_class not in CLASSES:
+                    dropped.append(
+                        f"{label}:doc_class {doc_class!r} 不是受控类别 —— "
+                        f"只认 {'、'.join(sorted(CLASSES))}")
+                    continue
             entry = {"kind": "cohort", "cohort": cohort}
 
         cites = [c for c in (s.get("cites") or [])
@@ -318,6 +355,17 @@ def _budget() -> int:
         return _MAX_TOKENS
 
 
+def prompt_text() -> str:
+    """提示词成文。受控类别从 doctype 取,不在提示词里手抄一份 ——
+    抄一份就会有一天两份不一样,而模型只看得见抄的那份。
+
+    用 str.replace 而不是 str.format:提示词里有 JSON 花括号。
+    """
+    from .doctype import CLASSES
+
+    return _PROMPT.replace("{classes}", "、".join(sorted(CLASSES)))
+
+
 def _ask(packet: str, *, key: str, base_url: str, model: str) -> dict:
     """一次 messages 调用,取回 JSON。解析失败如实抛,不猜。"""
     import requests
@@ -327,7 +375,7 @@ def _ask(packet: str, *, key: str, base_url: str, model: str) -> dict:
     budget = _budget()
     payload = {"model": model, "max_tokens": budget,
                "messages": [{"role": "user",
-                             "content": f"{_PROMPT}\n\n{packet}"}]}
+                             "content": f"{prompt_text()}\n\n{packet}"}]}
     thinking = os.environ.get(_THINKING_ENV)
     if thinking:
         payload["thinking"] = {"type": "enabled",

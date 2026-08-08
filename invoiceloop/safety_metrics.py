@@ -61,6 +61,25 @@ def annotations_available(doc_ids: Iterable[str]) -> bool:
     return False
 
 
+def annotation_record_available(doc_id: str) -> bool:
+    """Whether this document has a readable annotation record boundary.
+
+    An omitted field inside an existing DocILE record is meaningful absence;
+    a missing record is not.  Class-conditioned absence safety needs this
+    distinction before QA sampling, otherwise an unscored document can be
+    mistaken for a zero conflict.
+    """
+    path = derisk_root() / "data" / "docile" / "annotations" / f"{doc_id}.json"
+    if not path.is_file():
+        return False
+    try:
+        body = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    return isinstance(body, dict) and isinstance(
+        body.get("field_extractions"), list)
+
+
 def score_slot(
     *,
     route: str,

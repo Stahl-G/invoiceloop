@@ -20,7 +20,8 @@ NOTES = [
 
 
 def _raw(**over) -> dict:
-    s = {"action": "absent_expected", "cohort": {"field": "seller_vat_id"},
+    s = {"action": "absent_expected",
+         "cohort": {"doc_class": "invoice", "field": "seller_vat_id"},
          "finding": "f", "prediction": "p", "confidence": "medium",
          "cites": [0]}
     s.update(over)
@@ -221,22 +222,47 @@ class TestPerActionCohortShape:
 
     def test_tier_and_strength_are_trimmed_not_thrown_away(self):
         kept, dropped = suggest.validate(
-            self._absent({"field": "total_vat", "tier": "TIER1",
-                          "strength": "unsupported"}), NOTES)
+            self._absent({"doc_class": "invoice", "field": "total_vat",
+                          "tier": "TIER1", "strength": "unsupported"}), NOTES)
         assert kept, "有出处的建议不该因为多写两个键就被整条扔掉"
-        assert kept[0]["cohort"] == {"field": "total_vat"}
+        assert kept[0]["cohort"] == {"doc_class": "invoice",
+                                     "field": "total_vat"}
         assert dropped and "已剪掉" in dropped[0], "剪了什么要说出来"
+
+    def test_missing_doc_class_drops_the_whole_suggestion(self):
+        """少 doc_class 不是形状写错,是规则写宽了 —— 剪不出正确规则,只能丢。
+
+        SEALED-3 主臂唯一的静默缺席就是这么来的:一条无条件的
+        seller_vat_id 缺席规则吞掉了一张 credit note 上真有值的税号
+        (docs/SEALED3_RESULTS.md §4)。
+        """
+        kept, dropped = suggest.validate(
+            self._absent({"field": "total_vat"}), NOTES)
+        assert kept == [], "不带类别的缺席规则对所有单据生效,不许放行"
+        assert dropped and "哪一类单据" in dropped[0], "要说清为什么不收"
+
+    def test_unknown_doc_class_is_refused(self):
+        kept, dropped = suggest.validate(
+            self._absent({"doc_class": "tax_invoice", "field": "total_vat"}),
+            NOTES)
+        assert kept == [], "受控词表之外的类别不许进策略"
+        assert dropped and "受控类别" in dropped[0]
 
     def test_trimmed_cohort_passes_the_downstream_linter(self):
         """校验层放行的东西,improve 的 linter 必须也认 —— 这是本回归的要点。"""
         from invoiceloop.improve import lint_policy
 
         kept, _ = suggest.validate(
-            self._absent({"field": "total_vat", "tier": "TIER1",
-                          "strength": "unsupported"}), NOTES)
+            self._absent({"doc_class": "invoice", "field": "total_vat",
+                          "tier": "TIER1", "strength": "unsupported"}), NOTES)
+        cohort = kept[0]["cohort"]
         parent = {"absent_expected_cohorts": []}
-        candidate = {"absent_expected_cohorts": [
-            {"id": "AC-X", **kept[0]["cohort"]}]}
+        candidate = {
+            "absent_expected_cohorts": [
+                {"id": f"AE-{cohort['doc_class']}-{cohort['field']}",
+                 **cohort}],
+            "qa": {"absent_expected_rate": 0.20, "sampler_version": 2},
+        }
         assert lint_policy(parent, candidate) == []
 
     def test_auto_accept_keeps_tier_and_strength(self):

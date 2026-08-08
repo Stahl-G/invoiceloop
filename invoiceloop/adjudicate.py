@@ -806,7 +806,11 @@ def verify_bundle(bundle: Path) -> dict:
                         and "support_matrix.json" in member_bytes:
                     from .fields import TIER1 as _T1
                     from .matrix import derive_document_records, facts_of
-                    from .routing import policy_digest, route_slots
+                    from .routing import (
+                        apply_absent_expected,
+                        policy_digest,
+                        route_slots,
+                    )
 
                     rr = json.loads(member_bytes["routing_report.json"])
                     embedded = rr.get("policy")
@@ -846,7 +850,9 @@ def verify_bundle(bundle: Path) -> dict:
                                         f for f in gate_doc.get("findings", [])
                                         if f.get("blocking")
                                         and f.get("doc_id") == doc],
-                                    understand_data=udata):
+                                    understand_data=udata,
+                                    document_check=(gate_doc.get(
+                                        "document_checks") or {}).get(doc)):
                                 derived[f"{doc}|{rec['field']}"] = rec
                         matrix_doc = json.loads(
                             member_bytes["support_matrix.json"])
@@ -874,7 +880,13 @@ def verify_bundle(bundle: Path) -> dict:
                                     or bool(row.get("slot_blocking")) \
                                     != d["slot_blocking"] \
                                     or bool(row.get("doc_blocked")) \
-                                    != d["doc_blocked"]:
+                                    != d["doc_blocked"] \
+                                    or (("doctype_status" in row
+                                         or "doc_class" in row)
+                                        and (row.get("doctype_status")
+                                             != d["doctype_status"]
+                                             or row.get("doc_class")
+                                             != d["doc_class"])):
                                 failures.append(
                                     f"矩阵行 {key} 的事实与权威工件重建不符"
                                     " —— 投影被改过(改矩阵事实骗路由)")
@@ -883,7 +895,9 @@ def verify_bundle(bundle: Path) -> dict:
                         recomputed = {
                             f"{r['doc_id']}|{r['field']}": r
                             for r in route_slots(
-                                [facts_of(d) for d in derived.values()],
+                                apply_absent_expected(
+                                    [facts_of(d) for d in derived.values()],
+                                    embedded),
                                 embedded,
                                 tier_of=lambda f: "TIER1" if f in _T1
                                 else "TIER2")
@@ -893,7 +907,9 @@ def verify_bundle(bundle: Path) -> dict:
                             if got is None \
                                     or got["route"] != want["route"] \
                                     or got.get("reason_codes") \
-                                    != want.get("reason_codes"):
+                                    != want.get("reason_codes") \
+                                    or got.get("applicability_rule_id") \
+                                    != want.get("applicability_rule_id"):
                                 failures.append(
                                     f"routing_report 槽 {key} 的路由"
                                     f"({want['route']})与策略重算"

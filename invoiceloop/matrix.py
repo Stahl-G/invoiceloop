@@ -48,6 +48,7 @@ def derive_document_records(
     understand_data: dict | None,
     blocked_doc: bool = False,
     cited_spans: dict[str, list[str]] | None = None,
+    document_check: dict | None = None,
 ) -> list[dict]:
     """一份文档全部槽的事实记录 —— **单一事实源**(高级裁决六)。
 
@@ -68,6 +69,14 @@ def derive_document_records(
     cited_spans: {field: [span_id]} DWS 引用几何(复核上下文,展示用)。
     """
     cited_spans = cited_spans or {}
+    from .doctype import trusted_class
+
+    doc_class = trusted_class(document_check)
+    raw_doctype_status = (document_check or {}).get("status") \
+        if isinstance(document_check, dict) else None
+    doctype_status = ("pass" if doc_class is not None
+                      else "malformed" if raw_doctype_status == "pass"
+                      else str(raw_doctype_status or "not_measured"))
     claims_by_field: dict[str, list[dict]] = {}
     for c in doc_claims:
         claims_by_field.setdefault(c["field"], []).append(c)
@@ -176,6 +185,8 @@ def derive_document_records(
         records.append({
             "doc_id": doc_id,
             "field": field_name,
+            "doctype_status": doctype_status,
+            "doc_class": doc_class,
             "value": value if (emitted or understand_data is not None) else None,
             "claim_id": emitted["claim_id"] if emitted else None,
             "support_strength": strength,
@@ -200,6 +211,8 @@ def facts_of(record: dict) -> dict:
     """槽位记录 → 喂给 routing 的六键事实(投影方向唯一,反向不存在)。"""
     return {
         "doc_id": record["doc_id"], "field": record["field"],
+        "doctype_status": record.get("doctype_status", "not_measured"),
+        "doc_class": record.get("doc_class"),
         "strength": record["support_strength"],
         "gate_verdicts": record["gate_verdicts"],
         "applicability": record["applicability"],
@@ -265,6 +278,7 @@ def build_matrix(
             understand_data=u.data if u is not None else None,
             blocked_doc=doc_id in blocked_docs,
             cited_spans=cited_by_doc.get(doc_id),
+            document_check=(gate_report.get("document_checks") or {}).get(doc_id),
         )
         rows.extend(records)
         slot_facts.extend(facts_of(r) for r in records)
@@ -275,8 +289,14 @@ def build_matrix(
         from .harness import load_active
 
         policy = load_active()["policy"]
-    from .routing import build_routing_report
+    from .routing import apply_absent_expected, build_routing_report
     from .fields import TIER1 as _T1
+
+    slot_facts = apply_absent_expected(slot_facts, policy)
+    for row, fact in zip(rows, slot_facts):
+        row["gate_verdicts"] = fact["gate_verdicts"]
+        if fact.get("applicability_rule_id") is not None:
+            row["applicability_rule_id"] = fact["applicability_rule_id"]
 
     routing_report = build_routing_report(
         slot_facts, policy, harness_id=harness_id,
@@ -289,6 +309,8 @@ def build_matrix(
         row["in_human_queue"] = routed["route"] not in ("auto_accept", "auto_absent")
         row["route"] = routed["route"]
         row["reason_codes"] = routed["reason_codes"]
+        if routed.get("applicability_rule_id") is not None:
+            row["applicability_rule_id"] = routed["applicability_rule_id"]
 
     rows.sort(key=lambda r: (
         STRENGTH_RANK[r["support_strength"]],
