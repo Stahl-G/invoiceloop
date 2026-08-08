@@ -38,6 +38,11 @@ def main() -> None:
                     help="ISO 8601;整臂一个时间戳,工件不读墙钟")
     ap.add_argument("--model", default="gemini-3.6-flash")
     ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument("--retries", type=int, default=4,
+                    help="仅对传输层失败退避重试;写入口拒绝不重试")
+    ap.add_argument("--backoff", type=float, default=8.0)
+    ap.add_argument("--pace", type=float, default=1.5,
+                    help="槽间固定间隔,压配额峰值")
     args = ap.parse_args()
 
     slots = json.loads(SAMPLE.read_text(encoding="utf-8"))["slots"]
@@ -45,8 +50,17 @@ def main() -> None:
         slots = slots[: args.limit]
 
     done = {f"{d['doc_id']}|{d['field']}" for d in load_decisions(ARM_RUN)}
-    todo = [s for s in slots if s not in done]
-    print(f"slots={len(slots)} already={len(done)} todo={len(todo)}", flush=True)
+    # 写入口拒绝过的槽**永久跳过**。它们不是"没跑",是 agent 给了一个非法
+    # 裁决、被那个照样接受人的写入口挡回来 —— 那就是 TA 臂的实测缺陷。
+    # 重试它等于摇到一个能过的答案为止,是拿结果调参(预注册 §7)。
+    refused_path = ARM_WS / "refused_slots.json"
+    refused = set()
+    if refused_path.exists():
+        refused = {r["slot"] for r in
+                   json.loads(refused_path.read_text(encoding="utf-8"))["slots"]}
+    todo = [s for s in slots if s not in done and s not in refused]
+    print(f"slots={len(slots)} already={len(done)} refused={len(refused)} "
+          f"todo={len(todo)}", flush=True)
 
     registry = json.loads(
         (SOURCE_RUN / "evidence_span_registry.json").read_text(encoding="utf-8"))
@@ -61,10 +75,21 @@ def main() -> None:
     started = time.time()
     written, failures = 0, []
     for i, key in enumerate(todo, 1):
-        one = adj.run_arm(ARM_RUN, [key], judge=judge, model=args.model,
-                          decided_at=args.decided_at, images_for=images_for)
+        # 传输层失败(配额耗尽 / 5xx)退避重试:重试改的不是 prompt/判据/抽样,
+        # 只是让这个槽真的被问到一次。**写入口的拒绝不在此列** —— 那是答案,
+        # 不是传输,重试它就是调参。
+        for attempt in range(args.retries + 1):
+            one = adj.run_arm(ARM_RUN, [key], judge=judge, model=args.model,
+                              decided_at=args.decided_at, images_for=images_for)
+            err = one["failures"][0]["error"] if one["failures"] else ""
+            transport = ("ResourceExhausted" in err or "ServerError" in err
+                         or "DeadlineExceeded" in err)
+            if not transport or attempt == args.retries:
+                break
+            time.sleep(args.backoff * (2 ** attempt))
         written += one["written"]
         failures.extend(one["failures"])
+        time.sleep(args.pace)
         if i % 10 == 0 or i == len(todo):
             rate = (time.time() - started) / i
             print(f"  {i}/{len(todo)}  written={written} failed={len(failures)}"
@@ -81,6 +106,8 @@ def main() -> None:
         "written": written,
         "failed": len(failures),
         "failures": failures,
+        "retries": args.retries,
+        "pace_seconds": args.pace,
         "ledger_lines": len(
             (ARM_RUN / "adjudication_ledger.jsonl").read_text(
                 encoding="utf-8").splitlines()),
