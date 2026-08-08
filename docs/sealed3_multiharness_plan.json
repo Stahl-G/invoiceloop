@@ -1,0 +1,165 @@
+{
+ "protocol_version": "sealed3-multiharness-v1",
+ "primary_arm_id": "P-HAR-0004",
+ "qualification_baseline_arm_id": "B0-HAR-0001",
+ "doc_list_path": "docs/sealed3_doc_list.json",
+ "doc_list_sha256": "bad85f534fbf7fa5d98bcca9529087b3bd438988c27df56e72fe96c5d8f70439",
+ "corpus_doc_list": "doc_list.json",
+ "n_docs": 100,
+ "schema": {
+  "path": "invoiceloop/harnesses/HAR-0001/extraction_schema.json",
+  "sha256": "e9908c2e3daea623020c8be707faf8cc67b9df37027e313d0ee7781b512b44c2",
+  "digest": "19e7516de0c5f98be6aa5448074ef9c0c35782ba6abad300d0372e0eb9f6452e"
+ },
+ "run_options": {
+  "include_vision": false,
+  "render_crops": false,
+  "out_of_calibration": false
+ },
+ "arms": [
+  {
+   "arm_id": "B0-HAR-0001",
+   "harness_id": "HAR-0001",
+   "parent_harness_id": null,
+   "role": "conservative_baseline",
+   "provenance": "packaged_human_authored",
+   "hypothesis": "保守路由给出工作量上界与 auto_absent=0 的安全基线。",
+   "policy_path": "docs/evidence/sealed3_multiharness_2026-08-08/policies/HAR-0001.routing_policy.json",
+   "policy_sha256": "66626502bbde8b84d236aba86eef420e470377bfae01db33778c726b7eb42151",
+   "policy_digest": "395c5650351b67ca9ad20dea10873180c346ddf2ac21953a8159d26ab881cf97"
+  },
+  {
+   "arm_id": "B1-HAR-0002",
+   "harness_id": "HAR-0002",
+   "parent_harness_id": "HAR-0001",
+   "role": "tier1_release_ablation",
+   "provenance": "human_authored",
+   "hypothesis": "取消无冲突 TIER1 的出口强制确认会降低放行决策负载。",
+   "policy_path": "docs/evidence/sealed3_multiharness_2026-08-08/policies/HAR-0002.routing_policy.json",
+   "policy_sha256": "381958774d51d15bc64928b94c9ad26a57e7314e6f91708fd2747663f86f824d",
+   "policy_digest": "19c9ec417b378fba0fbf427100ffdd9fe1a90cd7dd9a6326ab7f64fdc807151b"
+  },
+  {
+   "arm_id": "B2-HAR-0003",
+   "harness_id": "HAR-0003",
+   "parent_harness_id": "HAR-0002",
+   "role": "seller_vat_absence_ablation",
+   "provenance": "machine_proposed_from_human_finding_then_human_promoted",
+   "hypothesis": "seller_vat_id 预期缺席 cohort 降低队列且不增加静默缺席。",
+   "policy_path": "docs/evidence/sealed3_multiharness_2026-08-08/policies/HAR-0003.routing_policy.json",
+   "policy_sha256": "8fccf55c826d20ff2a2ba278874463a551ab4e5418093a8185077c688b4fa671",
+   "policy_digest": "7df7820c60f8a110d2e7dbbbdb11c08cd1877996b7a8ea3b1a5c87095b4c2d13"
+  },
+  {
+   "arm_id": "P-HAR-0004",
+   "harness_id": "HAR-0004",
+   "parent_harness_id": "HAR-0003",
+   "role": "primary_qualification_arm",
+   "provenance": "deterministic_mining_candidate_then_human_promoted",
+   "hypothesis": "再加入 total_vat 预期缺席 cohort 后，相对 HAR-0001 人工队列不升且两类静默错不升。",
+   "policy_path": "docs/evidence/sealed3_multiharness_2026-08-08/policies/HAR-0004.routing_policy.json",
+   "policy_sha256": "7c1a9ed9400009d1bb869225a0a47f4583aa7fd017b7246b963cda8cff7c92db",
+   "policy_digest": "eab9228721f599819b4e920fa25a44cf79429003bb8207071de1ab64ab15f9f3"
+  },
+  {
+   "arm_id": "P-REPEAT-HAR-0004",
+   "harness_id": "HAR-0004",
+   "parent_harness_id": "HAR-0003",
+   "role": "exact_repeatability_control",
+   "provenance": "exact_duplicate_of_primary",
+   "hypothesis": "同输入、同代码、同 harness 的全部 run 工件逐字节一致。",
+   "repeat_of": "P-HAR-0004",
+   "policy_path": "docs/evidence/sealed3_multiharness_2026-08-08/policies/HAR-0004.routing_policy.json",
+   "policy_sha256": "7c1a9ed9400009d1bb869225a0a47f4583aa7fd017b7246b963cda8cff7c92db",
+   "policy_digest": "eab9228721f599819b4e920fa25a44cf79429003bb8207071de1ab64ab15f9f3"
+  },
+  {
+   "arm_id": "A1-HAR-0006",
+   "harness_id": "HAR-0006",
+   "parent_harness_id": "HAR-0004",
+   "role": "adk_near_placebo_candidate",
+   "provenance": "google_adk_proposed_not_promoted",
+   "hypothesis": "重复加入 total_vat cohort 在语义上近似无动作；但 harness_id 会重排 QA 哈希抽样，故只能称 near-placebo。",
+   "policy_path": "docs/evidence/sealed3_multiharness_2026-08-08/policies/HAR-0006.routing_policy.json",
+   "policy_sha256": "0073306c642791ea37bc42525df62fa407c208e70c3d0a42c66888dde8c47acd",
+   "policy_digest": "7ccd2bbee7bcbb40b5a7be77083e18e561e8e617568426655ab7e33263a57bec"
+  },
+  {
+   "arm_id": "A2-HAR-0007",
+   "harness_id": "HAR-0007",
+   "parent_harness_id": "HAR-0004",
+   "role": "adk_due_date_candidate",
+   "provenance": "google_adk_proposed_not_promoted",
+   "hypothesis": "due_date 预期缺席 cohort 会降低人工队列；其静默缺席风险必须由未见真值裁判。",
+   "policy_path": "docs/evidence/sealed3_multiharness_2026-08-08/policies/HAR-0007.routing_policy.json",
+   "policy_sha256": "c092a8a8b387d8979e67551a931f7a221af5656dce77c517a525fa605a913a21",
+   "policy_digest": "f205e70283eddbf907d5d57e9c5307086c440eaab421158b5690608ecd0ba9ac"
+  }
+ ],
+ "comparisons": [
+  {
+   "comparison_id": "har2_vs_har1",
+   "candidate": "B1-HAR-0002",
+   "baseline": "B0-HAR-0001",
+   "purpose": "lineage_ablation"
+  },
+  {
+   "comparison_id": "har3_vs_har2",
+   "candidate": "B2-HAR-0003",
+   "baseline": "B1-HAR-0002",
+   "purpose": "lineage_ablation"
+  },
+  {
+   "comparison_id": "har4_vs_har3",
+   "candidate": "P-HAR-0004",
+   "baseline": "B2-HAR-0003",
+   "purpose": "lineage_ablation"
+  },
+  {
+   "comparison_id": "primary_vs_conservative",
+   "candidate": "P-HAR-0004",
+   "baseline": "B0-HAR-0001",
+   "purpose": "sealed3_qualification_P1_P2"
+  },
+  {
+   "comparison_id": "primary_exact_repeat",
+   "candidate": "P-REPEAT-HAR-0004",
+   "baseline": "P-HAR-0004",
+   "purpose": "determinism_control"
+  },
+  {
+   "comparison_id": "adk_duplicate_vat_vs_primary",
+   "candidate": "A1-HAR-0006",
+   "baseline": "P-HAR-0004",
+   "purpose": "adk_candidate_control"
+  },
+  {
+   "comparison_id": "adk_due_date_vs_primary",
+   "candidate": "A2-HAR-0007",
+   "baseline": "P-HAR-0004",
+   "purpose": "adk_candidate_control"
+  }
+ ],
+ "frozen_files": [
+  {"path": "invoiceloop/pipeline.py", "sha256": "a8075f07d0248df391a5e7502fd589682ff7b5ab581339ff27c6a241dc29f627"},
+  {"path": "invoiceloop/gates.py", "sha256": "a35c63095fc3467715bb269a2c6b987cfb8b0ff1a2d1dcc9398f809e0977244d"},
+  {"path": "invoiceloop/routing.py", "sha256": "f4aa6f0c4672f223c20f3df23360ec75861dc845458bc377f27041a4531418ac"},
+  {"path": "invoiceloop/matrix.py", "sha256": "591891d6b4972c72a7de31beca2d15730420851e3870525d6672930214b547d0"},
+  {"path": "invoiceloop/freeze.py", "sha256": "372811df3a0f2e660a20e46adfde507efd13e5a27b6d3ce67bf5a640803c2d0d"},
+  {"path": "invoiceloop/evidence.py", "sha256": "6c24ad28ea7c413fbb562bfe395de935ed41fdf0d917ebc28c4a11e0c80ae93b"},
+  {"path": "invoiceloop/snapshot.py", "sha256": "ac61cbd0e6c68728fc0d91c6e8ba244db78780a0da5817c250460b693d7f6b42"},
+  {"path": "invoiceloop/eval_norm.py", "sha256": "d96984e1ec5cd58b2790fe49c53e16e009ae788792d5850fb747efe374eec61c"},
+  {"path": "invoiceloop/safety_metrics.py", "sha256": "98e6d1e0d86932ec5c3cab8251564563f3acc49f3c65adb85ecc7d48b73ba391"},
+  {"path": "invoiceloop/dws.py", "sha256": "f90a41af4dce35b9ffa48d3186381c4b06fe2d737ca887faf5c247b4c6074853"},
+  {"path": "invoiceloop/crossdoc.py", "sha256": "20b8413da39f379f048b6d2a14b27ffda63c5b34ce0201f733ade8b5811d6c44"},
+  {"path": "invoiceloop/fields.py", "sha256": "4533dadcbce67e9fea847223f8d626d7bd57c9cf634c57d82baf8d23102646b0"},
+  {"path": "invoiceloop/doctype.py", "sha256": "70e44bf27268c19ad5f3fd5185b5e382d3cde1a9e05488a0d918eaf86eaf2584"},
+  {"path": "invoiceloop/harness.py", "sha256": "e0450a43fb7c072b483b9d41270bfad1251d21aeb46e1425fe6e81dfe3d094ea"},
+  {"path": "invoiceloop/panel.py", "sha256": "6945e81ca930d7f0bb493b730623d31784e19a5e58f5cc46cac1ce750c1b7ff5"},
+  {"path": "invoiceloop/deliver.py", "sha256": "6937140bbb91bc6150276c0109aa49bf82f79b3829e611b43577970705d63502"},
+  {"path": "invoiceloop/sealed_batch.py", "sha256": "148a0a3f6ff14016b3a458ef97615668dacbd21f1469db5dd8011b9947e3637d"},
+  {"path": "scripts/heldout_metrics.py", "sha256": "f5e569df80fd5166b50dae2fe524921eb1ddba12ec4e218da28f7b5877f4614a"},
+  {"path": "scripts/sealed3_multiharness.py", "sha256": "fcc1a27eec1d6abeae5bff97bffe2912829ffa72305fc34ce73bf9924da30c66"},
+  {"path": "scripts/sealed3_multiharness_score.py", "sha256": "52465f041c5ba80df4231dd7417e75d314e936d1cc89c7184ddd9979384138ee"}
+ ]
+}

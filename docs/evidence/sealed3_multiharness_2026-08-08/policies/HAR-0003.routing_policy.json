@@ -1,0 +1,19 @@
+{
+ "harness_id": "HAR-0003",
+ "version": 3,
+ "release_tier1_explicit": false,
+ "auto_accept_cohorts": [],
+ "qa": {
+  "seed": "invoiceloop-qa-v1",
+  "policy_accepted_tier1_rate": 0.05,
+  "cohort_relax_rate": 0.2,
+  "note": "哈希抽样,确定性;HAR-0001 下两类目标都为空(tier1_explicit=true 且 cohorts 为空),零行为影响",
+  "absent_expected_rate": 0.2
+ },
+ "absent_expected_cohorts": [
+  {
+   "id": "AE1",
+   "field": "seller_vat_id"
+  }
+ ]
+}
