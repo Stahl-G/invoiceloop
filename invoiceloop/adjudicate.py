@@ -49,6 +49,18 @@ DECISIONS = ("accept", "confirm_absent", "not_applicable",
 #: verify 之前查不出来(对抗复核 2026-08-03 实测 261/300 命中)
 _APPEND_LOCK = threading.Lock()
 
+#: 心码 ↔ 决策的硬绑定(评审裁决六)。挡的是「点错的心码把错误监督喂给
+#: mining」—— 表里没有的心码不受限制。
+#:
+#: **唯一定义处。** 渲染层(workbench 的心码下拉、报错文案)必须从这里读:
+#: 界面上复制第二份就会与校验漂移,而漂移的表现是人填完一屏被拒。
+REASON_CODE_COMBOS: dict[str, frozenset[str]] = {
+    "CONFIRMED_ABSENT": frozenset({"confirm_absent"}),
+    "NOT_APPLICABLE": frozenset({"not_applicable"}),
+    "WRONG_VALUE": frozenset({"correct", "reject"}),
+    "ROUTING_FALSE_POSITIVE": frozenset({"accept", "confirm_absent"}),
+}
+
 #: 打包进 audit bundle 的工件(缺了算包没打全,不静默跳过)
 REQUIRED_ARTIFACTS = (
     "run_manifest.json",
@@ -98,13 +110,7 @@ def append_adjudication(
             raise ValueError(
                 f"reason_code {reason_code!r} 不在最小心码集 {REASON_CODES} 内")
         # 组合自洽(评审裁决六):心码与决策类型不许互相矛盾
-        combo = {
-            "CONFIRMED_ABSENT": {"confirm_absent"},
-            "NOT_APPLICABLE": {"not_applicable"},
-            "WRONG_VALUE": {"correct", "reject"},
-            "ROUTING_FALSE_POSITIVE": {"accept", "confirm_absent"},
-        }
-        allowed = combo.get(reason_code)
+        allowed = REASON_CODE_COMBOS.get(reason_code)
         if allowed is not None and decision not in allowed:
             raise ValueError(
                 f"reason_code {reason_code} 只能搭配 {sorted(allowed)},"

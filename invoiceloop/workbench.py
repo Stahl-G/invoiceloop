@@ -27,11 +27,15 @@ Route contract (tests/test_workbench.py is the authority):
 full page with a bbox highlight overlay (frozen binding in a solid green line, the
 DWS citation in a dashed purple one); the right column holds the verdict card and
 the decision form (the same form fields and the same /decide endpoint as the
-queue page); the footer navigates to the previous or next unadjudicated slot in
-triage order. The form carries one extra hidden field, next=adjudicate: on submit
-the server advances to the next unadjudicated slot in queue order, while a submit
-without it (from the queue page) returns to the queue anchor. The adjudication
-semantics of the two paths are identical.
+queue page); a refused submission re-renders *this same page* with HTTP 400 —
+everything the reviewer typed is filled back in and the reason is shown beside
+the form, in interface words rather than the raw exception (the exception text
+itself is unchanged; it belongs to API callers and logs). The footer navigates to
+the previous or next unadjudicated slot in triage order. The form carries one
+extra hidden field, next=adjudicate: on submit the server advances to the next
+unadjudicated slot in queue order, while a submit without it (from the queue
+page) returns to the queue anchor. The adjudication semantics of the two paths
+are identical, and a refusal lands on this page either way.
 """
 
 from __future__ import annotations
@@ -192,8 +196,20 @@ _T = {
         "confirm_absent": "Confirm absent", "not_applicable": "N/A",
         "corrected_ph": "corrected value",
         "rationale_ph": "Issue / rationale (required) — write down what's wrong",
-        "reason_code_label": "Reason code (optional, feeds the improvement loop):",
-        "confidence_label": "Flag doubt (only if unsure):",
+        # 「可选」是误导:不填 → feedback.actionable=false → 整条被 mine 排除。
+        # 对复核来说它不是可选的,所以说后果,不说「可选」(2026-08-08)
+        "reason_code_label": "Reason code — without one this note never "
+                             "reaches the improvement loop:",
+        "confidence_label": "Flag doubt (only if unsure) — “low” also drops "
+                            "this note from the improvement loop:",
+        # 提交被拒:回到本槽,内容原样保留,错误说界面上的词
+        "err_not_recorded": "This submission was not recorded",
+        "err_kept": "Everything you typed is still below — fix this and "
+                    "submit again.",
+        "err_combo": "The reason code “{reason}” only goes with “{allowed}”; "
+                     "you picked “{decision}”. Change one of them, or clear "
+                     "the reason code — a mis-picked code feeds the "
+                     "improvement loop a wrong supervision signal.",
         "conf_high": "high", "conf_medium": "medium", "conf_low": "low",
         "adjudicator_ph": "reviewer name",
         "issue_chips": ["matches the page", "wrong value", "wrong location",
@@ -424,8 +440,17 @@ _T = {
         "confirm_absent": "确认缺失", "not_applicable": "不适用",
         "corrected_ph": "修正值",
         "rationale_ph": "发现的问题 / 理由(必填)—— 把问题直接写在这里",
-        "reason_code_label": "原因码(可选,喂给改进循环):",
-        "confidence_label": "标注存疑(只在没把握时填):",
+        # 「可选」是误导:不填 → feedback.actionable=false → 整条被 mine 排除。
+        # 对复核来说它不是可选的,所以说后果,不说「可选」(2026-08-08)
+        "reason_code_label": "原因码(不填,这条意见进不了改进循环):",
+        "confidence_label": "标注存疑(只在没把握时填;标「低」这条意见"
+                            "同样进不了改进循环):",
+        # 提交被拒:回到本槽,内容原样保留,错误说界面上的词
+        "err_not_recorded": "这次提交没有进账本",
+        "err_kept": "你填的内容都还在下面,改完直接再提交。",
+        "err_combo": "原因码「{reason}」只能配决策「{allowed}」,"
+                     "你这次选的是「{decision}」。改其中一个,或者把原因码"
+                     "清空 —— 点错的原因码会把错误的监督信号喂给改进循环。",
         "conf_high": "高", "conf_medium": "中", "conf_low": "低",
         "adjudicator_ph": "裁决人",
         "issue_chips": ["与页面一致", "值不对", "位置不对", "看不清", "口径冲突", "页面上没有", "其他"],
@@ -564,6 +589,26 @@ def _json_compact(obj) -> str:
 
 
 _JS = r"""
+// 心码下拉跟着决策走。判据**只从 option 的 data-decisions 读** ——
+// 那串属性是服务器按 adjudicate.REASON_CODE_COMBOS 渲染的,前端不许内置
+// 第二份表(两处定义会漂移,而漂移的表现是人填完一屏被服务器拒掉)。
+// 三件事:配不上当前决策的选项藏起来、残值清掉、一对一的自动预填。
+function wbReasonSync(form, decision) {
+  var rc = form.querySelector('select[name=reason_code]');
+  if (!rc) return;
+  var only = [];
+  for (var i = 0; i < rc.options.length; i++) {
+    var opt = rc.options[i];
+    var allowed = (opt.dataset.decisions || '').split(' ').filter(Boolean);
+    var ok = !opt.value || !allowed.length || allowed.indexOf(decision) !== -1;
+    opt.hidden = !ok;
+    opt.disabled = !ok;
+    if (ok && allowed.length === 1) only.push(opt.value);
+  }
+  var sel = rc.options[rc.selectedIndex];
+  if (sel && sel.disabled) rc.value = '';         // 上一次留下的残值
+  if (!rc.value && only.length === 1) rc.value = only[0];  // 决策已唯一确定
+}
 document.addEventListener('submit', function (e) {
   var form = e.target;
   if (!form.classList || !form.classList.contains('decide')) return;
@@ -604,17 +649,9 @@ document.addEventListener('change', function (e) {
     if (e.target.value === 'accept' && !ta.value.trim()) ta.value = preset;
     else if (e.target.value !== 'accept' && ta.value === preset) ta.value = '';
   }
-  // 一对一心码:adjudicate 的 combo 表规定 CONFIRMED_ABSENT 只能配
-  // confirm_absent、NOT_APPLICABLE 只能配 not_applicable —— 决策已经唯一
-  // 确定了心码,不必再问一遍。只在空着或还挂着另一个自动码时改动,人手填
-  // 的一律不碰;切走时清掉,免得把不合法组合提上去(服务端会 400)。
-  var rc = form.querySelector('select[name=reason_code]');
-  if (rc) {
-    var auto = { confirm_absent: 'CONFIRMED_ABSENT',
-                 not_applicable: 'NOT_APPLICABLE' };
-    var isAuto = rc.value === 'CONFIRMED_ABSENT' || rc.value === 'NOT_APPLICABLE';
-    if (!rc.value || isAuto) rc.value = auto[e.target.value] || '';
-  }
+  // 心码跟着决策裁剪:配不上的藏掉、残值清掉、一对一的自动预填。
+  // 决策变了就重算 —— 界面不该让人拼出一个必然被拒的组合(2026-08-08)
+  wbReasonSync(form, e.target.value);
 });
 document.addEventListener('click', function (e) {
   // 一键快路:人看了页面,点一下就完成「原值正确」并跳下一条。
@@ -653,9 +690,13 @@ document.addEventListener('click', function (e) {
     }
     // chip 也带一对一心码,但**只在下拉还空着时**写:第一个点的 chip 定调,
     // 之后的不覆盖,人手选的更不覆盖 —— 连点多个 chip 时最后一个说了算
-    // 会把监督标签变成手滑的产物
+    // 会把监督标签变成手滑的产物。配不上当前决策的也不写(那一支已被
+    // 裁剪禁用,写进去只是让人填完一屏再吃一个 400)
     var crc = form.querySelector('select[name=reason_code]');
-    if (crc && !crc.value && chip.dataset.reason) crc.value = chip.dataset.reason;
+    if (crc && !crc.value && chip.dataset.reason) {
+      var want = crc.querySelector('option[value="' + chip.dataset.reason + '"]');
+      if (want && !want.disabled) crc.value = chip.dataset.reason;
+    }
     ta.focus();
     return;
   }
@@ -688,6 +729,11 @@ document.addEventListener('DOMContentLoaded', function () {
     var d = form.querySelector('input[name=decision]:checked');
     var corr = form.querySelector('.wb-corr');
     if (corr && (!d || d.value !== 'correct')) corr.disabled = true;
+    // 载入时也裁剪一次心码 —— 浏览器回退/刷新会把上一次的选择还原回来,
+    // 那个残值正是「弃权 + 上一条的心码」这类必被拒组合的来源。
+    // 被拒回填的表单(data-rejected)跳过:那一屏的心码是人刚提交的,
+    // 错误文案正指着它说事,清掉就成了「你选的是空」
+    if (d && !form.dataset.rejected) wbReasonSync(form, d.value);
   });
   var fi = document.getElementById('wb-files');
   if (fi) fi.addEventListener('change', async function () {
@@ -737,6 +783,66 @@ _FIELD_LABEL = {
            "total_net": "净额(未含税)", "total_vat": "税额",
            "total_gross": "总额(含税)", "amount_due": "应付金额"},
 }
+
+
+#: 心码的人类名字 —— 复核者在界面上读到的是「弃权」「确认缺失」,而
+#: adjudicate 抛的原始异常说的是 abstain / ['confirm_absent'](2026-08-08
+#: 用户实测:对不上号)。原始异常文本不动(给 API 调用方与日志,有测试
+#: 钉着);对不上号的问题在呈现层解决。码本身一并显示 —— 它进账本,
+#: 复核者对账时要认得出。
+_REASON_LABEL = {
+    "en": {"WRONG_VALUE": "Wrong value",
+           "WRONG_FIELD_MAPPING": "Mapped to the wrong field",
+           "BAD_SOURCE_BINDING": "Value doesn't bind to the page",
+           "MISSING_EXTRACTION": "Extraction missed it",
+           "NORMALIZATION_ERROR": "Normalisation error",
+           "ROUTING_FALSE_NEGATIVE": "Should have been queued",
+           "ROUTING_FALSE_POSITIVE": "Should not have been queued",
+           "CONFIRMED_ABSENT": "Confirmed absent",
+           "NOT_APPLICABLE": "Not applicable to this document",
+           "AMBIGUOUS_DOCUMENT": "Document itself is unreadable",
+           "PROVIDER_FAILURE": "Provider failure",
+           "REVIEWER_PREFERENCE": "Reviewer preference", "OTHER": "Other"},
+    "zh": {"WRONG_VALUE": "值不对",
+           "WRONG_FIELD_MAPPING": "对错字段了",
+           "BAD_SOURCE_BINDING": "值绑不到页面上",
+           "MISSING_EXTRACTION": "抽取漏了",
+           "NORMALIZATION_ERROR": "规范化出错",
+           "ROUTING_FALSE_NEGATIVE": "该进队列却没进",
+           "ROUTING_FALSE_POSITIVE": "不该进队列",
+           "CONFIRMED_ABSENT": "确认缺失",
+           "NOT_APPLICABLE": "本单不适用",
+           "AMBIGUOUS_DOCUMENT": "单据本身看不清",
+           "PROVIDER_FAILURE": "服务方故障",
+           "REVIEWER_PREFERENCE": "复核者偏好", "OTHER": "其他"},
+}
+
+
+def _reason_label(lang: str, code: str) -> str:
+    """心码 → 「人话(CODE)」。没收录的码原样显示(诚实,不编)。"""
+    label = _REASON_LABEL.get(lang, _REASON_LABEL["en"]).get(code)
+    return f"{label}({code})" if label else code
+
+
+def _decide_error(lang: str, decision: str, reason_code: str,
+                  exc: Exception) -> str:
+    """裁决被拒 → 给复核者看的一句话。
+
+    只翻译**呈现层认得出的**那一类:心码 ↔ 决策组合(判据从
+    adjudicate.REASON_CODE_COMBOS 现读,不在这里复制第二份表)。
+    其余异常原样透传 —— 编一句好听的话去盖住一个没预料到的失败,
+    比 Python 的 repr 更坏。
+    """
+    from .adjudicate import REASON_CODE_COMBOS
+
+    allowed = REASON_CODE_COMBOS.get(reason_code)
+    if allowed is not None and decision not in allowed:
+        return _t(lang, "err_combo",
+                  reason=_reason_label(lang, reason_code),
+                  allowed=" / ".join(_t(lang, d) for d in sorted(allowed)),
+                  decision=_t(lang, decision) if decision in _DECISIONS
+                  else decision)
+    return str(exc)
 
 
 def _lim(lang: str, code: str) -> str:
@@ -1152,8 +1258,17 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 
     def _decide_form(self, lang: str, ctx: RunCtx, row: dict, tip: dict | None,
                      conflict: bool, n_orphans: int, adjudicator: str,
-                     next_hint: str = "") -> str:
+                     next_hint: str = "", form_values: dict | None = None,
+                     form_error: str = "") -> str:
         doc, field = row["doc_id"], row["field"]
+        # 提交被拒时的回填(2026-08-08):本站服务器端渲染,回填只能在服务端做。
+        # 保留的是复核者**打出来的**东西 —— 理由、修正值、署名,以及他刚做的
+        # 那个判断;丢一次就要重打一次,而重打的代价会把理由写短,
+        # 恰恰写短的是 improve.mine 唯一原样带给人读的那一栏。
+        filled = form_values or {}
+
+        def _val(name: str) -> str:
+            return filled.get(name, "")
         claim_id = ctx.claim_by_slot.get((doc, field), "")
         supersedes = tip["decision_id"] if tip else ""
         notes = []
@@ -1227,7 +1342,9 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                      f'{_esc(_t(lang, "quick_absent"))}</button>')
         radios = "".join(
             f'<label class="wb-radio {d}"><input type="radio" name="decision" '
-            f'value="{d}" required>{_esc(_t(lang, d))}</label>'
+            f'value="{d}" required'
+            f'{" checked" if _val("decision") == d else ""}>'
+            f'{_esc(_t(lang, d))}</label>'
             for d in decisions_for_row
         )
         # 问题 chip 与快路按钮同一条纪律:chip 是**封闭词表**里的一次语义
@@ -1244,15 +1361,36 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
             f'data-reason="{chip_reasons.get(i, "")}">{_esc(c)}</button>'
             for i, c in enumerate(_T[lang]["issue_chips"])
         )
+        from .adjudicate import REASON_CODE_COMBOS
         from .feedback import REASON_CODES
 
+        # 心码 option 自带「允许配哪些决策」—— 判据从 adjudicate 现读,
+        # 前端按这个属性过滤(2026-08-08)。**表只有一份**:在界面上复制
+        # 第二份就会与校验漂移,而漂移的表现正是人填完一屏被服务器拒掉。
+        # 不受限的心码声明为空串:漏掉属性和「故意不限制」必须区分得开。
         reason_options = ('<option value=""></option>' + "".join(
-            f'<option value="{c}">{c}</option>' for c in REASON_CODES))
+            f'<option value="{c}" data-decisions='
+            f'"{" ".join(sorted(REASON_CODE_COMBOS.get(c, ())))}"'
+            f'{" selected" if _val("reason_code") == c else ""}>'
+            f'{_esc(_reason_label(lang, c))}</option>' for c in REASON_CODES))
+        confidence_options = "".join(
+            f'<option value="{v}"{" selected" if _val("reviewer_confidence") == v else ""}>'
+            f'{_esc(_t(lang, k)) if k else ""}</option>'
+            for v, k in (("", ""), ("high", "conf_high"),
+                         ("medium", "conf_medium"), ("low", "conf_low")))
         next_input = (f'<input type="hidden" name="next" value="{_esc(next_hint)}">'
                       if next_hint else "")
-        return f"""<div class="wb-decide">{''.join(notes)}
+        error_html = ""
+        if form_error:
+            error_html = (f'<div class="wb-form-error">'
+                          f'<b>{_esc(_t(lang, "err_not_recorded"))}</b>'
+                          f'<p>{_esc(form_error)}</p>'
+                          f'<p class="wb-form-error-kept">'
+                          f'{_esc(_t(lang, "err_kept"))}</p></div>')
+        return f"""<div class="wb-decide">{''.join(notes)}{error_html}
 <form class="decide" method="post" action="/decide"
- data-accept-preset="{_esc(_t(lang, 'accept_preset'))}">
+ data-accept-preset="{_esc(_t(lang, 'accept_preset'))}"
+{' data-rejected="1"' if form_error else ''}
 <input type="hidden" name="run" value="{_esc(ctx.name)}">
 <input type="hidden" name="doc" value="{_esc(doc)}">
 <input type="hidden" name="field" value="{_esc(field)}">
@@ -1262,17 +1400,16 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 {quick}
 <div class="wb-decide-row">{radios}
 <input class="wb-corr" type="text" name="corrected_value"
+ value="{_esc(_val('corrected_value'))}"
  placeholder="{_esc(_t(lang, 'corrected_ph'))}"></div>
 <textarea class="wb-rationale" name="rationale" rows="2" required
- placeholder="{_esc(_t(lang, 'rationale_ph'))}"></textarea>
+ placeholder="{_esc(_t(lang, 'rationale_ph'))}">{_esc(_val('rationale'))}</textarea>
 <div class="wb-issue-chips">{chips}</div>
 <div class="wb-decide-row"><label class="wb-label">{_esc(_t(lang, 'reason_code_label'))}
 <select name="reason_code" class="wb-reason">{reason_options}</select></label>
 <label class="wb-label">{_esc(_t(lang, 'confidence_label'))}
 <select name="reviewer_confidence" class="wb-reason">
-<option value=""></option><option value="high">{_esc(_t(lang, 'conf_high'))}</option>
-<option value="medium">{_esc(_t(lang, 'conf_medium'))}</option>
-<option value="low">{_esc(_t(lang, 'conf_low'))}</option></select></label></div>
+{confidence_options}</select></label></div>
 <div class="wb-decide-row">
 <input class="wb-adjudicator" type="text" name="adjudicator" required
  placeholder="{_esc(_t(lang, 'adjudicator_ph'))}" value="{_esc(adjudicator)}">
@@ -1295,7 +1432,9 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
     def _decided(ctx: RunCtx, row: dict) -> bool:
         return bool((ctx.slot(row["doc_id"], row["field"]) or {}).get("tip"))
 
-    def adjudicate_page(self, lang: str, run_dir: Path, params: dict) -> str:
+    def adjudicate_page(self, lang: str, run_dir: Path, params: dict,
+                        form_values: dict | None = None,
+                        form_error: str = "") -> str:
         ctx = RunCtx(run_dir)
         doc = params.get("doc", [""])[0]
         field = params.get("field", [""])[0]
@@ -1320,7 +1459,8 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 <div class="wb-adj">
 <div class="wb-adj-left">{self._page_column(lang, ctx, row, page_no)}</div>
 <div class="wb-adj-right">{self._judgement_card(lang, ctx, row, tip, conflict,
-                                                 len(orphans), adjudicator)}</div>
+                                                 len(orphans), adjudicator,
+                                                 form_values, form_error)}</div>
 </div>
 {self._adj_nav(lang, ctx, ordered, idx)}
 <div class="wb-footer">{_esc(_t(lang, 'snapshot'))}={_esc(ctx.snapshot_id)}</div>"""
@@ -1405,7 +1545,8 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 
     def _judgement_card(self, lang: str, ctx: RunCtx, row: dict,
                         tip: dict | None, conflict: bool, n_orphans: int,
-                        adjudicator: str) -> str:
+                        adjudicator: str, form_values: dict | None = None,
+                        form_error: str = "") -> str:
         """右栏判定卡:字段、冻结值(或「无声明」)、支持强度、六道门禁、
         来源层 / 口径、状态与来源、证据与限制、决策表单(与队列页同一套)。"""
         doc, field = row["doc_id"], row["field"]
@@ -1451,7 +1592,8 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 {self._vision_suggest(lang, ctx, row)}
 {self._evidence(lang, ctx, row, open_by_default=False)}
 {self._decide_form(lang, ctx, row, tip, conflict, n_orphans, adjudicator,
-                   next_hint="adjudicate")}
+                   next_hint="adjudicate", form_values=form_values,
+                   form_error=form_error)}
 </div>"""
 
     def _why_html(self, lang: str, row: dict) -> str:
@@ -2285,24 +2427,30 @@ class _Handler(BaseHTTPRequestHandler):
         decided_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
         rationale = form.get("rationale", [""])[0].strip()
         adjudicator = form.get("adjudicator", [""])[0].strip()
-        if not rationale:
-            raise ValueError("rationale 不能为空 —— 把发现的问题或理由写出来")
-        if not adjudicator:
-            raise ValueError("adjudicator 不能为空 —— 裁决要署名")
-        result = adjudicate_and_render(
-            run,
-            claim_id=form.get("claim_id", [""])[0] or None,
-            doc_id=form.get("doc", [""])[0],
-            field=form.get("field", [""])[0],
-            decision=form.get("decision", [""])[0],
-            corrected_value=form.get("corrected_value", [""])[0] or None,
-            rationale=rationale,
-            adjudicator=adjudicator,
-            decided_at=decided_at,
-            supersedes_decision_id=form.get("supersedes", [""])[0] or None,
-            reason_code=form.get("reason_code", [""])[0] or None,
-            reviewer_confidence=form.get("reviewer_confidence", [""])[0] or None,
-        )
+        try:
+            if not rationale:
+                raise ValueError("rationale 不能为空 —— 把发现的问题或理由写出来")
+            if not adjudicator:
+                raise ValueError("adjudicator 不能为空 —— 裁决要署名")
+            result = adjudicate_and_render(
+                run,
+                claim_id=form.get("claim_id", [""])[0] or None,
+                doc_id=form.get("doc", [""])[0],
+                field=form.get("field", [""])[0],
+                decision=form.get("decision", [""])[0],
+                corrected_value=form.get("corrected_value", [""])[0] or None,
+                rationale=rationale,
+                adjudicator=adjudicator,
+                decided_at=decided_at,
+                supersedes_decision_id=form.get("supersedes", [""])[0] or None,
+                reason_code=form.get("reason_code", [""])[0] or None,
+                reviewer_confidence=form.get("reviewer_confidence", [""])[0] or None,
+            )
+        except ValueError as exc:
+            # 校验拒绝 = 一行都没写(append_adjudication 的契约)。以前这里
+            # 冒到 _dispatch 变成整页「阻断」,复核者刚打的理由/修正值/署名
+            # 全丢 —— 200 槽一轮里这是实打实的成本(2026-08-08 用户实测)。
+            return self._decide_rejected(lang, run, form, exc)
         notice = "recorded" if result["panel_refreshed"] else "recorded_stale"
         cookies = [("wb_adjudicator", adjudicator)]
         if form.get("next", [""])[0] == "adjudicate":
@@ -2315,6 +2463,34 @@ class _Handler(BaseHTTPRequestHandler):
             anchor = f"#row-{form.get('doc', [''])[0]}-{form.get('field', [''])[0]}"
             loc = f"/queue?run={run_name}&lang={lang}&notice={notice}{anchor}"
         self._redirect(loc, cookies)
+
+    def _decide_rejected(self, lang: str, run: Path, form: dict,
+                         exc: ValueError) -> None:
+        """裁决被拒 → 回到**该槽的裁决页**,已填内容原样回填,错误摆在表单旁边。
+
+        400 直接渲染,不 303:重定向会丢掉 POST 体,而把理由塞进 query
+        string 等于让它进浏览器历史与日志。队列页提交也落到这里 —— 两条
+        路径的裁决语义本来就一样,修不了的地方在同一屏上修完最省事。
+        """
+        message = _decide_error(lang, form.get("decision", [""])[0],
+                                form.get("reason_code", [""])[0], exc)
+        values = {k: form.get(k, [""])[0] for k in
+                  ("decision", "corrected_value", "rationale",
+                   "reason_code", "reviewer_confidence", "adjudicator")}
+        params = {"run": [run.name], "doc": form.get("doc", [""]),
+                  "field": form.get("field", [""]), "lang": [lang],
+                  "adjudicator": [values["adjudicator"]]}
+        try:
+            page = self.bench.adjudicate_page(lang, run, params,
+                                              form_values=values,
+                                              form_error=message)
+        except _HttpError:
+            # 槽位本身就不存在(doc/field 被改过)—— 回填无处可放,
+            # 照旧给消息页,不假装还有一个表单可以改
+            back = f"/queue?run={run.name}&lang={lang}"
+            return self._html(400, self.bench.message_page(
+                lang, _t(lang, "error_title"), [_esc(message)], back))
+        self._html(400, page)
 
     def _next_adjudicate_url(self, run: Path, doc: str, field: str,
                              lang: str, notice: str) -> str:

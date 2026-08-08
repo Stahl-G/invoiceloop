@@ -521,10 +521,15 @@ class TestQuickPathCarriesReasonCode:
             "applicability 争议在心码集里没有对应项,硬塞一个就是编"
 
     def test_js_writes_button_reason_and_one_to_one_prefill(self, workspace, server):
+        """一对一心码仍自动预填,但判据必须来自 option 上的 data-decisions
+        —— 2026-08-08 之前这里内置了一份 {confirm_absent: CONFIRMED_ABSENT}
+        的小表,那就是 combo 表在前端的第二份副本(会漂移)。"""
         _, _, js = _req(server, "GET", "/assets.js")
         assert "dataset.reason" in js, "快路必须把按钮上的心码写进下拉"
-        assert "CONFIRMED_ABSENT" in js and "NOT_APPLICABLE" in js, \
-            "决策唯一确定的心码要自动预填(combo 表就是这么规定的)"
+        assert "CONFIRMED_ABSENT" not in js and "NOT_APPLICABLE" not in js, \
+            "前端不许硬编码任何一个心码 —— 表只有 adjudicate 那一份"
+        assert "dataset.decisions" in js and "only.length === 1" in js, \
+            "唯一确定的心码照旧自动预填,判据是「这个心码只配这一个决策」"
 
     def test_false_positive_button_records_reason_code(self, workspace, server):
         status, _, _ = _decide(server, reason_code="ROUTING_FALSE_POSITIVE")
@@ -1177,3 +1182,178 @@ class TestModelDraftRendering:
         _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
         assert "<script>alert(1)</script>" not in text
         assert "&lt;script&gt;" in text
+
+
+class TestRejectedSubmissionKeepsTypedInput:
+    """提交被拒不许丢内容(2026-08-08 用户实测)。
+
+    原状:组合自洽校验拒掉 → 整页「阻断」+ 一个回队列链接,复核者写的
+    rationale / corrected_value / adjudicator 全部重打。一轮 200 槽里这是
+    实打实的成本,而且诱导人写更短的理由 —— rationale 正是 improve.mine
+    唯一原样带出去给人读的东西(improve.py 的 cohort notes)。
+
+    钉死的契约:被拒 → 回到**该槽的裁决页**(不是消息页),已填内容原样
+    在表单里,错误显示在表单旁边,账本一行不落。
+    """
+
+    def _reject(self, port: int, **over) -> tuple[int, dict, str]:
+        """触发组合自洽拒绝:弃权 + 上一次残留的 CONFIRMED_ABSENT。"""
+        form = {"next": "adjudicate", "decision": "abstain",
+                "reason_code": "CONFIRMED_ABSENT",
+                "rationale": "这一栏印得太糊,读不出来是 8 还是 B",
+                "adjudicator": "bob"}
+        form.update(over)
+        return _decide(port, **form)
+
+    def test_typed_input_survives_a_rejected_submission(self, workspace, server):
+        status, _, text = self._reject(server)
+        assert status == 400
+        assert _ledger(workspace) == [], "被拒的裁决一行都不许落盘"
+        assert 'action="/decide"' in text and 'name="rationale"' in text, \
+            "被拒后要回到能直接改完再交的裁决页,不是只有一个链接的消息页"
+        assert "这一栏印得太糊,读不出来是 8 还是 B" in text, \
+            "复核者写的理由必须原样还在表单里 —— 重打的代价会把理由写短"
+        assert 'name="adjudicator"' in text and 'value="bob"' in text, \
+            "署名也是人打的,一并保留"
+
+    def test_corrected_value_survives_too(self, workspace, server):
+        status, _, text = self._reject(
+            server, decision="correct", corrected_value="INV-4711")
+        assert status == 400
+        assert 'value="INV-4711"' in text, "修正值是最不该让人重打的一格"
+
+    def test_the_rejected_decision_comes_back_selected(self, workspace, server):
+        status, _, text = self._reject(server)
+        assert status == 400
+        radio = re.search(r'<input type="radio" name="decision" '
+                          r'value="abstain"[^>]*>', text)
+        assert radio and "checked" in radio.group(0), \
+            "选过的决策要回来 —— 否则人得重新想一遍自己刚才判的是什么"
+
+    def test_rejected_form_is_marked_so_js_does_not_wipe_it(self, workspace,
+                                                            server):
+        status, _, text = self._reject(server)
+        assert status == 400
+        assert 'data-rejected="1"' in text, \
+            "回填的表单要有标记:载入时的心码过滤必须跳过它,"\
+            "否则报错说「你选的是 CONFIRMED_ABSENT」而下拉已经空了"
+        _, _, js = _req(server, "GET", "/assets.js")
+        assert "rejected" in js, "JS 要认这个标记"
+
+    def test_still_400_and_still_no_write_for_other_rejections(self, workspace,
+                                                              server):
+        """回填是交互,不是放水:其他校验拒绝照样 400、照样不写账本。"""
+        status, _, text = _decide(server, decision="correct",
+                                  corrected_value="", next="adjudicate")
+        assert status == 400
+        assert _ledger(workspace) == []
+        assert "corrected_value" in text or "修正值" in text
+
+
+class TestReasonCodeIsBoundToDecision:
+    """心码下拉必须跟着决策走(2026-08-08 用户实测)。
+
+    界面已按槽位裁剪决策按钮,心码却一直是全集 —— 等于允许人拼出一个
+    必然被服务器拒掉的组合。绑定规则只有一份:adjudicate.REASON_CODE_COMBOS。
+    渲染层从那里读,前端不许复制第二份(两处定义会漂移)。
+    """
+
+    def test_options_declare_the_decisions_they_are_allowed_with(
+            self, workspace, server):
+        from invoiceloop.adjudicate import REASON_CODE_COMBOS
+        from invoiceloop.feedback import REASON_CODES
+
+        _, _, text = _req(
+            server, "GET", f"/adjudicate?run={RUN}&doc={DOC}&field=total_gross")
+        options = dict(re.findall(
+            r'<option value="([A-Z_]+)"[^>]*data-decisions="([^"]*)"', text))
+        assert set(options) == set(REASON_CODES), \
+            "每个心码 option 都要显式声明允许的决策(不受限的声明为空)"
+        for code, allowed in REASON_CODE_COMBOS.items():
+            assert set(options[code].split()) == set(allowed), \
+                f"{code} 的允许决策必须与 adjudicate 的 combo 表逐字一致"
+        unrestricted = set(REASON_CODES) - set(REASON_CODE_COMBOS)
+        assert all(options[c] == "" for c in unrestricted), \
+            "combo 表没管的心码不许在界面上凭空多一条限制"
+
+    def test_the_table_is_not_duplicated_in_the_workbench(self):
+        """反漂移:工作台不许自己再写一份 combo 表。"""
+        source = (Path(__file__).resolve().parents[1] / "invoiceloop"
+                  / "workbench.py").read_text(encoding="utf-8")
+        assert "REASON_CODE_COMBOS" in source, "渲染层要从 adjudicate 读"
+        assert '"CONFIRMED_ABSENT": {"confirm_absent"}' not in source, \
+            "第二份 combo 表就是漂移的起点"
+
+    def test_js_filters_options_by_the_declared_attribute(self, workspace,
+                                                          server):
+        _, _, js = _req(server, "GET", "/assets.js")
+        assert "decisions" in js, \
+            "JS 只能读 option 上的 data-decisions,不许内置自己的表"
+        assert "dataset.decisions" in js
+
+
+class TestComboErrorSpeaksInterfaceWords:
+    """报错要用复核者在界面上看得见的词(2026-08-08 用户实测)。
+
+    原文案:`reason_code CONFIRMED_ABSENT 只能搭配 ['confirm_absent'],
+    收到 abstain` —— Python list repr + 内部字段名 + 英文常量。界面上写的
+    是「弃权」「确认缺失」,对不上号。
+
+    纪律:adjudicate 抛的**原始异常文本不改**(给 API 调用方与日志,而且
+    有测试钉着),改的是工作台怎么显示它。
+    """
+
+    def test_error_uses_the_words_on_the_buttons(self, workspace, server):
+        status, _, text = _decide(
+            server, next="adjudicate", decision="abstain",
+            reason_code="CONFIRMED_ABSENT", rationale="读不出来", lang="zh")
+        assert status == 400
+        assert "弃权" in text and "确认缺失" in text, \
+            "决策与心码都要说界面上的词"
+        assert "['confirm_absent']" not in text, "Python 的 list repr 不进界面"
+        assert "reason_code CONFIRMED_ABSENT 只能搭配" not in text, \
+            "内部字段名与英文常量不进界面"
+
+    def test_error_is_english_on_the_english_page(self, workspace, server):
+        status, _, text = _decide(
+            server, next="adjudicate", decision="abstain",
+            reason_code="CONFIRMED_ABSENT", rationale="illegible", lang="en")
+        assert status == 400
+        assert "Abstain" in text and "Confirm absent" in text
+        assert "['confirm_absent']" not in text
+
+    def test_core_error_text_is_untouched(self, workspace):
+        """API 调用方与日志看的那句话一个字不改。"""
+        with pytest.raises(ValueError) as exc:
+            adjudicate.append_adjudication(
+                workspace / "runs" / RUN, claim_id=None, doc_id=DOC,
+                field="total_gross", decision="abstain", rationale="r",
+                adjudicator="a", decided_at="2026-08-08T00:00:00+00:00",
+                reason_code="CONFIRMED_ABSENT")
+        assert "reason_code CONFIRMED_ABSENT 只能搭配 ['confirm_absent']" \
+            in str(exc.value)
+
+
+class TestFeedbackLabelsStateTheConsequence:
+    """两条误导性标签(2026-08-08):说了「可选」「什么时候填」,没说
+    填不填会发生什么 —— 而两者都决定这条意见进不进挖掘池
+    (feedback.actionable)。只改文案,不改行为。"""
+
+    def test_reason_code_is_not_advertised_as_optional(self, workspace, server):
+        _, _, zh = _req(server, "GET", f"/queue?run={RUN}&lang=zh")
+        label = re.search(r'原因码[^<]*', zh).group(0)
+        assert "可选" not in label, \
+            "不填这条事件 actionable 就是 false,整条被 mine 排除 —— 不是可选"
+        assert "改进循环" in label, "要说清不填的后果"
+        _, _, en = _req(server, "GET", f"/queue?run={RUN}&lang=en")
+        label_en = re.search(r'Reason code[^<]*', en).group(0)
+        assert "optional" not in label_en.lower()
+        assert "improvement loop" in label_en.lower()
+
+    def test_confidence_label_says_what_low_does(self, workspace, server):
+        _, _, zh = _req(server, "GET", f"/queue?run={RUN}&lang=zh")
+        label = re.search(r'标注存疑[^<]*', zh).group(0)
+        assert "改进循环" in label, "标 low 会把这条事件踢出挖掘池,要说出来"
+        _, _, en = _req(server, "GET", f"/queue?run={RUN}&lang=en")
+        label_en = re.search(r'Flag doubt[^<]*', en).group(0)
+        assert "improvement loop" in label_en.lower()

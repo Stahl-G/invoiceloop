@@ -611,6 +611,22 @@ a:hover { text-decoration: underline; }
     margin: 10px 0;
 }
 
+/* ---- 提交被拒的表单内提示(红 = 确定性阻断:这次写入被拒了)。
+       摆在表单**正上方**,人的输入原样还在下面 —— 以前这里是一张整页
+       「阻断」,回不去也带不走已填内容(2026-08-08 用户实测) ---- */
+.wb-form-error {
+    border: 1px solid var(--wb-block-line);
+    background: var(--wb-block-wash);
+    color: var(--wb-block);
+    border-radius: var(--wb-radius-sm);
+    padding: 10px 14px;
+    font-size: 13px;
+    line-height: 1.55;
+    margin: 10px 0;
+}
+.wb-form-error p { margin: 4px 0 0; }
+.wb-form-error .wb-form-error-kept { color: var(--wb-ink-soft); }
+
 /* ---- 报告页:统计卡 + 修正清单 ---- */
 .wb-report-stats {
     display: grid;
