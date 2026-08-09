@@ -59,7 +59,15 @@ OCR_UNAVAILABLE = "ocr_unavailable"    # 机检跑不了(宪章四)
 NOT_MEASURED = "not_measured"          # 旧工件没有这一项 —— 只用于消费侧默认
 
 #: 引擎版本。改匹配规则 → 改 digest → 旧工件的 corroborated 不再被采信。
-ENGINE = "absence-evidence-v1"
+#:
+#: v2(2026-08-09,**看过 v1 台账之后**):`seller_vat_id` 补进美国税号
+#: 标签的拼写形式。v1 只收了缩写(ein / fein / tin),而美国发票实际印的是
+#: "Federal ID" / "Federal Employee ID";开发集上 v1 漏掉的 6 个税号,
+#: 5 个紧跟在 `federal` 后面,第 6 个是 OCR 把 "USt-IdNr" 读成 "ush id nr"。
+#: 这是**加词**,走的是单调安全的那一侧:只会少放行,不会造出静默错。
+#: 但这一版是事后的 —— v1 的数字才是盲测,两个都要照登
+#: (`ABSENCE_EVIDENCE_DEV_2026-08-09.md`)。
+ENGINE = "absence-evidence-v2"
 
 #: **预注册词表(冻结于本文件首次提交,先于任何 saves/silent 测量)。**
 #:
@@ -79,6 +87,10 @@ LABEL_LEXICON: dict[str, tuple[str, ...]] = {
         "tva", "iva", "btw", "moms", "mva", "alv",
         "gst", "gstin", "abn", "acn",
         "tin", "ein", "fein", "taxpayer",
+        # v2:美国发票印的是拼出来的标签,不是缩写。`federal` 一条就覆盖
+        # "Federal ID" / "Federal Tax ID" / "Federal Employer ID",以及 OCR
+        # 把 ID 读成 DD 的那种;`id nr` / `id no` 覆盖 USt-IdNr 一类。
+        "federal", "employer", "identification", "id nr", "id no",
         "nip", "cif", "nif", "ico", "dic", "cvr", "kvk",
         "siret", "siren", "cnpj", "cuit", "rfc", "rut", "pan",
         "tax id", "tax no", "tax number", "tax registration",

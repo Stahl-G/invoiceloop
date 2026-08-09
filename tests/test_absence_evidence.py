@@ -154,6 +154,28 @@ class TestMonotoneSafety:
         assert ae.probe_document("d1", lexicon=wide)["total_net"]["status"] \
             == ae.LABEL_PRESENT
 
+    def test_us_tax_id_labels_are_spelled_out_not_only_abbreviated(self):
+        """v2 补词:美国发票印 "Federal ID",不印 "EIN"。
+
+        v1 只收了缩写,开发集上漏掉的 6 个税号有 5 个紧跟在 `federal` 后面。
+        补的是**加词**,单调安全的那一侧 —— 但它是事后的,所以两版数字
+        都要照登(`ABSENCE_EVIDENCE_DEV_2026-08-09.md`)。
+        """
+        vat = ae.LABEL_LEXICON["seller_vat_id"]
+        for token in ("federal", "employer", "identification"):
+            assert token in vat, f"{token} 不在 seller_vat_id 词表里"
+
+    def test_no_token_was_added_only_to_silence_a_document(self):
+        """due_date 的漏判**不许**靠补 `sale` / `transaction` / `completed`
+        这类词来消掉。
+
+        那三个 token 不是到期日的标签,加它们的唯一效果就是压住开发集上那
+        几份特定文档 —— 单调安全掩护不了逐份拟合。那些槽照登为静默错。
+        """
+        due = ae.LABEL_LEXICON["due_date"]
+        for token in ("sale", "transaction", "completed", "donation", "eft"):
+            assert token not in due, f"{token} 不是到期日的标签"
+
     def test_frozen_lexicon_keeps_the_conservative_due_date_token(self):
         """`due_date` 保留裸 `due`,尽管 'Amount Due' 会让它几乎永不放行。
 

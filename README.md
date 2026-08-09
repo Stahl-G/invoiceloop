@@ -145,7 +145,8 @@ All from stored evidence — verifying them needs no API calls.
 | Triage lift, SEALED-1 (100 sealed unseen invoices) | **4.03×** against pre-registered thresholds |
 | Decision load for release, SEALED-1 | **82.9% → 64.2%** under the promoted HAR-0002 policy |
 | TIER1 silent-error rate vs a confidence-threshold baseline | **9.62%** vs **21.91%** at a fixed operating point |
-| Test suite | **634 passing, 3 skipped** (`python3 -m pytest tests/ -q`), including a 454-row replay of a round-six misbinding incident and a point-by-point check against the original implementations |
+| Human queue, dev corpus (300 documents / 3,000 slots) | **60.20% -> 55.67%** for HAR-0001 -> HAR-0018, with **0/136** silent absences and silent-wrong unchanged at 179/1,015 — development data, not an unseen result |
+| Test suite | **673 passing, 3 skipped** (`python3 -m pytest tests/ -q`), including a 454-row replay of a round-six misbinding incident and a point-by-point check against the original implementations |
 
 Protocols and results: [`docs/SEALED3_RESULTS.md`](docs/SEALED3_RESULTS.md),
 [`docs/SEALED1_RESULTS.md`](docs/SEALED1_RESULTS.md),
