@@ -126,7 +126,8 @@ class TestProjection:
                 # 无声明槽:确认页面上没有(confirm_absent),不再借壳 accept
                 _decide(ws, field, "confirm_absent")
         doc = deliver.build_deliverable(ws)["docs"][DOC]
-        assert doc["status"] == "released"
+        assert doc["status"] == "ready_for_approval", \
+            "槽全部处置完毕是自动化的终点;可外发要另一条署名批准"
         seller = doc["fields"]["seller_name"]
         assert seller["status"] == "unreviewed_corroborated", \
             "TIER2 印证槽不拦放行,但标注不许丢"
@@ -223,8 +224,8 @@ class TestPolicyAccept:
                     decision="confirm_absent", rationale="r", adjudicator="t",
                     decided_at=DECIDED)
         doc = deliver.build_deliverable(out2)["docs"][DOC]
-        assert doc["status"] == "released_with_caveats", \
-            "带文档级阻断的放行是单独一档,不许混进 released"
+        assert doc["status"] == "ready_for_approval_with_caveats", \
+            "带文档级阻断的放行是单独一档,不许混进普通的 ready_for_approval"
         assert "independent_ocr" in doc["release_caveats"], \
             "机检没跑过的放行不许看起来和机检全过的放行一样"
 
@@ -232,10 +233,16 @@ class TestPolicyAccept:
 class TestProvenanceAtTopLevel:
     """下游拿到 deliverable.json 应当读得出「这是哪版策略下的放行」。"""
 
-    def test_harness_id_is_readable_without_a_straight_through_slot(self, ws):
+    def test_harness_id_is_readable_at_the_top_level(self, ws):
         """harness_id 此前只以 `source: "policy:HAR-000N"` 出现在被策略放行的
-        槽上。**一个零 straight-through 的 run 里它就完全不出现** —— 而决定
-        「哪些槽不用问人」的正是那份策略。出处不在工件里,就不可核。
+        槽上,所以顶层要单独记一份 —— 决定「哪些槽不用问人」的正是那份策略,
+        出处不在工件里就不可核。
+
+        这条测试原名带「零 straight-through 的 run」,而它的前提当时就是错的:
+        这个 fixture 里 seller_name 从来没人看过,它**就是**一个 straight-through
+        槽,只是 source 写成了 null,所以数不出来。2026-08-09 把它改成
+        `policy:HAR-0001` 之后前提自己塌了 —— 一个被错误标注掩盖的
+        straight-through 槽,正是 Northstar 指的那条权威链。
         """
         from invoiceloop.deliver import build_deliverable
 
@@ -245,7 +252,8 @@ class TestProvenanceAtTopLevel:
         straight = [s for d in deliverable["docs"].values()
                     for s in d["fields"].values()
                     if str(s.get("source") or "").startswith("policy:")]
-        assert not straight, "这条测试要的是零 straight-through 的 run"
+        assert straight, "策略处置过的槽必须自报是哪份策略处置的"
+        assert all(s["status"] == "unreviewed_corroborated" for s in straight)
 
         routing = json.loads(
             (run_dir / "routing_report.json").read_text(encoding="utf-8"))

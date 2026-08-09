@@ -33,6 +33,11 @@ _DEMO_RATIONALE = (
     "something to project — no person looked at this row"
 )
 
+_DEMO_APPROVAL_RATIONALE = (
+    "seeded by `invoiceloop demo` as a fixture so the demo reaches the export "
+    "gate — no person approved this document for posting"
+)
+
 
 def _seed_review(run_dir: Path) -> int:
     """把演示 run 里待裁决的槽逐条判掉,让至少一份文档走到出口。
@@ -81,7 +86,37 @@ def _seed_review(run_dir: Path) -> int:
                 pass
         if seeded == before_round:           # 一轮下来一条都没判成 —— 停
             break
+    _seed_approvals(run_dir)
     return seeded
+
+
+def _seed_approvals(run_dir: Path) -> int:
+    """把处置完的文档批准掉,让演示走到**真正**的出口。
+
+    2026-08-09 加:槽全部裁完只到 ready_for_approval —— 那是自动化的终点,
+    不是可外发。演示要展示的正是这最后一步归人所有,所以它也必须出现在
+    demo 里,并且和裁决一样署名为夹具,一眼看得出不是人批的。
+    """
+    from .approve import append_approval
+    from .deliver import build_deliverable, write_deliverable
+
+    approved = 0
+    for doc_id, doc in build_deliverable(run_dir)["docs"].items():
+        if not doc["status"].startswith("ready_for_approval"):
+            continue
+        try:
+            append_approval(
+                run_dir, doc_id=doc_id, approved_by=DEMO_ADJUDICATOR,
+                rationale=_DEMO_APPROVAL_RATIONALE,
+                approved_at="2026-08-07T12:00:00+00:00")
+            approved += 1
+        except Exception:  # noqa: BLE001 —— 批不了的留 ready_for_approval
+            pass
+    if approved:
+        # 批准是账本(权威),deliverable.json 是投影 —— 顺序同裁决:
+        # 先记事件,再重写投影。少了这一步盘上的投影会停在批准前的状态。
+        write_deliverable(run_dir)
+    return approved
 
 
 def _copy_samples(ws: Path) -> None:

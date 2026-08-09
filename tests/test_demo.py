@@ -110,9 +110,22 @@ class TestDemoReachesTheTerminus:
             (ws / "runs" / "run-0001" / "deliverable.json").read_text(encoding="utf-8"))
 
         released = [d for d, v in deliverable["docs"].items()
-                    if v["status"] in ("released", "released_with_caveats")]
+                    if v["status"].startswith("approved_for_export")]
         assert released, (
             f"没有任何文档走到出口:{deliverable['summary']['by_status']}")
+
+    def test_seeded_approval_never_impersonates_a_person(self, tmp_path):
+        """出口那一步归人所有,所以夹具批准也必须一眼看得出不是人批的。"""
+        from invoiceloop.approve import load_approvals
+        from invoiceloop.demo import cmd_demo
+
+        ws = tmp_path / "ws"
+        cmd_demo(ws)
+        approvals = load_approvals(ws / "runs" / "run-0001")
+        assert approvals, "demo 要走到 approved_for_export,就得有批准事件"
+        for a in approvals:
+            assert "not a human" in a["approved_by"]
+            assert "no person approved" in a["rationale"]
 
     def test_seeded_decisions_never_impersonate_a_human_reviewer(self, tmp_path):
         """裁决账本是「某个人看过并判了」的证词。

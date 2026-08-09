@@ -337,6 +337,30 @@ _T = {
         "status_released": "released", "status_pending": "pending",
         "status_blocked": "blocked",
         "status_released_with_caveats": "released w/ caveats",
+        "status_ready_for_approval": "awaiting your approval",
+        "status_ready_for_approval_with_caveats":
+            "awaiting approval (w/ caveats)",
+        "status_approved_for_export": "approved for export",
+        "status_approved_for_export_with_caveats":
+            "approved for export (w/ caveats)",
+        "approve_h": "Approve for export",
+        "approve_lead": "Every slot on these documents has been dealt with — "
+                        "by you or by the routing policy. Posting them is a "
+                        "separate decision, and it is yours: the system will "
+                        "not sign off an invoice.",
+        "approve_unreviewed": "Released by policy without individual review: "
+                              "{fields}",
+        "approve_unreviewed_tier1": "including key fields: {fields}",
+        "approve_none_unreviewed": "Every slot on this document was decided by "
+                                   "a person.",
+        "approve_by": "Your name",
+        "approve_why": "Why you are approving",
+        "approve_btn": "Approve for export",
+        "approve_stale": "Approved by {who} on {when}, but the content has "
+                         "changed since — approve again to export.",
+        "approve_done": "Approved for export by {who} on {when}.",
+        "approve_caveats_kept": "The caveats above stay on this document after "
+                                "approval; approving does not clear them.",
         "download_deliverable": "Download deliverable.json (final-value projection)",
         "release_note": "released = every slot adjudicated (tier-1 fields require an explicit "
                         "decision even when corroborated); pending = slots awaiting decision; "
@@ -351,6 +375,8 @@ _T = {
         "notice_ingested": "New run created.",
         "notice_bundled": "Bundle built.",
         "notice_uploaded": "Uploaded.",
+        "notice_approved": "Approved for export. Your name, your reason and "
+                           "what nobody reviewed are all in the ledger.",
         "notice_proposed": "Candidate written. It is not in effect — it must "
                            "pass evaluation and be promoted under your name.",
         "notice_evaluated": "Evaluated. The numbers are below, including what "
@@ -598,6 +624,25 @@ _T = {
         "status_released": "可放行", "status_pending": "待完成",
         "status_blocked": "被阻断",
         "status_released_with_caveats": "放行(带披露)",
+        "status_ready_for_approval": "等你批准",
+        "status_ready_for_approval_with_caveats": "等你批准(带披露)",
+        "status_approved_for_export": "已批准外发",
+        "status_approved_for_export_with_caveats": "已批准外发(带披露)",
+        "approve_h": "批准外发",
+        "approve_lead": "下面这些单据的每个槽都已处置 —— 你判的,或路由策略"
+                        "判的。要不要入账是另一个决定,而且是你的决定:"
+                        "系统不给单据签字。",
+        "approve_unreviewed": "由策略放行、没有逐个人看的字段:{fields}",
+        "approve_unreviewed_tier1": "其中关键字段:{fields}",
+        "approve_none_unreviewed": "这份单的每个槽都是人判的。",
+        "approve_by": "你的署名",
+        "approve_why": "批准理由",
+        "approve_btn": "批准外发",
+        "approve_stale": "{who} 在 {when} 批准过,但之后内容变了 —— "
+                         "要外发得重新批一次。",
+        "approve_done": "{who} 于 {when} 批准外发。",
+        "approve_caveats_kept": "上面的披露在批准之后仍然跟着这份单走;"
+                                "批准不会把它抹掉。",
         "download_deliverable": "下载 deliverable.json(最终值投影)",
         "release_note": "可放行 = 全部槽位裁决完毕(关键字段即使多方印证也须显式裁决);"
                         "待完成 = 仍有槽位未裁决;被阻断 = 有关键字段被拒。"
@@ -611,6 +656,8 @@ _T = {
         "notice_ingested": "已创建新 run。",
         "notice_bundled": "bundle 已打好。",
         "notice_uploaded": "已上传。",
+        "notice_approved": "已批准外发。你的署名、理由,以及这份单里没有人"
+                           "看过的字段,都记进账本了。",
         "notice_proposed": "候选已写出。它还没有生效 —— 评测通过并由你署名晋升才算。",
         "notice_evaluated": "评测完成。数字在下面,包括它可能伤害了什么。",
         "notice_promoted": "已晋升。之后的 run 会用新 harness;晋升记录已入账本。",
@@ -2459,6 +2506,72 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         return self.page(lang, "upload", body, notice=notice)
 
     # ---- 交付与验证
+    @staticmethod
+    def _approve_html(lang: str, ctx: RunCtx, deliverable: dict) -> str:
+        """外发批准区:自动化到 ready_for_approval 为止,最后一步归人。
+
+        表单刻意**不预填署名**,也不给「全部批准」的按钮:一次签名对应
+        一份单据。每份单据下先列出「没有人看过的字段」—— 签字的人有权知道
+        自己在替多少条策略处置背书(2026-08-09 Northstar 权威链)。
+        """
+        rows = []
+        for doc_id, doc in deliverable["docs"].items():
+            status = doc.get("status", "")
+            if not (status.startswith("ready_for_approval")
+                    or status.startswith("approved_for_export")):
+                continue
+            unreviewed = doc.get("policy_disposed_fields") or []
+            tier1 = doc.get("tier1_policy_disposed_fields") or []
+            if unreviewed:
+                names = "、".join(_pw.field(f, lang) for f in unreviewed)
+                who = (f'<p class="wb-approve-unreviewed">'
+                       f'{_esc(_t(lang, "approve_unreviewed", fields=names))}')
+                if tier1:
+                    key = "、".join(_pw.field(f, lang) for f in tier1)
+                    who += (f' <b>'
+                            f'{_esc(_t(lang, "approve_unreviewed_tier1", fields=key))}'
+                            f'</b>')
+                who += "</p>"
+            else:
+                who = (f'<p class="wb-approve-unreviewed">'
+                       f'{_esc(_t(lang, "approve_none_unreviewed"))}</p>')
+            caveat_note = (
+                f'<p class="wb-label">{_esc(_t(lang, "approve_caveats_kept"))}</p>'
+                if doc.get("release_caveats") else "")
+            approval = doc.get("approval")
+            if approval and not approval.get("stale"):
+                state = (f'<p class="wb-approve-done">'
+                         f'{_esc(_t(lang, "approve_done", who=approval["approved_by"], when=approval["approved_at"]))}'
+                         f'</p>')
+                form = ""
+            else:
+                state = ""
+                if approval:
+                    state = (f'<p class="wb-approve-stale">'
+                             f'{_esc(_t(lang, "approve_stale", who=approval["approved_by"], when=approval["approved_at"]))}'
+                             f'</p>')
+                form = (
+                    f'<form class="wb-form" method="post" action="/approve">'
+                    f'<input type="hidden" name="run" value="{_esc(ctx.name)}">'
+                    f'<input type="hidden" name="lang" value="{_esc(lang)}">'
+                    f'<input type="hidden" name="doc" value="{_esc(doc_id)}">'
+                    f'<label>{_esc(_t(lang, "approve_by"))}'
+                    f'<input type="text" name="approved_by" required></label>'
+                    f'<label>{_esc(_t(lang, "approve_why"))}'
+                    f'<textarea name="rationale" rows="2" required></textarea>'
+                    f'</label>'
+                    f'<button type="submit" class="wb-btn">'
+                    f'{_esc(_t(lang, "approve_btn"))}</button></form>')
+            rows.append(
+                f'<article class="wb-approve-card"><h3>{_esc(doc_id)}</h3>'
+                f'<p class="wb-label">{_esc(_t(lang, f"status_{status}"))}</p>'
+                f'{who}{caveat_note}{state}{form}</article>')
+        if not rows:
+            return ""
+        return (f'<h2>{_esc(_t(lang, "approve_h"))}</h2>'
+                f'<p class="wb-imp-lead">{_esc(_t(lang, "approve_lead"))}</p>'
+                + "".join(rows))
+
     def deliver_page(self, lang: str, run_dir: Path, params: dict,
                      verify_report: dict | None = None) -> str:
         ctx = RunCtx(run_dir)
@@ -2497,6 +2610,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         body = f"""
 <h1>{_esc(_t(lang, 'deliver'))}</h1>
 {release_html}
+{self._approve_html(lang, ctx, deliverable)}
 <form class="wb-form" method="post" action="/bundle">
 <input type="hidden" name="run" value="{_esc(ctx.name)}">
 <input type="hidden" name="lang" value="{_esc(lang)}">
@@ -2714,6 +2828,8 @@ class _Handler(BaseHTTPRequestHandler):
                 return self._ingest(lang)
             if method == "POST" and path == "/bundle":
                 return self._bundle(lang)
+            if method == "POST" and path == "/approve":
+                return self._approve(lang)
             if method == "POST" and path == "/verify":
                 return self._verify(lang)
             if method == "POST" and path == "/improve/adopt":
@@ -2940,6 +3056,37 @@ class _Handler(BaseHTTPRequestHandler):
         run = self._require_run(form)
         build_audit_bundle(run)
         self._redirect(f"/deliver?run={run.name}&lang={lang}&notice=bundled")
+
+    def _approve(self, lang: str) -> None:
+        """一次署名批准一份单据外发。时间由服务器在点击瞬间盖 UTC 秒戳 ——
+        与裁决同一口径:人给决定,机器给时间戳。
+
+        先记账本(权威)再重写投影(deliverable.json),顺序不可逆:
+        投影写失败不撤销已经落盘的批准。
+        """
+        from datetime import datetime, timezone
+
+        from .approve import append_approval
+        from .deliver import write_deliverable
+
+        form = self._form()
+        run = self._require_run(form)
+        lang = form.get("lang", [lang])[0] or lang
+        self._last_run = run.name
+        doc_id = (form.get("doc", [""])[0] or "").strip()
+        if not doc_id:
+            raise _HttpError(400, "没说批准哪一份单据")
+        append_approval(
+            run, doc_id=doc_id,
+            approved_by=(form.get("approved_by", [""])[0] or "").strip(),
+            rationale=(form.get("rationale", [""])[0] or "").strip(),
+            approved_at=datetime.now(timezone.utc).replace(
+                microsecond=0).isoformat().replace("+00:00", "Z"))
+        try:
+            write_deliverable(run)
+        except Exception:  # noqa: BLE001 —— 投影重写失败不撤销已落盘的批准
+            pass
+        self._redirect(f"/deliver?run={run.name}&lang={lang}&notice=approved")
 
     # ---- 改进循环的四个写操作
     #

@@ -265,10 +265,16 @@ def append_adjudication(
 
 
 def adjudicate_and_render(run_dir: Path, **kwargs) -> dict:
-    """先记裁决(权威),再重渲 panel(投影)。顺序不可逆,渲染失败不回滚:
-    decision_recorded 永远为真时才落盘;panel_refreshed 为假就提示 render 命令。"""
+    """先记裁决(权威),再重渲两份投影。顺序不可逆,渲染失败不回滚:
+    decision_recorded 永远为真时才落盘;panel_refreshed 为假就提示 render 命令。
+
+    2026-08-09 补上 deliverable:panel 一直在这里重渲,deliverable.json 却
+    停在 run 时那一版 —— 裁决完再打开交付页,看到的是裁决前的状态。在
+    「这份单能不能外发」这个问题上,给一份过期投影比不给更糟。
+    """
     entry = append_adjudication(run_dir, **kwargs)
-    result = {"decision": entry, "decision_recorded": True, "panel_refreshed": False}
+    result = {"decision": entry, "decision_recorded": True,
+              "panel_refreshed": False, "deliverable_refreshed": False}
     try:
         from .panel import render_panel_from_run
 
@@ -276,6 +282,13 @@ def adjudicate_and_render(run_dir: Path, **kwargs) -> dict:
         result["panel_refreshed"] = True
     except Exception as exc:  # noqa: BLE001 —— 渲染失败不撤销已落盘的裁决
         result["render_error"] = repr(exc)
+    try:
+        from .deliver import write_deliverable
+
+        write_deliverable(run_dir)
+        result["deliverable_refreshed"] = True
+    except Exception as exc:  # noqa: BLE001 —— 同上
+        result["deliverable_error"] = repr(exc)
     return result
 
 

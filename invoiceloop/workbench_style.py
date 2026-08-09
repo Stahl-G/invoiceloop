@@ -1294,6 +1294,35 @@ human-confirmed 不用绿) */
 .wb-btn.danger { background: #a3341f; }
 .wb-btn.danger:hover:not(:disabled) { background: #862a19; }
 
+/* ── 外发批准 ──────────────────────────────────────────────────
+   一张卡一份单据,一次署名一份单据。「没有人看过的字段」排在表单**之前**:
+   要它先被读到,再被签字。 */
+.wb-approve-card {
+    border: 1px solid var(--wb-line);
+    border-radius: var(--wb-radius-sm);
+    padding: 12px 14px;
+    margin: 10px 0;
+}
+.wb-approve-card h3 { margin: 0 0 4px; font-size: 14px; }
+.wb-approve-unreviewed {
+    margin: 6px 0;
+    font-size: 13px;
+    color: #8a5a12;
+    background: rgba(196, 132, 27, 0.10);
+    padding: 7px 10px;
+    border-radius: var(--wb-radius-sm);
+}
+.wb-approve-stale {
+    margin: 6px 0;
+    font-size: 13px;
+    color: #a3341f;
+}
+.wb-approve-done {
+    margin: 6px 0;
+    font-size: 13px;
+    color: #1f7a44;
+}
+
 /* ── 改进循环:AP 版式 ──────────────────────────────────────────
    叙事顺序,不是数据结构顺序。工程标识收进 .wb-imp-tech 折叠区。 */
 .wb-imp-lead {

@@ -35,21 +35,39 @@ def _adaptive_token(root: Path) -> str:
     return adaptive_fingerprint_token(root)
 
 
-def _code_revision() -> str | None:
+def _code_revision(repo: Path | None = None) -> str | None:
     """当前代码的 git commit —— 门禁与规范化规则就是「策略」,策略的版本
     就是代码版本(78 评 P4)。装在非 git 环境(如打包安装)则为 None,
-    如实记 null,不编造。"""
+    如实记 null,不编造。
+
+    工作树有未提交改动时返回 ``"<sha>-dirty"``。2026-08-09 实测到的缺口:
+    这里原来只跑 `rev-parse HEAD`,于是从一个带 764 行未提交改动的工作区
+    起 run,工件里照样盖一个干干净净的 commit ——「这批数字是哪份代码产生
+    的」这个指纹于是是假的,而它存在的全部意义就是回答那个问题。
+    """
     import subprocess
 
-    repo = Path(__file__).resolve().parent.parent
+    repo = Path(repo) if repo is not None \
+        else Path(__file__).resolve().parent.parent
     try:
         out = subprocess.run(
             ["git", "-C", str(repo), "rev-parse", "HEAD"],
             capture_output=True, text=True, timeout=5,
         )
+        if out.returncode != 0:
+            return None
+        rev = out.stdout.strip()
+        status = subprocess.run(
+            ["git", "-C", str(repo), "status", "--porcelain",
+             "--untracked-files=no"],
+            capture_output=True, text=True, timeout=15,
+        )
     except (OSError, subprocess.TimeoutExpired):
         return None
-    return out.stdout.strip() if out.returncode == 0 else None
+    if status.returncode != 0:
+        # status 自己没跑成 —— 不敢说干净,也不许编造脏。如实标未知。
+        return f"{rev}-unknown-worktree"
+    return f"{rev}-dirty" if status.stdout.strip() else rev
 
 
 def build_input_manifest(doc_ids: list[str], *, include_vision: bool = True) -> dict:

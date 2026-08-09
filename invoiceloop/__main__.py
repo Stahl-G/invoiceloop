@@ -61,6 +61,15 @@ def _main() -> None:
     p_adj.add_argument("--supersedes", dest="supersedes_decision_id", default=None,
                        help="该字段槽已有裁决时必填:当前 tip 的 decision_id")
 
+    p_app = sub.add_parser(
+        "approve",
+        help="批准一份单据外发(槽全部处置完之后的最后一步,只有人能做)")
+    p_app.add_argument("--run", type=Path, required=True)
+    p_app.add_argument("--doc", required=True)
+    p_app.add_argument("--approved-by", required=True, help="署名,系统不代签")
+    p_app.add_argument("--rationale", required=True, help="批准理由,进审计轨迹")
+    p_app.add_argument("--approved-at", required=True, help="ISO 时间,由人给出")
+
     p_ren = sub.add_parser("render", help="从盘上工件重渲 panel(纯投影,可重算)")
     p_ren.add_argument("--run", type=Path, required=True)
 
@@ -265,6 +274,16 @@ def _main() -> None:
             result["hint"] = ("panel 未刷新,但裁决已落盘(fsync)。"
                               f"修好渲染后跑:python3 -m invoiceloop render --run {args.run}")
         print(json.dumps(result, ensure_ascii=False, indent=1))
+    elif args.command == "approve":
+        from .approve import append_approval
+        from .deliver import write_deliverable
+
+        entry = append_approval(
+            args.run, doc_id=args.doc, approved_by=args.approved_by,
+            rationale=args.rationale, approved_at=args.approved_at)
+        # 先记账本(权威),再重写投影 —— 与裁决同一顺序
+        write_deliverable(args.run)
+        print(json.dumps(entry, ensure_ascii=False, indent=1))
     elif args.command == "render":
         from .panel import render_panel_from_run
 

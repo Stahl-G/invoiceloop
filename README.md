@@ -33,9 +33,11 @@ python3 -m invoiceloop workbench --workspace demo-ws   # http://127.0.0.1:8765
 ```
 
 The demo ships three DocILE invoices with their DWS responses already on disk.
-Nothing calls the network. It ends with two documents `released`, one
-`released_with_caveats` (its OCR was blocked — a document released while a check
-could not run must never look as clean as one where every check passed).
+Nothing calls the network. It ends with two documents `approved_for_export`, one
+`approved_for_export_with_caveats` (its OCR was blocked — a document released
+while a check could not run must never look as clean as one where every check
+passed). The demo's decisions and its approvals are both signed
+`demo-fixture (not a human review)`: no person looked at those rows.
 
 System dependency: poppler (`pdftotext` / `pdftoppm`; `brew install poppler`).
 tesseract is optional — without it, scanned pages block rather than pass silently.
@@ -61,10 +63,31 @@ I believe this", and the answer recomputes offline.
 Every run writes `deliverable.json` — one row per field as
 `{value, status, source}`, and a per-document status:
 
-- **`released` / `released_with_caveats`** → downstream AP/ERP can post it
+- **`approved_for_export` / `approved_for_export_with_caveats`** → downstream
+  AP/ERP can post it. **Only a signed human approval reaches this status.**
+- **`ready_for_approval` / `ready_for_approval_with_caveats`** → every slot has
+  been dealt with, by a person or by the routing policy. This is where
+  automation stops. It is *not* postable: no status a machine can reach on its
+  own carries posting authority.
 - **`pending` / `blocked`** → stays in the queue, never reaches downstream
 - `source` traces each value back to a frozen claim, a human decision, or a
   named policy version — so an audit question does not mean re-opening the PDF
+
+Approval is per document, not per field, and it binds to what was approved: the
+record in `approve_ledger.jsonl` carries the signature, the reason, the digest of
+the values at that moment, and **the list of fields the routing policy released
+without anyone reading them** (key fields called out separately). Change a value
+afterwards and the approval goes stale — the document drops back to
+`ready_for_approval` and someone has to sign again. The stale approval stays in
+the ledger; who approved what is audit trail, not clutter.
+
+This split is deliberate. A routing policy is allowed to decide *is this value
+trustworthy* — a wrong auto-accept is caught by QA sampling. It is not allowed to
+decide *may this invoice be posted*. Before 2026-08-09 it effectively was: a
+document whose every slot the policy released reached `released` with no person
+ever having looked at it, and this file said `released` was postable. Widening
+straight-through then quietly widened posting authority. It no longer does, which
+is what makes it safe to keep widening it.
 
 Values come only from the frozen ledger and the adjudication ledger. **The support
 matrix is never the value source**, and human adjudication is an overlay on frozen
@@ -122,7 +145,7 @@ All from stored evidence — verifying them needs no API calls.
 | Triage lift, SEALED-1 (100 sealed unseen invoices) | **4.03×** against pre-registered thresholds |
 | Decision load for release, SEALED-1 | **82.9% → 64.2%** under the promoted HAR-0002 policy |
 | TIER1 silent-error rate vs a confidence-threshold baseline | **9.62%** vs **21.91%** at a fixed operating point |
-| Test suite | **622 passing**, including a 454-row replay of a round-six misbinding incident and a point-by-point check against the original implementations |
+| Test suite | **634 passing, 3 skipped** (`python3 -m pytest tests/ -q`), including a 454-row replay of a round-six misbinding incident and a point-by-point check against the original implementations |
 
 Protocols and results: [`docs/SEALED3_RESULTS.md`](docs/SEALED3_RESULTS.md),
 [`docs/SEALED1_RESULTS.md`](docs/SEALED1_RESULTS.md),

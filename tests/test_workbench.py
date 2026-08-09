@@ -455,6 +455,125 @@ class TestNavigation:
             "404/消息页必须给回队列的路(实测只剩上传 tab,被困住)"
 
 
+class TestApproveForExport:
+    """出口那一步是人的:工作台必须真的给得出这一步,并且先说清代价。"""
+
+    def _dispose_all(self, workspace):
+        """把所有待处置的槽裁掉,走 adjudicate_and_render —— 与 CLI/网页同一
+        路径,顺带钉住「裁决之后盘上的 deliverable.json 必须是新的」。"""
+        from invoiceloop import adjudicate, deliver
+
+        run_dir = workspace / "runs" / RUN
+        while True:
+            todo = [(doc_id, f) for doc_id, doc
+                    in deliver.build_deliverable(run_dir)["docs"].items()
+                    for f, e in doc["fields"].items()
+                    if e["status"] in deliver.PENDING_STATUSES]
+            if not todo:
+                return run_dir
+            matrix = json.loads(
+                (run_dir / "support_matrix.json").read_text(encoding="utf-8"))
+            claims = {(r["doc_id"], r["field"]): r.get("claim_id")
+                      for r in matrix["rows"]}
+            progressed = False
+            for doc_id, field in todo:
+                cid = claims.get((doc_id, field))
+                try:
+                    adjudicate.adjudicate_and_render(
+                        run_dir, claim_id=cid, doc_id=doc_id, field=field,
+                        decision="accept" if cid else "confirm_absent",
+                        rationale="r", adjudicator="t",
+                        decided_at="2026-08-09T00:00:00Z")
+                    progressed = True
+                except ValueError:
+                    pass
+            if not progressed:
+                return run_dir
+
+    def test_a_decision_refreshes_the_delivery_projection_on_disk(
+            self, workspace, server):
+        """裁决之后交付页不许还显示裁决前的状态。
+
+        panel 一直在裁决后重渲,deliverable.json 却停在 run 那一版 ——
+        在「这份单能不能外发」上给过期投影比不给更糟。
+        """
+        from invoiceloop import adjudicate
+
+        run_dir = workspace / "runs" / RUN
+        before = json.loads(
+            (run_dir / "deliverable.json").read_text(encoding="utf-8"))
+        result = adjudicate.adjudicate_and_render(
+            run_dir, claim_id=None, doc_id=DOC, field="buyer_name",
+            decision="confirm_absent", rationale="页面上没有",
+            adjudicator="t", decided_at="2026-08-09T00:00:00Z")
+        assert result["deliverable_refreshed"] is True
+        after = json.loads(
+            (run_dir / "deliverable.json").read_text(encoding="utf-8"))
+        assert before["docs"][DOC]["fields"]["buyer_name"]["status"] == "pending"
+        assert after["docs"][DOC]["fields"]["buyer_name"]["status"] \
+            == "confirmed_absent"
+
+    def test_page_states_the_review_situation_before_offering_the_button(
+            self, workspace, server):
+        self._dispose_all(workspace)
+        _, _, text = _req(server, "GET", f"/deliver?run={RUN}&lang=zh")
+        assert "批准外发" in text, "自动化到 ready_for_approval 就停了,得给得出下一步"
+        # 这个 fixture 下没有印证型 TIER2 槽,所以每个槽都是人判的 ——
+        # 那也要说出来,而不是留白
+        assert "每个槽都是人判的" in text
+        assert text.index("每个槽都是人判的") < text.index("你的署名"), \
+            "复核情况要排在表单之前 —— 先读到,再签字"
+
+    def test_card_names_the_unreviewed_key_fields_before_the_signature(self):
+        """有策略处置的槽时,卡片必须点名说出来,关键字段还要加重。
+
+        直接喂投影而不是造一份跑得出策略放行的语料:这条测的是**呈现**,
+        呈现的输入就是 deliverable 的那两个列表。
+        """
+        from invoiceloop.workbench import Workbench
+
+        deliverable = {"docs": {DOC: {
+            "status": "ready_for_approval",
+            "fields": {},
+            "policy_disposed_fields": ["seller_name", "total_gross"],
+            "tier1_policy_disposed_fields": ["total_gross"],
+        }}}
+        ctx = type("C", (), {"name": RUN})()
+        html = Workbench._approve_html("zh", ctx, deliverable)
+        assert "没有逐个人看的字段" in html
+        assert "含税总额" in html, "关键字段要点名"
+        assert html.index("没有逐个人看的字段") < html.index("你的署名")
+
+    def test_approving_moves_the_document_to_approved_for_export(
+            self, workspace, server):
+        run_dir = self._dispose_all(workspace)
+        from invoiceloop import deliver
+
+        status, headers, _ = _imp_post(server, "/approve", {
+            "run": RUN, "lang": "zh", "doc": DOC,
+            "approved_by": "alice", "rationale": "核过 PO"})
+        assert status == 303 and "notice=approved" in headers["location"]
+        doc = deliver.build_deliverable(run_dir)["docs"][DOC]
+        assert doc["status"] == "approved_for_export"
+        assert doc["approval"]["approved_by"] == "alice"
+
+    def test_web_entry_is_not_looser_than_the_cli(self, workspace, server):
+        """署名和理由都是硬要求 —— 网页不是第二条更松的路径。"""
+        self._dispose_all(workspace)
+        no_name, _, _ = _imp_post(server, "/approve", {
+            "run": RUN, "lang": "zh", "doc": DOC,
+            "approved_by": "", "rationale": "r"})
+        no_why, _, _ = _imp_post(server, "/approve", {
+            "run": RUN, "lang": "zh", "doc": DOC,
+            "approved_by": "alice", "rationale": ""})
+        assert no_name == 400 and no_why == 400
+
+    def test_a_pending_document_gets_no_approval_form(self, workspace, server):
+        """还有槽没处置就不该出现批准表单 —— 别把顺序倒过来。"""
+        _, _, text = _req(server, "GET", f"/deliver?run={RUN}&lang=zh")
+        assert "批准外发" not in text
+
+
 class TestTaskLines:
     """2026-08-03 用户反馈:复核者要在每行看到自己的任务目标。"""
 

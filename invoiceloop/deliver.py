@@ -39,7 +39,15 @@ from .review import load_decisions, project, target_id_for
 from .snapshot import load_or_derive_snapshot
 
 #: 槽位状态 → 是否挡住整单放行
-_PENDING_STATUSES = ("pending", "pending_tier1", "abstained")
+PENDING_STATUSES = ("pending", "pending_tier1", "abstained")
+#: 由**策略**而非人处置的槽。三者是一回事的三种形状:harness 决定这个槽
+#: 不必问人。`unreviewed_corroborated` 名字里没有 policy,但它同样是策略
+#: 处置 —— 它落在 route=auto_accept 且 release_tier1_explicit=true 的
+#: TIER2 槽上,决定「不问人」的是 harness,不是证据强度本身。
+POLICY_STATUSES = ("policy_accepted", "policy_confirmed_absent",
+                   "unreviewed_corroborated")
+#: 兼容旧名(外部脚本在用)。新代码用不带下划线的。
+_PENDING_STATUSES = PENDING_STATUSES
 
 
 def build_deliverable(run_dir: Path) -> dict:
@@ -163,36 +171,75 @@ def build_deliverable(run_dir: Path) -> dict:
                 entry = {"value": row["value"], "status": "pending_tier1",
                          "source": None}
             else:
+                # 未逐个人看的 TIER2 印证槽。source 写 policy 而不是 null:
+                # 「没人做过决定」是假的 —— 有决定,是 harness 做的,权威链
+                # 必须一路指得回那份 policy(2026-08-09 Northstar)。
                 entry = {"value": row["value"],
-                         "status": "unreviewed_corroborated", "source": None}
+                         "status": "unreviewed_corroborated",
+                         "source": f"policy:{harness_id}"}
         doc["fields"][field] = entry
 
+    from .approve import document_digest, latest_by_doc
+
+    approvals = latest_by_doc(run_dir)
     for doc_id, doc in docs.items():
         statuses = {f["status"] for f in doc["fields"].values()}
         if doc["blocking_reasons"]:
             doc["status"] = "blocked"
-        elif statuses & set(_PENDING_STATUSES):
+        elif statuses & set(PENDING_STATUSES):
             doc["status"] = "pending"
         else:
-            doc["status"] = "released"
-        # 带文档级阻断发现(如独立 OCR 缺失)的文档即使全部人裁完毕,
-        # 放行也是另一档:如实标 released_with_caveats —— 机检没跑过
-        # 这件事不许在交付物里消失(2026-08-05 实测抓出的披露缺口)
+            # 槽全部处置完毕 = **自动化的终点**,不是记账授权的起点。
+            # 十个槽全被策略放行的文档同样走到这里,而它从头到尾没人看过 ——
+            # 所以这个状态只能叫「等人批」,不能叫「放行了」
+            # (2026-08-09 Northstar:机器可达的状态不得授予外发权限)。
+            doc["status"] = "ready_for_approval"
+        # 带文档级阻断发现(如独立 OCR 缺失)的文档即使全部处置完毕,
+        # 也是另一档:如实标 _with_caveats —— 机检没跑过这件事不许在交付物里
+        # 消失(2026-08-05 实测抓出的披露缺口),批准之后同样不许消失。
         caveats = blocking_by_doc.get(doc_id)
-        if caveats and doc["status"] == "released":
-            doc["status"] = "released_with_caveats"
+        if caveats and doc["status"] == "ready_for_approval":
+            doc["status"] = "ready_for_approval_with_caveats"
             doc["release_caveats"] = sorted(set(caveats))
+        # 文档级批准(approve_ledger.jsonl):唯一能让状态变成可外发的东西。
+        # 绑死批准当时的内容摘要 —— 值改了旧签名不跟着走,但**留在工件里**:
+        # 谁在什么内容上批过字是审计轨迹。
+        # 批准前必须看得见的东西:这份单里有多少槽是**没有人看过**的,
+        # 其中哪些是关键字段。批准是一次署名,署名的人有权知道自己在替
+        # 多少条策略处置背书 —— 这比禁止策略放行 TIER1 更有用:知情之后
+        # 才谈得上放心把自动放行开大(这正是降人工率要走的路)。
+        doc["policy_disposed_fields"] = sorted(
+            f for f, e in doc["fields"].items()
+            if e["status"] in POLICY_STATUSES)
+        doc["tier1_policy_disposed_fields"] = sorted(
+            f for f in doc["policy_disposed_fields"] if f in TIER1)
+        approval = approvals.get(doc_id)
+        if approval is not None:
+            stale = (approval["document_digest"] != document_digest(doc)
+                     or doc["status"] not in ("ready_for_approval",
+                                              "ready_for_approval_with_caveats"))
+            doc["approval"] = {**approval, "stale": stale}
+            if not stale:
+                doc["status"] = doc["status"].replace(
+                    "ready_for_approval", "approved_for_export")
 
     by_status: dict[str, int] = {}
     for doc in docs.values():
         by_status[doc["status"]] = by_status.get(doc["status"], 0) + 1
-    # 真实人工负载(81 评 P1):要整单放行,必须显式裁决的槽 =
-    # 分诊需裁决 ∪ 全部 TIER1(印证槽也要人点)—— 与反事实分诊负载
-    # (requires_adjudication 比例)是两回事,交付物里两个数字都在才诚实
+    # 真实人工负载(81 评 P1):这份策略下,要走完整单必须有人碰的槽占比。
+    #
+    # 2026-08-09 重写。原式是 `requires_adjudication ∪ 全部 TIER1`,压根不看
+    # route —— 于是它对 harness **完全不敏感**:SEALED-3 七个臂全报 82.8%,
+    # 而同一份 deliverable 的逐字段状态显示 HAR-0001 是 624 个待处置、
+    # HAR-0004 是 527(docs/SEALED3_RESULTS.md §5)。一个用来做多臂比较的
+    # 指标恰好在 harness 维度上是常数,只能判为不可解释。
+    #
+    # 新口径直接由下面同一份 fields 状态复算:非策略处置的槽 ÷ 总槽。
+    # 它不随「已经裁了几个」变化 —— 衡量的是策略要人碰几个槽,不是还剩几个。
     n_slots = sum(len(d["fields"]) for d in docs.values())
-    n_decide = sum(
-        1 for row in matrix["rows"]
-        if row.get("requires_adjudication", True) or row["field"] in TIER1)
+    n_policy = sum(1 for d in docs.values() for f in d["fields"].values()
+                   if f["status"] in POLICY_STATUSES)
+    n_decide = n_slots - n_policy
     # 字段级人工队列直方图(deliver 口径:route ∉ auto_accept|auto_absent)
     per_doc_queue: dict[str, int] = {d: 0 for d in docs}
     for row in matrix["rows"]:
@@ -222,6 +269,15 @@ def build_deliverable(run_dir: Path) -> dict:
             "docs": len(docs), "by_status": by_status,
             "slots": n_slots,
             "decision_load_for_release": n_decide / max(n_slots, 1),
+            "policy_disposed_slots": n_policy,
+            # 还差几次人工批准才能外发。它和槽级负载是两笔账:槽全裁完
+            # 也不等于可以入账(2026-08-09 权威链)。
+            "documents_awaiting_approval": sum(
+                1 for d in docs.values()
+                if d["status"].startswith("ready_for_approval")),
+            "documents_approved_for_export": sum(
+                1 for d in docs.values()
+                if d["status"].startswith("approved_for_export")),
             "fields_in_human_queue_histogram": dict(sorted(
                 histogram.items(), key=lambda kv: int(kv[0]))),
             "median_fields_in_human_queue": median,
@@ -232,9 +288,14 @@ def build_deliverable(run_dir: Path) -> dict:
                  "绑定,不在此重记。"
                  "纯投影:最终值只来自 field_ledger 与裁决账本(support_matrix "
                  "不参与取值);unreviewed_corroborated = 多方印证但未逐个人看的 "
-                 "TIER2 槽,如实标注;残余风险见 panel 校准限定;"
+                 "TIER2 槽,由 harness 处置,source 指回该策略;"
+                 "残余风险见 panel 校准限定;"
                  "字段级人工队列用 in_human_queue(不含 auto_absent),"
-                 "勿把文档级 pending 当成「机器一点忙没帮上」"),
+                 "勿把文档级 pending 当成「机器一点忙没帮上」。"
+                 "**只有 approved_for_export 可以外发**:ready_for_approval "
+                 "是自动化能到的终点,机器不批准单据。"
+                 "decision_load_for_release = 非策略处置槽占比,与本文件的 "
+                 "fields 状态同源复算"),
     }
 
 
