@@ -13,6 +13,8 @@ import json
 from pathlib import Path
 
 from . import dws
+from .heldout import DEFAULT_SEALED_CONTEXT as _DEFAULT_SEALED_CONTEXT
+from .heldout import SEALED_CONTEXTS as _SEALED_CONTEXTS
 
 
 def _main() -> None:
@@ -133,9 +135,11 @@ def _main() -> None:
                        help="外部随机源的十六进制熵(drand 轮次 randomness)")
     p_sep.add_argument("--seed-source", required=True,
                        help="随机源承诺标识(协议文档 + 轮次)")
-    p_sep.add_argument("--context", default="sealed3-v1",
-                       choices=("sealed1-v1", "sealed2-v1", "sealed3-v1"),
-                       help="PRNG 语境(默认 sealed3-v1)")
+    # 语境词表只有一处权威(heldout.SEALED_CONTEXTS)。这里原先手抄了一份,
+    # 于是加 sealed4-v1 时 CLI 不认 —— 抄一份就会有一天两份不一样。
+    p_sep.add_argument("--context", default=_DEFAULT_SEALED_CONTEXT,
+                       choices=tuple(sorted(_SEALED_CONTEXTS)),
+                       help=f"PRNG 语境(默认 {_DEFAULT_SEALED_CONTEXT})")
     p_sep.add_argument("--n", type=int, default=100)
     p_see = se_sub.add_parser("extract", help="按名单跑双模式,断点续跑,预算熔断")
     p_see.add_argument("--workspace", type=Path, required=True)
