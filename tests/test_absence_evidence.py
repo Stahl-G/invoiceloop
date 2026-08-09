@@ -163,6 +163,94 @@ class TestMonotoneSafety:
         assert "due" in ae.LABEL_LEXICON["due_date"]
 
 
+class TestGateWiring:
+    """探针在门禁事务里跑,结果进 gate_report —— 但**不进 evaluations**。
+
+    `routing._verdict_flags` 把 evaluations 里任何 `fail` 都当硬门禁失败。
+    缺席证据不是第七道门,它是一项事实(和 `doctype_status` 同类);混进
+    verdicts 会让 `label_present` 变成一条谁也没预注册过的新门禁。
+    """
+
+    def _report(self, positioned_corpus):
+        from invoiceloop import gates
+        from tests.conftest import make_response
+        from tests.test_gates import FULL_DATA
+
+        u = make_response("doc-a", "understand", FULL_DATA)
+        a = make_response("doc-a", "agentic", dict(FULL_DATA))
+        return gates.run_gates(
+            ["doc-a"], understand={"doc-a": u}, agentic={"doc-a": a},
+            vision_answers={}, ledger_sha256="x", artifact_digest="y")
+
+    def test_probes_land_in_the_gate_report(self, positioned_corpus):
+        # 语料页面:INV-42 / Total / 100.00 / Net / 90.00
+        probes = self._report(positioned_corpus)["absence_probes"]["doc-a"]
+        assert probes["total_vat"]["status"] == ae.CORROBORATED
+        assert probes["seller_vat_id"]["status"] == ae.CORROBORATED
+        assert probes["total_net"]["status"] == ae.LABEL_PRESENT, \
+            "页面印着 Net —— 缺席被页面否证"
+        assert probes["total_net"]["evidence"]["phrase"] == "net"
+
+    def test_lexicon_revision_enters_the_input_signature(self,
+                                                         positioned_corpus):
+        """改词表 = 改检查 = 新一代 run,和 doctype_digest 同一条纪律。"""
+        signature = self._report(positioned_corpus)["input_signature"]
+        assert signature["absence_evidence_digest"] == ae.digest()
+
+    def test_evaluations_stay_six_gates_wide(self, positioned_corpus):
+        from invoiceloop.fields import FIELDS
+        from invoiceloop.gates import GATE_IDS
+
+        report = self._report(positioned_corpus)
+        assert set(report["evaluations"]["doc-a"]) == set(FIELDS)
+        for verdicts in report["evaluations"]["doc-a"].values():
+            assert set(verdicts) <= set(GATE_IDS), \
+                "缺席证据不得混进 gate verdicts —— 会被当成硬门禁失败"
+
+
+class TestMatrixFact:
+    def _records(self, positioned_corpus, absence_probes):
+        from invoiceloop.matrix import derive_document_records
+        from invoiceloop.gates import GATE_IDS
+        from invoiceloop.fields import FIELDS
+
+        return derive_document_records(
+            "doc-a",
+            doc_claims=[], doc_rejections=[],
+            gate_evaluations={f: {g: "pass" for g in GATE_IDS} for f in FIELDS},
+            doc_blocking_findings=[], understand_data={},
+            absence_probes=absence_probes)
+
+    def test_trusted_corroboration_becomes_a_slot_fact(self, positioned_corpus):
+        from invoiceloop.matrix import facts_of
+
+        probes = ae.probe_document("doc-a")
+        by_field = {r["field"]: r for r in self._records(positioned_corpus,
+                                                         probes)}
+        assert by_field["total_vat"]["absence_evidence"] == "corroborated"
+        assert by_field["total_net"]["absence_evidence"] == ae.LABEL_PRESENT
+        assert by_field["buyer_name"]["absence_evidence"] == ae.NO_LEXICON
+        assert facts_of(by_field["total_vat"])["absence_evidence"] == \
+            "corroborated"
+
+    def test_old_artifacts_default_to_not_measured(self, positioned_corpus):
+        by_field = {r["field"]: r
+                    for r in self._records(positioned_corpus, None)}
+        assert by_field["total_vat"]["absence_evidence"] == ae.NOT_MEASURED
+
+    def test_an_untrustworthy_probe_is_malformed_not_corroborated(
+            self, positioned_corpus):
+        """自称 corroborated 但过不了 trusted_absence 的,记 malformed。
+
+        手改过的工件、旧词表版本、零词 OCR —— 都不许在读的时候被修好。
+        """
+        forged = ae.probe_document("doc-a")
+        forged["total_vat"] = {**forged["total_vat"], "lexicon_digest": "old"}
+        by_field = {r["field"]: r for r in self._records(positioned_corpus,
+                                                         forged)}
+        assert by_field["total_vat"]["absence_evidence"] == "malformed"
+
+
 class TestTrustedAbsence:
     def _good(self):
         return {"gate_id": "absence_evidence", "field": "seller_vat_id",

@@ -49,6 +49,7 @@ def derive_document_records(
     blocked_doc: bool = False,
     cited_spans: dict[str, list[str]] | None = None,
     document_check: dict | None = None,
+    absence_probes: dict[str, dict] | None = None,
 ) -> list[dict]:
     """一份文档全部槽的事实记录 —— **单一事实源**(高级裁决六)。
 
@@ -77,6 +78,26 @@ def derive_document_records(
     doctype_status = ("pass" if doc_class is not None
                       else "malformed" if raw_doctype_status == "pass"
                       else str(raw_doctype_status or "not_measured"))
+
+    from .absence_evidence import (
+        CORROBORATED as _CORROBORATED,
+        NOT_MEASURED as _NOT_MEASURED,
+        trusted_absence,
+    )
+
+    def absence_status(field_name: str) -> str:
+        """槽的缺席证据事实。信任边界与 doctype_status 同形。
+
+        自称 corroborated 但过不了 `trusted_absence`(旧词表版本、零词 OCR、
+        手改工件)记 `malformed` —— 读的时候不修工件。
+        """
+        probe = (absence_probes or {}).get(field_name)
+        if trusted_absence(probe):
+            return "corroborated"
+        raw = probe.get("status") if isinstance(probe, dict) else None
+        if raw == _CORROBORATED:
+            return "malformed"
+        return str(raw or _NOT_MEASURED)
     claims_by_field: dict[str, list[dict]] = {}
     for c in doc_claims:
         claims_by_field.setdefault(c["field"], []).append(c)
@@ -187,6 +208,7 @@ def derive_document_records(
             "field": field_name,
             "doctype_status": doctype_status,
             "doc_class": doc_class,
+            "absence_evidence": absence_status(field_name),
             "value": value if (emitted or understand_data is not None) else None,
             "claim_id": emitted["claim_id"] if emitted else None,
             "support_strength": strength,
@@ -213,6 +235,7 @@ def facts_of(record: dict) -> dict:
         "doc_id": record["doc_id"], "field": record["field"],
         "doctype_status": record.get("doctype_status", "not_measured"),
         "doc_class": record.get("doc_class"),
+        "absence_evidence": record.get("absence_evidence", "not_measured"),
         "strength": record["support_strength"],
         "gate_verdicts": record["gate_verdicts"],
         "applicability": record["applicability"],
@@ -279,6 +302,7 @@ def build_matrix(
             blocked_doc=doc_id in blocked_docs,
             cited_spans=cited_by_doc.get(doc_id),
             document_check=(gate_report.get("document_checks") or {}).get(doc_id),
+            absence_probes=(gate_report.get("absence_probes") or {}).get(doc_id),
         )
         rows.extend(records)
         slot_facts.extend(facts_of(r) for r in records)

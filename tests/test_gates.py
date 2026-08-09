@@ -52,14 +52,21 @@ class TestContract:
             assert f["blocking"] == (f["blocking_level"] == "blocking")
 
     def test_input_signature_recorded(self):
-        from invoiceloop import doctype
+        """签名逐键钉死:每加一项检查都必须来改这里。
+
+        签名的用处就是「换了检查 = 换了一代 run」。若写成子集断言,
+        新检查可以悄悄进事务而指纹不变,那正是它要防的事。
+        """
+        from invoiceloop import absence_evidence, doctype
         report = run(FULL_DATA)
         assert report["input_signature"] == {
             "ledger_sha256": "x",
             "artifact_digest": "y",
             "doctype_digest": doctype.digest(),
+            "absence_evidence_digest": absence_evidence.digest(),
         }
         assert "document_checks" in report
+        assert "absence_probes" in report
 
 
 class TestExtractionPresent:

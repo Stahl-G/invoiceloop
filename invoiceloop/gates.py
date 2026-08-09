@@ -201,10 +201,12 @@ def run_gates(
 
     # 类型门必须先冻结,字段门才有资格消费它。只计算一次;下面仍在旧位置
     # 追加 findings,以免无关 run 的 finding ID 因内部重排而漂移。
+    from . import absence_evidence as _absence
     from . import doctype as _doctype
     from .routing import match_absent_expected
 
     document_checks: dict[str, dict] = {}
+    absence_probes: dict[str, dict[str, dict]] = {}
     for doc_id in doc_ids:
         u = understand.get(doc_id)
         if u is None:
@@ -212,6 +214,11 @@ def run_gates(
         raw = u.data.get("invoice_type")
         document_checks[doc_id] = _doctype.check_document(
             doc_id, None if raw is None else str(raw))
+        # 逐份缺席证据:页面上有没有印这个字段的标签。**一份只扫一遍词级 OCR。**
+        # 刻意不进 evaluations —— 它不是第七道门,是一项与 doctype_status
+        # 同类的事实;混进 verdicts 会被 routing._verdict_flags 当成硬门禁失败,
+        # 而且 heldout_metrics 展平 evaluations 时会污染 H4/H5。
+        absence_probes[doc_id] = _absence.probe_document(doc_id)
 
     absence_policy = {"absent_expected_cohorts": [
         *(absent_expected_cohorts or []),
@@ -336,9 +343,11 @@ def run_gates(
             "ledger_sha256": ledger_sha256,
             "artifact_digest": artifact_digest,
             "doctype_digest": _doctype.digest(),
+            "absence_evidence_digest": _absence.digest(),
         },
         "evaluations": evaluations,
         "document_checks": document_checks,
+        "absence_probes": absence_probes,
         "findings": acc.serialise(),
     }
 
