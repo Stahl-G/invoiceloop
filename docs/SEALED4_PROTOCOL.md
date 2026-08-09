@@ -18,9 +18,9 @@ SEALED-3 已被 2026-08-08 那次一次性开箱用掉(`SEALED3_RESULTS.md` §7)
 ## 1. 随机种子承诺
 
 - 随机源:drand 主网 beacon(`https://api.drand.sh/public/{round}`);
-- **本批轮次**:`__ROUND__`;
-- **种子(hex)**:`__SEED__`(该轮 `randomness` 字段原文);
-- 取种时间(UTC):`__TAKEN__`;
+- **本批轮次**:`6360483`;
+- **种子(hex)**:`1e3119dd512be9b86f1f1db49687704a3856ae5331f4ced7232258a8aa58cbd7`(该轮 `randomness` 字段原文);
+- 取种时间(UTC):`2026-08-09T03:18:31Z`;
 - 抽样 = `heldout.sealed_list(seed, context="sealed4-v1")`:
   `random.Random("invoiceloop-sealed4-v1|" + seed).sample(sorted(pool), 100)`,
   pool = ≥4 记分字段标注 ∧ 不在暴露清单(本次 4,931 份);
