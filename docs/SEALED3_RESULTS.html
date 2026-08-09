@@ -1,0 +1,1626 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="InvoiceLoop SEALED-3 多 harness 实验的通俗版结果：少了多少人工、付出了什么代价、为什么系统没有放行。">
+  <title>SEALED-3：少看了 97 个，还是没有放行</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&amp;family=IBM+Plex+Sans:wght@400;700&amp;family=Newsreader:opsz,wght@6..72,400;6..72,700&amp;display=swap" rel="stylesheet">
+  <style>
+    /* Hallmark · genre: editorial · macrostructure: Stat-Led · theme: Newsprint · enrichment: none · nav: N6 · footer: Ft4 · audience: hackathon judges + general readers · use: understand the sealed result in two minutes · tone: evidence-led editorial */
+    /* Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V5 */
+    @import url("../tokens.css");
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      overflow-x: clip;
+    }
+
+    html {
+      scroll-behavior: auto;
+      background: var(--color-paper);
+    }
+
+    body {
+      margin: 0;
+      min-width: 20rem;
+      background: var(--color-paper);
+      color: var(--color-ink);
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      line-height: 1.62;
+      text-rendering: optimizeLegibility;
+    }
+
+    ::selection {
+      background: var(--color-accent-soft);
+      color: var(--color-ink);
+    }
+
+    a {
+      color: inherit;
+      text-underline-offset: 0.22em;
+      text-decoration-thickness: var(--rule-hair);
+    }
+
+    button,
+    summary,
+    a {
+      -webkit-tap-highlight-color: var(--color-transparent);
+    }
+
+    button {
+      font: inherit;
+    }
+
+    :focus-visible {
+      outline: 3px solid var(--color-focus);
+      outline-offset: 3px;
+    }
+
+    h1,
+    h2,
+    h3,
+    p,
+    dl,
+    dd,
+    ol,
+    ul,
+    figure,
+    blockquote {
+      margin: 0;
+    }
+
+    h1,
+    h2,
+    h3 {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-family: var(--font-display);
+      font-style: normal;
+      letter-spacing: -0.025em;
+    }
+
+    h1 {
+      max-width: 12ch;
+      font-size: clamp(2.25rem, 6vw, 5.25rem);
+      line-height: 0.98;
+    }
+
+    h2 {
+      max-width: 18ch;
+      font-size: clamp(2.25rem, 4vw, 3.8rem);
+      line-height: 1.04;
+    }
+
+    h3 {
+      font-size: var(--text-lg);
+      line-height: 1.16;
+    }
+
+    strong {
+      font-weight: 700;
+    }
+
+    .tnum {
+      font-variant-numeric: tabular-nums lining-nums;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: calc(-1 * var(--rule-hair));
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .page-shell {
+      width: min(100%, 90rem);
+      margin-inline: auto;
+      padding-inline: var(--space-page);
+    }
+
+    .masthead {
+      padding-block: var(--space-md) 0;
+    }
+
+    .issue-line {
+      display: flex;
+      flex-direction: column;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: var(--space-xs) var(--space-lg);
+      color: var(--color-muted);
+      font-family: var(--font-body);
+      font-size: var(--text-sm);
+      letter-spacing: 0.06em;
+    }
+
+    .mast-name {
+      padding-block: var(--space-sm) var(--space-xs);
+      font-family: var(--font-display);
+      font-size: clamp(2.25rem, 9vw, 5.8rem);
+      font-weight: 700;
+      line-height: 0.92;
+      text-align: center;
+      letter-spacing: -0.035em;
+    }
+
+    .mast-nav {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-xl);
+      min-height: 3rem;
+      font-size: var(--text-sm);
+    }
+
+    .mast-nav a,
+    .mobile-menu a,
+    .speech-control,
+    .source-link {
+      white-space: nowrap;
+    }
+
+    .mast-nav a {
+      min-height: 2.75rem;
+      display: inline-flex;
+      align-items: center;
+      text-decoration: none;
+      border-block-end: var(--rule-hair) solid var(--color-transparent);
+    }
+
+    .speech-control {
+      min-height: 2.75rem;
+      padding: var(--space-xs) var(--space-md);
+      border: var(--rule-hair) solid var(--color-rule-strong);
+      border-radius: var(--radius-sm);
+      background: var(--color-transparent);
+      color: var(--color-ink);
+      cursor: pointer;
+    }
+
+    .speech-control:active {
+      background: var(--color-paper-3);
+    }
+
+    .speech-control:disabled,
+    .speech-control[aria-disabled="true"] {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .speech-control[data-state="loading"] {
+      border-style: dashed;
+    }
+
+    .speech-control[data-state="success"] {
+      border-width: var(--rule-heavy);
+    }
+
+    .speech-control[data-state="error"] {
+      border-color: var(--color-accent);
+      color: var(--color-accent);
+    }
+
+    .mobile-menu {
+      border-block-start: var(--rule-hair) solid var(--color-rule);
+    }
+
+    .mobile-menu summary {
+      min-height: 3rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      font-weight: 700;
+      list-style: none;
+    }
+
+    .mobile-menu summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .mobile-menu summary::after {
+      content: "+";
+      font-family: var(--font-body);
+      font-size: var(--text-md);
+    }
+
+    .mobile-menu[open] summary::after {
+      content: "−";
+    }
+
+    .mobile-menu__body {
+      display: grid;
+      gap: var(--space-xs);
+      padding-block: var(--space-sm) var(--space-lg);
+    }
+
+    .mobile-menu a {
+      min-height: 2.75rem;
+      display: flex;
+      align-items: center;
+    }
+
+    .mast-rule {
+      height: 5px;
+      margin: 0;
+      border: 0;
+      border-block-start: var(--rule-hair) solid var(--color-ink);
+      border-block-end: var(--rule-heavy) solid var(--color-ink);
+    }
+
+    .speech-status {
+      min-height: 1.5em;
+      padding-block-start: var(--space-xs);
+      color: var(--color-muted);
+      font-size: var(--text-sm);
+      text-align: center;
+    }
+
+    .hero {
+      padding-block: var(--space-xl) var(--space-3xl);
+    }
+
+    .hero-grid {
+      display: grid;
+      gap: var(--space-xl);
+      align-items: end;
+    }
+
+    .hero-stat {
+      min-width: 0;
+    }
+
+    .hero-number {
+      font-family: var(--font-display);
+      font-size: var(--text-mega);
+      font-weight: 700;
+      line-height: 0.72;
+      letter-spacing: -0.075em;
+    }
+
+    .hero-unit {
+      max-width: 20ch;
+      margin-block-start: var(--space-lg);
+      font-family: var(--font-display);
+      font-size: clamp(1.5rem, 5vw, var(--text-xl));
+      line-height: 1.1;
+    }
+
+    .hero-copy {
+      display: grid;
+      gap: var(--space-lg);
+      align-content: end;
+    }
+
+    .hero-copy > p {
+      max-width: 62ch;
+      color: var(--color-ink-soft);
+      font-size: var(--text-md);
+    }
+
+    .verdict-strip {
+      display: grid;
+      gap: var(--space-sm);
+      margin-block-start: var(--space-xl);
+      padding-block: var(--space-lg);
+      border-block: var(--rule-heavy) solid var(--color-ink);
+    }
+
+    .verdict-label {
+      color: var(--color-accent);
+      font-family: var(--font-body);
+      font-size: var(--text-sm);
+      font-weight: 700;
+      letter-spacing: 0.06em;
+    }
+
+    .verdict-message {
+      max-width: 62ch;
+      font-family: var(--font-display);
+      font-size: clamp(1.6rem, 3vw, 2.6rem);
+      line-height: 1.14;
+    }
+
+    .verdict-note {
+      max-width: 70ch;
+      color: var(--color-ink-soft);
+    }
+
+    .section {
+      padding-block: var(--space-3xl);
+      border-block-start: var(--rule-hair) solid var(--color-rule);
+    }
+
+    .section--tight {
+      padding-block: var(--space-2xl);
+    }
+
+    .section-head {
+      display: grid;
+      gap: var(--space-lg);
+      padding-block-end: var(--space-2xl);
+    }
+
+    .section-head p {
+      max-width: 66ch;
+      color: var(--color-ink-soft);
+      font-size: var(--text-md);
+    }
+
+    .fact-strip {
+      display: grid;
+      border-block: var(--rule-heavy) solid var(--color-ink);
+    }
+
+    .fact-strip > div {
+      display: grid;
+      gap: var(--space-2xs);
+      padding-block: var(--space-lg);
+      border-block-end: var(--rule-hair) solid var(--color-rule);
+    }
+
+    .fact-strip > div:last-child {
+      border-block-end: 0;
+    }
+
+    .fact-strip dt {
+      font-family: var(--font-display);
+      font-size: var(--text-2xl);
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .fact-strip dd {
+      color: var(--color-muted);
+      font-size: var(--text-sm);
+    }
+
+    .steps {
+      display: grid;
+      gap: var(--space-2xl);
+      padding: var(--space-2xl) 0 0;
+      list-style: none;
+      counter-reset: experiment;
+    }
+
+    .steps li {
+      display: grid;
+      grid-template-columns: 3rem minmax(0, 1fr);
+      gap: var(--space-md);
+      counter-increment: experiment;
+    }
+
+    .steps li::before {
+      content: counter(experiment) ".";
+      color: var(--color-accent);
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .step-copy {
+      display: grid;
+      gap: var(--space-xs);
+      padding-block-end: var(--space-xl);
+      border-block-end: var(--rule-hair) solid var(--color-rule);
+    }
+
+    .step-copy p {
+      max-width: 65ch;
+      color: var(--color-ink-soft);
+    }
+
+    .plain-note {
+      max-width: 68ch;
+      margin-block-start: var(--space-xl);
+      padding-inline-start: var(--space-lg);
+      border-inline-start: var(--rule-heavy) solid var(--color-ink);
+      color: var(--color-ink-soft);
+    }
+
+    .plain-note strong {
+      color: var(--color-ink);
+    }
+
+    .queue-comparison {
+      display: grid;
+      gap: var(--space-2xl);
+    }
+
+    .queue-bars {
+      display: grid;
+      gap: var(--space-lg);
+      padding-block: var(--space-lg);
+      border-block: var(--rule-hair) solid var(--color-rule);
+    }
+
+    .queue-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: var(--space-xs) var(--space-md);
+      align-items: center;
+    }
+
+    .queue-label {
+      font-weight: 700;
+    }
+
+    .queue-value {
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+    }
+
+    .bar-track {
+      grid-column: 1 / -1;
+      height: 1.25rem;
+      overflow: clip;
+      background: var(--color-paper-3);
+      border: var(--rule-hair) solid var(--color-rule-strong);
+    }
+
+    .bar-fill {
+      width: var(--queue);
+      height: 100%;
+      background: var(--color-rule-strong);
+    }
+
+    .queue-row--primary .bar-fill {
+      background: var(--color-ink);
+    }
+
+    .queue-delta {
+      display: grid;
+      gap: var(--space-md);
+      align-content: center;
+      padding-block: var(--space-xl);
+    }
+
+    .delta-figure {
+      font-family: var(--font-display);
+      font-size: clamp(4.5rem, 12vw, 8.5rem);
+      font-weight: 700;
+      line-height: 0.82;
+      letter-spacing: -0.055em;
+    }
+
+    .delta-copy {
+      max-width: 30ch;
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      line-height: 1.1;
+    }
+
+    .safety-cost {
+      display: grid;
+      gap: var(--space-xs);
+      margin-block-start: var(--space-xl);
+      padding: var(--space-lg);
+      background: var(--color-accent-soft);
+      color: var(--color-ink);
+      border-block: var(--rule-hair) solid var(--color-accent);
+    }
+
+    .safety-cost strong {
+      color: var(--color-accent);
+    }
+
+    .arm-list {
+      display: grid;
+      border-block-start: var(--rule-heavy) solid var(--color-ink);
+    }
+
+    .arm-row {
+      display: grid;
+      grid-template-areas:
+        "name queue"
+        "bar bar"
+        "risk verdict";
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: var(--space-xs) var(--space-md);
+      padding-block: var(--space-md);
+      border-block-end: var(--rule-hair) solid var(--color-rule);
+      align-items: center;
+    }
+
+    .arm-name {
+      grid-area: name;
+      min-width: 0;
+      font-weight: 700;
+    }
+
+    .arm-queue {
+      grid-area: queue;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+    }
+
+    .arm-bar {
+      grid-area: bar;
+      height: 0.7rem;
+      background: var(--color-paper-3);
+    }
+
+    .arm-bar span {
+      display: block;
+      width: var(--queue);
+      height: 100%;
+      background: var(--color-rule-strong);
+    }
+
+    .arm-row--primary .arm-bar span {
+      background: var(--color-ink);
+    }
+
+    .arm-risk {
+      grid-area: risk;
+      color: var(--color-muted);
+      font-size: var(--text-sm);
+    }
+
+    .arm-verdict {
+      grid-area: verdict;
+      justify-self: end;
+      font-size: var(--text-sm);
+      font-weight: 700;
+    }
+
+    .arm-verdict--reject {
+      color: var(--color-accent);
+    }
+
+    .impact-pair {
+      display: grid;
+      border-block: var(--rule-heavy) solid var(--color-ink);
+    }
+
+    .impact {
+      display: grid;
+      gap: var(--space-sm);
+      padding-block: var(--space-xl);
+      border-block-end: var(--rule-hair) solid var(--color-rule);
+    }
+
+    .impact:last-child {
+      border-block-end: 0;
+    }
+
+    .impact-number {
+      font-family: var(--font-display);
+      font-size: clamp(4rem, 10vw, 7rem);
+      font-weight: 700;
+      line-height: 0.86;
+      letter-spacing: -0.055em;
+    }
+
+    .impact--risk .impact-number,
+    .impact--risk strong {
+      color: var(--color-accent);
+    }
+
+    .impact p {
+      max-width: 34ch;
+      color: var(--color-ink-soft);
+    }
+
+    .authority-chain {
+      display: grid;
+      gap: var(--space-md);
+      margin-block-start: var(--space-2xl);
+      padding: var(--space-lg) 0;
+      border-block: var(--rule-hair) solid var(--color-rule);
+    }
+
+    .authority-chain strong {
+      font-family: var(--font-display);
+      font-size: var(--text-md);
+    }
+
+    .failure-flow {
+      display: grid;
+      gap: var(--space-xl);
+      padding: 0;
+      list-style: none;
+      counter-reset: failure;
+    }
+
+    .failure-flow li {
+      position: relative;
+      display: grid;
+      gap: var(--space-xs);
+      padding-block-end: var(--space-xl);
+      border-block-end: var(--rule-hair) solid var(--color-rule);
+      counter-increment: failure;
+    }
+
+    .failure-flow li::before {
+      content: counter(failure);
+      width: 2rem;
+      height: 2rem;
+      display: grid;
+      place-items: center;
+      border: var(--rule-hair) solid var(--color-rule-strong);
+      border-radius: var(--radius-round);
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+    }
+
+    .failure-flow li:last-child {
+      border-block-end-color: var(--color-accent);
+    }
+
+    .failure-flow li:last-child::before {
+      border-color: var(--color-accent);
+      color: var(--color-accent);
+    }
+
+    .failure-flow p {
+      color: var(--color-ink-soft);
+    }
+
+    .failure-caption {
+      margin-block-start: var(--space-xl);
+      color: var(--color-muted);
+      font-size: var(--text-sm);
+    }
+
+    .doctype-split {
+      display: grid;
+      gap: var(--space-2xl);
+      align-items: start;
+    }
+
+    .doctype-figure {
+      display: grid;
+      grid-template-columns: 3fr 1fr;
+      min-height: 4.5rem;
+      border: var(--rule-heavy) solid var(--color-ink);
+    }
+
+    .doctype-figure > div {
+      display: grid;
+      place-items: center;
+      padding: var(--space-md);
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .doctype-figure > div:last-child {
+      background: var(--color-ink);
+      color: var(--color-paper);
+    }
+
+    .doctype-copy {
+      display: grid;
+      gap: var(--space-md);
+    }
+
+    .doctype-copy p {
+      max-width: 62ch;
+      color: var(--color-ink-soft);
+    }
+
+    .gate-wrap {
+      border-block-start: var(--rule-heavy) solid var(--color-ink);
+    }
+
+    .gate-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .gate-table th,
+    .gate-table td {
+      padding: var(--space-md) var(--space-xs);
+      border-block-end: var(--rule-hair) solid var(--color-rule);
+      text-align: start;
+      vertical-align: top;
+    }
+
+    .gate-table th {
+      color: var(--color-muted);
+      font-size: var(--text-sm);
+      font-weight: 700;
+    }
+
+    .gate-table td:first-child {
+      font-weight: 700;
+    }
+
+    .gate-table tr[data-result="fail"] td {
+      background: var(--color-accent-soft);
+    }
+
+    .result-pass,
+    .result-fail {
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .result-fail {
+      color: var(--color-accent);
+    }
+
+    .metric-warning {
+      display: grid;
+      gap: var(--space-lg);
+      padding-block: var(--space-xl);
+      border-block: var(--rule-heavy) solid var(--color-accent);
+    }
+
+    .metric-warning__number {
+      color: var(--color-accent);
+      font-family: var(--font-display);
+      font-size: clamp(4rem, 10vw, 7rem);
+      font-weight: 700;
+      line-height: 0.86;
+    }
+
+    .metric-warning__copy {
+      display: grid;
+      gap: var(--space-sm);
+      max-width: 66ch;
+    }
+
+    .metric-warning__copy p {
+      color: var(--color-ink-soft);
+    }
+
+    .next-list {
+      display: grid;
+      gap: var(--space-xl);
+      padding: 0;
+      list-style: none;
+      counter-reset: next;
+    }
+
+    .next-list li {
+      display: grid;
+      grid-template-columns: 2.5rem minmax(0, 1fr);
+      gap: var(--space-md);
+      padding-block-end: var(--space-lg);
+      border-block-end: var(--rule-hair) solid var(--color-rule);
+      counter-increment: next;
+    }
+
+    .next-list li::before {
+      content: counter(next, decimal-leading-zero);
+      color: var(--color-muted);
+      font-family: var(--font-body);
+      font-size: var(--text-sm);
+      padding-block-start: var(--space-2xs);
+    }
+
+    .next-list div {
+      display: grid;
+      gap: var(--space-xs);
+    }
+
+    .next-list p {
+      max-width: 65ch;
+      color: var(--color-ink-soft);
+    }
+
+    .technical-details {
+      border-block: var(--rule-heavy) solid var(--color-ink);
+    }
+
+    .technical-details summary {
+      min-height: 4rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-md);
+      cursor: pointer;
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      font-weight: 700;
+      list-style: none;
+    }
+
+    .technical-details summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .technical-details summary::after {
+      content: "展开";
+      flex: 0 0 auto;
+      color: var(--color-muted);
+      font-family: var(--font-body);
+      font-size: var(--text-sm);
+      font-weight: 400;
+    }
+
+    .technical-details[open] summary::after {
+      content: "收起";
+    }
+
+    .technical-body {
+      display: grid;
+      gap: var(--space-xl);
+      padding-block: var(--space-lg) var(--space-2xl);
+      border-block-start: var(--rule-hair) solid var(--color-rule);
+    }
+
+    .technical-body dl {
+      display: grid;
+      gap: var(--space-sm);
+    }
+
+    .technical-body dl > div {
+      display: grid;
+      gap: var(--space-2xs);
+      padding-block-end: var(--space-sm);
+      border-block-end: var(--rule-hair) solid var(--color-rule);
+    }
+
+    .technical-body dt {
+      color: var(--color-muted);
+      font-size: var(--text-sm);
+    }
+
+    .technical-body dd,
+    .hash {
+      overflow-wrap: anywhere;
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+    }
+
+    .source-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-md) var(--space-xl);
+    }
+
+    .source-link {
+      min-height: 2.75rem;
+      display: inline-flex;
+      align-items: center;
+      font-weight: 700;
+    }
+
+    .closing-line {
+      max-width: 24ch;
+      padding-block: var(--space-3xl);
+      font-family: var(--font-display);
+      font-size: clamp(2.5rem, 6vw, 5.2rem);
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.035em;
+    }
+
+    .foot-dense {
+      display: grid;
+      gap: var(--space-lg);
+      padding-block: var(--space-xl) var(--space-2xl);
+      border-block-start: var(--rule-heavy) solid var(--color-ink);
+      color: var(--color-muted);
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      line-height: 1.55;
+    }
+
+    .foot-dense p {
+      max-width: 100ch;
+      overflow-wrap: anywhere;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .mast-nav a:hover,
+      .mobile-menu a:hover,
+      .source-link:hover {
+        border-block-end-color: var(--color-accent);
+        color: var(--color-accent);
+      }
+
+      .speech-control:hover {
+        background: var(--color-paper-2);
+      }
+
+      summary:hover {
+        color: var(--color-accent);
+      }
+    }
+
+    @media (min-width: 40rem) {
+      .issue-line {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .mast-nav {
+        display: flex;
+      }
+
+      .mast-name {
+        font-size: clamp(3.5rem, 8vw, 5.8rem);
+      }
+
+      .mobile-menu {
+        display: none;
+      }
+
+      .fact-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .fact-strip > div {
+        padding-inline: var(--space-lg);
+      }
+
+      .fact-strip > div:nth-child(odd) {
+        border-inline-end: var(--rule-hair) solid var(--color-rule);
+      }
+
+      .fact-strip > div:nth-last-child(-n + 2) {
+        border-block-end: 0;
+      }
+
+      .impact-pair {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .impact {
+        padding-inline: var(--space-xl);
+        border-block-end: 0;
+      }
+
+      .impact:first-child {
+        border-inline-end: var(--rule-hair) solid var(--color-rule);
+      }
+
+      .gate-table th,
+      .gate-table td {
+        padding: var(--space-md);
+      }
+
+      .technical-body dl > div {
+        grid-template-columns: 12rem minmax(0, 1fr);
+        gap: var(--space-lg);
+      }
+    }
+
+    @media (min-width: 60rem) {
+      .hero-grid {
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+        gap: var(--space-3xl);
+      }
+
+      .verdict-strip {
+        grid-template-columns: minmax(10rem, 0.34fr) minmax(0, 1fr);
+        column-gap: var(--space-2xl);
+      }
+
+      .verdict-label {
+        grid-row: 1 / span 2;
+      }
+
+      .section-head {
+        grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
+        align-items: end;
+      }
+
+      .fact-strip {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .fact-strip > div {
+        border-block-end: 0;
+        border-inline-end: var(--rule-hair) solid var(--color-rule);
+      }
+
+      .fact-strip > div:last-child {
+        border-inline-end: 0;
+      }
+
+      .steps {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .steps li {
+        grid-template-columns: 2.5rem minmax(0, 1fr);
+      }
+
+      .queue-comparison {
+        grid-template-columns: minmax(0, 1.35fr) minmax(16rem, 0.65fr);
+        align-items: center;
+      }
+
+      .arm-row {
+        grid-template-areas: "name bar queue risk verdict";
+        grid-template-columns: minmax(11rem, 0.9fr) minmax(12rem, 1.4fr) 6rem 9rem 7rem;
+      }
+
+      .arm-risk {
+        text-align: end;
+      }
+
+      .failure-flow {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .failure-flow li {
+        padding-inline-end: var(--space-lg);
+        border-block-end: 0;
+        border-inline-end: var(--rule-hair) solid var(--color-rule);
+      }
+
+      .failure-flow li:last-child {
+        border-inline-end-color: var(--color-accent);
+      }
+
+      .doctype-split {
+        grid-template-columns: minmax(18rem, 0.72fr) minmax(0, 1.28fr);
+      }
+
+      .metric-warning {
+        grid-template-columns: minmax(14rem, 0.55fr) minmax(0, 1.45fr);
+        align-items: center;
+      }
+    }
+
+    @media (max-width: 39.99rem) {
+      .gate-table,
+      .gate-table tbody,
+      .gate-table tr,
+      .gate-table td {
+        display: block;
+        width: 100%;
+      }
+
+      .gate-table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+      }
+
+      .gate-table tr {
+        padding-block: var(--space-md);
+        border-block-end: var(--rule-hair) solid var(--color-rule);
+      }
+
+      .gate-table td {
+        display: grid;
+        grid-template-columns: 7.5rem minmax(0, 1fr);
+        gap: var(--space-sm);
+        padding: var(--space-xs) 0;
+        border-block-end: 0;
+      }
+
+      .gate-table td::before {
+        content: attr(data-label);
+        color: var(--color-muted);
+        font-size: var(--text-sm);
+        font-weight: 700;
+      }
+
+      .gate-table tr[data-result="fail"] {
+        padding-inline: var(--space-sm);
+        background: var(--color-accent-soft);
+      }
+
+      .gate-table tr[data-result="fail"] td {
+        background: var(--color-transparent);
+      }
+    }
+
+    @media (pointer: coarse) {
+      .speech-control,
+      .mast-nav a,
+      .mobile-menu a,
+      .source-link,
+      summary {
+        min-height: 3rem;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: var(--dur-micro) !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: var(--dur-micro) !important;
+      }
+    }
+
+    @media print {
+      body {
+        font-size: 11pt;
+      }
+
+      .mast-nav,
+      .mobile-menu,
+      .speech-status,
+      .speech-control {
+        display: none !important;
+      }
+
+      .page-shell {
+        width: 100%;
+        padding-inline: 0;
+      }
+
+      .section {
+        break-inside: avoid;
+      }
+
+      .technical-details:not([open]) .technical-body {
+        display: grid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="masthead page-shell">
+    <div class="issue-line">
+      <span>InvoiceLoop 实验证据专刊</span>
+      <span>SEALED-3 · 2026-08-08</span>
+    </div>
+    <div class="mast-name" aria-label="InvoiceLoop">InvoiceLoop</div>
+    <nav class="mast-nav" aria-label="页面目录">
+      <a href="#verdict">结论</a>
+      <a href="#harnesses">六轮对照</a>
+      <a href="#adk">ADK 候选</a>
+      <a href="#gates">完整门禁</a>
+      <button class="speech-control" type="button" data-speech data-state="default" aria-pressed="false">朗读摘要</button>
+    </nav>
+    <details class="mobile-menu">
+      <summary>目录与朗读</summary>
+      <div class="mobile-menu__body">
+        <a href="#verdict">结论</a>
+        <a href="#harnesses">六轮对照</a>
+        <a href="#adk">ADK 候选</a>
+        <a href="#gates">完整门禁</a>
+        <button class="speech-control" type="button" data-speech data-state="default" aria-pressed="false">朗读摘要</button>
+      </div>
+    </details>
+    <hr class="mast-rule" aria-hidden="true">
+    <p class="speech-status" id="speech-status" role="status" aria-live="polite"></p>
+  </header>
+
+  <main>
+    <section class="hero page-shell" id="verdict">
+      <div class="hero-grid">
+        <div class="hero-stat">
+          <div class="hero-number tnum" aria-label="九十七">97</div>
+          <p class="hero-unit">个字段不用人工看了。</p>
+        </div>
+        <div class="hero-copy">
+          <h1>少看了 97 个，还是没有放行。</h1>
+          <p>同一批 100 份从未见过的单据、同一套上游证据、共 1,000 个字段。主方案把人工队列从 624 个降到 527 个，分诊能力仍有 3.75 倍。</p>
+        </div>
+      </div>
+
+      <div class="verdict-strip">
+        <p class="verdict-label">最终裁定 · 未晋升</p>
+        <p class="verdict-message">减负是真的，安全资格没有通过。</p>
+        <p class="verdict-note">主方案把 1 个真实税号悄悄当成了“不存在”；引用位置失败率 15.35%，也比预先写死的 15% 上限高 0.35 个百分点。门禁不是多数投票：一个阻断条件失败，就不能放行。</p>
+      </div>
+    </section>
+
+    <section class="section page-shell" id="method">
+      <header class="section-head">
+        <h2>这次到底怎么比？</h2>
+        <p>不是让六套规则各挑一批对自己有利的票据。我们把它们同时放在同一批未见数据上，只改变“哪些字段交给人看”。DocILE 标注只当裁判，不参加比赛。</p>
+      </header>
+
+      <dl class="fact-strip tnum" aria-label="实验规模">
+        <div><dt>100</dt><dd>份未见单据</dd></div>
+        <div><dt>1,000</dt><dd>个相同字段槽</dd></div>
+        <div><dt>6 + 1</dt><dd>套 harness 加精确重复</dd></div>
+        <div><dt>0</dt><dd>次新 DWS / ADK 调用</dd></div>
+      </dl>
+
+      <ol class="steps">
+        <li>
+          <div class="step-copy">
+            <h3>先把规则冻住</h3>
+            <p>实验开始前，harness、阈值、失格条件和输入指纹全部写进版本库。看到结果后不能改题。</p>
+          </div>
+        </li>
+        <li>
+          <div class="step-copy">
+            <h3>再跑同一批证据</h3>
+            <p>六套规则读取相同 PDF、OCR、抽取结果和字段账本。HAR-0004 的重复臂逐字节一致。</p>
+          </div>
+        </li>
+        <li>
+          <div class="step-copy">
+            <h3>最后让真值裁判</h3>
+            <p>DocILE 标注只在开箱后判断：自动放过的字段里，有没有把真实值悄悄漏掉。</p>
+          </div>
+        </li>
+      </ol>
+
+      <p class="plain-note"><strong>3.75× 不是“准确率提高 3.75 倍”。</strong>它只表示：被排到队首的字段，比队尾更集中地包含可判问题。InvoiceLoop 测的是“先看哪里”，不是替人宣布发票一定正确。</p>
+    </section>
+
+    <section class="section page-shell" id="workload">
+      <header class="section-head">
+        <h2>少看 97 个，代价是漏掉 1 个。</h2>
+        <p>“人工队列”指系统没有自动接受或自动确认缺失、仍要交给人处理的字段。队列变短是收益；真实字段被自动藏掉是不可接受的代价。</p>
+      </header>
+
+      <div class="queue-comparison">
+        <figure class="queue-bars" aria-labelledby="queue-caption">
+          <figcaption id="queue-caption" class="sr-only">保守基线和主方案的人工队列比较</figcaption>
+          <div class="queue-row">
+            <span class="queue-label">保守基线 · HAR-0001</span>
+            <span class="queue-value tnum">624 / 1,000</span>
+            <div class="bar-track" role="img" aria-label="保守基线有百分之六十二点四的字段需要人工">
+              <div class="bar-fill" style="--queue: 62.4%"></div>
+            </div>
+          </div>
+          <div class="queue-row queue-row--primary">
+            <span class="queue-label">主方案 · HAR-0004</span>
+            <span class="queue-value tnum">527 / 1,000</span>
+            <div class="bar-track" role="img" aria-label="主方案有百分之五十二点七的字段需要人工">
+              <div class="bar-fill" style="--queue: 52.7%"></div>
+            </div>
+          </div>
+        </figure>
+
+        <div class="queue-delta">
+          <p class="delta-figure tnum">−97</p>
+          <p class="delta-copy">少 9.7 个百分点的人工队列</p>
+        </div>
+      </div>
+
+      <div class="safety-cost">
+        <p><strong>但静默缺席从 0 变成 1。</strong></p>
+        <p>也就是说，这 97 个被省掉的人工检查里，有一个本该存在的真实税号被系统当成了“没有”。预注册 P1 明确要求两类静默错误都不能上升，所以资格失败。</p>
+      </div>
+    </section>
+
+    <section class="section page-shell" id="harnesses">
+      <header class="section-head">
+        <h2>规则越激进，人越少；风险不会自动消失。</h2>
+        <p>横条越短，代表人工越少。右侧同时写出被自动藏掉的真实字段数，避免只展示一个好看的“省人”数字。</p>
+      </header>
+
+      <div class="arm-list" role="list" aria-label="六套 harness 的人工队列与静默缺席">
+        <div class="arm-row" role="listitem">
+          <span class="arm-name">HAR-0001 · 保守基线</span>
+          <span class="arm-queue">624 · 62.4%</span>
+          <div class="arm-bar" aria-hidden="true"><span style="--queue: 62.4%"></span></div>
+          <span class="arm-risk">静默缺席 0</span>
+          <span class="arm-verdict">基线</span>
+        </div>
+        <div class="arm-row" role="listitem">
+          <span class="arm-name">HAR-0002 · QA 起步</span>
+          <span class="arm-queue">632 · 63.2%</span>
+          <div class="arm-bar" aria-hidden="true"><span style="--queue: 63.2%"></span></div>
+          <span class="arm-risk">静默缺席 0</span>
+          <span class="arm-verdict">队列反增</span>
+        </div>
+        <div class="arm-row" role="listitem">
+          <span class="arm-name">HAR-0003 · seller VAT 规则</span>
+          <span class="arm-queue">572 · 57.2%</span>
+          <div class="arm-bar" aria-hidden="true"><span style="--queue: 57.2%"></span></div>
+          <span class="arm-risk">静默缺席 1</span>
+          <span class="arm-verdict arm-verdict--reject">出现风险</span>
+        </div>
+        <div class="arm-row arm-row--primary" role="listitem">
+          <span class="arm-name">HAR-0004 · 主方案</span>
+          <span class="arm-queue">527 · 52.7%</span>
+          <div class="arm-bar" aria-hidden="true"><span style="--queue: 52.7%"></span></div>
+          <span class="arm-risk">静默缺席 1</span>
+          <span class="arm-verdict arm-verdict--reject">未晋升</span>
+        </div>
+        <div class="arm-row" role="listitem">
+          <span class="arm-name">HAR-0006 · ADK 重复候选</span>
+          <span class="arm-queue">531 · 53.1%</span>
+          <div class="arm-bar" aria-hidden="true"><span style="--queue: 53.1%"></span></div>
+          <span class="arm-risk">静默缺席 1</span>
+          <span class="arm-verdict arm-verdict--reject">无收益</span>
+        </div>
+        <div class="arm-row" role="listitem">
+          <span class="arm-name">HAR-0007 · ADK 到期日候选</span>
+          <span class="arm-queue">494 · 49.4%</span>
+          <div class="arm-bar" aria-hidden="true"><span style="--queue: 49.4%"></span></div>
+          <span class="arm-risk">静默缺席 6</span>
+          <span class="arm-verdict arm-verdict--reject">已拒绝</span>
+        </div>
+      </div>
+
+      <p class="plain-note">这些是“整套 harness”的配对效果，不是纯粹只改一个字段的药物试验。QA 抽样会因为 harness ID 改变而重新分配；HAR-0006 没增加新语义，却仍多出 4 个队列槽，正好暴露了这项混杂。</p>
+    </section>
+
+    <section class="section page-shell" id="adk">
+      <header class="section-head">
+        <h2>如果让 ADK 自动晋升，会怎样？</h2>
+        <p>Gemini ADK 提出的 due_date 候选确实更省人，但它把“可能没有到期日”推得太远。自动晋升不是更聪明，而是把没有经过安全门的建议直接写进未来运行。</p>
+      </header>
+
+      <div class="impact-pair">
+        <div class="impact">
+          <p class="impact-number tnum">−33</p>
+          <h3>再少 33 个人工字段</h3>
+          <p>相对 HAR-0004，HAR-0007 把人工队列从 527 压到 494。</p>
+        </div>
+        <div class="impact impact--risk">
+          <p class="impact-number tnum">+5</p>
+          <h3>多漏 5 个真实到期日</h3>
+          <p>这五个日期在 DocILE 真值里都非空，不能解释成“页面本来就没有”。</p>
+        </div>
+      </div>
+
+      <div class="authority-chain">
+        <strong>ADK 只提案 → Python 算配对差 → 预注册门禁决定能否写入。</strong>
+        <p>结果：候选被拒绝，没有 promotion marker。实验开箱时也没有再次调用 ADK，避免模型在看到结果后改变说法。</p>
+      </div>
+    </section>
+
+    <section class="section page-shell" id="failure">
+      <header class="section-head">
+        <h2>那 1 个漏掉的税号，是怎么发生的？</h2>
+        <p>这不是模糊边界，也不是“美国发票没有 VAT”这种文化差异。它是一张 rebate form：单据类别识别对了，路由规则却没有使用这个类别。</p>
+      </header>
+
+      <ol class="failure-flow">
+        <li>
+          <h3>类别识别正确</h3>
+          <p>页面写着“rebate form”，doctype 判为 credit note，字面证据通过。</p>
+        </li>
+        <li>
+          <h3>抽取结果为空</h3>
+          <p>DWS understand 没有给出 seller_vat_id。</p>
+        </li>
+        <li>
+          <h3>路由自动判缺失</h3>
+          <p>HAR-0004 没消费 doctype，上游空值被当成“预期不存在”。</p>
+        </li>
+        <li>
+          <h3>真值证明漏了</h3>
+          <p>DocILE 标注里有真实税号 27042768；它没有进入人工队列。</p>
+        </li>
+      </ol>
+
+      <p class="failure-caption">这条失败给下一版一个具体方向：把 doctype 和字面证据放进 HITL 上下文与 applicability 判断，但不能让类别模型直接替人裁定字段不存在。</p>
+    </section>
+
+    <section class="section page-shell" id="doctype">
+      <header class="section-head">
+        <h2>为什么 HITL 必须看见单据类别？</h2>
+        <p>100 份未见单据里，只有 75 份被归为 invoice；其余 25 份是合同、贷项单、报价、订单、收据或无法分类。让用户每份都重新猜类别，既慢，也无法把一致口径带进下一份。</p>
+      </header>
+
+      <div class="doctype-split">
+        <div class="doctype-figure" role="img" aria-label="一百份单据中，七十五份是发票，二十五份不是发票或未分类">
+          <div><span>75<br>invoice</span></div>
+          <div><span>25<br>其他 / 未分类</span></div>
+        </div>
+        <div class="doctype-copy">
+          <h3>类别是上下文，不是裁决者。</h3>
+          <p>doctype 检查结果为 83 pass、9 fail、4 no claim、4 unmapped。下一版可以显示类别和它在页面上的字面证据，并据此改变提问方式；但按钮预填或自动缺席仍需要新的未见数据验证。</p>
+          <p>SEALED-3 已经用完。任何由这个失败样本启发的修复，只能在开发集上实现，再交给 SEALED-4 做新的资格测试。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section page-shell" id="gates">
+      <header class="section-head">
+        <h2>七道门，六道通过也不能抵消一道失败。</h2>
+        <p>这些门分别检查排序、覆盖、缺失、引用、冻结和可复核性。每一道回答不同问题；通过某一道，不代表其他风险自动消失。</p>
+      </header>
+
+      <div class="gate-wrap">
+        <table class="gate-table">
+          <caption class="sr-only">SEALED-3 主方案 H1 到 H7 门禁结果</caption>
+          <thead>
+            <tr><th>门</th><th>人人都能懂的意思</th><th>结果</th><th>预注册线</th><th>判定</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td data-label="门">H1</td>
+              <td data-label="检查什么">更可能有问题的字段，是否真的被排到前面</td>
+              <td data-label="结果">3.75×</td>
+              <td data-label="合格线">&gt; 1.5×</td>
+              <td data-label="判定"><span class="result-pass">通过</span></td>
+            </tr>
+            <tr>
+              <td data-label="门">H2</td>
+              <td data-label="检查什么">只看排在前 46% 的字段，覆盖多少可判问题</td>
+              <td data-label="结果">77.33%</td>
+              <td data-label="合格线">&gt; 55%</td>
+              <td data-label="判定"><span class="result-pass">通过</span></td>
+            </tr>
+            <tr>
+              <td data-label="门">H3</td>
+              <td data-label="检查什么">过去认为必须人工看的问题，还保留了多少</td>
+              <td data-label="结果">76.11%</td>
+              <td data-label="合格线">&gt; 55%</td>
+              <td data-label="判定"><span class="result-pass">通过</span></td>
+            </tr>
+            <tr>
+              <td data-label="门">H4</td>
+              <td data-label="检查什么">原始抽取缺字段的比例，是否落在预期范围</td>
+              <td data-label="结果">16.10%</td>
+              <td data-label="合格线">10–45%</td>
+              <td data-label="判定"><span class="result-pass">通过</span></td>
+            </tr>
+            <tr data-result="fail">
+              <td data-label="门">H5</td>
+              <td data-label="检查什么">字段值与引用位置对不上的比例</td>
+              <td data-label="结果">15.35% · 62/404</td>
+              <td data-label="合格线">&lt; 15%</td>
+              <td data-label="判定"><span class="result-fail">失败</span></td>
+            </tr>
+            <tr>
+              <td data-label="门">H6</td>
+              <td data-label="检查什么">不可靠的 understand 声明，被拒绝冻结的比例</td>
+              <td data-label="结果">34.41% · 331/962</td>
+              <td data-label="合格线">5–35%</td>
+              <td data-label="判定"><span class="result-pass">通过</span></td>
+            </tr>
+            <tr>
+              <td data-label="门">H7</td>
+              <td data-label="检查什么">运行、账本和证据包能否完整复核</td>
+              <td data-label="结果">416 个成员，验证通过</td>
+              <td data-label="合格线">run + verify</td>
+              <td data-label="判定"><span class="result-pass">通过</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section section--tight page-shell" id="metric-bug">
+      <header class="section-head">
+        <h2>有一个看起来很漂亮的数字，我们明确不用。</h2>
+        <p>冻结 scorer 把每一套 harness 的 decision_load_for_release 都报成 82.8%。但同一份文件里的逐字段状态明明从 62.4% 降到了 49.4%。这说明指标实现错了，不是六套规则神奇地完全相同。</p>
+      </header>
+
+      <div class="metric-warning">
+        <p class="metric-warning__number tnum">82.8%</p>
+        <div class="metric-warning__copy">
+          <h3>标记为不可解释，不拿来讲结论。</h3>
+          <p>根因是旧计算把策略已经确认缺失的字段又算回了人工。开箱后没有偷偷改代码再重算；修复进入下一版，SEALED-3 不负责给这项修复补考。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section page-shell" id="next">
+      <header class="section-head">
+        <h2>下一版做什么，边界已经很清楚。</h2>
+        <p>这次失败没有浪费：它把“再优化一下”变成了四个可以实现、可以再次检验的具体任务。</p>
+      </header>
+
+      <ol class="next-list">
+        <li>
+          <div><h3>把 doctype 接进 HITL 的解释层</h3><p>显示类别、字面证据和按类别改写的问题；不让类别模型直接预填答案。</p></div>
+        </li>
+        <li>
+          <div><h3>设计带类别条件的 applicability 规则</h3><p>任何自动缺席仍保留人工探针，并先在开发数据上测静默缺席。</p></div>
+        </li>
+        <li>
+          <div><h3>修正 decision load 指标</h3><p>让摘要数字尊重 policy_accepted、policy_confirmed_absent 和 release 配置。</p></div>
+        </li>
+        <li>
+          <div><h3>把两件未完成的测量分开</h3><p>人类裁决准确率等 H2 臂完成；修改后的系统资格等新的 SEALED-4，不能回看 SEALED-3 自证。</p></div>
+        </li>
+      </ol>
+    </section>
+
+    <section class="section page-shell" id="evidence">
+      <details class="technical-details">
+        <summary>给技术评委的完整证据</summary>
+        <div class="technical-body">
+          <dl>
+            <div><dt>开箱 revision</dt><dd>447acf0699d7815fcd69ba8d9922feaf569f65aa</dd></div>
+            <div><dt>结果 revision</dt><dd>7ce9cd8331e9b10baacdf23e2f9a53f66a23b27e</dd></div>
+            <div><dt>输入 fingerprint</dt><dd>63357ff37366c4e8375e9d0a9120ac169e21c761bf2e0bdfe3f3a79041699e9c</dd></div>
+            <div><dt>batch complete sha256</dt><dd>e54552f5f34a183ccc392bc31878ae15cd6c6588b5848e73e79e58fd6e486eef</dd></div>
+            <div><dt>metrics sha256</dt><dd>687caa608c00e71850d5f29716d2aa79886af4e7695dd052e281759eaa6ed1f6</dd></div>
+            <div><dt>audit bundle sha256</dt><dd>6b2d4d1ff679598f9861c80b77fa933d54b474c66790c65eff55cdc38497a3c9</dd></div>
+            <div><dt>批不变量</dt><dd>同一输入指纹：true · 同一上游工件：true · 重复 run 逐字节一致：true</dd></div>
+            <div><dt>人类裁决准确率</dt><dd>NOT_MEASURED · H2 臂尚未完成</dd></div>
+          </dl>
+
+          <div class="source-links">
+            <a class="source-link" href="SEALED3_RESULTS.md">读完整结果记录 →</a>
+            <a class="source-link" href="SEALED3_PROTOCOL.md">读预注册协议 →</a>
+            <a class="source-link" href="evidence/sealed3_multiharness_2026-08-08/results_summary.json">打开机器摘要 →</a>
+          </div>
+        </div>
+      </details>
+
+      <p class="closing-line">少看不是答案。能证明为什么少看，才是。</p>
+    </section>
+  </main>
+
+  <footer class="foot-dense page-shell">
+    <p>InvoiceLoop · SEALED-3 evidence note · 100 documents · 1,000 slots · six frozen harnesses plus one exact repeat · zero new DWS calls · zero new ADK calls · qualification FAIL · human adjudication accuracy NOT MEASURED.</p>
+    <p>公开可说的最强结论：在开发期未见的 100 份单据上，HAR-0004 的分诊 lift 为 3.75×，人工队列相对 HAR-0001 少 9.7 个百分点；但出现 1 个新增静默缺席，因此没有通过预注册晋升门。</p>
+  </footer>
+
+  <script>
+    (function () {
+      const controls = Array.from(document.querySelectorAll("[data-speech]"));
+      const status = document.getElementById("speech-status");
+      const summary = "这是 InvoiceLoop 的 SEALED-3 实验。我们把六套固定规则放在同一批一百份从未见过的单据上，共比较一千个字段。主方案把需要人工看的字段从六百二十四个降到五百二十七个，少了九十七个，同时分诊能力达到三点七五倍。但它把一个真实税号当成缺失，引用位置失败率也比预先设定的百分之十五上限高零点三五个百分点。所以系统没有给它晋升资格。一个由 Gemini ADK 提出的到期日规则还能少看三十三个字段，却会额外漏掉五个真实到期日，因此也被确定性门禁拒绝。人类裁决准确率还没有测完。";
+
+      function updateControls(label, state, pressed) {
+        controls.forEach(function (control) {
+          control.textContent = label;
+          control.dataset.state = state;
+          control.setAttribute("aria-pressed", String(pressed));
+        });
+      }
+
+      function resetControls(message) {
+        updateControls("朗读摘要", "default", false);
+        status.textContent = message || "";
+      }
+
+      if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
+        controls.forEach(function (control) {
+          control.disabled = true;
+          control.dataset.state = "error";
+          control.setAttribute("aria-disabled", "true");
+        });
+        status.textContent = "这个浏览器不支持本地朗读；正文仍可正常阅读。";
+        return;
+      }
+
+      controls.forEach(function (control) {
+        control.addEventListener("click", function () {
+          if (window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel();
+            resetControls("朗读已停止。你可以从头重新播放。");
+            return;
+          }
+
+          updateControls("准备朗读…", "loading", true);
+          status.textContent = "正在准备中文朗读。";
+
+          const utterance = new SpeechSynthesisUtterance(summary);
+          utterance.lang = "zh-CN";
+          utterance.rate = 0.95;
+          utterance.pitch = 1;
+
+          utterance.addEventListener("start", function () {
+            updateControls("停止朗读", "success", true);
+            status.textContent = "正在朗读实验摘要。";
+          });
+
+          utterance.addEventListener("end", function () {
+            resetControls("摘要朗读完毕。正文下面有完整数字和证据链接。");
+          });
+
+          utterance.addEventListener("error", function () {
+            updateControls("朗读失败", "error", false);
+            status.textContent = "浏览器没能启动朗读。请直接阅读页面摘要，或换一个支持中文语音的浏览器。";
+          });
+
+          window.speechSynthesis.speak(utterance);
+        });
+      });
+
+      window.addEventListener("beforeunload", function () {
+        window.speechSynthesis.cancel();
+      });
+    }());
+  </script>
+</body>
+</html>

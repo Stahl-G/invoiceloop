@@ -60,6 +60,20 @@ propose → evaluate → promote,没有一条被门拒。
 heldout 三个工作区的 raw 汇成一处 + `data` 指向校准语料,**不含任何促销记录**,
 所以基线一定是包内 HAR-0001。
 
+重跑 `run-0002`(HAR-0017 那一臂)要临时把工作区的 harness 状态挂进语料根,
+**跑完就摘掉**:
+
+```bash
+ln -sfn ../absence-dev-2026-08-09/improve   runs/absence-dev-corpus/improve
+ln -sfn ../absence-dev-2026-08-09/harnesses runs/absence-dev-corpus/harnesses
+# … 跑 pipeline …
+rm -f runs/absence-dev-corpus/improve runs/absence-dev-corpus/harnesses
+```
+
+摘掉是纪律不是洁癖:`pipeline.run` 的 active harness 取自**语料根**
+(`load_active(derisk_root())`),不是输出目录。让促销记录长期挂在语料根上,
+下一个人跑「基线」时拿到的就不是基线 —— 本文档最后一节记的正是这个坑。
+
 ## 两条限定
 
 - **这是开发集。** sealed1 / sealed2 / heldout 全部在开发期被读过、被调过。

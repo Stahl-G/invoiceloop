@@ -25,6 +25,7 @@ result missed the pre-registered line.
 
 | File | What it is |
 |---|---|
+| [`SEALED3_RESULTS.html`](SEALED3_RESULTS.html) | A visual, plain-language Chinese explanation of the SEALED-3 result, with an optional local read-aloud summary: 97 fewer human-review slots, one new silent absence, and why the ADK candidate was deterministically rejected |
 | `HELDOUT.md` | Held-out protocol, frozen before any API call |
 | `SEALED3_PROTOCOL.md` / `SEALED3_MULTIHARNESS_ADDENDUM_2026-08-08.md` / `SEALED3_RESULTS.md` | 100 drand-seeded unseen documents, opened once under six frozen harnesses plus an exact repeat. HAR-0004 cut the human queue 62.4% -> 52.7% and reproduced 3.75x triage lift, but one new silent absence failed the pre-registered qualification gate. The ADK due-date candidate saved another 3.3pp at the cost of five more silent absences |
 | `evidence/sealed3_multiharness_2026-08-08/` | Git-frozen routing policies and a compact machine-readable result summary; the full run/bundle stays in the research data directory and is content-addressed from the result |
