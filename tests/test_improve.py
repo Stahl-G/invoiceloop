@@ -708,3 +708,93 @@ class TestAbsentExpectedLoop:
                                         "field": "seller_vat_id"},
                             finding="F", prediction="p",
                             kind="absent_expected")
+
+
+class TestAbsentEvidencedLoop:
+    """页面证据缺席规则的完整闭环(2026-08-09)。
+
+    与类别缺席同一条流水线,区别只在授权来源:那一类靠同类文档的统计,
+    这一类靠**这一份**页面上没印过该字段的标签。所以它不带 doc_class,
+    而且能进 invoice 类。
+    """
+
+    def _propose(self, ws, field="seller_vat_id"):
+        return improve.propose(
+            ws, cohort={"field": field},
+            finding=f"FIND-AV:{field} 缺值且页面无该字段标签",
+            prediction=f"{field} 的缺值槽出队", kind="absent_evidenced")
+
+    def test_full_loop(self, ws):
+        from invoiceloop import deliver
+        from invoiceloop.safety_metrics import write_annotation_stub
+
+        write_annotation_stub(ws, DOC, {"invoice_number": "INV-42"})
+
+        cand = self._propose(ws)
+        policy = json.loads((cand / "routing_policy.json").read_text())
+        assert policy["absent_evidenced_cohorts"][-1] == {
+            "id": "AV-seller_vat_id", "field": "seller_vat_id"}, \
+            "规则 ID 只能由 Python 从字段派生"
+        assert policy["qa"]["sampler_version"] == 2
+        assert policy["qa"]["absent_evidenced_rate"] >= 0.20
+
+        result = improve.evaluate(ws, "HAR-0002")
+        assert result["review_load_candidate"] <= result["review_load_baseline"]
+        improve.promote(ws, "HAR-0002", approved_by="y",
+                        rationale="页面上没有任何税号标签,缺席由页面背书;20% 探针盯着",
+                        approved_at=DECIDED)
+        pipeline_run([DOC], ws / "runs" / "run-0002", include_vision=False,
+                     out_of_calibration=True)
+        gate = json.loads((ws / "runs" / "run-0002" / "gate_report.json")
+                          .read_text())
+        assert gate["evaluations"][DOC]["seller_vat_id"][
+            "extraction_present"] == "expected_absent"
+        routing = json.loads((ws / "runs" / "run-0002" / "routing_report.json")
+                             .read_text())
+        route = next(r for r in routing["routes"]
+                     if r["field"] == "seller_vat_id")
+        assert route["route"] in ("auto_absent", "review"), route
+        if route["route"] == "auto_absent":
+            assert route["reason_codes"] == ["ABSENT_EVIDENCED:AV-seller_vat_id"]
+            slot = deliver.build_deliverable(
+                ws / "runs" / "run-0002")["docs"][DOC]["fields"][
+                    "seller_vat_id"]
+            assert slot["status"] == "policy_confirmed_absent"
+        else:
+            assert "QA_SAMPLE:AV-seller_vat_id" in route["reason_codes"]
+
+    def test_a_field_with_no_lexicon_is_refused(self, ws):
+        """`buyer_name` 页面上没有可判别的标签 —— 这条规则的授权无从谈起。
+
+        不是「暂时没词表」,是这个机制对它无话可说。让它通过等于把一条
+        永远不会触发的规则(或更糟,一条靠空词表恒真的规则)放进策略。
+        """
+        with pytest.raises(ValueError, match="标签词表"):
+            self._propose(ws, field="buyer_name")
+
+    def test_a_class_cannot_be_smuggled_into_an_evidenced_rule(self, ws):
+        with pytest.raises(ValueError, match="doc_class"):
+            improve.propose(ws, cohort={"field": "seller_vat_id",
+                                        "doc_class": "invoice"},
+                            finding="F", prediction="p",
+                            kind="absent_evidenced")
+
+    def test_a_run_without_probes_is_refused_not_scored_as_no_effect(self, ws):
+        """缺席探针之前跑的 run 不能用来评这类候选。
+
+        旧 gate_report 没有 absence_probes,规则一条也匹配不上,评测会给出
+        一个漂亮的「零变化」——而零变化读起来像「这条规则没用」,不像
+        「这批证据判不了」。宪章四:跑不了不是通过,也不是零。
+        """
+        run = ws / "runs" / "run-0001"
+        gate = json.loads((run / "gate_report.json").read_text())
+        del gate["absence_probes"]
+        (run / "gate_report.json").write_text(json.dumps(gate))
+
+        cand = self._propose(ws)
+        result = improve.evaluate(ws, cand.name)
+        assert result["absence_probe_status"] == "unavailable"
+        verdict = improve.gate_verdict(result)
+        assert verdict["ok"] is False
+        assert any("缺席探针" in r for r in verdict["refusals"]), \
+            verdict["refusals"]

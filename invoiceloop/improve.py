@@ -229,7 +229,7 @@ def lint_policy(parent: dict, candidate: dict) -> list[str]:
     violations = []
     for key in set(parent) | set(candidate):
         if key in ("auto_accept_cohorts", "absent_expected_cohorts",
-                   "harness_id", "version"):
+                   "absent_evidenced_cohorts", "harness_id", "version"):
             continue  # cohorts 单独查;harness_id/version 是身份字段,必然变
         if key == "qa":
             # 类别缺席规则同时切到 sampler v2:跨 harness 的同一规则必须
@@ -237,7 +237,8 @@ def lint_policy(parent: dict, candidate: dict) -> list[str]:
             pq, cq = parent.get("qa") or {}, candidate.get("qa") or {}
             changed = {k for k in set(pq) | set(cq)
                        if pq.get(k) != cq.get(k)}
-            allowed = {"absent_expected_rate", "sampler_version"}
+            allowed = {"absent_expected_rate", "absent_evidenced_rate",
+                       "sampler_version"}
             if changed - allowed:
                 violations.append(
                     f"候选改了 qa 的 {sorted(changed - allowed)}"
@@ -314,6 +315,42 @@ def _absent_structure_violations(parent: dict, candidate: dict) -> list[str]:
             violations.append("类别缺席规则必须保留至少 20% 人工探针")
         if qa.get("sampler_version") != 2:
             violations.append("类别缺席规则必须使用 sampler_version=2")
+
+    # ---- 页面证据缺席规则:同样的结构约束,授权来源不同
+    from .absence_evidence import LABEL_LEXICON
+
+    evidenced_parent = {c.get("id"): c
+                        for c in parent.get("absent_evidenced_cohorts", [])}
+    new_evidenced = []
+    for cohort in candidate.get("absent_evidenced_cohorts", []):
+        if cohort.get("id") in evidenced_parent \
+                and cohort == evidenced_parent[cohort.get("id")]:
+            continue
+        if set(cohort) - {"id", "field"}:
+            violations.append(
+                f"页面证据缺席 cohort 带了 "
+                f"{_names(set(cohort) - {'id', 'field'})} —— 它只认 id 与 "
+                f"field;doc_class 属于类别缺席那一类,混写会造出一条谁也"
+                f"没评过的杂交规则")
+            continue
+        new_evidenced.append(cohort)
+        expected_id = f"AV-{cohort.get('field')}"
+        if cohort.get("id") != expected_id:
+            violations.append(
+                f"页面证据缺席 cohort id 必须由 Python 生成 {expected_id!r}")
+        if cohort.get("field") not in FIELDS:
+            violations.append(
+                f"页面证据缺席 cohort field {cohort.get('field')!r} 不是受评字段")
+        elif cohort.get("field") not in LABEL_LEXICON:
+            violations.append(
+                f"{cohort.get('field')!r} 没有标签词表 —— 页面上没有可判别的"
+                "标签,就没有「页面证明了缺席」这回事")
+    if new_evidenced:
+        qa = candidate.get("qa") or {}
+        if float(qa.get("absent_evidenced_rate", 0.0)) < 0.20:
+            violations.append("页面证据缺席规则必须保留至少 20% 人工探针")
+        if qa.get("sampler_version") != 2:
+            violations.append("页面证据缺席规则必须使用 sampler_version=2")
     return violations
 
 
@@ -422,6 +459,34 @@ def propose(workspace: Path, *, cohort: dict, finding: str,
             float(qa.get("absent_expected_rate", 0.0)), 0.20)
         qa["sampler_version"] = 2
         candidate["qa"] = qa
+    elif kind == "absent_evidenced":
+        from .absence_evidence import LABEL_LEXICON
+
+        extra = set(cohort) - {"field"}
+        if extra:
+            raise ValueError(refusal_text([
+                f"页面证据缺席 cohort 带了 {_names(extra)} —— 它的授权来自"
+                "这一份的页面,不是同类文档;doc_class 属于另一类规则,"
+                "混写会造出一条谁也没评过的杂交规则。模型也不写规则 ID。"]))
+        field_name = cohort.get("field")
+        if field_name not in FIELDS:
+            raise ValueError(refusal_text([
+                f"页面证据缺席 cohort field {field_name!r} 不是受评字段"]))
+        if field_name not in LABEL_LEXICON:
+            raise ValueError(refusal_text([
+                f"{field_name!r} 没有标签词表 —— 这个机制对它无话可说。"
+                "页面上没有可判别的标签,就没有「页面证明了缺席」这回事;"
+                f"当前有词表的字段:{_names(sorted(LABEL_LEXICON))}"]))
+        cohort = {"id": f"AV-{field_name}", "field": field_name}
+        candidate = {**parent,
+                     "absent_evidenced_cohorts":
+                     parent.get("absent_evidenced_cohorts", []) + [cohort]}
+        # 与类别缺席同理:缺席是否成立要持续观测,探针不是损耗是前提
+        qa = dict(candidate.get("qa") or {})
+        qa["absent_evidenced_rate"] = max(
+            float(qa.get("absent_evidenced_rate", 0.0)), 0.20)
+        qa["sampler_version"] = 2
+        candidate["qa"] = qa
     elif kind == "auto_accept":
         candidate = {**parent,
                      "auto_accept_cohorts": parent.get("auto_accept_cohorts", [])
@@ -503,10 +568,11 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
     silent_wrong(与 safety_metrics / loop_generalization 同函数),供
     promote Gate 2 使用;无标注则 safety_status=unscored。
     """
+    from . import absence_evidence as _absence
     from .harness import load_active
     from .routing import (
         apply_absent_expected,
-        match_absent_expected,
+        match_absent_rule,
         route_slots,
     )
     from .safety_metrics import (
@@ -544,6 +610,8 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
         "candidate": {"matches": 0, "truth_conflicts": 0,
                       "missing_truth_docs": set()},
     }
+    evidenced_rules = cand_policy.get("absent_evidenced_cohorts") or []
+    docs_without_probes: set[str] = set()
     for run_dir in runs:
         if not (run_dir / "event_log.jsonl").exists():
             continue
@@ -582,11 +650,23 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
                                    else str(raw_status or "not_measured")),
                 "doc_class": trusted,
             }
+            # 缺席探针只存在于 2026-08-09 之后跑的 run。旧 gate_report 没有
+            # 这一项 —— 那不是「没有标签」,是这批证据判不了(宪章四)。
+            probes = (gate.get("absence_probes") or {}).get(doc) or {}
+            if evidenced_rules and not probes:
+                docs_without_probes.add(doc)
+            absence_facts = {
+                field_name: (_absence.CORROBORATED
+                             if _absence.trusted_absence(probes.get(field_name))
+                             else _absence.NOT_MEASURED)
+                for field_name in FIELDS
+            }
             matched_fields = {
                 field_name for field_name in FIELDS
-                if match_absent_expected(
-                    {**type_facts, "field": field_name}, cand_policy)
-                is not None
+                if match_absent_rule(
+                    {**type_facts, "field": field_name,
+                     "absence_evidence": absence_facts[field_name]},
+                    cand_policy)[0] is not None
             }
 
             blocking = [
@@ -602,14 +682,17 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
                 gate_evaluations=gate.get("evaluations", {}).get(doc, {}),
                 doc_blocking_findings=blocking,
                 understand_data=udata,
-                document_check=document_check)]
+                document_check=document_check,
+                absence_probes=probes)]
             facts.extend(doc_facts)
             for label, policy in (("baseline", active["policy"]),
                                   ("candidate", cand_policy)):
                 for fact in doc_facts:
-                    rule = match_absent_expected(fact, policy)
-                    if rule is None or rule.get("doc_class") is None:
+                    rule, rule_kind = match_absent_rule(fact, policy)
+                    if rule is None:
                         continue
+                    if rule_kind == "expected" and rule.get("doc_class") is None:
+                        continue  # 旧全局 cohort 只为冻结重放,不进内在核算
                     value = (udata or {}).get(fact["field"])
                     if value is not None and str(value).strip() != "":
                         continue
@@ -685,8 +768,14 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
     class_rule_count = sum(
         1 for rule in cand_policy.get("absent_expected_cohorts") or []
         if rule.get("doc_class") is not None)
+    # 探针可用性单列。若混进 unscored,一个「这批 run 判不了」会读成
+    # 「这条规则没效果」—— 而零变化恰恰是规则被静默禁用时的样子。
+    absence_probe_status = (
+        "not_applicable" if not evidenced_rules
+        else "unavailable" if docs_without_probes
+        else "available")
     candidate_intrinsic = absent_intrinsic["candidate"]
-    if class_rule_count == 0:
+    if class_rule_count == 0 and not evidenced_rules:
         absent_truth_status = "not_applicable"
     elif (candidate_intrinsic["matches"] > 0
           and not candidate_intrinsic["missing_truth_docs"]):
@@ -710,6 +799,9 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
         # Gate 2 的 QA 前口径:即使危险槽恰好被 20% 探针抽中、最终没有
         # silent_absent,真值冲突仍在这里被机械抓住。
         "class_absent_rule_count": class_rule_count,
+        "evidenced_absent_rule_count": len(evidenced_rules),
+        "absence_probe_status": absence_probe_status,
+        "absence_probe_missing_docs": sorted(docs_without_probes),
         "absent_rule_truth_status": absent_truth_status,
         "absent_rule_matches_baseline":
             absent_intrinsic["baseline"]["matches"],
@@ -1120,6 +1212,25 @@ def gate_verdict(evaluation: dict, *, sealed2_qualified: bool = False) -> dict:
     reextract = basis_in == "reextract_sample"
 
     refusals: list[str] = []
+    if evaluation.get("absence_probe_status") == "unavailable":
+        missing = evaluation.get("absence_probe_missing_docs") or []
+        refusals.append(
+            "Gate 2 拒绝:这批 run 的 gate_report 里没有缺席探针"
+            f"({len(missing)} 份文档),页面证据缺席规则一条也匹配不上。"
+            "这不是「规则没效果」,是这批证据判不了 —— 用当前代码重跑 run "
+            "再评(宪章四:跑不了不是通过)")
+    if evaluation.get("evidenced_absent_rule_count", 0) \
+            and evaluation.get("absence_probe_status") == "available":
+        intrinsic_status = evaluation.get("absent_rule_truth_status")
+        if intrinsic_status != "scored":
+            refusals.append(
+                "Gate 2 拒绝:页面证据缺席规则未取得 QA 前真值评分"
+                "(零匹配或标注记录不完整),不能给安全结论")
+        elif evaluation.get("absent_rule_truth_conflicts_candidate", 0) > 0:
+            refusals.append(
+                "Gate 2 拒绝:页面证据缺席规则在 QA 前命中 "
+                f"{evaluation['absent_rule_truth_conflicts_candidate']} 个"
+                "真值实际存在槽;页面上没印标签不等于真的没有这个字段")
     if evaluation.get("class_absent_rule_count", 0):
         intrinsic_status = evaluation.get("absent_rule_truth_status")
         if intrinsic_status != "scored":
