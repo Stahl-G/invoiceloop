@@ -141,10 +141,24 @@ class TestSealedList:
             "与旧留出 100 互斥(暴露清单的子集,双保险)"
 
     def test_pool_shrinks_by_exposure(self):
-        # 暴露清单含旧留出 100 + SEALED-1 100 + SEALED-2 100(均 ⊂ heldout_pool)
-        assert len(heldout.sealed_pool()) == \
-            len(heldout.heldout_pool()) - 300, \
-            "旧留出 100 + SEALED-1 100 + SEALED-2 100 必须从合格池中移除"
+        """合格池 = 留出池 − 暴露清单在留出池内的部分,逐份对上。
+
+        原先这里写死「−300」,于是每加一批封箱都要来改一次数字,而改数字
+        的人正是刚刚扩大暴露清单的那个人 —— 那样这条测试只会确认自己的
+        改动。改成从清单本身导出:它钉的是「排除是完整的」,不是「排除了
+        几份」。
+        """
+        import json as _json
+        from pathlib import Path as _P
+
+        manifest = _json.loads(
+            (_P(__file__).resolve().parent.parent / "docs"
+             / "development_exposure_manifest.json").read_text(encoding="utf-8"))
+        exposed = {e["doc_id"] for e in manifest["doc_ids"]}
+        pool = set(heldout.heldout_pool())
+        assert set(heldout.sealed_pool()) == pool - exposed, \
+            "合格池必须恰好是留出池减去全部已暴露文档"
+        assert exposed & pool, "暴露清单与留出池无交集 —— 清单大概接错了"
 
     def test_sealed1_recompute_context(self):
         """SEALED-1 名单复算必须用 sealed1-v1 语境,不得被 sealed2 默认污染。"""

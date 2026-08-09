@@ -1,12 +1,13 @@
 {
- "purpose": "封箱排除池(SEALED-3+):这些文档开发过程已暴露,不许进新封箱评测",
+ "purpose": "封箱排除池(SEALED-4+):这些文档开发过程已暴露,不许进新封箱评测",
  "generated": "scripts/build_exposure_manifest.py(确定性,可重算)",
  "counts": {
   "calibration_160": 160,
   "heldout_100": 100,
   "sealed1_100": 100,
   "sealed2_100": 100,
-  "unique_total": 460
+  "sealed3_100": 100,
+  "unique_total": 560
  },
  "doc_ids": [
   {
@@ -1489,6 +1490,15 @@
    ]
   },
   {
+   "doc_id": "0948ca6b0ffc4322b24d4fed",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "0a2366374d1848acb72a2d4d",
    "reasons": [
     {
@@ -1552,11 +1562,38 @@
    ]
   },
   {
+   "doc_id": "0d816594cea44819acb980bb",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "0dc12237678a4af4ad7a43e3",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "0e5092c3abbb4b9e85cfd2fb",
    "reasons": [
     {
      "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
      "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "0e9fa414a3054e839c72685a",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -1588,11 +1625,29 @@
    ]
   },
   {
+   "doc_id": "10661754f6114b02b41b11d4",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "11187fe66c074b908169f071",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "116cc87fc5d04806818b5a4f",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -1633,6 +1688,15 @@
    ]
   },
   {
+   "doc_id": "13c85707c8ea4068ac731c60",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "1582cfb7e6ca40d68352e119",
    "reasons": [
     {
@@ -1669,6 +1733,15 @@
    ]
   },
   {
+   "doc_id": "18d17aa901fd4ec69685ae00",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "1925d1e1a8114287905a7864",
    "reasons": [
     {
@@ -1687,6 +1760,15 @@
    ]
   },
   {
+   "doc_id": "1a839f850a73420c9b7357a5",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "1aa354bec19e4accbab4595f",
    "reasons": [
     {
@@ -1696,11 +1778,29 @@
    ]
   },
   {
+   "doc_id": "1cc33092494a4971acda333f",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "1cced058d6df46609f5a1223",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "1dcb333eb25241dca1638883",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -1728,6 +1828,15 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "22353f69e49f4d69879fa6ea",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -1831,6 +1940,33 @@
    ]
   },
   {
+   "doc_id": "29639c44ca7f43ad8739bd62",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "29697fb0eccd409590acc519",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "29fc89e4903345a49368d907",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "2acd7b873a0c4ef1aec45eb6",
    "reasons": [
     {
@@ -1845,6 +1981,24 @@
     {
      "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
      "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "2b8ce5f74dd749d7a576ed7c",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "2bfb291950ef483eb6caaa74",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -1881,6 +2035,15 @@
     {
      "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
      "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "2e95329f4c9e48fca33538aa",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -2011,6 +2174,33 @@
    ]
   },
   {
+   "doc_id": "358a3ab5397e4403a6b9e00a",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "3716509b15a1497980d0ea86",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "374c924c3c804f6193234bd7",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "376c8efc28e841eb9cac4095",
    "reasons": [
     {
@@ -2020,11 +2210,29 @@
    ]
   },
   {
+   "doc_id": "3799d280960d493088b5d35c",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "391cd6c1d61f42f39d266ab4",
    "reasons": [
     {
      "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "39ac40e2e3354e9297d61e03",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -2101,11 +2309,29 @@
    ]
   },
   {
+   "doc_id": "3d8745f375c244bd9c9977e6",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "3d9951ee7e71443a9cb6d45c",
    "reasons": [
     {
      "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
      "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "3da79675b3d5451a8e87e22f",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -2124,6 +2350,15 @@
     {
      "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
      "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "3f5f84c4129647708dd168f2",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -2182,6 +2417,15 @@
    ]
   },
   {
+   "doc_id": "42415cd6ed1745809cb9a4c1",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "442e7b2628b04c479100e73a",
    "reasons": [
     {
@@ -2200,6 +2444,15 @@
    ]
   },
   {
+   "doc_id": "46c77dfe87fe4fc8a71b15f6",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "4735a7b50b20482fbd7d55fa",
    "reasons": [
     {
@@ -2214,6 +2467,15 @@
     {
      "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
      "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "490e69a4a9504e43a2a5161d",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -2245,6 +2507,51 @@
    ]
   },
   {
+   "doc_id": "4c2d0e99953d4661acbc15fc",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "4d074e872e2c4a38afd47820",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "4d3b8db353484865ad9291e9",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "4d4717e6811f4aa1a234d064",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "4de7e1efe1544402b7deb7c6",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "4e0aac7a35dc412f8911746d",
    "reasons": [
     {
@@ -2272,6 +2579,15 @@
    ]
   },
   {
+   "doc_id": "50678ecc66eb4465ba98b2b6",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "50bbaa7c37374cc584cb06d3",
    "reasons": [
     {
@@ -2286,6 +2602,15 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "5217e02e1d084d5b83c485cd",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -2326,6 +2651,15 @@
    ]
   },
   {
+   "doc_id": "59ccad4cf4b840deb6eda5fe",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "59ce9289c02a41aa9f4d3105",
    "reasons": [
     {
@@ -2344,11 +2678,38 @@
    ]
   },
   {
+   "doc_id": "5a34aacbc5fc49f3a09c2b06",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "5a8c7ec3518c4daa978b4eb9",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "5a9493430a9e49b49ae49ad0",
    "reasons": [
     {
      "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "5b806f79735c49fa883c6ff7",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -2394,6 +2755,24 @@
     {
      "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "5e21b043914946d7a1890913",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "5e59b2b43cd94c9e89cea653",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -2470,6 +2849,33 @@
    ]
   },
   {
+   "doc_id": "629378863a20460585c45d43",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "62de5ea8c9094191b6f55f2f",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "63208ea9674440799fb01d5e",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "63b24b6c460c4e309b145d76",
    "reasons": [
     {
@@ -2497,6 +2903,15 @@
    ]
   },
   {
+   "doc_id": "6594a154110146389628fd63",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "65e34b0561a841339c6ef146",
    "reasons": [
     {
@@ -2515,6 +2930,15 @@
    ]
   },
   {
+   "doc_id": "66517596536a412fba0cbd6c",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "66583cda46a344f683756e34",
    "reasons": [
     {
@@ -2524,11 +2948,38 @@
    ]
   },
   {
+   "doc_id": "667b3c4777b943d2947bc1ad",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "686fc97705a34f5987ee060b",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "687c6dd1dd2c465485cef4a8",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "6945ee4598d34ff4ab8d7a10",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -2569,6 +3020,15 @@
    ]
   },
   {
+   "doc_id": "6b9b7d7a7b424195b0b1150c",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "6ceecf3352ce4c9b8ce06e91",
    "reasons": [
     {
@@ -2605,6 +3065,15 @@
    ]
   },
   {
+   "doc_id": "6e0d2175f7ad406cad04be9c",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "6eb341f24f2b4cc1b45eb689",
    "reasons": [
     {
@@ -2628,6 +3097,24 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "72a7e1a870f040b38b6df8e0",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "72fbc85319b64eacb9fcf964",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -2668,6 +3155,15 @@
    ]
   },
   {
+   "doc_id": "791908ec8c8841ecb932a466",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "796b5ff94f82436a8113bd01",
    "reasons": [
     {
@@ -2682,6 +3178,15 @@
     {
      "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
      "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "7b992c16a9324c6c94f6e0d3",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -2749,6 +3254,15 @@
    ]
   },
   {
+   "doc_id": "848916b2c5264818be60e1f1",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "84dd5f5c0f204c39a8561647",
    "reasons": [
     {
@@ -2763,6 +3277,15 @@
     {
      "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "865ec0f8ace544a28770aafc",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -2817,6 +3340,15 @@
     {
      "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
      "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "893d9cc0e7294fdab7fdfd1d",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -2920,6 +3452,24 @@
    ]
   },
   {
+   "doc_id": "9305c59b993e412fb47b2da1",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "93385fe3deba41c38ce88e1a",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "9366897ef8604a39b25e0ec8",
    "reasons": [
     {
@@ -2943,6 +3493,24 @@
     {
      "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "95e2e9636613486e828290fb",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "963d343ef6934b91a140837d",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -2992,6 +3560,24 @@
    ]
   },
   {
+   "doc_id": "9a08f7fec7e74aa28ade3018",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "9a359ef4cc4644ae9b5caaa4",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "9a52926255a64fd1aa57c5f8",
    "reasons": [
     {
@@ -3015,6 +3601,15 @@
     {
      "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
      "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "9b501e53f39046ae95ca6b0f",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -3051,6 +3646,15 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "9e7949d2167f4c19a03242eb",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -3118,6 +3722,15 @@
    ]
   },
   {
+   "doc_id": "a22ba884e85544e78742d5dc",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "a2e24c85a4af4318972fb0e2",
    "reasons": [
     {
@@ -3141,6 +3754,15 @@
     {
      "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
      "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "a593b7950bf941608353fadf",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -3199,6 +3821,15 @@
    ]
   },
   {
+   "doc_id": "abd0ed61962843f4a5379cf8",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "acc86f9b0e544bb6b93d805c",
    "reasons": [
     {
@@ -3226,6 +3857,15 @@
    ]
   },
   {
+   "doc_id": "aec3d23a0a7c4c54b20199dc",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "af4d270d97cf4dc4bec18b1d",
    "reasons": [
     {
@@ -3249,6 +3889,15 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "b0bbf8ce196e431faafbc61f",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -3285,6 +3934,15 @@
     {
      "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "b360ddd36d8d4d7aa21ef809",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -3361,11 +4019,38 @@
    ]
   },
   {
+   "doc_id": "b76fa257727e44d5b5ef8d72",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "ba2ad19cfd13489284cc21d6",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "ba388b327d254ed384f97624",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "ba7418aa3887416e91785b54",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -3442,11 +4127,29 @@
    ]
   },
   {
+   "doc_id": "c187e9f438b042eeb335b913",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "c19343b2784348c5b34b6d80",
    "reasons": [
     {
      "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "c35d89ebd5fa4acfbfad9fe3",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -3469,11 +4172,29 @@
    ]
   },
   {
+   "doc_id": "c5c9068e6fd14310915f6146",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "c616442427bf4f69a2443b3e",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "c62990cb4561487eb20824e0",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -3519,6 +4240,15 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "ca154b23196b4278ba87a3ec",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -3631,11 +4361,56 @@
    ]
   },
   {
+   "doc_id": "d376bc702cf6415e991e5680",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "d46006725fc04bff84781874",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "d53f1ea445534411ad2c95c4",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "d5521ef27bcf4aebaf32f9c0",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "d6894e91d19844a98c866535",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "d75cd7d539d54e8d84b01358",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -3663,6 +4438,15 @@
     {
      "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "d9e3164bca9145f4bc8d2838",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -3712,6 +4496,15 @@
    ]
   },
   {
+   "doc_id": "dd58e5514e2342d2b430188e",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "ddfcaaa66c64422c93409374",
    "reasons": [
     {
@@ -3735,6 +4528,15 @@
     {
      "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "df056d6a5ea94b619cd0b241",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -3802,11 +4604,29 @@
    ]
   },
   {
+   "doc_id": "e271671362474cab90508f7d",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "e2e6326f24fc499198e20ce4",
    "reasons": [
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "e3164d2f5fb74e15a36bdbb3",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -3874,6 +4694,15 @@
    ]
   },
   {
+   "doc_id": "e83fab36c74545199d85e10d",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "e879f9c7796e4e24892fcdc0",
    "reasons": [
     {
@@ -3924,6 +4753,15 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "ec06bbbd2a074231b98c1ddc",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -3982,6 +4820,15 @@
    ]
   },
   {
+   "doc_id": "f1320edee01c4ff9b002a3f9",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "f1b0c5690ac9414dba5770aa",
    "reasons": [
     {
@@ -4023,6 +4870,33 @@
     {
      "reason": "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,不得进 SEALED-3)",
      "source": "docs/sealed2_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "f47b8ee00eae416c94a083ca",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "f4e6e4ad2da5438391b36b80",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "f579a59d5d7d4ba2986b3c9c",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -4081,6 +4955,15 @@
    ]
   },
   {
+   "doc_id": "f8af310e025948d391036bac",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
+    }
+   ]
+  },
+  {
    "doc_id": "f973802bdbcb41be9a4c7a87",
    "reasons": [
     {
@@ -4113,6 +4996,15 @@
     {
      "reason": "heldout-100(H1–H6、C3/C8 修复案例、漂移分析同源;69 评后降级为回归集)",
      "source": "docs/heldout_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "fa609d704e8749389fa1e158",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   },
@@ -4158,6 +5050,15 @@
     {
      "reason": "sealed1-100(SEALED-1 封箱评测 + HITL-12 + 泛化回放;已降级为演化/回归集,不得进后续封箱)",
      "source": "docs/sealed1_doc_list.json"
+    }
+   ]
+  },
+  {
+   "doc_id": "fedd01b20b8c48e096b7ba43",
+   "reasons": [
+    {
+     "reason": "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness 评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+     "source": "docs/sealed3_doc_list.json"
     }
    ]
   }

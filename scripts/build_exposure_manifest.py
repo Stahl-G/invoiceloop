@@ -60,18 +60,26 @@ def main() -> None:
         add(doc_id, "sealed2-100(SEALED-2 曾作晋升资格集;词表/原型污染后撤权退役,"
             "不得进 SEALED-3)",
             "docs/sealed2_doc_list.json")
+    sealed3 = json.loads(
+        (REPO / "docs" / "sealed3_doc_list.json").read_text())["doc_ids"]
+    for doc_id in sealed3:
+        add(doc_id, "sealed3-100(2026-08-08 一次性开箱已用掉:七臂多 harness "
+            "评测、资格失败逐槽分析、doctype 描述性结果;由它的失败启发的规则"
+            "不得再回到它身上验 —— SEALED3_RESULTS.md §7)",
+            "docs/sealed3_doc_list.json")
     for p in sorted((REPO / "invoiceloop" / "samples" / "pdfs").glob("*.pdf")):
         add(p.stem, "vendored demo 样本(demo/live 测试/录屏反复使用)",
             "invoiceloop/samples/pdfs/")
 
     manifest = {
-        "purpose": "封箱排除池(SEALED-3+):这些文档开发过程已暴露,不许进新封箱评测",
+        "purpose": "封箱排除池(SEALED-4+):这些文档开发过程已暴露,不许进新封箱评测",
         "generated": "scripts/build_exposure_manifest.py(确定性,可重算)",
         "counts": {
             "calibration_160": 160,
             "heldout_100": len(heldout),
             "sealed1_100": len(sealed1),
             "sealed2_100": len(sealed2),
+            "sealed3_100": len(sealed3),
             "unique_total": len(entries),
         },
         "doc_ids": [entries[k] for k in sorted(entries)],
