@@ -171,16 +171,47 @@ class TestGateWiring:
     verdicts 会让 `label_present` 变成一条谁也没预注册过的新门禁。
     """
 
-    def _report(self, positioned_corpus):
+    def _report(self, positioned_corpus, data=None, **kw):
         from invoiceloop import gates
         from tests.conftest import make_response
         from tests.test_gates import FULL_DATA
 
-        u = make_response("doc-a", "understand", FULL_DATA)
-        a = make_response("doc-a", "agentic", dict(FULL_DATA))
+        data = FULL_DATA if data is None else data
+        u = make_response("doc-a", "understand", data)
+        a = make_response("doc-a", "agentic", dict(data))
         return gates.run_gates(
             ["doc-a"], understand={"doc-a": u}, agentic={"doc-a": a},
-            vision_answers={}, ledger_sha256="x", artifact_digest="y")
+            vision_answers={}, ledger_sha256="x", artifact_digest="y", **kw)
+
+    def test_evidenced_rule_downgrades_the_missing_value_finding(
+            self, positioned_corpus):
+        """门禁层必须认这一类,否则缺值仍记阻断发现,`slot_blocking` 为真,
+        路由的缺席分支根本走不到 —— 规则会在策略里静静地不起作用。"""
+        from tests.test_gates import FULL_DATA
+
+        report = self._report(
+            positioned_corpus, {**FULL_DATA, "total_vat": None},
+            absent_evidenced_cohorts=[
+                {"id": "AV-total_vat", "field": "total_vat"}])
+        assert report["evaluations"]["doc-a"]["total_vat"][
+            "extraction_present"] == "expected_absent"
+        (f,) = [x for x in report["findings"]
+                if x["gate_id"] == "extraction_present"
+                and x["field"] == "total_vat"]
+        assert f["blocking"] is False
+        assert "AV-total_vat" in f["evidence_ref"]
+
+    def test_evidenced_rule_does_not_fire_where_the_label_is_printed(
+            self, positioned_corpus):
+        """页面印着 Net,所以 total_net 的缺席不成立 —— 照记阻断发现。"""
+        from tests.test_gates import FULL_DATA
+
+        report = self._report(
+            positioned_corpus, {**FULL_DATA, "total_net": None},
+            absent_evidenced_cohorts=[
+                {"id": "AV-total_net", "field": "total_net"}])
+        assert report["evaluations"]["doc-a"]["total_net"][
+            "extraction_present"] == "fail"
 
     def test_probes_land_in_the_gate_report(self, positioned_corpus):
         # 语料页面:INV-42 / Total / 100.00 / Net / 90.00
@@ -227,11 +258,20 @@ class TestMatrixFact:
         probes = ae.probe_document("doc-a")
         by_field = {r["field"]: r for r in self._records(positioned_corpus,
                                                          probes)}
-        assert by_field["total_vat"]["absence_evidence"] == "corroborated"
+        assert by_field["total_vat"]["absence_evidence"] == ae.CORROBORATED
         assert by_field["total_net"]["absence_evidence"] == ae.LABEL_PRESENT
         assert by_field["buyer_name"]["absence_evidence"] == ae.NO_LEXICON
         assert facts_of(by_field["total_vat"])["absence_evidence"] == \
-            "corroborated"
+            ae.CORROBORATED
+
+    def test_routing_and_the_probe_agree_on_the_token(self):
+        """路由层比的是字面量,不 import 本模块(它是纯函数、零依赖)。
+
+        两处各写一份字符串就会漂 —— 这条把它们钉在一起。
+        """
+        from invoiceloop import routing
+
+        assert routing.ABSENCE_CORROBORATED == ae.CORROBORATED
 
     def test_old_artifacts_default_to_not_measured(self, positioned_corpus):
         by_field = {r["field"]: r

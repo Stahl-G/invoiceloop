@@ -238,6 +238,8 @@ def run(
         duplicate_groups=dup_groups,
         absent_expected_cohorts=active["policy"].get(
             "absent_expected_cohorts", []),
+        absent_evidenced_cohorts=active["policy"].get(
+            "absent_evidenced_cohorts", []),
         agentic_optional=agentic_optional,
     )
     _write_json(out_dir / "gate_report.json", gate_report)

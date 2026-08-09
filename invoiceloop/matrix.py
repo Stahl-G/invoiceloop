@@ -93,7 +93,7 @@ def derive_document_records(
         """
         probe = (absence_probes or {}).get(field_name)
         if trusted_absence(probe):
-            return "corroborated"
+            return _CORROBORATED
         raw = probe.get("status") if isinstance(probe, dict) else None
         if raw == _CORROBORATED:
             return "malformed"

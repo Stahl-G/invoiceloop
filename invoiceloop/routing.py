@@ -28,6 +28,11 @@ ROUTES = ("auto_accept", "auto_absent", "review", "block", "escalate")
 #: 是硬阻断(v0.2 §11.2),cohort 匹配中了也不放行
 _SOFT_VERDICTS = ("warning",)
 
+#: 槽事实 `absence_evidence` 里唯一可采信的取值 —— 页面上找不到该字段的标签。
+#: 与 `absence_evidence.CORROBORATED` 同字面量;本模块是零依赖纯函数,
+#: 不 import 那边,由 `test_absence_evidence.py` 把两处钉在一起。
+ABSENCE_CORROBORATED = "absent_corroborated"
+
 
 def policy_digest(policy: dict) -> str:
     """策略内容寻址:canonical JSON 的 sha256。"""
@@ -97,26 +102,72 @@ def match_absent_expected(slot: dict, policy: dict) -> dict | None:
     return None
 
 
+def match_absent_evidenced(slot: dict, policy: dict) -> dict | None:
+    """Return the page-evidenced absence rule applicable to ``slot``.
+
+    Where a class rule bets on the cohort ("purchase orders rarely carry a due
+    date"), this one requires that **this document's** page never prints the
+    field's label at all.  The corroboration is a frozen gate result validated
+    by ``absence_evidence.trusted_absence``; anything else — a label found, no
+    lexicon, unreadable OCR, an older lexicon revision — leaves the slot with
+    the human.  That evidence requirement is what lets the rule apply inside the
+    invoice class, where cohort rules measurably swallow real values.
+    """
+    if slot.get("absence_evidence") != ABSENCE_CORROBORATED:
+        return None
+    for rule in policy.get("absent_evidenced_cohorts") or []:
+        if rule.get("field") == slot.get("field"):
+            return rule
+    return None
+
+
+def match_absent_rule(slot: dict, policy: dict) -> tuple[dict | None, str | None]:
+    """(rule, kind) —— 类别条件先判,页面证据兜底。
+
+    顺序是确定的而非任意:两类都命中时若顺序不定,同一份策略会在不同遍历下
+    给出不同的 reason_code,而 reason_code 正是复核台账里「谁放行的」那一栏。
+    """
+    rule = match_absent_expected(slot, policy)
+    if rule is not None:
+        return rule, "expected"
+    rule = match_absent_evidenced(slot, policy)
+    if rule is not None:
+        return rule, "evidenced"
+    return None, None
+
+
+def _absent_rule_id(rule: dict | None, kind: str | None, slot: dict) -> str | None:
+    """规则 id。旧的全局 `{id, field}` cohort 没有身份,退回槽上的记录。"""
+    if rule is not None and (kind == "evidenced"
+                             or rule.get("doc_class") is not None):
+        return rule.get("id")
+    return slot.get("applicability_rule_id")
+
+
 def apply_absent_expected(facts: list[dict], policy: dict) -> list[dict]:
     """把策略的 absent_expected cohort 作用到槽位事实上(extraction_present
     fail → expected_absent)。run 时这是 run_gates 在 gate_report 里直接
     写的;反事实评测(evaluate)拿旧 gate_report 重放时需要同一变换 ——
     两处同一函数,不许各写一份。"""
     rules = policy.get("absent_expected_cohorts") or []
-    if not rules:
+    evidenced = policy.get("absent_evidenced_cohorts") or []
+    if not rules and not evidenced:
         return facts
     out = []
     for s in facts:
-        rule = match_absent_expected(s, policy)
+        rule, kind = match_absent_rule(s, policy)
         if rule is not None:
             if s["gate_verdicts"].get("extraction_present") == "fail":
                 s = {**s, "gate_verdicts": {
                     **s["gate_verdicts"],
                     "extraction_present": "expected_absent"}}
             # Legacy reports did not contain this key.  Preserve exact replay;
-            # class-conditional v2 rules make their authority explicit.
+            # class-conditional and page-evidenced rules make their authority
+            # explicit.
             if (s["gate_verdicts"].get("extraction_present")
-                    == "expected_absent" and rule.get("doc_class") is not None):
+                    == "expected_absent"
+                    and (kind == "evidenced"
+                         or rule.get("doc_class") is not None)):
                 s = {**s, "applicability_rule_id": rule.get("id")}
         out.append(s)
     return out
@@ -137,10 +188,8 @@ def route_slots(slots: list[dict], policy: dict, *, tier_of) -> list[dict]:
     cohorts = policy.get("auto_accept_cohorts") or []
     out = []
     for s in slots:
-        absent_rule = match_absent_expected(s, policy)
-        rule_id = (absent_rule.get("id")
-                   if absent_rule and absent_rule.get("doc_class") is not None
-                   else s.get("applicability_rule_id"))
+        absent_rule, absent_kind = match_absent_rule(s, policy)
+        rule_id = _absent_rule_id(absent_rule, absent_kind, s)
         fails, warns = _verdict_flags(s["gate_verdicts"])
         disputed = s["applicability"] == "label_convention_disputed"
         hard = bool(fails) or s["strength"] == "unsupported" or disputed \
@@ -155,19 +204,27 @@ def route_slots(slots: list[dict], policy: dict, *, tier_of) -> list[dict]:
             # 缺值的事实已在门禁层照记(verdict=expected_absent,非 pass),
             # 这里给的是后果 —— 政策确认缺失,不进人工队列;
             # QA 抽样(默认 20%)盯着「缺席是否真的成立」
+            # 两类缺席各有各的 reason 前缀与抽检率:证据缺席比类别缺席
+            # 多一层页面约束,探针预算不该被迫同步,台账也要分得清谁放行的。
+            evidenced = absent_kind == "evidenced"
+            prefix = "ABSENT_EVIDENCED" if evidenced else "EXPECTED_ABSENT"
+            qa_kind = "absent_evidenced" if evidenced else "absent_expected"
             identity = str(rule_id or s["field"])
-            if _qa_hit(policy, s["doc_id"], s["field"], "absent_expected",
-                       identity):
+            if _qa_hit(policy, s["doc_id"], s["field"], qa_kind, identity):
                 route = "review"
                 if rule_id:
-                    codes = [f"EXPECTED_ABSENT:{rule_id}",
+                    codes = [f"{prefix}:{rule_id}",
                              f"QA_SAMPLE:{rule_id}"]
                 else:
-                    codes = [f"EXPECTED_ABSENT:{s['field']}",
-                             f"QA_SAMPLE:expected_absent"]
+                    # 无 id 只出现在旧的全局 `{id, field}` cohort 上。
+                    # `expected_absent` 是当初写死的字面量,与 qa_kind
+                    # (`absent_expected`)不是同一个串 —— 冻结重放要逐字节,
+                    # 不许「顺手统一一下」。
+                    codes = [f"{prefix}:{s['field']}",
+                             "QA_SAMPLE:expected_absent"]
             else:
                 route = "auto_absent"
-                codes = [f"EXPECTED_ABSENT:{rule_id or s['field']}"]
+                codes = [f"{prefix}:{rule_id or s['field']}"]
         elif not hard:
             cohort = next((c for c in cohorts
                            if _matches_cohort(s, c, tier_of)), None)

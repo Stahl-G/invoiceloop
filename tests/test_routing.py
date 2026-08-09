@@ -320,3 +320,107 @@ class TestAbsentExpectedCohort:
                               tier_of=_tier)
         assert [r["route"] for r in routes1] == [r["route"] for r in routes2]
         assert 0 < sum(r["route"] == "review" for r in routes1) < 100
+
+
+class TestAbsentEvidencedRule:
+    """政策词表第三类:页面证据缺席(2026-08-09)。
+
+    类别条件规则押的是「这一类通常没有」;这一类押的是「**这一份**的页面上
+    根本没印过这个字段的标签」。后者能进 invoice 类,前者不能 ——
+    `AE-invoice-seller_vat_id` 省 184 吞 7,而 invoice 正是剩余缺值槽的
+    568/722(`DOCTYPE_ABSENCE_DEV_2026-08-09.md` §2)。
+    """
+
+    def _slot(self, *, field="seller_vat_id",
+              evidence="absent_corroborated", **over):
+        verdicts = {g: "unavailable" for g in (
+            "extraction_present", "field_wellformed", "arithmetic_consistency",
+            "citation_holds", "cross_mode_agreement", "visual_corroboration")}
+        verdicts["extraction_present"] = "fail"
+        slot = {"doc_id": "d1", "field": field, "strength": "unsupported",
+                "gate_verdicts": verdicts, "applicability": "matches",
+                "slot_blocking": False, "doc_blocked": False,
+                "doctype_status": "pass", "doc_class": "invoice",
+                "absence_evidence": evidence}
+        slot.update(over)
+        return slot
+
+    def _policy(self, qa_rate=0.0):
+        return {"harness_id": "HAR-T", "release_tier1_explicit": False,
+                "absent_evidenced_cohorts": [
+                    {"id": "AV-seller_vat_id", "field": "seller_vat_id"}],
+                "qa": {"seed": "t", "sampler_version": 2,
+                       "absent_evidenced_rate": qa_rate}}
+
+    def _routed(self, slot, policy):
+        from invoiceloop.routing import apply_absent_expected, route_slots
+
+        (r,) = route_slots(apply_absent_expected([slot], policy), policy,
+                           tier_of=_tier)
+        return r
+
+    def test_page_corroboration_releases_inside_the_invoice_class(self):
+        """这条规则存在的全部理由:它在 invoice 类上也成立。"""
+        r = self._routed(self._slot(), self._policy())
+        assert r["route"] == "auto_absent"
+        assert r["reason_codes"] == ["ABSENT_EVIDENCED:AV-seller_vat_id"]
+        assert r["applicability_rule_id"] == "AV-seller_vat_id"
+
+    def test_label_on_the_page_keeps_the_slot_with_the_human(self):
+        """页面印着标签而 DWS 没给值 —— 那是漏抽,不是缺席。"""
+        from invoiceloop.routing import apply_absent_expected
+
+        slot = self._slot(evidence="label_present")
+        policy = self._policy()
+        assert apply_absent_expected([slot], policy)[0]["gate_verdicts"][
+            "extraction_present"] == "fail"
+        assert self._routed(slot, policy)["route"] == "review"
+
+    def test_anything_but_a_trusted_corroboration_fails_closed(self):
+        for evidence in ("label_present", "no_lexicon", "ocr_unavailable",
+                         "malformed", "not_measured", None):
+            r = self._routed(self._slot(evidence=evidence), self._policy())
+            assert r["route"] == "review", evidence
+
+    def test_hard_blocks_are_never_relaxed(self):
+        for over in ({"doc_blocked": True}, {"slot_blocking": True}):
+            r = self._routed(self._slot(**over), self._policy())
+            assert r["route"] in ("block", "review"), over
+
+    def test_a_policy_without_the_key_changes_nothing(self):
+        """HAR-0001 没有这个键 —— 零行为变化。"""
+        from invoiceloop.routing import apply_absent_expected
+
+        slot = self._slot()
+        out = apply_absent_expected([slot], {"harness_id": "HAR-0001"})[0]
+        assert out["gate_verdicts"]["extraction_present"] == "fail"
+        assert out.get("applicability_rule_id") is None
+
+    def test_its_qa_probes_are_counted_separately(self):
+        """两类缺席各有各的抽检率:证据缺席比类别缺席多一层页面约束,
+        探针预算不该被迫同步。"""
+        assert self._routed(self._slot(), self._policy(qa_rate=1.0))[
+            "route"] == "review"
+        # absent_expected_rate 不控这一类
+        policy = self._policy()
+        policy["qa"]["absent_expected_rate"] = 1.0
+        assert self._routed(self._slot(), policy)["route"] == "auto_absent"
+
+    def test_qa_probe_names_the_evidenced_rule(self):
+        codes = self._routed(self._slot(), self._policy(qa_rate=1.0))[
+            "reason_codes"]
+        assert codes == ["ABSENT_EVIDENCED:AV-seller_vat_id",
+                         "QA_SAMPLE:AV-seller_vat_id"]
+
+    def test_a_class_rule_wins_when_both_match(self):
+        """两类都命中时顺序必须确定:类别条件先判,证据规则兜底。
+
+        不确定的顺序会让同一份策略在不同遍历下给出不同 reason_code,
+        而 reason_code 是复核台账里说明「谁放行的」的那一栏。
+        """
+        policy = {**self._policy(),
+                  "absent_expected_cohorts": [
+                      {"id": "AE-invoice-seller_vat_id",
+                       "doc_class": "invoice", "field": "seller_vat_id"}]}
+        r = self._routed(self._slot(), policy)
+        assert r["reason_codes"] == ["EXPECTED_ABSENT:AE-invoice-seller_vat_id"]

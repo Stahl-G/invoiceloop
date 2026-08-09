@@ -177,6 +177,7 @@ def run_gates(
     duplicate_groups: list[dict] | None = None,
     absent_expected: frozenset[str] = frozenset(),
     absent_expected_cohorts: list[dict] | None = None,
+    absent_evidenced_cohorts: list[dict] | None = None,
     agentic_optional: frozenset[str] = frozenset(),
 ) -> dict:
     """门禁事务(§5.3):绑定确切工件哈希后运行;签名对不上则拒绝执行由调用方检查。
@@ -192,6 +193,11 @@ def run_gates(
     本次冻结的 document_checks 字面证据通过后才可匹配。缺值不再是阻断发现:
     裁决记 expected_absent,finding 降为 info 级非阻断。缺值的**事实**
     照记(verdict 不是 pass),只是后果从「必须人裁」变成「政策确认缺失」。
+    absent_evidenced_cohorts:``field`` 规则,但要求本次冻结的 absence_probes
+    证明**这一份**的页面上根本没印该字段的标签。缺席由页面而非同类文档背书,
+    所以它可以进 invoice 类 —— 类别条件规则在那里会吞掉真值。
+    两类必须都在门禁层生效:光在路由层认,缺值仍记阻断发现、`slot_blocking`
+    为真,缺席分支根本走不到,规则会在策略里静静地不起作用。
     agentic_optional:L1 adaptive 故意跳过 agentic 的文档 —— 缺 agentic
     不记文档级阻断;cross_mode 记 unavailable/not_applicable。
     返回 gate_report:evaluations(每 doc×field×gate 的裁决)+ findings + 输入签名。
@@ -203,7 +209,7 @@ def run_gates(
     # 追加 findings,以免无关 run 的 finding ID 因内部重排而漂移。
     from . import absence_evidence as _absence
     from . import doctype as _doctype
-    from .routing import match_absent_expected
+    from .routing import match_absent_rule
 
     document_checks: dict[str, dict] = {}
     absence_probes: dict[str, dict[str, dict]] = {}
@@ -220,10 +226,13 @@ def run_gates(
         # 而且 heldout_metrics 展平 evaluations 时会污染 H4/H5。
         absence_probes[doc_id] = _absence.probe_document(doc_id)
 
-    absence_policy = {"absent_expected_cohorts": [
-        *(absent_expected_cohorts or []),
-        *({"field": field_name} for field_name in sorted(absent_expected)),
-    ]}
+    absence_policy = {
+        "absent_expected_cohorts": [
+            *(absent_expected_cohorts or []),
+            *({"field": field_name} for field_name in sorted(absent_expected)),
+        ],
+        "absent_evidenced_cohorts": list(absent_evidenced_cohorts or []),
+    }
 
     for doc_id in doc_ids:
         u = understand.get(doc_id)
@@ -258,12 +267,22 @@ def run_gates(
                                else str(raw_status or "not_measured")),
             "doc_class": trusted,
         }
-        matched_absent = {
-            field_name: rule
-            for field_name in FIELDS
-            if (rule := match_absent_expected(
-                {**type_facts, "field": field_name}, absence_policy)) is not None
-        }
+        # 缺席证据同样走 trusted_absence 的信任边界:门禁层与路由层比的是
+        # 同一个事实,不许一边信原始 status、另一边信校验后的结果。
+        probes = absence_probes.get(doc_id) or {}
+        matched_absent = {}
+        for field_name in FIELDS:
+            probe = probes.get(field_name)
+            slot = {
+                **type_facts,
+                "field": field_name,
+                "absence_evidence": (
+                    _absence.CORROBORATED if _absence.trusted_absence(probe)
+                    else _absence.NOT_MEASURED),
+            }
+            rule, _kind = match_absent_rule(slot, absence_policy)
+            if rule is not None:
+                matched_absent[field_name] = rule
         try:
             _evaluate_doc(doc_id, u, a, vision_answers, acc, per_field,
                           absent_expected=matched_absent,
