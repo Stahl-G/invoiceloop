@@ -29,6 +29,7 @@ result missed the pre-registered line.
 | `HELDOUT.md` | Held-out protocol, frozen before any API call |
 | `SEALED3_PROTOCOL.md` / `SEALED3_MULTIHARNESS_ADDENDUM_2026-08-08.md` / `SEALED3_RESULTS.md` | 100 drand-seeded unseen documents, opened once under six frozen harnesses plus an exact repeat. HAR-0004 cut the human queue 62.4% -> 52.7% and reproduced 3.75x triage lift, but one new silent absence failed the pre-registered qualification gate. The ADK due-date candidate saved another 3.3pp at the cost of five more silent absences |
 | `evidence/sealed3_multiharness_2026-08-08/` | Git-frozen routing policies and a compact machine-readable result summary; the full run/bundle stays in the research data directory and is content-addressed from the result |
+| `ABSENCE_V3_DERIVATION_V2_DEV_2026-08-10.md` | Engine v3 (one-edit fuzzy) clears seller_vat_id to 234 saves / 0 silent on dev; the remaining total_net×1 and due_date×8 silents are caliber disputes, not lexicon gaps; derivation v2 fires on 8/300 |
 | `SEALED1_PROTOCOL.md` / `SEALED1_RESULTS.md` | Historical 100-document sealed result: triage lift 4.03×; decision load 82.9% → 64.2%. Measured 2026-08-03 before later exposure; still valid for that revision, but spent for new measurements |
 | `SEALED2_PROTOCOL.md` / `SEALED2_RESULTS.md` | Second sealed batch, lift 3.19×. **Held-out status revoked 2026-08-07** — the protocol's own clause 3 fired. Enforced in `improve.SEALED_SET_REVOCATIONS`, not merely written down |
 | `FIELD_COVERAGE.md` | Which fields are scored, frozen before SEALED-2 |
@@ -59,6 +60,7 @@ result missed the pre-registered line.
 
 | File | What it is |
 |---|---|
+| `BROADCAST_HARNESS_DESIGN_2026-08-10.md` | Design draft for the broadcast-invoice harness: scope rule, schema/derivation/absence-lexicon layers, and the SEALED-4 amendment path. A design, not a result |
 | `IMPROVE_LOOP_DESIGN.md`, `IMPROVE_LAYER_V0.2_DESIGN.md`, `IMPROVE_LAYER_V01_IMPLEMENTATION_2026-08-05.md` | Design and implementation of the improvement loop |
 | `FEEDBACK_PLANE_2026-08-06.md` | Adding the feedback signals the mining arm needed to fire at all |
 | `H0_INTEGRITY_2026-08-03.md`, `H1_WORKBENCH_2026-08-03.md` | The integrity foundation and the review workbench |
