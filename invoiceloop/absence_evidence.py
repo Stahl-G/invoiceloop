@@ -28,6 +28,10 @@ unsafe direction only when tokens are **removed**. Hence the discipline:
     Adding tokens after seeing results is free. Removing one is fitting.
 
 `tests/test_absence_evidence.py::TestMonotoneSafety` pins that direction.
+Engine v3's fuzzy matching is the same direction, by the same argument: allowing
+one edit on a long token can only *add* matches, never remove one. The unsafe
+direction for v3 would be narrowing (raising the distance budget's threshold or
+shrinking it to zero after seeing a ledger) — that is removal, and it is fitting.
 
 **Fails closed everywhere.** No OCR, zero words on the page, a field with no
 lexicon, a stale lexicon revision — none of these is a corroboration (charter rule
@@ -67,7 +71,17 @@ NOT_MEASURED = "not_measured"          # 旧工件没有这一项 —— 只用�
 #: 这是**加词**,走的是单调安全的那一侧:只会少放行,不会造出静默错。
 #: 但这一版是事后的 —— v1 的数字才是盲测,两个都要照登
 #: (`ABSENCE_EVIDENCE_DEV_2026-08-09.md`)。
-ENGINE = "absence-evidence-v2"
+#:
+#: v3(2026-08-10,**先于任何 v3 测量**):长度 ≥6 的词表 token 允许
+#: 编辑距离 ≤1 的模糊匹配,每条短语最多一个模糊 token。动机是 OCR 的
+#: 单字符误读 —— v2 台账里 `seller_vat_id` 仅剩的 1 个静默是 "Federal"
+#: 被读成 "federai"(`5da5a0e2bded40ad8948d5eb`,照登在
+#: `ABSENCE_EVIDENCE_DEV_2026-08-09.md`);当时拒绝了把错字收进词表
+#: (那是逐份拟合),模糊匹配是对**这一类**故障的机制回答,不是对那一份的。
+#: 方向与加词相同:模糊只会**多**匹配 → 只会少 corroborate → 永不造静默错。
+#: 短 token(vat / tax / due / net)不模糊 —— 它们太短,一个编辑就撞上
+#: 无关词,而漏报的成本(留给人)远低于误报。
+ENGINE = "absence-evidence-v3"
 
 #: **预注册词表(冻结于本文件首次提交,先于任何 saves/silent 测量)。**
 #:
@@ -119,6 +133,51 @@ LABEL_LEXICON: dict[str, tuple[str, ...]] = {
 
 _WORD = re.compile(r"[a-z0-9]+")
 
+#: 长度阈值:词表 token 达到这个长度才允许模糊匹配(见 ENGINE v3 注释)。
+_FUZZY_MIN_LEN = 6
+
+
+def _levenshtein_at_most_one(a: str, b: str) -> bool:
+    """两个 token 的编辑距离 ≤1(替换、插入或删除一个字符)。"""
+    if a == b:
+        return True
+    la, lb = len(a), len(b)
+    if abs(la - lb) > 1:
+        return False
+    if la == lb:
+        return sum(x != y for x, y in zip(a, b)) == 1
+    if la > lb:
+        a, b, la, lb = b, a, lb, la
+    i = j = 0
+    skipped = False
+    while i < la and j < lb:
+        if a[i] == b[j]:
+            i += 1
+            j += 1
+        elif not skipped:
+            skipped = True
+            j += 1
+        else:
+            return False
+    return True
+
+
+def _phrase_matches(window: list[str], phrase: tuple[str, ...]) -> bool:
+    """逐 token 匹配:精确,或词表 token 长度 ≥6 时允许编辑距离 ≤1;
+    每条短语最多用一个模糊 token(两个 OCR 错字叠加就不再采信)。"""
+    if len(window) != len(phrase):
+        return False
+    fuzzy_used = False
+    for page_tok, lex_tok in zip(window, phrase):
+        if page_tok == lex_tok:
+            continue
+        if fuzzy_used or len(lex_tok) < _FUZZY_MIN_LEN:
+            return False
+        if not _levenshtein_at_most_one(lex_tok, page_tok):
+            return False
+        fuzzy_used = True
+    return True
+
 
 def tokens(text: str) -> list[str]:
     """统一切词。词表侧与页面侧**必须用同一个函数**(CLAUDE.md 搬运陷阱一)。"""
@@ -160,9 +219,10 @@ def _find_label(pages: dict[int, list[tuple[str, tuple]]],
         for i in range(len(toks)):
             for phrase in wanted:  # 长→短:同位置取最长命中
                 n = len(phrase)
-                if n and toks[i:i + n] == list(phrase):
+                if n and _phrase_matches(toks[i:i + n], phrase):
                     return {
                         "phrase": " ".join(phrase),
+                        "page_text": " ".join(toks[i:i + n]),
                         "page": page_idx,
                         "bbox": _merge(b for _, b in seq[i:i + n]),
                         "words": n,

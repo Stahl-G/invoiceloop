@@ -185,6 +185,67 @@ class TestMonotoneSafety:
         assert "due" in ae.LABEL_LEXICON["due_date"]
 
 
+class TestFuzzyMatching:
+    """引擎 v3:长度 ≥6 的词表 token 允许编辑距离 ≤1,每条短语最多一个。
+
+    方向与加词相同:模糊只可能**多**匹配,把 corroborated 拉回
+    label_present —— 永不反向。动机案例是 OCR 把 "Federal" 读成
+    "federai"(v2 台账里 seller_vat_id 仅剩的 1 个静默);当时拒绝了
+    把错字收进词表,模糊匹配是对这一类故障的机制回答。
+    """
+
+    def _words_with(self, *words):
+        def gen(doc_id):
+            for i, w in enumerate(words):
+                yield 0, w, ([[0.10 + i * 0.1, 0.05], [0.18 + i * 0.1, 0.08]])
+        return gen
+
+    def test_one_edit_on_a_long_token_matches(self, monkeypatch):
+        """'federai' 与 'federal' 距离 1 → label_present,不再静默。"""
+        monkeypatch.setattr(
+            ae, "iter_words", self._words_with("INVOICE", "FEDERAI", "ID"))
+        probe = ae.probe_document("d1")["seller_vat_id"]
+        assert probe["status"] == ae.LABEL_PRESENT
+        assert probe["evidence"]["phrase"] == "federal"
+        assert probe["evidence"]["page_text"] == "federai"
+
+    def test_two_edits_do_not_match(self, monkeypatch):
+        """两个字符错误的叠加不再采信 —— 'fedrxai' 与 'federal' 距离 2。"""
+        monkeypatch.setattr(
+            ae, "iter_words", self._words_with("INVOICE", "FEDRXAI"))
+        assert ae.probe_document("d1")["seller_vat_id"]["status"] \
+            == ae.CORROBORATED
+
+    def test_short_tokens_stay_exact(self, monkeypatch):
+        """短 token 不模糊:'taxs' 不许当作 'tax'(一个编辑就撞无关词)。"""
+        monkeypatch.setattr(
+            ae, "iter_words", self._words_with("INVOICE", "TAXS"))
+        assert ae.probe_document("d1")["total_vat"]["status"] \
+            == ae.CORROBORATED
+
+    def test_at_most_one_fuzzy_token_per_phrase(self, monkeypatch):
+        """短语里两个 token 都模糊 → 不匹配。"""
+        assert ae._phrase_matches(["federai", "emplover"],
+                                  ("federal", "employer")) is False
+        assert ae._phrase_matches(["federai", "employer"],
+                                  ("federal", "employer")) is True
+        assert ae._phrase_matches(["federal", "employer"],
+                                  ("federal", "employer")) is True
+
+    def test_window_length_must_equal_phrase_length(self):
+        """zip 会把短窗口静默截成匹配 —— 长度必须显式相等。"""
+        assert ae._phrase_matches(["federal"], ("federal", "employer")) \
+            is False
+
+    def test_levenshtein_boundary(self):
+        f = ae._levenshtein_at_most_one
+        assert f("federal", "federai")   # 替换
+        assert f("federal", "federa")    # 删除
+        assert f("federal", "federal1")  # 插入
+        assert not f("federal", "fedrxai")
+        assert not f("federal", "fed")
+
+
 class TestGateWiring:
     """探针在门禁事务里跑,结果进 gate_report —— 但**不进 evaluations**。
 
