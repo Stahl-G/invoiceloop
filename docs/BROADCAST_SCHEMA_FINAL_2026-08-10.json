@@ -18,7 +18,8 @@
  },
  "evaluation": {
   "path": "improve.evaluate(reextract=True, sample=30, budget=1600) on runs/absence-v3-2026-08-10",
-  "sample": "deterministic _sample_doc_ids (schema-eval-v1 hash order) over the workspace's 300 dev docs; baseline arm = the stored understand responses of run-0002, so the seller_vat_id description delta is the only moving part",
+  "sample": "deterministic _sample_doc_ids (schema-eval-v1 hash order) over the workspace's 300 dev docs; baseline arm = the stored understand responses of run-0002",
+  "moving_parts": "TWO, not one: the workspace's stored schema predates the 3c0568f merge, so the baseline responses carry the old due_date text ('Payment due date.') as well as the old seller_vat_id text. The eval therefore measures the combined (due_date narrowing + EIN-inclusive seller_vat_id) delta against the stored baseline. The due_date narrowing is already pilot-validated (BROADCAST_PILOT_RESULT_2026-08-10.json: silent_wrong 23 -> 17 under a draft that included it); the marginal isolation of seller_vat_id alone would need a fresh 30-call baseline and was judged not worth the spend",
   "budget_credits": 1600,
   "extraction_mode": "understand only (the reextract eval path)"
  },
