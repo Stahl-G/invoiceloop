@@ -1,0 +1,283 @@
+{
+ "protocol_version": "sealed4-broadcast-v1",
+ "primary_arm_id": "P-HAR-0021",
+ "qualification_baseline_arm_id": "B0-HAR-0001",
+ "doc_list_path": "docs/sealed4_doc_list.json",
+ "doc_list_sha256": "e48b5ffae058444ab201467ade62e9f24a30cdfdaf22f568a46d586d913785a8",
+ "corpus_doc_list": "doc_list.json",
+ "n_docs": 100,
+ "schema": {
+  "path": "invoiceloop/harnesses/HAR-0001/extraction_schema.json",
+  "sha256": "e9908c2e3daea623020c8be707faf8cc67b9df37027e313d0ee7781b512b44c2",
+  "digest": "19e7516de0c5f98be6aa5448074ef9c0c35782ba6abad300d0372e0eb9f6452e"
+ },
+ "run_options": {
+  "include_vision": false,
+  "render_crops": false,
+  "out_of_calibration": false
+ },
+ "arms": [
+  {
+   "arm_id": "B0-HAR-0001",
+   "harness_id": "HAR-0001",
+   "parent_harness_id": null,
+   "role": "conservative_baseline",
+   "provenance": "packaged_human_authored",
+   "hypothesis": "保守路由给出工作量上界与 auto_absent=0 的安全基线。",
+   "policy_path": "invoiceloop/harnesses/HAR-0001/routing_policy.json",
+   "policy_sha256": "66626502bbde8b84d236aba86eef420e470377bfae01db33778c726b7eb42151",
+   "policy_digest": "395c5650351b67ca9ad20dea10873180c346ddf2ac21953a8159d26ab881cf97"
+  },
+  {
+   "arm_id": "P-HAR-0021",
+   "harness_id": "HAR-0021",
+   "parent_harness_id": "HAR-0020",
+   "role": "primary_qualification_arm",
+   "provenance": "page_evidenced_absence_rules_human_promoted_prom18_19_20",
+   "hypothesis": "广播 harness(HAR-0017 + AV-total_vat/seller_vat_id/total_net/due_date)相对 HAR-0001 人工队列下降且真静默不升(增补件 A4.1 预测:strong 降 4–12pp,真静默 0,争议 0–3)。",
+   "policy_path": "docs/evidence/absence_v3_2026-08-10/HAR-0021.routing_policy.json",
+   "policy_sha256": "bed2a20912c59fd5355873448d2d0f6c5a18545c25e64404d59ddb83b776bbc4",
+   "policy_digest": "25a1713278eae03d9132f0b16bee830fa716c8fb03752bffc4bf4a0dd08d8c00"
+  },
+  {
+   "arm_id": "P-REPEAT-HAR-0021",
+   "harness_id": "HAR-0021",
+   "parent_harness_id": "HAR-0020",
+   "role": "exact_repeatability_control",
+   "provenance": "exact_duplicate_of_primary",
+   "hypothesis": "同输入、同代码、同 harness 的全部 run 工件逐字节一致。",
+   "repeat_of": "P-HAR-0021",
+   "policy_path": "docs/evidence/absence_v3_2026-08-10/HAR-0021.routing_policy.json",
+   "policy_sha256": "bed2a20912c59fd5355873448d2d0f6c5a18545c25e64404d59ddb83b776bbc4",
+   "policy_digest": "25a1713278eae03d9132f0b16bee830fa716c8fb03752bffc4bf4a0dd08d8c00"
+  }
+ ],
+ "comparisons": [
+  {
+   "comparison_id": "primary_vs_conservative",
+   "candidate": "P-HAR-0021",
+   "baseline": "B0-HAR-0001",
+   "purpose": "sealed4_qualification_P1_P3_strong_subset"
+  },
+  {
+   "comparison_id": "primary_exact_repeat",
+   "candidate": "P-REPEAT-HAR-0021",
+   "baseline": "P-HAR-0021",
+   "purpose": "determinism_control"
+  }
+ ],
+ "subsets": {
+  "strong": {
+   "doc_ids": [
+    "08d60a91dc05439baede789d",
+    "0b94aee7be7e466c9d39eb1e",
+    "0edfa8d890cc4662b41bf959",
+    "113fac72c5e14814a26cb8e6",
+    "163789aacf48482abd36083f",
+    "1a9c208239134066baadd1a1",
+    "1d52fb3910bd4991b4d4b342",
+    "1e0980d733dd4518899a24ac",
+    "1e382d4962024c5cb04e0028",
+    "21c81e58fd6344a9bde2ae74",
+    "27819abcd2a94bebab039661",
+    "2d55e9144f514002aefbcc4c",
+    "31d2320af69d48058b78fe63",
+    "33f2a9af90de492f99ae07e2",
+    "34b26b94348343558ba3fe94",
+    "38dffb2ca96c4f5d9d7f7707",
+    "3e53852a0c6e4aa388abcd80",
+    "447b86aadf2b46a6a20e75ba",
+    "44f2e5cc900a46d4beb03fb2",
+    "46b7a1bf9bd44336b6a8a54f",
+    "4ae76a4d7f21489db0a82373",
+    "4c355e84b7524a3d8f573bb9",
+    "573266ea0a9c4719a82951e6",
+    "573605babe3e4e3f80756166",
+    "5cc3d2b2bba64f5e9305b039",
+    "5d789bda7cc04c509969a369",
+    "5f0bcb6909d44a98805f3153",
+    "6065b2e6dc694977bd5ed8c7",
+    "6150aaea41214c28a64d1ed0",
+    "6751b4fadfcc418bae881b78",
+    "69178fb7cd5b4670b3cf579c",
+    "6ab52e2777df4d828e22f95c",
+    "6e59c4bf71e542788f6ecbf4",
+    "71f742bc486a472f8c38ed56",
+    "764c9470dade473399c62e51",
+    "8f89cadfca50494bb7a45f9c",
+    "91d33fd5ec9844d19f929bf1",
+    "93ab07a9fc8d4636b0d940e7",
+    "97b3ee3da62a4c319f21ec6e",
+    "994581f7b8ae4ffeb6ea6337",
+    "9b25fe339f7b4c87a7753bd1",
+    "9ea3f043d2fa44ab8a691386",
+    "a3f51835ee5a479cb87f85fe",
+    "a669e4507c3c4a719d9e9eb3",
+    "a6ba80b9560e4f8ab5566ce9",
+    "a76266b5015647c1bcf2d2c1",
+    "b1b7b35d8dd040f98577a33e",
+    "b2813c68a1244841a0fe1066",
+    "bd102f9094bb4155b7141912",
+    "bf4ef9738acb4903827e1c2f",
+    "bfe57f1b9a164e9b93318d07",
+    "c29ebefbf34345deb1d976e7",
+    "c54cc80bdd694cfd9af72cb0",
+    "cc23f798fd614218961f9100",
+    "cd04cbc09512453ebb2bc6e3",
+    "dbd02607299549878775571b",
+    "de9540cea52349b183f287a4",
+    "e2c493719eb8423bbe510cba",
+    "ec25735e7ab04f9683d7aefc",
+    "ed086843a95045c9a2398ad3",
+    "ed0b735c5ef94fabb9a81594",
+    "f093b417aeae4b3fb1841378",
+    "f1ff8c6412fc4a989a665506",
+    "f455d95792294b069639dd50",
+    "f68160b8029d4bfebbcc4802",
+    "f73b2f3074cc4c28895966ca",
+    "fc74dc255f034f5a9bdac95b",
+    "fe07d6d5de6c4dbdb22471d6"
+   ],
+   "sha256": "5c86cc2e6c8f0c351c52d86ada00a7b369ce1d9eda393541c12a639c3d082f11"
+  },
+  "weak": {
+   "doc_ids": [
+    "08685fa0518e4ea994f762c5",
+    "15c90520d68141fbb099ca52",
+    "224c6602ad8d4be6922fa37f",
+    "2264d8f227014de793f8d069",
+    "255c84078645487a810882e8",
+    "2b31be9a06524d12ad3adc95",
+    "2c9abc6e3c164dbd8d07b415",
+    "49ba44fd0cac4db69d5f643f",
+    "569a3c622ed14d268b26c406",
+    "6162149d3f7546c19b2bc71c",
+    "629551e0dab34de29db2e92e",
+    "742485c8be684864ba0c7f1a",
+    "848c2f58f8a643459434574d",
+    "961a7ea0624341f2b83544da",
+    "96b8468a8a9246fa99bb7d49",
+    "9debeb35e0aa45048e4b74f3",
+    "abac2f660644427eace188ed",
+    "abdb5fcf26d94ebd9e1b9156",
+    "b182c8998c7e447b845aba94",
+    "ba5a845145914e8387d02a80",
+    "bf6cd94c19314b93bff91b86",
+    "c98dfa4b56e54904a11aa4ba",
+    "cf959680c1a449fabdf25348",
+    "cfc9baef8ba2474e8d248453",
+    "dbc315442c2b4f3eba5dfbb0",
+    "f2133c35514e451f874bbae5",
+    "f22dd0ee4ca344b88b12e64a",
+    "f617a987a7b04800bf0a2556",
+    "fa93b5e3b0034c7eab643f94",
+    "fd62a52a267546b780253fac",
+    "ff0e7e8f15e74c88a65758a5",
+    "ff3b9ed4899d4183b8151652"
+   ],
+   "sha256": "bb3051a97573e312c60fa9b9d27630010ec9e6df8cf33c18b042afc164339d73"
+  }
+ },
+ "frozen_files": [
+  {
+   "path": "invoiceloop/pipeline.py",
+   "sha256": "e9cc50d99c1ac0e2b91ad5f409af2fe0246e8fa42e7a030fc02c0f45c00c0140"
+  },
+  {
+   "path": "invoiceloop/gates.py",
+   "sha256": "2300bfe6577e08d96753424ed5395ce69999a705e780a68c55d121b22d98076e"
+  },
+  {
+   "path": "invoiceloop/routing.py",
+   "sha256": "96b219be5a2e2116e2ec614ef69479a1b168303a1f0ad9c859fd4679fad504ed"
+  },
+  {
+   "path": "invoiceloop/matrix.py",
+   "sha256": "67fffaf0ffd6be2eb33bb3c31e1993f138995dd2883d468f058f284dfb53393a"
+  },
+  {
+   "path": "invoiceloop/freeze.py",
+   "sha256": "372811df3a0f2e660a20e46adfde507efd13e5a27b6d3ce67bf5a640803c2d0d"
+  },
+  {
+   "path": "invoiceloop/evidence.py",
+   "sha256": "6c24ad28ea7c413fbb562bfe395de935ed41fdf0d917ebc28c4a11e0c80ae93b"
+  },
+  {
+   "path": "invoiceloop/snapshot.py",
+   "sha256": "a1476c910531bf34e3985f5086ec86745239746d68a1fcb3b50ac73a54a6f474"
+  },
+  {
+   "path": "invoiceloop/eval_norm.py",
+   "sha256": "d96984e1ec5cd58b2790fe49c53e16e009ae788792d5850fb747efe374eec61c"
+  },
+  {
+   "path": "invoiceloop/safety_metrics.py",
+   "sha256": "e83b77ec7da33cd2772bf5fccc9eb5131b92b922c86f12217acdae1cd6271590"
+  },
+  {
+   "path": "invoiceloop/dws.py",
+   "sha256": "f90a41af4dce35b9ffa48d3186381c4b06fe2d737ca887faf5c247b4c6074853"
+  },
+  {
+   "path": "invoiceloop/crossdoc.py",
+   "sha256": "20b8413da39f379f048b6d2a14b27ffda63c5b34ce0201f733ade8b5811d6c44"
+  },
+  {
+   "path": "invoiceloop/fields.py",
+   "sha256": "4533dadcbce67e9fea847223f8d626d7bd57c9cf634c57d82baf8d23102646b0"
+  },
+  {
+   "path": "invoiceloop/doctype.py",
+   "sha256": "f89519d7c2215cf6a367b7138ac1e422808fb4b8ddae0bd82180df718e83470f"
+  },
+  {
+   "path": "invoiceloop/harness.py",
+   "sha256": "e0450a43fb7c072b483b9d41270bfad1251d21aeb46e1425fe6e81dfe3d094ea"
+  },
+  {
+   "path": "invoiceloop/panel.py",
+   "sha256": "6945e81ca930d7f0bb493b730623d31784e19a5e58f5cc46cac1ce750c1b7ff5"
+  },
+  {
+   "path": "invoiceloop/deliver.py",
+   "sha256": "bbe3d240f21787d8aa24b7a69ebcc1deb888af0d07cd053ac1fa6a6d45049300"
+  },
+  {
+   "path": "invoiceloop/scope.py",
+   "sha256": "a5a8fe27706f5d057205fd359687ee1227333c13613789cf8d05ccd055fd732d"
+  },
+  {
+   "path": "invoiceloop/truth_caliber.py",
+   "sha256": "4ae628234c4d4e5947422cddab8013ed368e6656c888f1ee857a0920d550e20d"
+  },
+  {
+   "path": "invoiceloop/absence_evidence.py",
+   "sha256": "470ecd883b67b1703a009ec2a15edf7e06d0f9763232d867355c8bda409d2e74"
+  },
+  {
+   "path": "invoiceloop/due_date.py",
+   "sha256": "20810e76a07c422fd450b233d10dc39ef14405ef0d366cfc7d87fdc9a38eb665"
+  },
+  {
+   "path": "invoiceloop/heldout.py",
+   "sha256": "847cb63ced4988606a6a3a4b4e110049af3fdab80058ff64525f51df1b519c60"
+  },
+  {
+   "path": "invoiceloop/sealed_batch.py",
+   "sha256": "651684083adf2194bca2cc9778c67c2532f84101e3fb2972308b30338a315565"
+  },
+  {
+   "path": "scripts/heldout_metrics.py",
+   "sha256": "94a660c5a0fa1ed1951af1ef705f81c773759a5ecd18982ab021d7ddece9f577"
+  },
+  {
+   "path": "scripts/sealed4_batch.py",
+   "sha256": "ef1689e11755eb5a7eacad0228351a342014ca312a26af207394f3d10acbd1db"
+  },
+  {
+   "path": "scripts/sealed4_score.py",
+   "sha256": "b13e986263e4027c1032f0ad10792ba1f4b301109e0504aa297c89a0d4d57b04"
+  }
+ ]
+}
