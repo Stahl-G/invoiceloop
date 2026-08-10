@@ -40,10 +40,15 @@ def _load_rows(path: Path) -> list[dict]:
     return data
 
 
-def inject(workspace: Path, tag: str, rows: list[dict]) -> dict:
+def inject(workspace: Path, tag: str, rows: list[dict], *,
+           run_dir: Path | None = None) -> dict:
+    """默认写 <workspace>/vision(run 前,建议进输入指纹、成为冻结草稿);
+    run_dir 模式写 <run_dir>/vision(run 后,**展示型建议** —— 只进裁决页
+    预填,不成为草稿,不进快照成分;HITL 轮次协议 §2 的用法)。"""
     if not _SAFE_TAG.match(tag):
         raise SystemExit(f"非法 tag:{tag!r} —— 只允许 {_SAFE_TAG.pattern}")
-    vision_dir = Path(workspace) / "vision"
+    vision_dir = Path(run_dir) / "vision" if run_dir is not None \
+        else Path(workspace) / "vision"
     vision_dir.mkdir(parents=True, exist_ok=True)
     tsv = vision_dir / f"answers6.{tag}.tsv"
 
@@ -100,15 +105,20 @@ def inject(workspace: Path, tag: str, rows: list[dict]) -> dict:
 
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--workspace", required=True, type=Path,
-                    help="run 所在 workspace(写 <ws>/vision/answers6.<tag>.tsv)")
+    ap.add_argument("--workspace", type=Path,
+                    help="run 前模式:写 <ws>/vision/answers6.<tag>.tsv")
+    ap.add_argument("--run-dir", type=Path, default=None,
+                    help="run 后模式:写 <run>/vision/(展示型建议,不成草稿)")
     ap.add_argument("--tag", required=True,
                     help="建议来源 tag(显示名;新读者用新 tag)")
     ap.add_argument("--input", required=True, type=Path,
                     help="JSON array 或 .jsonl:{doc_id, field, value, ...}")
     args = ap.parse_args(argv)
+    if args.run_dir is None and args.workspace is None:
+        ap.error("--workspace 与 --run-dir 至少给其一")
     rows = _load_rows(args.input)
-    summary = inject(args.workspace, args.tag, rows)
+    summary = inject(args.workspace or args.run_dir, args.tag, rows,
+                     run_dir=args.run_dir)
     print(json.dumps(summary, ensure_ascii=False, indent=1))
     if summary["dropped"]:
         sys.exit(2)

@@ -93,3 +93,16 @@ class TestCli:
         assert proc.returncode == 2, "有 dropped 行必须非零退出"
         out = json.loads(proc.stdout)
         assert out["written"] == 3 and len(out["dropped"]) == 1
+
+
+class TestRunDirMode:
+    """run 后模式:展示型建议写 <run>/vision,不碰 workspace(run 前)目录。"""
+
+    def test_run_dir_mode_writes_into_run_only(self, ws):
+        run_dir = ws / "runs" / "run-0001"
+        run_dir.mkdir(parents=True)
+        out = suggest_inject.inject(ws, "derived", ROWS[:1], run_dir=run_dir)
+        assert out["written"] == 1
+        assert (run_dir / "vision" / "answers6.derived.tsv").exists()
+        assert not (ws / "vision" / "answers6.derived.tsv").exists(), \
+            "展示型建议不许混进 run 前输入目录(进去就会成草稿、进指纹)"
