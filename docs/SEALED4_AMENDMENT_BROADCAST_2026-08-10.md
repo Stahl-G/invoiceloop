@@ -138,11 +138,14 @@
 
 ## 实施清单(全部先于抽取,每步单独 commit)
 
-1. 本增补件 commit;
-2. 代码:`SEALED_CONTEXTS` 加 `sealed4-v2`,`sealed_list` 支持子池过滤
-   (strong+weak)—— 带测试;
-3. 代码:A3 的 T1/T2 重分类函数(供 SEALED-4 打分与步 6b 开发集重评
-   共用)—— 带测试,词集即上表冻结词集;
+1. ~~本增补件 commit~~ **已完成**:`04fc8cd`;
+2. ~~代码:`SEALED_CONTEXTS` 加 `sealed4-v2`,`sealed_list` 支持子池过滤
+   (strong+weak)—— 带测试~~ **已完成**:`48d1fcd`(迁移进
+   `invoiceloop.scope` 的分类器重算 4,931 池,strong 2,725 / weak 1,471 /
+   union 4,196 与三个 digest 逐字节吻合,回归测试钉死);
+3. ~~代码:A3 的 T1/T2 重分类函数(供 SEALED-4 打分与步 6b 开发集重评
+   共用)—— 带测试,词集即上表冻结词集~~ **已完成**:`0381016`
+   (`invoiceloop/truth_caliber.py`,truth-caliber-v1);
 4. drand round 开奖 → 填入 A1 → commit;
 5. 新名单落盘 → 单独 commit(旧名单改名留盘);
 6. 主臂 policy digest + 代码 HEAD 钉板 commit;
