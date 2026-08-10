@@ -293,6 +293,61 @@ def test_score_refuses_partial_batch(tmp_path):
         score_completed_batch(batch, corpus_root=tmp_path, repo_root=tmp_path)
 
 
+def _sealed4_plan_with_subsets(plan_path):
+    """把夹具计划改写成 sealed4-broadcast 计划:strong=[DOC],weak 空。"""
+    from invoiceloop.heldout import doc_ids_line_digest
+
+    plan = json.loads(plan_path.read_text())
+    plan["protocol_version"] = "sealed4-broadcast-v1"
+    plan["subsets"] = {
+        "strong": {"doc_ids": [DOC], "sha256": doc_ids_line_digest([DOC])},
+        "weak": {"doc_ids": [], "sha256": doc_ids_line_digest([])},
+    }
+    plan_path.write_text(json.dumps(plan, indent=1, ensure_ascii=False) + "\n",
+                         encoding="utf-8")
+
+
+def test_sealed4_plan_subsets_are_validated(batch_fixture):
+    repo, _corpus, plan_path = batch_fixture
+    _sealed4_plan_with_subsets(plan_path)
+    plan = load_plan(plan_path, repo_root=repo)
+    assert plan["subsets"]["strong"]["doc_ids"] == [DOC]
+
+    bad = json.loads(plan_path.read_text())
+    bad["subsets"]["strong"]["sha256"] = "0" * 64
+    plan_path.write_text(json.dumps(bad, indent=1, ensure_ascii=False) + "\n",
+                         encoding="utf-8")
+    with pytest.raises(BatchPlanError, match="sha256 漂移"):
+        load_plan(plan_path, repo_root=repo)
+
+
+def test_sealed4_scoring_reports_subsets_and_caliber(batch_fixture, monkeypatch):
+    repo, corpus, plan_path = batch_fixture
+    _sealed4_plan_with_subsets(plan_path)
+    monkeypatch.setattr("invoiceloop.sealed_batch._git_head", lambda _repo: "abc123")
+    monkeypatch.setattr("invoiceloop.sealed_batch._tracked_dirty",
+                        lambda _repo: False)
+    output = repo / "batch"
+    run_batch(plan_path, output, corpus_root=corpus, repo_root=repo,
+              expected_head="abc123")
+    scored = score_completed_batch(
+        output,
+        corpus_root=corpus,
+        repo_root=Path(__file__).resolve().parent.parent,
+    )
+    for arm in scored["arms"]:
+        assert set(arm["subsets"]) == {"strong", "weak"}
+        strong = arm["subsets"]["strong"]
+        assert strong["n_docs"] == 1
+        assert strong["workload"]["slots"] == arm["workload"]["slots"]
+        assert "silent_absent_true" in arm["safety"]
+        assert "caliber_disputes" in arm["safety"]
+    qualification = scored["qualification"]
+    assert qualification["subset"] == "strong"
+    assert "silent_absent_true_not_up" in qualification["P1"]
+    assert "caliber_disputes_primary" in qualification["P1"]
+
+
 #: SEALED-3 开箱的那次修订(docs/SEALED3_RESULTS.md 抬头写的同一个)。
 #: 它是历史事实,不随后续开发变化。
 SEALED3_OPENED_AT = "447acf0699d7815fcd69ba8d9922feaf569f65aa"

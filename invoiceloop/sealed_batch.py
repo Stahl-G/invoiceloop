@@ -25,10 +25,15 @@ from typing import Iterator
 
 from . import harness as harness_mod
 from . import ocr, pipeline
+from .heldout import doc_ids_line_digest
 from .routing import policy_digest
 
 
 PROTOCOL_VERSION = "sealed3-multiharness-v1"
+#: SEALED-4 广播批的协议版本(增补件 A1/A4:广播子池名单 + strong/weak
+#: 子集指标)。格式与 v1 相同,多一个可选的 subsets 划分块。
+SEALED4_PROTOCOL_VERSION = "sealed4-broadcast-v1"
+PROTOCOL_VERSIONS = frozenset({PROTOCOL_VERSION, SEALED4_PROTOCOL_VERSION})
 _SAFE_ARM_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 _UPSTREAM_ARTIFACTS = (
     "artifact_registry.json",
@@ -106,9 +111,9 @@ def load_plan(plan_path: Path, *, repo_root: Path | None = None,
     plan_path = Path(plan_path).resolve()
     repo_root = Path(repo_root or Path(__file__).resolve().parent.parent).resolve()
     plan = _json(plan_path)
-    if plan.get("protocol_version") != PROTOCOL_VERSION:
+    if plan.get("protocol_version") not in PROTOCOL_VERSIONS:
         raise BatchPlanError(
-            f"protocol_version 必须是 {PROTOCOL_VERSION!r}"
+            f"protocol_version 必须是 {sorted(PROTOCOL_VERSIONS)!r} 之一"
         )
 
     doc_list_path = _repo_path(
@@ -249,6 +254,40 @@ def load_plan(plan_path: Path, *, repo_root: Path | None = None,
             raise BatchPlanError(
                 f"{cid}:candidate/baseline 必须指向两个不同的冻结 arm"
             )
+
+    subsets = plan.get("subsets")
+    if subsets is not None:
+        # SEALED-4 增补件 A4:名单的确定性划分(如 strong/weak),成员与
+        # digest 都在计划里钉死; scorer 据此出子集指标,主终点在 strong 上。
+        if not isinstance(subsets, dict) or not subsets:
+            raise BatchPlanError("subsets 必须是非空 object")
+        doc_set = set(doc_ids)
+        covered: set[str] = set()
+        for subset_name, subset_spec in subsets.items():
+            if not isinstance(subset_name, str) \
+                    or not _SAFE_ARM_ID.fullmatch(subset_name):
+                raise BatchPlanError(f"非法 subset 名:{subset_name!r}")
+            if not isinstance(subset_spec, dict):
+                raise BatchPlanError(f"subset {subset_name} 必须是 object")
+            members = subset_spec.get("doc_ids")
+            if not isinstance(members, list) or not all(
+                    isinstance(d, str) and d for d in members):
+                raise BatchPlanError(
+                    f"subset {subset_name}.doc_ids 必须是字符串数组")
+            if len(members) != len(set(members)):
+                raise BatchPlanError(f"subset {subset_name}.doc_ids 有重复")
+            unknown = sorted(set(members) - doc_set)
+            if unknown:
+                raise BatchPlanError(
+                    f"subset {subset_name} 含名单外文档:{unknown[:3]}")
+            if doc_ids_line_digest(members) != subset_spec.get("sha256"):
+                raise BatchPlanError(f"subset {subset_name}.sha256 漂移")
+            overlap = sorted(covered & set(members))
+            if overlap:
+                raise BatchPlanError(f"subset 之间重叠:{overlap[:3]}")
+            covered |= set(members)
+        if covered != doc_set:
+            raise BatchPlanError("subsets 必须完整划分名单(并集 != doc_ids)")
 
     frozen_files = plan.get("frozen_files")
     if not isinstance(frozen_files, list) or not frozen_files:
@@ -437,7 +476,7 @@ def run_batch(
     output_root.mkdir(parents=True)
     started = {
         "status": "opened",
-        "protocol_version": PROTOCOL_VERSION,
+        "protocol_version": plan["protocol_version"],
         "plan_sha256": plan["_plan_sha256"],
         "opened_at_commit": actual_head,
         "primary_arm_id": plan["primary_arm_id"],
@@ -445,6 +484,7 @@ def run_batch(
         "n_docs": len(plan["_doc_ids"]),
         "arms": [arm["arm_id"] for arm in plan["_loaded_arms"]],
         "comparisons": plan["comparisons"],
+        "subsets": plan.get("subsets"),
         "note": "只记录身份;batch_complete 前禁止读取任何臂的结果。",
     }
     _write_json(output_root / "batch_started.json", started)
@@ -608,6 +648,7 @@ def score_completed_batch(
     complete = verify_completed_batch(output_root)
 
     from . import dws
+    from . import truth_caliber as _caliber
     from .safety_metrics import score_routes, truth
 
     scored_arms: list[dict] = []
@@ -628,6 +669,7 @@ def score_completed_batch(
                 routing["routes"],
                 truth_of=truth,
                 understand_of=lambda doc_id: understand.get(doc_id),
+                caliber_of=_caliber.caliber_dispute,
             )
             summary = matrix["summary"]
             if safety["slots"] != summary["slots"] \
@@ -641,6 +683,54 @@ def score_completed_batch(
             })
             n_slots = summary["slots"]
             n_docs = len(doc_ids)
+            subset_blocks: dict[str, dict] = {}
+            for subset_name, subset_spec in (
+                    complete.get("subsets") or {}).items():
+                members = set(subset_spec["doc_ids"])
+                sub_routes = [row for row in routing["routes"]
+                              if row["doc_id"] in members]
+                sub_safety = score_routes(
+                    sub_routes,
+                    truth_of=truth,
+                    understand_of=lambda doc_id: understand.get(doc_id),
+                    caliber_of=_caliber.caliber_dispute,
+                )
+                sub_h = heldout.measure(run_dir, doc_ids=members)
+                sub_slots = len(sub_routes)
+                sub_queue = sub_safety["review"]
+                sub_touched = len({
+                    row["doc_id"] for row in sub_routes
+                    if row["route"] not in ("auto_accept", "auto_absent")
+                })
+                subset_blocks[subset_name] = {
+                    "n_docs": len(members),
+                    "workload": {
+                        "slots": sub_slots,
+                        "human_queue": sub_queue,
+                        "human_queue_rate": sub_queue / max(sub_slots, 1),
+                        "documents_touched": sub_touched,
+                        "document_touch_rate":
+                            sub_touched / max(len(members), 1),
+                        "machine_decided": sum(
+                            1 for row in sub_routes
+                            if row["route"] == "auto_accept"),
+                        "machine_absent": sum(
+                            1 for row in sub_routes
+                            if row["route"] == "auto_absent"),
+                    },
+                    "safety": sub_safety,
+                    "H1_H6": {
+                        name: {
+                            "value": sub_h[name],
+                            "pass": _band_pass(sub_h[name], heldout.BANDS[name]),
+                        }
+                        for name in heldout.BANDS
+                    },
+                    "H_details": {
+                        key: value for key, value in sub_h.items()
+                        if key.startswith("_")
+                    },
+                }
             scored_arms.append({
                 "arm_id": record["arm_id"],
                 "harness_id": record["harness_id"],
@@ -673,6 +763,7 @@ def score_completed_batch(
                     "machine_absent": summary["machine_absent"],
                 },
                 "safety": safety,
+                "subsets": subset_blocks,
             })
 
     by_id = {arm["arm_id"]: arm for arm in scored_arms}
@@ -725,25 +816,63 @@ def score_completed_batch(
             "bundle_sha256": _sha(bundle),
             "verify": report,
         }
-    qualification = {
-        "primary_arm_id": primary["arm_id"],
-        "baseline_arm_id": baseline["arm_id"],
-        "H1_H6": primary["H1_H6"],
-        "H7": h7,
-        "P1": {
-            "silent_absent_not_up":
-                primary["safety"]["silent_absent"]
-                <= baseline["safety"]["silent_absent"],
-            "silent_wrong_not_up":
-                primary["safety"]["silent_wrong"]
-                <= baseline["safety"]["silent_wrong"],
-        },
-        "P2": {
-            "human_queue_not_up":
-                primary["workload"]["human_queue"]
-                <= baseline["workload"]["human_queue"],
-        },
-    }
+    if "strong" in (complete.get("subsets") or {}):
+        # SEALED-4 增补件 A4:主终点与 P1–P3 在 strong 子集上判定,
+        # weak 单列照登; A3:P1 只用真静默列,口径争议列不归零。
+        p_strong = primary["subsets"]["strong"]
+        b_strong = baseline["subsets"]["strong"]
+        qualification = {
+            "subset": "strong",
+            "subset_rule": (
+                "SEALED-4 增补件 A4:P1–P3 与 H1–H7 在 strong 子集判定;"
+                "A3:P1 只看真静默列(silent_absent_true),口径争议单列照登"
+            ),
+            "primary_arm_id": primary["arm_id"],
+            "baseline_arm_id": baseline["arm_id"],
+            "H1_H6": p_strong["H1_H6"],
+            "H7": h7,
+            "P1": {
+                "silent_absent_true_not_up":
+                    p_strong["safety"]["silent_absent_true"]
+                    <= b_strong["safety"]["silent_absent_true"],
+                "silent_wrong_not_up":
+                    p_strong["safety"]["silent_wrong"]
+                    <= b_strong["safety"]["silent_wrong"],
+                "silent_absent_primary_raw":
+                    p_strong["safety"]["silent_absent"],
+                "silent_absent_baseline_raw":
+                    b_strong["safety"]["silent_absent"],
+                "caliber_disputes_primary":
+                    p_strong["safety"]["caliber_disputes"],
+                "caliber_disputes_baseline":
+                    b_strong["safety"]["caliber_disputes"],
+            },
+            "P2": {
+                "human_queue_not_up":
+                    p_strong["workload"]["human_queue"]
+                    <= b_strong["workload"]["human_queue"],
+            },
+        }
+    else:
+        qualification = {
+            "primary_arm_id": primary["arm_id"],
+            "baseline_arm_id": baseline["arm_id"],
+            "H1_H6": primary["H1_H6"],
+            "H7": h7,
+            "P1": {
+                "silent_absent_not_up":
+                    primary["safety"]["silent_absent"]
+                    <= baseline["safety"]["silent_absent"],
+                "silent_wrong_not_up":
+                    primary["safety"]["silent_wrong"]
+                    <= baseline["safety"]["silent_wrong"],
+            },
+            "P2": {
+                "human_queue_not_up":
+                    primary["workload"]["human_queue"]
+                    <= baseline["workload"]["human_queue"],
+            },
+        }
     return {
         "protocol_version": complete["protocol_version"],
         "batch_complete_sha256": _sha(output_root / "batch_complete.json"),

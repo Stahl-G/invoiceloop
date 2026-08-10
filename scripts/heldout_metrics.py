@@ -33,8 +33,11 @@ BANDS = {
 }
 
 
-def measure(run_dir: Path) -> dict[str, float]:
+def measure(run_dir: Path, doc_ids: set[str] | None = None) -> dict[str, float]:
+    """H1–H6 测量。doc_ids 给定时只测该子集的文档(SEALED-4 增补件 A4:
+    主终点在 strong 子集上报告);None = 全 run,与冻结口径逐字节一致。"""
     run_dir = Path(run_dir)
+    keep = (lambda _doc: True) if doc_ids is None else (lambda d: d in doc_ids)
     matrix = json.loads((run_dir / "support_matrix.json").read_text())
     gates = json.loads((run_dir / "gate_report.json").read_text())
     drafts = json.loads((run_dir / "field_drafts.json").read_text())
@@ -42,6 +45,8 @@ def measure(run_dir: Path) -> dict[str, float]:
 
     scored = []
     for row in matrix["rows"]:
+        if not keep(row["doc_id"]):
+            continue
         if row["applicability"] == "label_convention_disputed":
             continue
         t = truth(row["doc_id"]).get(row["field"])
@@ -60,14 +65,17 @@ def measure(run_dir: Path) -> dict[str, float]:
     cov46 = sum(r["deviation"] for r in scored[:k46]) / max(total_dev, 1)
     recall = sum(r["deviation"] for r in scored if r["requires_adjudication"]) / max(total_dev, 1)
 
-    evals = [v for doc in gates["evaluations"].values() for v in doc.values()]
+    evals = [v for doc, doc_evals in gates["evaluations"].items() if keep(doc)
+             for v in doc_evals.values()]
     h4 = sum(1 for v in evals if v.get("extraction_present") == "fail") / max(len(evals), 1)
     cite = [v.get("citation_holds") for v in evals if v.get("citation_holds") in ("pass", "fail")]
     h5 = sum(1 for v in cite if v == "fail") / max(len(cite), 1)
-    u_drafts = sum(1 for d in drafts if d["drafted_by"] == "dws_understand")
+    u_drafts = sum(1 for d in drafts if d["drafted_by"] == "dws_understand"
+                   and keep(d["doc_id"]))
     u_rej = sum(1 for e in events
                 if e["event"].startswith("draft_") and e["event"].endswith("_rejected")
-                and e.get("drafted_by") == "dws_understand")
+                and e.get("drafted_by") == "dws_understand"
+                and keep(e.get("doc_id", "")))
     return {
         "H1 lift": rate_f / rate_b if rate_b else float("inf"),
         "H2 coverage@46%": cov46,
