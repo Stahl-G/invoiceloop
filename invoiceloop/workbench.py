@@ -1527,6 +1527,38 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 {self._decide_form(lang, ctx, row, tip, conflict, len(orphans), adjudicator)}
 </div>"""
 
+    @staticmethod
+    def _vision_state(ctx: RunCtx, row: dict) -> tuple[str, str | None]:
+        """建议状态的单一判定点:_vision_suggest 的展示与 decide 表单的
+        suggestion_seen 隐藏字段必须看到同一个世界(Phase 0-2)。
+
+        返回 (state, value):
+        - ("none", None)      没有任何读者作答 → 不建议行,表单不带该字段
+        - ("blind", None)     全弃权
+        - ("split", None)     读者分歧
+        - ("agree", value)    一致且可「采用」
+        - ("agree_rejected", value) 一致但该值已被冻结拒掉(展示但不给采用)
+        """
+        answers = ctx.vision.get((row["doc_id"], row["field"]))
+        if not answers:
+            return "none", None
+        live = [(m, v) for m, v in answers if v and v.upper() != "ABSTAIN"]
+        if not live:
+            return "blind", None
+        from .fields import FIELD_KINDS, normalise
+
+        kind = FIELD_KINDS.get(row["field"])
+        normalised = {normalise(v, kind) for _, v in live}
+        if len(normalised) != 1:
+            return "split", None
+        value = live[0][1]
+        value_norm = normalise(value, kind) or str(value).strip()
+        rejected = {(normalise(r["value"], kind) or str(r["value"]).strip())
+                    for r in row["rejections"]}
+        if value_norm in rejected:
+            return "agree_rejected", value
+        return "agree", value
+
     def _vision_suggest(self, lang: str, ctx: RunCtx, row: dict) -> str:
         """读图预填建议:一致 → 可「采用」(只预填表单,不写账本);
         分歧 → 摊开各读者的值,不给采用按钮;全弃权 → 如实说也看不清。
@@ -1534,32 +1566,25 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         一致性用与双模式门禁同一套归一化(fields.normalise)—— 两侧同规则,
         不搞第二套「差不多就行」的比较。
         """
-        answers = ctx.vision.get((row["doc_id"], row["field"]))
-        if not answers:
+        state, value = self._vision_state(ctx, row)
+        if state == "none":
             return ""
         label = _esc(_t(lang, "vision_suggest"))
-        live = [(m, v) for m, v in answers if v and v.upper() != "ABSTAIN"]
-        if not live:
+        if state == "blind":
             return (f'<div class="wb-vision-suggest muted"><span class="wb-vs-label">'
                     f'{label}</span> <span class="wb-vs-blind">'
                     f'{_esc(_t(lang, "vision_blind"))}</span></div>')
-        from .fields import FIELD_KINDS, normalise
-
-        kind = FIELD_KINDS.get(row["field"])
-        normalised = {normalise(v, kind) for _, v in live}
-        if len(normalised) == 1:
-            value = live[0][1]
-            value_norm = normalise(value, kind) or str(value).strip()
-            rejected = {(normalise(r["value"], kind) or str(r["value"]).strip())
-                        for r in row["rejections"]}
-            if value_norm in rejected:
-                # 同值已被冻结拒掉(绑不进本文档 —— 注入载荷也走这条路):
-                # 建议层如实展示但绝不给「采用」按钮,否则 200px 外写着
-                # 「冻结时被拒」、这里一个按钮就把它架空(82 评 P1-5)
-                return (f'<div class="wb-vision-suggest muted"><span class="wb-vs-label">'
-                        f'{label}</span> <b class="wb-vs-value">{_esc(value)}</b>'
-                        f'<span class="wb-vs-rejected">'
-                        f'{_esc(_t(lang, "vision_rejected"))}</span></div>')
+        answers = ctx.vision[(row["doc_id"], row["field"])]
+        live = [(m, v) for m, v in answers if v and v.upper() != "ABSTAIN"]
+        if state == "agree_rejected":
+            # 同值已被冻结拒掉(绑不进本文档 —— 注入载荷也走这条路):
+            # 建议层如实展示但绝不给「采用」按钮,否则 200px 外写着
+            # 「冻结时被拒」、这里一个按钮就把它架空(82 评 P1-5)
+            return (f'<div class="wb-vision-suggest muted"><span class="wb-vs-label">'
+                    f'{label}</span> <b class="wb-vs-value">{_esc(value)}</b>'
+                    f'<span class="wb-vs-rejected">'
+                    f'{_esc(_t(lang, "vision_rejected"))}</span></div>')
+        if state == "agree":
             return (f'<div class="wb-vision-suggest"><span class="wb-vs-label">{label}</span> '
                     f'<b class="wb-vs-value">{_esc(value)}</b>'
                     f'<span class="wb-vs-agree">{_esc(_t(lang, "vision_agree", a=len(live), n=len(answers)))}</span>'
@@ -1739,6 +1764,15 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                          ("medium", "conf_medium"), ("low", "conf_low")))
         next_input = (f'<input type="hidden" name="next" value="{_esc(next_hint)}">'
                       if next_hint else "")
+        # suggestion_seen(Phase 0-2):渲染时的建议状态随表单进账本 ——
+        # 记的是「人提交那一刻屏幕上展示了什么建议」,与 _vision_suggest
+        # 同一个判定点(_vision_state),不许两处各算各的。
+        sug_state, sug_value = self._vision_state(ctx, row)
+        sug_input = ""
+        if sug_state != "none":
+            seen = f"{sug_state}:{sug_value}" if sug_value is not None else sug_state
+            sug_input = (f'<input type="hidden" name="suggestion_seen" '
+                         f'value="{_esc(seen)}">')
         error_html = ""
         if form_error:
             error_html = (f'<div class="wb-form-error">'
@@ -1756,6 +1790,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 <input type="hidden" name="claim_id" value="{_esc(claim_id)}">
 <input type="hidden" name="supersedes" value="{_esc(supersedes)}">
 <input type="hidden" name="lang" value="{_esc(lang)}">{next_input}
+{sug_input}
 {quick}
 <div class="wb-decide-row">{radios}
 <input class="wb-corr" type="text" name="corrected_value"
@@ -2905,6 +2940,7 @@ class _Handler(BaseHTTPRequestHandler):
                 supersedes_decision_id=form.get("supersedes", [""])[0] or None,
                 reason_code=form.get("reason_code", [""])[0] or None,
                 reviewer_confidence=form.get("reviewer_confidence", [""])[0] or None,
+                suggestion_seen=form.get("suggestion_seen", [""])[0] or None,
             )
         except ValueError as exc:
             # 校验拒绝 = 一行都没写(append_adjudication 的契约)。以前这里

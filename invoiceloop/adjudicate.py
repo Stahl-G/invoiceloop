@@ -98,6 +98,7 @@ def append_adjudication(
     reason_code: str | None = None,
     reviewer_confidence: str | None = None,
     carried_from_decision_id: str | None = None,
+    suggestion_seen: str | None = None,
 ) -> dict:
     """追加一条裁决并 fsync。时间由调用方注入 —— 工件本身不读墙钟(可复算)。
 
@@ -105,6 +106,10 @@ def append_adjudication(
     渲染失败不回滚这里)。reason_code/reviewer_confidence 可选(v0.2 反馈
     平面):人给,系统不代填;组合必须自洽(确认缺失的决策不能挂
     WRONG_VALUE 之类的心码 —— 错误监督会污染 mining)。
+    suggestion_seen 可选(Phase 0-2):裁决页渲染时**展示过**的建议状态
+    (`agree:<值>` / `agree_rejected:<值>` / `split` / `blind`),机器在
+    渲染时写入隐藏字段 —— 它记的是"人当时看见了什么",不是人的判断,
+    挖建议采纳率靠它,缺省 None 不影响旧账本。
     """
     run_dir = Path(run_dir)
     if reason_code is not None:
@@ -122,6 +127,16 @@ def append_adjudication(
     if reviewer_confidence is not None \
             and reviewer_confidence not in ("high", "medium", "low"):
         raise ValueError("reviewer_confidence 必须是 high/medium/low")
+    if suggestion_seen is not None:
+        import re as _re
+
+        if not isinstance(suggestion_seen, str) or not _re.fullmatch(
+                r"(split|blind|agree(_rejected)?:[^\t\n\r]{1,140})",
+                suggestion_seen):
+            raise ValueError(
+                "suggestion_seen 必须是 split|blind|agree:<值>|"
+                "agree_rejected:<值> 之一 —— 它记渲染时展示了什么,"
+                "自由文本会把噪声喂给建议采纳率统计")
     run_dir = Path(run_dir)
     if decision not in DECISIONS:
         raise ValueError(f"decision 必须是 {DECISIONS} 之一,收到 {decision!r}")
@@ -257,6 +272,8 @@ def append_adjudication(
                 # 同证据携带(carry.py):不是新的人工判断,是同一人对同一份
                 # 证据的判断的机械搬运 —— 溯源字段让账本自己说得清
                 entry["carried_from_decision_id"] = carried_from_decision_id
+            if suggestion_seen is not None:
+                entry["suggestion_seen"] = suggestion_seen
             with (run_dir / "adjudication_ledger.jsonl").open("a", encoding="utf-8") as fh:
                 fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
                 fh.flush()

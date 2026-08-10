@@ -711,3 +711,31 @@ class TestVerifyLayers:
                 zf.writestr(name, data)
         report = adjudicate.verify_bundle(bundle)
         assert report["ok"], "全一致的伪造会过 —— 这正是为什么要带外公布哈希"
+
+
+class TestSuggestionSeenEntry:
+    """append_adjudication 的 suggestion_seen 形状校验(Phase 0-2)。"""
+
+    def test_valid_shapes_are_recorded(self, run_dir):
+        for field, seen in zip(("total_gross", "total_net", "total_vat",
+                                "due_date"),
+                               ("split", "blind", "agree:100.00",
+                                "agree_rejected:$72,000.00")):
+            entry = _append(run_dir, claim_id=None, field=field,
+                            decision="abstain", rationale="r",
+                            suggestion_seen=seen)
+            assert entry["suggestion_seen"] == seen
+
+    def test_absent_by_default(self, run_dir):
+        entry = _append(run_dir)
+        assert "suggestion_seen" not in entry
+
+    def test_invalid_shapes_raise(self, run_dir):
+        for bad in ("model says trust me", "agree:", "AGREE:x",
+                    "agree:has\ttab", "none"):
+            with pytest.raises(ValueError, match="suggestion_seen"):
+                _append(run_dir, suggestion_seen=bad)
+        assert not (run_dir / "adjudication_ledger.jsonl").exists() or \
+            all("suggestion_seen" not in json.loads(x)
+                for x in (run_dir / "adjudication_ledger.jsonl")
+                .read_text().splitlines()), "校验拒绝 = 一行都没写"

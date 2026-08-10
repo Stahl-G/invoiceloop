@@ -1847,3 +1847,47 @@ class TestFeedbackLabelsStateTheConsequence:
         _, _, en = _req(server, "GET", f"/queue?run={RUN}&lang=en")
         label_en = re.search(r'Flag doubt[^<]*', en).group(0)
         assert "improvement loop" in label_en.lower()
+
+
+class TestSuggestionSeen:
+    """suggestion_seen(Phase 0-2):渲染时的建议状态随表单进账本。
+
+    钉死的语义:
+    - 隐藏字段与 _vision_suggest 的展示共用 _vision_state 一个判定点;
+    - 无作答的槽位表单不带该字段,账本条目也没有这个键(缺省 ≠ none);
+    - 提交时原样落进裁决条目,append-only 加字段,旧账本不受影响。
+    """
+
+    def test_form_carries_rendered_state(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=zh&filter=all")
+        gross = _vs_row(text, "total_gross")
+        assert 'name="suggestion_seen" value="agree:100.00"' in gross, \
+            "一致建议的表单要带着「展示了什么」进提交"
+        net = _vs_row(text, "total_net")
+        assert 'name="suggestion_seen" value="agree_rejected:10.00"' in net, \
+            "被拒建议也是「展示过」的事实,状态必须与展示一致"
+        split = _vs_row(text, "issue_date")
+        assert 'name="suggestion_seen" value="split"' in split
+        blind = _vs_row(text, "invoice_number")
+        assert 'name="suggestion_seen" value="blind"' in blind
+        silent = _vs_row(text, "due_date")
+        assert 'name="suggestion_seen"' not in silent, \
+            "无作答 = 表单没有该字段 —— 「没展示建议」与「展示了 none」是两件事"
+
+    def test_post_lands_in_ledger(self, workspace, server):
+        s, _, _ = _decide(server, suggestion_seen="agree:100.00")
+        assert s == 303
+        entry = _ledger(workspace)[0]
+        assert entry["suggestion_seen"] == "agree:100.00"
+
+    def test_post_without_field_leaves_no_key(self, workspace, server):
+        s, _, _ = _decide(server)
+        assert s == 303
+        assert "suggestion_seen" not in _ledger(workspace)[0], \
+            "旧表单/无建议槽的条目不该凭空长出这个键(旧账本兼容)"
+
+    def test_garbage_value_is_rejected_with_form_kept(self, workspace, server):
+        s, _, text = _decide(server, suggestion_seen="model says trust me")
+        assert s == 400, "自由文本不许进账本 —— 它会把噪声喂给采纳率统计"
+        assert "suggestion_seen" in text
+        assert _ledger(workspace) == [], "校验拒绝 = 一行都没写"
