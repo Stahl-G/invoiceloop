@@ -130,8 +130,46 @@ HAR-0021(「以抽取前最后一次晋升为准」),policy digest
 **结论:v2 把 v1 的 2/30(pilot)提到 8/300,但绝对触发率只有 2.7%。**
 最大的拦路不是条款形态,是 53 份"有条款、裸 Date"——把裸 `Date` 当
 issue date 是一条新的口径规则(它也可能是 due date),**没有预注册不做**。
-派生层对队列的贡献有限,duedate 的主杠杆仍在缺席侧(第二节)与
-schema 侧(步 2,待复抽预算)。
+派生层对队列的贡献有限,duedate 的主杠杆仍在缺席侧(第二节);
+schema 侧的步 2 已复抽完毕,无可测收益、不晋升(第六节)。
+
+## 六、步 2 复抽:终版 schema 描述无可测收益,门被复抽方差触发(不晋升)
+
+终版 10 条描述预注册在 `BROADCAST_SCHEMA_FINAL_2026-08-10.json`
+(= main 当前 `ingest.py::FIELD_DESCRIPTIONS` + seller_vat_id 改指 EIN);
+候选 HAR-0022 与 HAR-0021 只差 due_date、seller_vat_id 两条 description。
+30 份 understand-only 复抽(510 credits,2026-08-10):
+
+| 指标(同 30 份,基线 HAR-0021) | 基线 → 候选 |
+|---|---:|
+| review_load | 64.33% → 64.00%(-0.33pp,1 槽) |
+| silent_wrong | 8 → 11(**+3**) |
+| 真静默 / 口径争议(truth-caliber-v1) | 0 → 0 / 0 → 0 |
+| value_hits | 87 → 88(+1) |
+
+**+3 silent_wrong 逐条定位**:`buyer_name`×2、`seller_name`×1——
+**描述一字未改的字段**。DWS understand 复抽把地址拼进了名字
+(`'Philip Morris USA 120 Park Avenue New York, NY 10017-5592'` vs
+真值 `'Philip Morris USA'`),规范化后不符。是模型非确定性,
+不是 schema 效果。唯一的 route 翻转(`total_net` review→auto_accept,
+值与真值一致)解释了 -0.33pp 与 +1 value_hit,同属复抽方差。
+
+**目标字段本身**:seller_vat_id 唯一真值案例(真值 `25-1126415`)
+两臂都错(base `26415` → cand `Federal ID # 26415`,标签噪声反而更重);
+due_date 唯一真值案例两臂都路由 review(候选值是复抽噪声
+`'Due by August 1, 1 1999'`,但进人工、不静默);无真值文档上候选对
+"NET 30"/"30 Days" 这类条款更多返回空——方向符合派生层语义,
+但不可计分。
+
+**裁决:不晋升**(2026-08-10,stahl),HAR-0021 保持 active;
+SEALED-4 主臂解析不变。证据:`docs/evidence/absence_v3_2026-08-10/`
+(`eval_HAR-0022.json` + `HAR-0022.extraction_schema.json`)。
+
+**方法论发现**:n=30 复抽门的 silent_wrong 比较会被**未改动字段**的
+understand 方差污染(本次 +3 即此;门若机械执行会错杀,门若放行又
+开了旁路)。对后续 schema 类候选与 SEALED-4 设计的含义:安全比较
+要么**配对复抽**(基线臂同轮重抽,控制时漂),要么门只看改动字段;
+现行单臂重抽在 n=30 上太脆,不足以裁决文字级 schema 改动。
 
 ## 限定
 

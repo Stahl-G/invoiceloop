@@ -1,0 +1,45 @@
+{
+ "type": "object",
+ "properties": {
+  "invoice_number": {
+   "type": "string",
+   "description": "Seller-assigned invoice identifier."
+  },
+  "issue_date": {
+   "type": "string",
+   "description": "Date the invoice was issued."
+  },
+  "due_date": {
+   "type": "string",
+   "description": "Explicitly printed calendar date labelled as the payment due date. Do not put a date calculated from Net or other payment terms here; the deterministic post-extraction field calculated_due_date is separate."
+  },
+  "seller_name": {
+   "type": "string",
+   "description": "Full legal name of the seller."
+  },
+  "seller_vat_id": {
+   "type": "string",
+   "description": "Seller US federal tax ID (EIN / Federal ID), or VAT identifier where present."
+  },
+  "buyer_name": {
+   "type": "string",
+   "description": "Full legal name of the buyer."
+  },
+  "total_net": {
+   "type": "string",
+   "description": "Invoice total without VAT."
+  },
+  "total_vat": {
+   "type": "string",
+   "description": "Total VAT amount."
+  },
+  "total_gross": {
+   "type": "string",
+   "description": "Invoice total with VAT."
+  },
+  "amount_due": {
+   "type": "string",
+   "description": "Amount the buyer must actually pay."
+  }
+ }
+}

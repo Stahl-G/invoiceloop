@@ -161,14 +161,14 @@ review 槽数、auto_absent 数、silent_absent(对真值)、silent_wrong(对真
 | 步 | 动作 | 验证 |
 |---|---|---|
 | 1 | ~~合并 worktree 到 main~~ **已完成 2026-08-10**:cherry-pick `93d4ea3`(due_date 派生层 + scope + 广播 tooling),`3c0568f`;`808b904` 未合——其 doctype-HITL 功能 main 已有自有实现(`ec715ba`,workbench 75 处 doctype 曝光),合并只会引入语义重复 | `pytest tests/` **687 过 3 跳**(合并前 673) |
-| 2 | schema description 修订(P1.1/1.2/1.3),走 `improve propose_schema` 正常 lint + 晋升路径 | lint 通过;dev 重放对比 silent_wrong(预期降,但**不以此晋升**) |
+| 2 | ~~schema description 修订(P1.1/1.2/1.3),走 `improve propose_schema` 正常 lint + 晋升路径~~ **已完成 2026-08-10,不晋升**:终版 10 条描述预注册(`BROADCAST_SCHEMA_FINAL_2026-08-10.json`);HAR-0022 复抽 30 份(510 credits)review_load -0.33pp、value_hits +1,但 silent_wrong 8→11——+3 全是**未改动 name 字段**的复抽方差(地址拼进名字),目标字段无可计分收益;裁决不晋升(stahl),HAR-0021 保持 active | eval + 候选 schema 钉本进 `docs/evidence/absence_v3_2026-08-10/`;方法论发现记入 `ABSENCE_V3_DERIVATION_V2_DEV_2026-08-10.md` §6 |
 | 3 | ~~派生规则 v2 条款清单预注册 commit → 开发集测触发率~~ **已完成**:`6341052`;触发率 8/300(2.7%),对照真值 2/2 一致,瓶颈是 53 份"裸 Date" | 触发率与 not_computable 原因分布照登(`ABSENCE_V3_DERIVATION_V2_DEV_2026-08-10.md` §4) |
 | 4 | ~~due_date 词表 v3 预注册 commit → 开发集盲测~~ **改为引擎 v3 模糊匹配**(单调安全机制,`e06488f`):seller_vat_id 234/0 **过线**;total_net×1 与 due_date×8 的静默全是口径分歧(单总额 ruling + 派生值 ruling),非词表问题 | silent=0 才进下一步(`ABSENCE_V3_DERIVATION_V2_DEV_2026-08-10.md` §1–3) |
 | 5 | ~~`AV-seller_vat_id` / `AV-total_net`(/ `AV-due_date`)候选 → dev 评测 → 逐条晋升,得广播 harness(HAR-00xx)~~ **已完成 2026-08-10**:HAR-0019(seller_vat_id,`9939adb`)、HAR-0020(total_net)、HAR-0021(due_date) 逐条过强制门,署名 stahl;广播 harness = **HAR-0021**,dev 队列 60.20% → 47.73% | 每条:晋升日志 + policy 钉本进 `docs/evidence/absence_v3_2026-08-10/` |
 | 6 | ~~SEALED-4 协议修订(§4)→ 人确认 → commit~~ **已完成 2026-08-10**:`04fc8cd` 增补件冻结(广播子池 union 4,196 实测、T1/T2 真值口径规则逐条列明);T1/T2 打分函数随 `0381016` 落地 | 修订先于一切抽取 |
 | 7 | 预算授权 → `sealed extract` → 一次性开箱 | `SEALED4_RESULTS.md` |
 
-步 2–5 全部零 API。只有步 7 花钱(~200 次调用,熔断 6,000 credits)。
+步 3–5 全部零 API。步 2 复抽已花 510 credits(2026-08-10);剩下的花费只有步 7(~200 次调用,熔断 6,000 credits)。
 
 ## 4. 与 SEALED-4 的关系(必须改协议,且只能在抽取前改)
 
