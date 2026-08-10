@@ -1,0 +1,33 @@
+{
+ "protocol": "broadcast-schema-v1",
+ "frozen_at": "2026-08-10",
+ "status": "pre-registered before any extraction with these descriptions",
+ "delta_vs_main": "exactly one description changes: seller_vat_id (EIN-inclusive). The other nine are byte-identical to invoiceloop/ingest.py::FIELD_DESCRIPTIONS at the pre-registration commit",
+ "rejected_alternative": "BROADCAST_ADK_DRAFT_2026-08-10.json made seller_vat_id EIN-exclusive ('excluding EIN, FCC ID, or station callsign'). Rejected: DocILE vendor_tax_id is 85% EIN (648/760 NN-NNNNNNN format, 3 VAT-style), so excluding EIN tells the extractor to skip the value truth annotates, manufacturing artificial absence slots. The pilot's silent_wrong drop under that draft partly came from not extracting at all — not extracting cannot err, but it also cannot hit",
+ "descriptions": {
+  "invoice_number": "Seller-assigned invoice identifier.",
+  "issue_date": "Date the invoice was issued.",
+  "due_date": "Explicitly printed calendar date labelled as the payment due date. Do not put a date calculated from Net or other payment terms here; the deterministic post-extraction field calculated_due_date is separate.",
+  "seller_name": "Full legal name of the seller.",
+  "seller_vat_id": "Seller US federal tax ID (EIN / Federal ID), or VAT identifier where present.",
+  "buyer_name": "Full legal name of the buyer.",
+  "total_net": "Invoice total without VAT.",
+  "total_vat": "Total VAT amount.",
+  "total_gross": "Invoice total with VAT.",
+  "amount_due": "Amount the buyer must actually pay."
+ },
+ "evaluation": {
+  "path": "improve.evaluate(reextract=True, sample=30, budget=1600) on runs/absence-v3-2026-08-10",
+  "sample": "deterministic _sample_doc_ids (schema-eval-v1 hash order) over the workspace's 300 dev docs; baseline arm = the stored understand responses of run-0002, so the seller_vat_id description delta is the only moving part",
+  "budget_credits": 1600,
+  "extraction_mode": "understand only (the reextract eval path)"
+ },
+ "predictions": {
+  "seller_vat_id_value_hits": "up — the EIN-inclusive text lets the extractor keep EINs it previously dropped or misfiled",
+  "silent_wrong": "not up (Gate 2 inequality)",
+  "silent_absent_true": "not up (Gate 2, truth-caliber-v1 split)",
+  "review_load": "not up (Gate 3); the pilot's EIN-exclusive draft raised review slots 191 -> 201, and that direction is part of why it was rejected",
+  "note": "predictions exist to make deviation visible; deviation is recorded, not a voiding condition"
+ },
+ "promotion_rule": "gate_verdict on the reextract eval + human signature; silent_wrong improvement is NOT the promotion criterion (design doc step 2: the schema layer's job is preventing wrong-field mapping, not cutting the queue)"
+}
