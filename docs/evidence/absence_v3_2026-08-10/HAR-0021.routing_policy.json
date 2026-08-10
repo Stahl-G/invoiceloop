@@ -1,0 +1,115 @@
+{
+ "harness_id": "HAR-0021",
+ "version": 21,
+ "release_tier1_explicit": true,
+ "auto_accept_cohorts": [],
+ "qa": {
+  "seed": "invoiceloop-qa-v1",
+  "policy_accepted_tier1_rate": 0.05,
+  "cohort_relax_rate": 0.2,
+  "note": "哈希抽样,确定性;HAR-0001 下两类目标都为空(tier1_explicit=true 且 cohorts 为空),零行为影响",
+  "absent_expected_rate": 0.2,
+  "sampler_version": 2,
+  "absent_evidenced_rate": 0.2
+ },
+ "absent_expected_cohorts": [
+  {
+   "id": "AE-purchase_order-seller_vat_id",
+   "doc_class": "purchase_order",
+   "field": "seller_vat_id"
+  },
+  {
+   "id": "AE-purchase_order-due_date",
+   "doc_class": "purchase_order",
+   "field": "due_date"
+  },
+  {
+   "id": "AE-confirmation-seller_vat_id",
+   "doc_class": "confirmation",
+   "field": "seller_vat_id"
+  },
+  {
+   "id": "AE-confirmation-total_vat",
+   "doc_class": "confirmation",
+   "field": "total_vat"
+  },
+  {
+   "id": "AE-confirmation-due_date",
+   "doc_class": "confirmation",
+   "field": "due_date"
+  },
+  {
+   "id": "AE-credit_note-seller_vat_id",
+   "doc_class": "credit_note",
+   "field": "seller_vat_id"
+  },
+  {
+   "id": "AE-purchase_order-total_vat",
+   "doc_class": "purchase_order",
+   "field": "total_vat"
+  },
+  {
+   "id": "AE-contract-seller_vat_id",
+   "doc_class": "contract",
+   "field": "seller_vat_id"
+  },
+  {
+   "id": "AE-contract-due_date",
+   "doc_class": "contract",
+   "field": "due_date"
+  },
+  {
+   "id": "AE-receipt-seller_vat_id",
+   "doc_class": "receipt",
+   "field": "seller_vat_id"
+  },
+  {
+   "id": "AE-credit_note-total_vat",
+   "doc_class": "credit_note",
+   "field": "total_vat"
+  },
+  {
+   "id": "AE-estimate-due_date",
+   "doc_class": "estimate",
+   "field": "due_date"
+  },
+  {
+   "id": "AE-estimate-seller_vat_id",
+   "doc_class": "estimate",
+   "field": "seller_vat_id"
+  },
+  {
+   "id": "AE-purchase_order-total_net",
+   "doc_class": "purchase_order",
+   "field": "total_net"
+  },
+  {
+   "id": "AE-estimate-total_net",
+   "doc_class": "estimate",
+   "field": "total_net"
+  },
+  {
+   "id": "AE-estimate-total_vat",
+   "doc_class": "estimate",
+   "field": "total_vat"
+  }
+ ],
+ "absent_evidenced_cohorts": [
+  {
+   "id": "AV-total_vat",
+   "field": "total_vat"
+  },
+  {
+   "id": "AV-seller_vat_id",
+   "field": "seller_vat_id"
+  },
+  {
+   "id": "AV-total_net",
+   "field": "total_net"
+  },
+  {
+   "id": "AV-due_date",
+   "field": "due_date"
+  }
+ ]
+}

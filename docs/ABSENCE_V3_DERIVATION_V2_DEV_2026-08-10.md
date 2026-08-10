@@ -75,9 +75,41 @@ sealed1 / sealed2 / heldout 工作区去重后 300 份(SEALED-3 不用,它已被
 口径"的同一条缝上。** 处理路径是 SEALED-4 增补件里的真值口径规则
 (预注册、逐条列明、进文档),不是词表改动——见
 [`BROADCAST_HARNESS_DESIGN_2026-08-10.md`](BROADCAST_HARNESS_DESIGN_2026-08-10.md)
-§4.4。在那条规则被采纳之前,`AV-total_net` 与 `AV-due_date` 保持拒开。
+§4.4。
 
-## 四、派生规则 v2:触发率 8/300(2.7%),诚实但稀疏
+## 四、口径规则落地:9 个静默全部重分类,两规则晋升(同日)
+
+真值口径规则经采纳后(增补件 A3,`04fc8cd`),T1/T2 以
+`truth-caliber-v1` 落进打分器、晋升门与台账(`0381016`)。同一台账重跑,
+9 个静默**全部**按预期标签重分类 —— 1 例 T1 + 8 例 T2(逐条与增补件
+表格一致,`tests/test_truth_caliber.py` 真语料回归钉死),真静默归零:
+
+| field | saves | silent(原口径) | 口径争议 | 真静默 |
+|---|---:|---:|---:|---:|
+| `total_net` | 51 | 1 | 1(T1) | **0** |
+| `due_date` | 84 | 8 | 8(T2) | **0** |
+
+逐条走完 propose → evaluate → promote(署名 stahl):
+
+- **HAR-0020**(`AV-total_net`,PROM-0019,2026-08-10T06:34:15Z):
+  队列 −6.03pp(对存量路由基线;对 HAR-0019 边际 −0.83pp),
+  真静默 0→0,冲突 0,T1 争议 1 单列;
+- **HAR-0021**(`AV-due_date`,PROM-0020,2026-08-10T06:34:54Z):
+  队列 55.67% → **47.73%**(−7.93pp 对存量基线),原口径 silent_absent
+  0→5 但 5 例全是 T2 争议,**真静默 0→0**,冲突 0。
+
+广播 harness 至此 = HAR-0017 + 四条页面证据缺席规则(total_vat /
+seller_vat_id / total_net / due_date),开发集人工队列从 60.20%
+(HAR-0001)降到 47.73%。SEALED-4 主臂按增补件 A2 的机制解析为
+HAR-0021(「以抽取前最后一次晋升为准」),policy digest
+`bed2a20912c59fd5355873448d2d0f6c5a18545c25e64404d59ddb83b776bbc4`;
+工件钉在 `docs/evidence/absence_v3_2026-08-10/`。
+
+**口径争议不是零成本的通行证**:T2 会放过真到期日恰好印在 transaction
+词旁的槽(增补件 A3 已自陈),QA 探针(absent_evidenced_rate ≥ 0.20)
+是盯着这件事的常设机制。资格仍只能由 SEALED-4 给。
+
+## 五、派生规则 v2:触发率 8/300(2.7%),诚实但稀疏
 
 同一 300 份上跑 `derive_due_date`(版本 `due-date-relative-term-v2`):
 
@@ -108,14 +140,18 @@ schema 侧(步 2,待复抽预算)。
 - 引擎 v3 测量是事后的(动机案例在 v2 台账里);`AV-total_vat` 仍是唯一
   在盲测版上通过过的规则。
 - 真值口径规则(第二、三节)已被采纳(2026-08-10,stahl),写进 SEALED-4
-  增补件;`AV-total_net` / `AV-due_date` 的重评在那之后走,在此之前
-  两规则仍拒开,9 个静默照登。
+  增补件;T1/T2 的采纳同样**先于**第四节的晋升,但规则文本的形状取自
+  这 9 个案例本身 —— 与引擎 v3 同一定性:单调安全掩护得了机制,
+  掩护不了"盲"字。
+- 第四节的两条晋升全部走强制门(逐字节重算),署名 stahl;门内数与
+  台账口径的差异(234/193/156 三个计数器)已在第一节自陈。
 
 ## 复算
 
 ```bash
-python3 scripts/absence_by_evidence.py          # 第一节台账(引擎 v3)
-python3 -m pytest tests/test_absence_evidence.py tests/test_due_date.py
+python3 scripts/absence_by_evidence.py          # 第一节台账(引擎 v3 + 口径拆分)
+python3 -m pytest tests/test_absence_evidence.py tests/test_due_date.py \
+    tests/test_truth_caliber.py                 # 含增补件 9 案例的真语料回归
 ```
 
 派生触发率为即席脚本(零 API,只读 `load_ocr` + `derive_due_date`),

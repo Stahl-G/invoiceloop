@@ -1,0 +1,20 @@
+{
+ "promotion_id": "PROM-0020",
+ "action": "promote",
+ "from_harness_id": "HAR-0020",
+ "from_policy_digest": "c0e90643108651715b33a0d196ade7ee28418f7a9d785a598f219c0f76182646",
+ "to_harness_id": "HAR-0021",
+ "to_policy_digest": "bed2a20912c59fd5355873448d2d0f6c5a18545c25e64404d59ddb83b776bbc4",
+ "to_schema_digest": "7efb8ad0b9aa5da2c5d7130351652bdd5d1ac215e85b124149f083ccc26d8e02",
+ "evaluation_digest": "8cb55d13e6ac35926c7a889ba9b754b890410e7a7e9a858a946d3972cc65c5e3",
+ "gate": "pareto_gated",
+ "basis": "evo_truth_replay",
+ "claim_limits": "在本 workspace 已有真值文档上:负载不升且静默错不升;仍未经未见封箱资格集(SEALED-2)评测 —— 不得声称「在未见数据上减少人工」。",
+ "sealed2_revoked": null,
+ "safety_status": "scored",
+ "approved_by": "stahl",
+ "approved_at": "2026-08-10T06:34:54Z",
+ "rationale": "接受残余:引擎 v3 与 T2 词集都是事后的;资格只能靠 SEALED-4。门内数:review load 55.67%->47.73%(delta -7.93pp 对存量路由),真静默 0->0(原口径 0->5,5 例全为 T2 口径争议单列),真值冲突 0,probe available。",
+ "rollback_harness_id": "HAR-0020",
+ "previous_promotion_digest": "df97e01899a865e33be80f3d390546857f9c21c1f1a5662b3a5671b6f3f562e9"
+}
