@@ -35,6 +35,23 @@ sealed1 / sealed2 / heldout 工作区去重后 300 份(SEALED-3 不用,它已被
   与 v2 补词同一定性:单调安全掩护得了机制,掩护不了"盲"字。
   资格只能靠 SEALED-4。
 
+### 晋升(同日;门内数,与即席台账口径不同,以门内数为准)
+
+在干净工作区 `runs/absence-v3-2026-08-10`(只含 v3 探针 run——旧 v2
+探针若混在同一 workspace,`_compute_evaluation` 的 `docs_without_probes`
+会把规则静默禁用还误报 probe 状态)走完 propose → evaluate → promote:
+
+- **`AV-seller_vat_id` 进 HAR-0019**(`PROM-0018`,署名 stahl,
+  2026-08-10T05:23:20Z)。强制门逐字节重算的数字:review load
+  55.67% → 50.47%(delta −5.2pp = 156/3000 槽出队),
+  `absent_rule_matches` 212 → 405(+193),
+  `silent_absent` 0→0,`absent_rule_truth_conflicts` 0,probe available。
+- 口径自陈:台账的 234 saves 是"规则点火"计法(缺值 + 真值空 + 页面
+  无证即计);门内 +193 是反事实重路由下的规则匹配数,156 是队列真实
+  减少。三个计数器各计各的,对外引用一律用门内数。
+- 工件:`docs/evidence/absence_v3_2026-08-10/`(policy / eval / PROM
+  三份拷贝)。
+
 ## 二、total_net 仅剩的 1 个静默:单总额口径分歧,不是词表漏词
 
 `f7b199fd711149feaf0044c8`(1998 年扫描件,圣安东尼奥西班牙裔商会会员发票):
@@ -90,8 +107,9 @@ schema 侧(步 2,待复抽预算)。
   资格只能由 SEALED-4 给。
 - 引擎 v3 测量是事后的(动机案例在 v2 台账里);`AV-total_vat` 仍是唯一
   在盲测版上通过过的规则。
-- 真值口径规则(第二、三节)**尚未被采纳**;采纳前两个字段的规则拒开,
-  9 个静默照登。
+- 真值口径规则(第二、三节)已被采纳(2026-08-10,stahl),写进 SEALED-4
+  增补件;`AV-total_net` / `AV-due_date` 的重评在那之后走,在此之前
+  两规则仍拒开,9 个静默照登。
 
 ## 复算
 

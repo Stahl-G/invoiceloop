@@ -1,0 +1,20 @@
+{
+ "promotion_id": "PROM-0018",
+ "action": "promote",
+ "from_harness_id": "HAR-0018",
+ "from_policy_digest": "5e566353852f74cebf46530a5b8447664dc2952511069441503483a819146fb2",
+ "to_harness_id": "HAR-0019",
+ "to_policy_digest": "ebaf66ef8ec9542d1dc9d5bd3d829ccab8cebae4cec2083a60b7d7b3bef90fa7",
+ "to_schema_digest": "7efb8ad0b9aa5da2c5d7130351652bdd5d1ac215e85b124149f083ccc26d8e02",
+ "evaluation_digest": "7cd232269572cb25e9f5460b928306d1c0efccd057d7b04312a8d244b7ae1029",
+ "gate": "pareto_gated",
+ "basis": "evo_truth_replay",
+ "claim_limits": "在本 workspace 已有真值文档上:负载不升且静默错不升;仍未经未见封箱资格集(SEALED-2)评测 —— 不得声称「在未见数据上减少人工」。",
+ "sealed2_revoked": null,
+ "safety_status": "scored",
+ "approved_by": "stahl",
+ "approved_at": "2026-08-10T05:23:20Z",
+ "rationale": "接受残余:引擎 v3 测量是事后的(动机案例在 v2 台账);资格只能靠 SEALED-4。dev 300 门内数:review load 55.67%->50.47%(delta -5.2pp),silent_absent 0->0,absent_rule_truth_conflicts 0,probe available。",
+ "rollback_harness_id": "HAR-0018",
+ "previous_promotion_digest": "7cc9d89151f6938557b94b62406979a6193ba2bcb0bca3fb443f7cc6781bc29c"
+}
