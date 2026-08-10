@@ -28,7 +28,8 @@
    - union digest `78066c41a4bea9fa5f5102ccd5977ae2993297ba5fbb055b04cee810e0ae438c`
    (digest = 排序后 doc_id 逐行连接的 sha256;过滤规则与暴露清单任一变化
    都会改变它们);
-3. 从 union 4,196 份用**新 drand round**(留白,执行时填)抽 100 份,
+3. 从 union 4,196 份用**新 drand round = `6363898`**(2026-08-10 承诺,
+   承诺时最新轮 6363858,本承诺先于该轮开奖)抽 100 份,
    PRNG 语境换 `sealed4-v2`(`SEALED_CONTEXTS` 相应增加,代码改动随本
    增补件之后的实施 commit 落地,先于开奖);
 4. 名单落盘 `docs/sealed4_doc_list.json`(覆盖前把旧名单改名
