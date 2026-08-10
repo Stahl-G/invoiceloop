@@ -15,6 +15,7 @@ from pathlib import Path
 from . import dws
 from .heldout import DEFAULT_SEALED_CONTEXT as _DEFAULT_SEALED_CONTEXT
 from .heldout import SEALED_CONTEXTS as _SEALED_CONTEXTS
+from .heldout import SEALED_SCOPES as _SEALED_SCOPES
 
 
 def _main() -> None:
@@ -140,6 +141,10 @@ def _main() -> None:
     p_sep.add_argument("--context", default=_DEFAULT_SEALED_CONTEXT,
                        choices=tuple(sorted(_SEALED_CONTEXTS)),
                        help=f"PRNG 语境(默认 {_DEFAULT_SEALED_CONTEXT})")
+    p_sep.add_argument("--scope", default=None,
+                       choices=tuple(sorted(_SEALED_SCOPES)),
+                       help="范围过滤器:给则从该范围子池抽(如 broadcast-pilot-v1,"
+                            "SEALED-4 增补件 A1);缺省全池")
     p_sep.add_argument("--n", type=int, default=100)
     p_see = se_sub.add_parser("extract", help="按名单跑双模式,断点续跑,预算熔断")
     p_see.add_argument("--workspace", type=Path, required=True)
@@ -344,7 +349,7 @@ def _main() -> None:
         if args.sealed_command == "plan":
             heldout.cmd_plan_sealed(args.workspace, seed_hex=args.seed,
                                     seed_source=args.seed_source, n=args.n,
-                                    context=args.context)
+                                    context=args.context, scope=args.scope)
         else:
             heldout.cmd_extract(args.workspace, budget=args.budget)
     elif args.command == "suggest":

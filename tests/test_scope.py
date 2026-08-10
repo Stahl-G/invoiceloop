@@ -42,3 +42,48 @@ def test_workspace_scope_is_json_and_domain_scoped(tmp_path):
     loaded = scope.require_workspace_scope(
         tmp_path, ["a"], "us_broadcast_ad_billing")
     assert loaded["domain"] == "us_broadcast_ad_billing"
+
+
+class TestBroadcastClassify:
+    """broadcast-pilot-v1 选择规则的合成词单测 —— 行为必须与 pilot 冻结
+    实现逐字一致(SEALED-4 增补件 A1 的名单复算锚依赖它)。"""
+
+    def test_strong_needs_callsign_and_two_term_occurrences(self):
+        out = scope.classify_broadcast_words(
+            ["KGO-TV", "Advertiser", "spot", "invoice"])
+        assert out["strength"] == "strong"
+        assert out["callsigns"] == ["KGO-TV"]
+        assert out["keyword_occurrences"] == 2
+
+    def test_weak_is_one_sided_evidence(self):
+        callsign_only = scope.classify_broadcast_words(["WABC", "invoice"])
+        assert callsign_only["strength"] == "weak"
+        terms_only = scope.classify_broadcast_words(
+            ["advertiser", "agency", "invoice"])
+        assert terms_only["strength"] == "weak"
+        # 同一术语出现两次也算两次(occurrences 不是 distinct)
+        repeated = scope.classify_broadcast_words(["spot", "spot"])
+        assert repeated["strength"] == "weak"
+
+    def test_single_term_occurrence_is_none(self):
+        out = scope.classify_broadcast_words(["spot", "invoice"])
+        assert out["strength"] == "none"
+
+    def test_callsign_pattern(self):
+        assert scope.CALLSIGN.fullmatch("KGO")
+        assert scope.CALLSIGN.fullmatch("WABC")
+        assert scope.CALLSIGN.fullmatch("KGO-TV")
+        assert scope.CALLSIGN.fullmatch("WXYZ-FM")
+        assert not scope.CALLSIGN.fullmatch("KABCD")   # 呼号主体至多 3 字母
+        assert not scope.CALLSIGN.fullmatch("1ABC")
+        assert not scope.CALLSIGN.fullmatch("KGO-TV2")
+
+    def test_matching_is_case_insensitive(self):
+        out = scope.classify_broadcast_words(["kgo-tv", "ADVERTISER", "Spot"])
+        assert out["strength"] == "strong"
+
+    def test_terms_match_as_substrings(self):
+        """冻结实现就是子串计数(lower.count):spotlight 里的 spot 照算。
+        不是理想分词,但改它 = 名单不可复算,先钉行为。"""
+        out = scope.classify_broadcast_words(["spotlight", "spot"])
+        assert out["keyword_occurrences"] == 2

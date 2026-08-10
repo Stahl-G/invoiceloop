@@ -6,18 +6,70 @@ harness?".  They are deliberately separate control-plane concepts.
 
 Scope is an explicit, human-approved batch claim.  It is not inferred by a
 model and it never changes a slot's decision buttons or applicability.
+
+This module also owns the broadcast-pilot-v1 **selection rule** (FCC-style
+callsign + broadcast terms over word-level OCR).  The rule is deterministic
+and zero-API; it lives in the package (not in scripts) because the sealed
+sampler (heldout.py) filters its pool with it — SEALED-4 增补件 A1。
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 SCOPE_VERSION = "batch-scope-v1"
 BROADCAST_DOMAIN = "us_broadcast_ad_billing"
 SCOPE_FILENAME = "domain_scope.json"
+
+# ---------------------------------------------------------------- 广播范围规则
+#: broadcast-pilot-v1 的选择规则(docs/BROADCAST_PILOT_SCOPE_2026-08-09.json
+#: 与 SEALED-4 增补件 A1 共用同一份实现;改过 = 名单不可复算)。
+BROADCAST_SCOPE_PROTOCOL = "broadcast-pilot-v1"
+CALLSIGN = re.compile(r"^[KW][A-Z]{2,3}(-(TV|FM|AM|DT|CD|LD))?$")
+BROADCAST_TERMS = (
+    "advertiser", "broadcast", "station", "spot", "airtime", "commercial",
+    "agency", "media", "network", "radio", "television", "political",
+)
+
+
+def classify_broadcast_words(words: Sequence[str]) -> dict[str, Any]:
+    """FCC 呼号 + 广播术语 → strong / weak / none(逐字自 pilot 冻结实现)。
+
+    strong = 有呼号且术语出现 ≥ 2 次;weak = 只有一侧证据(有呼号但术语
+    不足两次,或术语够但没有呼号);none = 两侧都没有。单个术语出现一次
+    仍是 none —— 不因此获得广播政策授权。
+    """
+    upper = [str(word).upper() for word in words]
+    lower = " ".join(str(word) for word in words).lower()
+    callsigns = sorted({word for word in upper if CALLSIGN.fullmatch(word)})
+    keyword_hits = sorted({term for term in BROADCAST_TERMS if term in lower})
+    keyword_occurrences = sum(lower.count(term) for term in BROADCAST_TERMS)
+    strong = bool(callsigns) and keyword_occurrences >= 2
+    weak = ((bool(callsigns) and keyword_occurrences < 2)
+            or (not callsigns and keyword_occurrences >= 2))
+    return {
+        "callsigns": callsigns,
+        "keyword_hits": keyword_hits,
+        "keyword_occurrences": keyword_occurrences,
+        "strength": "strong" if strong else "weak" if weak else "none",
+    }
+
+
+def classify_broadcast_ocr(path: Path) -> dict[str, Any]:
+    """读一份词级 OCR JSON,返回 classify_broadcast_words 的结果。"""
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    words = [
+        str(word.get("value", ""))
+        for page in payload.get("pages", [])
+        for block in page.get("blocks", [])
+        for line in block.get("lines", [])
+        for word in line.get("words", [])
+    ]
+    return classify_broadcast_words(words)
 
 
 def canonical_doc_ids(doc_ids: Sequence[str]) -> list[str]:

@@ -11,55 +11,25 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import re
 from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from invoiceloop.scope import BROADCAST_DOMAIN, doc_ids_digest
-
-CALLSIGN = re.compile(r"^[KW][A-Z]{2,3}(-(TV|FM|AM|DT|CD|LD))?$")
-BROADCAST_TERMS = (
-    "advertiser", "broadcast", "station", "spot", "airtime", "commercial",
-    "agency", "media", "network", "radio", "television", "political",
+from invoiceloop.scope import (
+    BROADCAST_DOMAIN,
+    classify_broadcast_ocr,
+    doc_ids_digest,
 )
+
 DEFAULT_WORKSPACES = (
     "sealed1-workspace", "sealed2-workspace", "heldout-workspace",
     "sealed3-workspace",
 )
 
-
-def _words(path: Path) -> list[str]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    return [
-        str(word.get("value", ""))
-        for page in payload.get("pages", [])
-        for block in page.get("blocks", [])
-        for line in block.get("lines", [])
-        for word in line.get("words", [])
-    ]
-
-
-def classify_evidence(ocr_path: Path) -> dict[str, Any]:
-    words = _words(ocr_path)
-    upper = [word.upper() for word in words]
-    lower = " ".join(words).lower()
-    callsigns = sorted({word for word in upper if CALLSIGN.fullmatch(word)})
-    keyword_hits = sorted({term for term in BROADCAST_TERMS if term in lower})
-    keyword_occurrences = sum(lower.count(term) for term in BROADCAST_TERMS)
-    strong = bool(callsigns) and keyword_occurrences >= 2
-    # Weak means the document enters the broadcast candidate union through
-    # exactly one strong signal: a callsign without two keyword occurrences,
-    # or two keyword occurrences without a callsign.  A single keyword alone
-    # remains OOD rather than acquiring broadcast policy authority.
-    weak = ((bool(callsigns) and keyword_occurrences < 2)
-            or (not callsigns and keyword_occurrences >= 2))
-    return {
-        "callsigns": callsigns,
-        "keyword_hits": keyword_hits,
-        "keyword_occurrences": keyword_occurrences,
-        "strength": "strong" if strong else "weak" if weak else "none",
-    }
+#: 选择规则的实现已迁进 invoiceloop.scope(sealed 抽样也要用,SEALED-4
+#: 增补件 A1);这里只留兼容别名,行为逐字不变。weak 的语义注释也随实现
+#: 迁走:weak = 只有一侧证据;单个术语出现一次仍是 none。
+classify_evidence = classify_broadcast_ocr
 
 
 def dual_mode_docs(run_root: Path, workspace_names: list[str]) -> set[str]:

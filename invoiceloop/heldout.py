@@ -21,14 +21,17 @@ pipeline runs unchanged.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sys
 import time
 from functools import lru_cache
 from pathlib import Path
+from typing import Sequence
 
 from .ocr import derisk_root
+from .scope import BROADCAST_SCOPE_PROTOCOL, classify_broadcast_ocr
 
 HELDOUT_N = 100
 POOL_MIN_FIELDS = 4  # 与 run_batch.sample 同门槛:标注够多才值得一次调用
@@ -120,6 +123,7 @@ SEALED_CONTEXTS = {
     "sealed2-v1": "invoiceloop-sealed2-v1",
     "sealed3-v1": "invoiceloop-sealed3-v1",
     "sealed4-v1": "invoiceloop-sealed4-v1",
+    "sealed4-v2": "invoiceloop-sealed4-v2",
 }
 DEFAULT_SEALED_CONTEXT = "sealed4-v1"
 
@@ -134,15 +138,61 @@ def sealed_pool() -> tuple[str, ...]:
     return tuple(d for d in heldout_pool() if d not in exposed)
 
 
+#: sealed 抽样允许的范围过滤器。None = 全池;其余值见 sealed_scope_pool。
+SEALED_SCOPES = (BROADCAST_SCOPE_PROTOCOL,)
+
+
+def doc_ids_line_digest(doc_ids: Sequence[str]) -> str:
+    """名单复算锚:排序后 doc_id 逐行连接的 sha256(SEALED-4 增补件 A1
+    口径;与 scope.doc_ids_digest 的 JSON canonical 形式不同,别混用)。"""
+    return hashlib.sha256(
+        "\n".join(sorted(str(d) for d in doc_ids)).encode("utf-8")).hexdigest()
+
+
+@lru_cache(maxsize=1)
+def sealed_scope_pool(scope: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """封箱合格池按范围规则过滤出的子池,返回 (strong, weak),均排序。
+
+    broadcast-pilot-v1:只读语料词级 OCR(零 API),与 pilot 冻结实现同函数
+    (invoiceloop.scope);OCR 缺失按 none 处理,不进子池。union = strong+weak。
+    """
+    if scope != BROADCAST_SCOPE_PROTOCOL:
+        raise ValueError(f"未知封箱范围:{scope};允许 {sorted(SEALED_SCOPES)}")
+    ocr_root = derisk_root() / "data" / "docile" / "ocr"
+    strong: list[str] = []
+    weak: list[str] = []
+    for doc in sealed_pool():
+        path = ocr_root / f"{doc}.json"
+        strength = (classify_broadcast_ocr(path)["strength"]
+                    if path.is_file() else "none")
+        if strength == "strong":
+            strong.append(doc)
+        elif strength == "weak":
+            weak.append(doc)
+    return tuple(sorted(strong)), tuple(sorted(weak))
+
+
+def _sealed_sample_pool(scope: str | None) -> tuple[str, ...]:
+    if scope is None:
+        return tuple(sorted(sealed_pool()))
+    strong, weak = sealed_scope_pool(scope)
+    return tuple(sorted(strong + weak))
+
+
 def sealed_list(seed_hex: str, n: int = HELDOUT_N, *,
-                context: str = DEFAULT_SEALED_CONTEXT) -> list[str]:
+                context: str = DEFAULT_SEALED_CONTEXT,
+                scope: str | None = None) -> list[str]:
     """种子随机抽样(高级裁决一):种子来自代码冻结后才存在的外部随机源
-    (drand beacon 指定轮次),开发期间名单不可预知。确定性:同种子同名单。"""
+    (drand beacon 指定轮次),开发期间名单不可预知。确定性:同种子同名单。
+
+    scope 非空时从该范围的子池抽(SEALED-4 增补件 A1:广播 union 子池)。"""
     import random
 
     if context not in SEALED_CONTEXTS:
         raise ValueError(f"未知封箱语境:{context};允许 {sorted(SEALED_CONTEXTS)}")
-    pool = sorted(sealed_pool())
+    if scope is not None and scope not in SEALED_SCOPES:
+        raise ValueError(f"未知封箱范围:{scope};允许 {sorted(SEALED_SCOPES)}")
+    pool = list(_sealed_sample_pool(scope))
     if len(pool) < n:
         raise RuntimeError(f"封箱合格池只有 {len(pool)} 份,不足 {n}")
     prefix = SEALED_CONTEXTS[context]
@@ -151,10 +201,11 @@ def sealed_list(seed_hex: str, n: int = HELDOUT_N, *,
 
 def cmd_plan_sealed(workspace: Path, *, seed_hex: str, seed_source: str,
                     n: int = HELDOUT_N,
-                    context: str = DEFAULT_SEALED_CONTEXT) -> list[str]:
+                    context: str = DEFAULT_SEALED_CONTEXT,
+                    scope: str | None = None) -> list[str]:
     """封箱名单落盘。seed_source 记录随机源承诺(协议文档 + 轮次)。"""
     workspace = prepare_workspace(workspace)
-    ids = sealed_list(seed_hex, n, context=context)
+    ids = sealed_list(seed_hex, n, context=context, scope=scope)
     payload = {
         "n": n,
         "pool_size": len(sealed_pool()),
@@ -167,10 +218,26 @@ def cmd_plan_sealed(workspace: Path, *, seed_hex: str, seed_source: str,
         "seed_source": seed_source,
         "doc_ids": ids,
     }
+    if scope is not None:
+        strong, weak = sealed_scope_pool(scope)
+        union = sorted(strong + weak)
+        payload["scope"] = scope
+        payload["scope_pool"] = {
+            "strong_n": len(strong),
+            "weak_n": len(weak),
+            "union_n": len(union),
+            "strong_sha256": doc_ids_line_digest(strong),
+            "weak_sha256": doc_ids_line_digest(weak),
+            "union_sha256": doc_ids_line_digest(union),
+        }
     (workspace / "doc_list.json").write_text(
         json.dumps(payload, indent=1) + "\n", encoding="utf-8")
     print(f"pool={payload['pool_size']}  sealed n={n}  "
           f"context={context}  seed={seed_hex[:16]}…")
+    if scope is not None:
+        sp = payload["scope_pool"]
+        print(f"scope={scope}  子池 strong={sp['strong_n']} weak={sp['weak_n']} "
+              f"union={sp['union_n']}  union_sha256={sp['union_sha256'][:16]}…")
     print(f"名单已落盘:{workspace / 'doc_list.json'} —— 先提交,再调用")
     return ids
 

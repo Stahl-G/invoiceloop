@@ -174,3 +174,63 @@ class TestSealedList:
         assert a == b
         c = heldout.sealed_list(sealed1["seed"], context="sealed2-v1")
         assert c != a, "换语境必须换名单"
+
+
+def test_line_digest_is_order_independent_line_join():
+    """A1 复算锚口径:排序后逐行连接的 sha256(与 scope.doc_ids_digest 的
+    JSON canonical 是两回事,别混用)。"""
+    import hashlib as _h
+
+    expect = _h.sha256("a\nb".encode("utf-8")).hexdigest()
+    assert heldout.doc_ids_line_digest(["b", "a"]) == expect
+    assert heldout.doc_ids_line_digest(["a", "b"]) == expect
+
+
+def test_unknown_scope_rejected_before_touching_corpus():
+    with pytest.raises(ValueError, match="未知封箱范围"):
+        heldout.sealed_list("ab" * 32, context="sealed4-v2", scope="golf")
+    with pytest.raises(ValueError, match="未知封箱范围"):
+        heldout.sealed_scope_pool("golf")
+
+
+@pytest.mark.skipif(not corpus_available(), reason="校准档案不在")
+class TestSealedBroadcastScope:
+    """SEALED-4 增补件 A1:迁移进包的分类器重算 4,931 池,必须与冻结
+    的子池计数和 digest 逐字节一致 —— 任一不符 = 名单不可复算。"""
+
+    def test_subpool_matches_frozen_amendment(self):
+        strong, weak = heldout.sealed_scope_pool("broadcast-pilot-v1")
+        union = sorted(strong + weak)
+        assert (len(strong), len(weak), len(union)) == (2725, 1471, 4196)
+        assert heldout.doc_ids_line_digest(strong) == (
+            "d1e79686fe67f389cc08f9deba200aaa21f8c661445d5de738af65bb1f926489")
+        assert heldout.doc_ids_line_digest(weak) == (
+            "72066c8be5e082abd31093a1ca8c60cffdbbf39e449cd575498f440917bbcb16")
+        assert heldout.doc_ids_line_digest(union) == (
+            "78066c41a4bea9fa5f5102ccd5977ae2993297ba5fbb055b04cee810e0ae438c")
+
+    def test_scope_sampling_deterministic_within_subpool(self):
+        strong, weak = heldout.sealed_scope_pool("broadcast-pilot-v1")
+        union = set(strong) | set(weak)
+        a = heldout.sealed_list("ef" * 32, context="sealed4-v2",
+                                scope="broadcast-pilot-v1")
+        b = heldout.sealed_list("ef" * 32, context="sealed4-v2",
+                                scope="broadcast-pilot-v1")
+        assert a == b and len(a) == 100 and len(set(a)) == 100
+        assert set(a) <= union, "名单必须落在广播 union 子池内"
+        c = heldout.sealed_list("ef" * 32, context="sealed4-v1",
+                                scope="broadcast-pilot-v1")
+        assert c != a, "换语境必须换名单"
+
+    def test_plan_sealed_payload_carries_scope_anchor(self, tmp_path):
+        heldout.cmd_plan_sealed(tmp_path / "ws", seed_hex="ef" * 32,
+                                seed_source="test", context="sealed4-v2",
+                                scope="broadcast-pilot-v1")
+        payload = json.loads((tmp_path / "ws" / "doc_list.json").read_text())
+        assert payload["scope"] == "broadcast-pilot-v1"
+        assert payload["context"] == "sealed4-v2"
+        sp = payload["scope_pool"]
+        assert (sp["strong_n"], sp["weak_n"], sp["union_n"]) == (2725, 1471, 4196)
+        assert sp["union_sha256"] == (
+            "78066c41a4bea9fa5f5102ccd5977ae2993297ba5fbb055b04cee810e0ae438c")
+        assert len(payload["doc_ids"]) == 100
