@@ -30,7 +30,9 @@ AUTO_ROUTES = ("auto_accept", "auto_absent")
 SAFETY_NOTE_SCORED = (
     "静默错按 DocILE 真值计(真值非空即计 silent_absent,含 $0.00 口径边界;"
     "与 docs/LOOP_GENERALIZATION_2026-08-06.md 同函数)。"
-    "对外叙述应拆报真漏标 vs 口径争议,门内不等式不另开旁路。"
+    "silent_absent 拆两列:真静默(silent_absent_true,晋升门只看它)与"
+    "口径争议(caliber_disputes,truth-caliber-v1,SEALED-4 增补件 A3);"
+    "对外叙述两列都报,门内不等式不另开旁路。"
 )
 
 SAFETY_NOTE_UNSCORED = (
@@ -121,6 +123,11 @@ def empty_counts() -> dict[str, int]:
         "silent_absent": 0,
         "value_hits": 0,
         "silent_wrong": 0,
+        # 真值口径拆分(SEALED-4 增补件 A3,truth-caliber-v1):
+        # silent_absent 是原口径(真值非空即计);caliber_disputes 是其中
+        # 被 T1/T2 重分类的部分;silent_absent_true 是差值,晋升门只看它。
+        "caliber_disputes": 0,
+        "silent_absent_true": 0,
     }
 
 
@@ -144,8 +151,14 @@ def score_routes(
     *,
     truth_of: Callable[[str], Mapping[str, str]] | None = None,
     understand_of: Callable[[str], Mapping[str, Any] | None] | None = None,
+    caliber_of: Callable[[str, str, Mapping[str, str]], str | None] | None = None,
 ) -> dict[str, int]:
-    """对一组路由行累计静默错。routes 项需含 doc_id/field/route。"""
+    """对一组路由行累计静默错。routes 项需含 doc_id/field/route。
+
+    caliber_of(doc_id, field, truth_map) -> "T1"/"T2(i)"/"T2(ii)"/None:
+    给出时把属口径争议的 silent_absent 拆进 caliber_disputes,
+    silent_absent_true 只计真静默(增补件 A3;不给则全计真静默)。
+    """
     truth_of = truth_of or truth
     understand_of = understand_of or (lambda _doc: None)
     counts = empty_counts()
@@ -161,6 +174,12 @@ def score_routes(
             understand_value=umap.get(field),
         )
         accumulate_slot(counts, flags)
+        if flags["silent_absent"]:
+            dispute = caliber_of(doc_id, field, tmap) if caliber_of else None
+            if dispute:
+                counts["caliber_disputes"] += 1
+            else:
+                counts["silent_absent_true"] += 1
     return counts
 
 

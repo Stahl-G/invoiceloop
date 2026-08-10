@@ -126,11 +126,14 @@ def resolve_cohort(mine_report: dict[str, Any], active_policy: dict[str, Any],
        两边都在守规矩,中间没人接上 —— 实测 2 提案 / 2 阻断。
        ID 由内容推定而不是计数器:同一条 cohort 每次都得同一个 ID,
        否则重放与重跑对不上。
-    2. **kind。** `absent_expected` 强制挂 QA 探针(缺席是否仍成立要持续
-       观测),`auto_accept` 不挂。这是个安全选择,不能让模型来做 ——
+    2. **kind。** 缺席规则强制挂 QA 探针(缺席是否仍成立要持续观测),
+       `auto_accept` 不挂。这是个安全选择,不能让模型来做 ——
        所以由确定性挖掘报告推定:字段落在 `absence_candidates` 里就是缺席
-       规则。缺席是**字段级**属性,与 TIER 无关,所以 tier 要剥掉
-       (`_ABSENT_KEYS` 只认 id+field,带 tier 会被 lint 拒)。
+       规则。缺席是**字段级**属性,与 TIER 无关,所以 tier 要剥掉。
+       字段级缺席当前只有`absent_evidenced`(页面证据缺席)一条路:
+       `f6dad7e` 之后全局 `absent_expected` 只剩冻结重放,新规则必须带
+       doc_class,而挖掘报告给不出类条件授权。`absent_evidenced` 的 id 由
+       `improve.propose` 分配(AV-{field}),这里不写 —— 写了会被拒。
     3. **只能在挖掘报告里选。** 否则「确定性挖掘 → 模型判断」这条链断了:
        模型可以提一条没有任何复核事件支撑的规则,系统照样给它跑反事实、
        照样呈到人面前签字。
@@ -147,23 +150,25 @@ def resolve_cohort(mine_report: dict[str, Any], active_policy: dict[str, Any],
                    for c in mine_report.get(section) or []}
 
     # 缺席优先:同一批事件既会进 cohorts 也会进 absence_candidates,
-    # 而两者中 absent_expected 是**更安全**的那条(带 QA 探针)。
+    # 而两者中缺席规则是**更安全**的那条(带 QA 探针)。
     if field in absent_fields:
-        kind = "absent_expected"
-        cohort = {"id": f"AE-{field}", "field": field}
+        kind = "absent_evidenced"
+        cohort = {"field": field}
+        expected_id = f"AV-{field}"
     elif (field, tier) in mined_pairs:
         kind = "auto_accept"
         cohort = {"id": f"AA-{field}-{tier}", "field": field, "tier": tier}
+        expected_id = cohort["id"]
     else:
         raise ValueError(
             f"挖掘报告里没有 field={field!r} tier={tier!r} 这条 cohort —— "
             f"模型只能在确定性挖掘出来的 cohort 中选,不能凭空造一条")
 
-    section = ("absent_expected_cohorts" if kind == "absent_expected"
+    section = ("absent_evidenced_cohorts" if kind == "absent_evidenced"
                else "auto_accept_cohorts")
-    if cohort["id"] in {c.get("id") for c in active_policy.get(section) or []}:
+    if expected_id in {c.get("id") for c in active_policy.get(section) or []}:
         raise ValueError(
-            f"{cohort['id']} 已在生效政策里 —— 再提一次不是改进,是空转;"
+            f"{expected_id} 已在生效政策里 —— 再提一次不是改进,是空转;"
             f"lint 对既有 id 是放行,所以这里要自己拦")
     return cohort, kind
 
@@ -180,8 +185,11 @@ def find_existing_candidate(workspace: Path, active: dict[str, Any],
     匹配的话,某个碰巧也带了这个 id、却还改了别的东西的候选会被误当成它。
     `harness_id` / `version` 是出生时写进策略的,比较时要剔掉。
     """
-    section = ("absent_expected_cohorts" if kind == "absent_expected"
+    section = ("absent_evidenced_cohorts" if kind == "absent_evidenced"
                else "auto_accept_cohorts")
+    if kind == "absent_evidenced":
+        # 与 improve.propose 分配的同形:id 在候选政策里已补上
+        cohort = {"id": f"AV-{cohort['field']}", "field": cohort["field"]}
     parent = active.get("policy") or {}
     expected = {k: v for k, v in
                 {**parent, section: (parent.get(section) or []) + [cohort]}.items()

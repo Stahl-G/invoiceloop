@@ -36,11 +36,15 @@ def pin_corpus(monkeypatch, root) -> None:
 
 @pytest.fixture
 def clear_ocr_caches():
+    from invoiceloop import truth_caliber
+
     ocr.load_ocr.cache_clear()
     ocr.doc_tokens.cache_clear()
+    truth_caliber.page_tokens.cache_clear()
     yield
     ocr.load_ocr.cache_clear()
     ocr.doc_tokens.cache_clear()
+    truth_caliber.page_tokens.cache_clear()
 
 
 def _word(value, x0, y0, x1, y1):

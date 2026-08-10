@@ -616,6 +616,7 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
     promote Gate 2 使用;无标注则 safety_status=unscored。
     """
     from . import absence_evidence as _absence
+    from . import truth_caliber as _caliber
     from .harness import load_active
     from .routing import (
         apply_absent_expected,
@@ -653,8 +654,10 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
     understand_by_doc: dict[str, dict | None] = {}
     absent_intrinsic = {
         "baseline": {"matches": 0, "truth_conflicts": 0,
+                     "caliber_disputes": 0,
                      "missing_truth_docs": set()},
         "candidate": {"matches": 0, "truth_conflicts": 0,
+                      "caliber_disputes": 0,
                       "missing_truth_docs": set()},
     }
     evidenced_rules = cand_policy.get("absent_evidenced_cohorts") or []
@@ -747,8 +750,15 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
                     bucket["matches"] += 1
                     if not annotation_record_available(doc):
                         bucket["missing_truth_docs"].add(doc)
-                    elif truth(doc).get(fact["field"]) is not None:
-                        bucket["truth_conflicts"] += 1
+                    else:
+                        truth_map = truth(doc)
+                        if truth_map.get(fact["field"]) is not None:
+                            # T1/T2 口径争议不算真值冲突,单列(增补件 A3)
+                            if _caliber.caliber_dispute(
+                                    doc, fact["field"], truth_map):
+                                bucket["caliber_disputes"] += 1
+                            else:
+                                bucket["truth_conflicts"] += 1
         routing_path = run_dir / "routing_report.json"
         if routing_path.exists():
             stored = json.loads(routing_path.read_text(encoding="utf-8"))
@@ -801,10 +811,12 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
         base_counts = score_routes(
             base_route_rows,
             understand_of=lambda d: understand_by_doc.get(d),
+            caliber_of=_caliber.caliber_dispute,
         )
         cand_counts = score_routes(
             cand_route_rows,
             understand_of=lambda d: understand_by_doc.get(d),
+            caliber_of=_caliber.caliber_dispute,
         )
         safety_note = SAFETY_NOTE_SCORED
     else:
@@ -861,10 +873,25 @@ def _compute_evaluation(workspace: Path, candidate_id: str) -> dict:
             if absent_truth_status == "scored" else None),
         "absent_rule_unscored_docs": sorted(
             candidate_intrinsic["missing_truth_docs"]),
+        "absent_rule_caliber_disputes_baseline": (
+            absent_intrinsic["baseline"]["caliber_disputes"]
+            if not absent_intrinsic["baseline"]["missing_truth_docs"] else None),
+        "absent_rule_caliber_disputes_candidate": (
+            candidate_intrinsic["caliber_disputes"]
+            if absent_truth_status == "scored" else None),
+        "truth_caliber_version": _caliber.TRUTH_CALIBER_VERSION,
         "silent_absent_baseline":
             base_counts["silent_absent"] if scored else None,
         "silent_absent_candidate":
             cand_counts["silent_absent"] if scored else None,
+        "caliber_disputes_baseline":
+            base_counts["caliber_disputes"] if scored else None,
+        "caliber_disputes_candidate":
+            cand_counts["caliber_disputes"] if scored else None,
+        "silent_absent_true_baseline":
+            base_counts["silent_absent_true"] if scored else None,
+        "silent_absent_true_candidate":
+            cand_counts["silent_absent_true"] if scored else None,
         "silent_wrong_baseline":
             base_counts["silent_wrong"] if scored else None,
         "silent_wrong_candidate":
@@ -952,6 +979,7 @@ def _evaluate_reextract(workspace: Path, candidate_id: str, *,
         SAFETY_NOTE_SCORED, SAFETY_NOTE_UNSCORED,
         annotations_available, empty_counts, score_routes,
     )
+    from . import truth_caliber as _caliber
 
     workspace = Path(workspace)
     active = load_active(workspace)
@@ -1073,9 +1101,11 @@ def _evaluate_reextract(workspace: Path, candidate_id: str, *,
     scored = annotations_available(sample_ids)
     if scored:
         base_counts = score_routes(
-            base_rows, understand_of=lambda d: old_understand.get(d))
+            base_rows, understand_of=lambda d: old_understand.get(d),
+            caliber_of=_caliber.caliber_dispute)
         cand_counts = score_routes(
-            cand_rows, understand_of=lambda d: understand_by_doc.get(d))
+            cand_rows, understand_of=lambda d: understand_by_doc.get(d),
+            caliber_of=_caliber.caliber_dispute)
         safety_note = SAFETY_NOTE_SCORED
     else:
         base_counts = empty_counts()
@@ -1116,6 +1146,15 @@ def _evaluate_reextract(workspace: Path, candidate_id: str, *,
             base_counts["silent_absent"] if scored else None,
         "silent_absent_candidate":
             cand_counts["silent_absent"] if scored else None,
+        "caliber_disputes_baseline":
+            base_counts["caliber_disputes"] if scored else None,
+        "caliber_disputes_candidate":
+            cand_counts["caliber_disputes"] if scored else None,
+        "silent_absent_true_baseline":
+            base_counts["silent_absent_true"] if scored else None,
+        "silent_absent_true_candidate":
+            cand_counts["silent_absent_true"] if scored else None,
+        "truth_caliber_version": _caliber.TRUTH_CALIBER_VERSION,
         "silent_wrong_baseline":
             base_counts["silent_wrong"] if scored else None,
         "silent_wrong_candidate":
@@ -1290,13 +1329,18 @@ def gate_verdict(evaluation: dict, *, sealed2_qualified: bool = False) -> dict:
                 f"{evaluation['absent_rule_truth_conflicts_candidate']} 个"
                 "真值实际存在槽;探针抽中不能掩盖冲突")
     if scored:
-        sa_b = evaluation["silent_absent_baseline"]
-        sa_c = evaluation["silent_absent_candidate"]
+        # P1 只看真静默列(增补件 A3):口径争议单列,不进不等式。
+        # 旧 eval 没有 _true 键时回退原口径,保证纯函数对两种输入都成立。
+        sa_b = evaluation.get("silent_absent_true_baseline",
+                              evaluation["silent_absent_baseline"])
+        sa_c = evaluation.get("silent_absent_true_candidate",
+                              evaluation["silent_absent_candidate"])
         sw_b = evaluation["silent_wrong_baseline"]
         sw_c = evaluation["silent_wrong_candidate"]
         if sa_c > sa_b:
             refusals.append(
-                f"Gate 2 拒绝:silent_absent {sa_b} → {sa_c}(上升不许晋升)")
+                f"Gate 2 拒绝:真静默 silent_absent {sa_b} → {sa_c}"
+                "(上升不许晋升;口径争议已按 truth-caliber-v1 单列)")
         if sw_c > sw_b:
             refusals.append(
                 f"Gate 2 拒绝:silent_wrong {sw_b} → {sw_c}(上升不许晋升)")

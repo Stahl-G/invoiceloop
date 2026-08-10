@@ -33,7 +33,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from invoiceloop import absence_evidence, doctype  # noqa: E402
+from invoiceloop import absence_evidence, doctype, truth_caliber  # noqa: E402
 from invoiceloop.safety_metrics import (  # noqa: E402
     annotation_record_available,
     truth,
@@ -74,6 +74,10 @@ def collect(workspaces: list[Path], promoted: set[tuple[str, str]]):
     stats = defaultdict(lambda: {
         "dws_missing": 0, "held": 0, "saves": 0, "silent": 0, "unscored": 0,
         "marginal_saves": 0, "marginal_silent": 0, "silent_docs": [],
+        # 真值口径拆分(SEALED-4 增补件 A3,truth-caliber-v1):
+        # silent = true_silent + caliber;晋升判定只看 true_silent。
+        "true_silent": 0, "true_silent_docs": [],
+        "caliber": 0, "caliber_docs": [],
     })
     by_class = defaultdict(lambda: {"saves": 0, "silent": 0})
     totals = {"docs": 0, "no_ocr": 0}
@@ -116,6 +120,14 @@ def collect(workspaces: list[Path], promoted: set[tuple[str, str]]):
                     by_class[(doc_class, field)]["silent"] += 1
                     if not covered:
                         cell["marginal_silent"] += 1
+                    # T1/T2 口径争议不算真静默(增补件 A3;单列照登不归零)
+                    dispute = truth_caliber.caliber_dispute(doc_id, field, tmap)
+                    if dispute:
+                        cell["caliber"] += 1
+                        cell["caliber_docs"].append(f"{doc_id}({dispute})")
+                    else:
+                        cell["true_silent"] += 1
+                        cell["true_silent_docs"].append(doc_id)
                 else:
                     cell["saves"] += 1
                     by_class[(doc_class, field)]["saves"] += 1
@@ -134,35 +146,45 @@ def report(stats, by_class, totals, promoted) -> None:
     print("held = 页面印着标签,缺席不成立,留给人;"
           "saves = 无标签且真值也没有;silent = 无标签但真值**有**(静默吞掉);"
           "unscored = 无标注记录,算不出来。")
+    print("silent 拆两列(truth-caliber-v1,增补件 A3):caliber = T1/T2 口径争议,"
+          "true = 真静默;晋升判定只看 true。\n")
     print("marginal = 已晋升的 16 条类别规则够不到的那部分。\n")
     print(f"{'field':<18}{'缺值':>7}{'held':>7}{'saves':>7}{'silent':>8}"
-          f"{'unscored':>10}{'marg.saves':>12}{'marg.silent':>13}")
+          f"{'caliber':>9}{'true':>6}{'unscored':>10}{'marg.saves':>12}"
+          f"{'marg.silent':>13}")
     for field in fields:
         v = stats[field]
         print(f"{field:<18}{v['dws_missing']:>7}{v['held']:>7}{v['saves']:>7}"
-              f"{v['silent']:>8}{v['unscored']:>10}"
+              f"{v['silent']:>8}{v['caliber']:>9}{v['true_silent']:>6}"
+              f"{v['unscored']:>10}"
               f"{v['marginal_saves']:>12}{v['marginal_silent']:>13}")
 
-    print("\n## 逐条候选判定(与类别规则同一条线:silent=0、unscored=0、saves≥3)\n")
+    print("\n## 逐条候选判定(口径规则后:真静默=0、unscored=0、saves≥3)\n")
     safe, risky = [], []
     for field in fields:
         v = stats[field]
         if not v["dws_missing"]:
             continue
-        (safe if v["silent"] == 0 and v["unscored"] == 0 and v["saves"] >= 3
+        (safe if v["true_silent"] == 0 and v["unscored"] == 0
+         and v["saves"] >= 3
          else risky).append((field, v))
     for field, v in safe:
+        calib = ""
+        if v["caliber"]:
+            shown = "、".join(v["caliber_docs"][:4])
+            more = f" 等 {v['caliber']} 份" if v["caliber"] > 4 else ""
+            calib = f";含口径争议 {v['caliber']} 槽:{shown}{more}"
         print(f"  AV-{field:<20} 省 {v['saves']:>4} 槽,"
-              f"其中 {v['marginal_saves']} 是类别规则够不到的")
+              f"其中 {v['marginal_saves']} 是类别规则够不到的{calib}")
     if not safe:
         print("  (无)")
     print(f"\n## 不许开的:{len(risky)} 条\n")
     for field, v in risky:
-        docs = "、".join(v["silent_docs"][:3])
-        more = f" 等 {v['silent']} 份" if v["silent"] > 3 else ""
+        docs = "、".join(v["true_silent_docs"][:3])
+        more = f" 等 {v['true_silent']} 份" if v["true_silent"] > 3 else ""
         why = []
-        if v["silent"]:
-            why.append(f"吞掉 {v['silent']} 个真有值的槽:{docs}{more}")
+        if v["true_silent"]:
+            why.append(f"吞掉 {v['true_silent']} 个真有值的槽:{docs}{more}")
         if v["unscored"]:
             why.append(f"{v['unscored']} 槽无标注记录,算不出来")
         if v["saves"] < 3:
@@ -188,8 +210,10 @@ def report(stats, by_class, totals, promoted) -> None:
     print("\n三条限定,不许省略:")
     print("- **这是开发集上的数字。** 它决定值不值得提这条候选,"
           "不是未见集上的保证(SEALED-4 尚未抽取)。")
-    print("- 词表冻结于 commit da5337e,**先于本表**。加词只会减少放行、"
-          "永远不造静默错;看过本表之后删词就是拟合。")
+    print("- 词表当前引擎 absence-evidence-v3,机制与词表都**先于本表** commit。"
+          "加词只会减少放行、永远不造静默错;看过本表之后删词/窄化就是拟合。")
+    print("- 口径争议(truth-caliber-v1)单列照登,不是零 —— 它不计真静默,"
+          "但每一例都可复算(T1 金额相等 / T2 词窗命中,增补件 A3 逐条列明)。")
     print("- `unscored` 是「算不出来」,不是零 —— "
           "`improve.gate_verdict` 会在 QA 抽检之前因此拒掉候选。")
 

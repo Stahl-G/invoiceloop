@@ -265,12 +265,16 @@ class TestProposalToCohortOnARealWorkspace:
 
     def test_absence_pattern_becomes_absent_expected_with_its_qa_probe(
             self, ws, monkeypatch):
-        """缺席模式必须走 `absent_expected`,不能当成 auto_accept 放行。
+        """缺席模式必须走缺席规则(带 QA 探针),不能当成 auto_accept 放行。
 
-        两者安全性不同:`absent_expected` 强制挂 QA 探针(缺席是否仍成立要
+        两者安全性不同:缺席规则强制挂 QA 探针(缺席是否仍成立要
         持续观测),`auto_accept` 不挂。让模型选 kind 等于把这个安全选择交给
         模型 —— 所以 kind 由 Python 从确定性挖掘报告推定:字段出现在
         `absence_candidates` 里就是缺席规则。
+
+        字段级缺席走 `absent_evidenced`(页面证据缺席):`f6dad7e` 之后
+        全局 `absent_expected` 只剩冻结重放,新规则要 doc_class,而挖掘
+        报告给不出类条件授权。id 由 `improve.propose` 分配(AV-{field})。
         """
         monkeypatch.setenv("INVOICELOOP_NO_DOTENV", "1")
         self._mine_report(ws, absence=["total_vat"])
@@ -279,12 +283,12 @@ class TestProposalToCohortOnARealWorkspace:
 
         entry = report["counterfactual"][0]
         assert entry["blocking"] is False, entry.get("blocking_reason")
-        assert entry["kind"] == "absent_expected"
+        assert entry["kind"] == "absent_evidenced"
         # 缺席 cohort 是字段级规则,带 tier 会被 lint 拒 —— Python 负责剥掉
         assert "tier" not in entry["cohort"]
         cand = json.loads((ws / "harnesses" / entry["candidate"]
                            / "routing_policy.json").read_text(encoding="utf-8"))
-        assert cand["qa"]["absent_expected_rate"] > 0
+        assert cand["qa"]["absent_evidenced_rate"] > 0
 
     def test_running_the_loop_twice_reuses_the_candidate(self, ws, monkeypatch):
         """重复跑不许堆重复候选,报告也不许因此漂移。
