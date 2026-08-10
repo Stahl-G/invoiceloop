@@ -820,7 +820,9 @@ def verify_bundle(bundle: Path) -> dict:
                 # support_matrix 行取(那是投影 —— 同步改 matrix+
                 # routing_report+重算快照的协调篡改能过旧版四层,83 评残余
                 # 边界),而是从包内**权威**工件重建:field_ledger(冻结
-                # 声明)+ gate_report(门禁裁决)+ evidence/raw/*.understand.
+                # 声明)+ gate_report(门禁裁决,含 absence_probes —— 缺席
+                # 探针是 AV 规则的事实输入,漏传 = 每个缺席证据槽都重算成
+                # not_measured,路由必然对不上)+ evidence/raw/*.understand.
                 # json(DWS 原始响应),用与 matrix 同一个
                 # derive_document_records(单一事实源,不存在第二份推导)。
                 if "routing_report.json" in member_bytes \
@@ -873,7 +875,9 @@ def verify_bundle(bundle: Path) -> dict:
                                         and f.get("doc_id") == doc],
                                     understand_data=udata,
                                     document_check=(gate_doc.get(
-                                        "document_checks") or {}).get(doc)):
+                                        "document_checks") or {}).get(doc),
+                                    absence_probes=(gate_doc.get(
+                                        "absence_probes") or {}).get(doc)):
                                 derived[f"{doc}|{rec['field']}"] = rec
                         matrix_doc = json.loads(
                             member_bytes["support_matrix.json"])

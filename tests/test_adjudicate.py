@@ -384,6 +384,83 @@ class TestVerify:
         assert not any("哈希不符" in f for f in report["failures"]), \
             "成员级应被攻击者蒙过 —— 抓它的必须是快照级重算"
 
+    def test_absence_evidenced_routes_recompute_from_bundle(self, run_dir):
+        """AV 规则(auto_absent)的包内重算:absence_probes 在 gate_report 里,
+        验证器必须把它当事实输入 —— SEALED-4 的 H7 首验就死在漏传上
+        (每个缺席证据槽都重算成 not_measured,路由全不符)。"""
+        from invoiceloop import absence_evidence
+        from invoiceloop.fields import TIER1
+        from invoiceloop.matrix import derive_document_records, facts_of
+        from invoiceloop.routing import (
+            apply_absent_expected, policy_digest, route_slots)
+        from invoiceloop.snapshot import compute_review_snapshot
+
+        policy = {
+            "harness_id": "HAR-TAV", "version": 1,
+            "release_tier1_explicit": False,
+            "auto_accept_cohorts": [], "absent_expected_cohorts": [],
+            "absent_evidenced_cohorts": [
+                {"id": "AV-total_vat", "field": "total_vat"}],
+            "qa": {"seed": "t", "policy_accepted_tier1_rate": 0.0,
+                   "cohort_relax_rate": 0.0},
+        }
+        probe = {"field": "total_vat",
+                 "status": absence_evidence.CORROBORATED,
+                 "evidence": None,
+                 "lexicon_digest": absence_evidence.digest(),
+                 "word_count": 12, "phrases_probed": 3}
+        (run_dir / "gate_report.json").write_text(json.dumps({
+            "findings": [],
+            "evaluations": {"doc-a": {
+                "total_vat": {"extraction_present": "fail"}}},
+            "absence_probes": {"doc-a": {"total_vat": probe}}}))
+        ledger = json.loads((run_dir / "field_ledger.json").read_text())
+        for claim in ledger["claims"]:
+            claim.setdefault("drafted_by", "dws_understand")
+            claim.setdefault("span_ids", [])
+            claim.setdefault("binding_coverage", 0.0)
+        (run_dir / "field_ledger.json").write_text(json.dumps(ledger))
+
+        # 与运行时同一函数造工件:derived → matrix 行;facts → 路由。
+        derived = list(derive_document_records(
+            "doc-a",
+            doc_claims=[c for c in ledger["claims"] if c["doc_id"] == "doc-a"],
+            doc_rejections=[], gate_evaluations={
+                "total_vat": {"extraction_present": "fail"}},
+            doc_blocking_findings=[], understand_data=None,
+            document_check=None,
+            absence_probes={"total_vat": probe}))
+        (run_dir / "support_matrix.json").write_text(json.dumps({
+            "rows": derived,
+            "summary": {
+                "docs": 1, "slots": len(derived),
+                "by_strength": {
+                    s: sum(1 for r in derived
+                           if r["support_strength"] == s)
+                    for s in ("unsupported", "single_source",
+                              "corroborated")},
+                "requires_adjudication": 1, "human_queue": 1,
+                "machine_decided": 0, "machine_absent": 0,
+                "applicability_disputed": 0, "blocking_findings": 0,
+                "claims_admitted": len(ledger["claims"]),
+                "drafts_rejected": 0, "rejected_by_drafter": {}}}))
+        routes = route_slots(
+            apply_absent_expected([facts_of(r) for r in derived], policy),
+            policy,
+            tier_of=lambda f: "TIER1" if f in TIER1 else "TIER2")
+        assert any(r["route"] == "auto_absent"
+                   and r.get("applicability_rule_id") == "AV-total_vat"
+                   for r in routes), "夹具必须真覆盖 AV 路由,否则白测"
+        (run_dir / "routing_report.json").write_text(json.dumps({
+            "harness_id": "HAR-TAV", "policy": policy,
+            "policy_digest": policy_digest(policy), "routes": routes}))
+        (run_dir / "review_snapshot.json").write_text(
+            json.dumps(compute_review_snapshot(run_dir)))
+
+        report = adjudicate.verify_bundle(self._build(run_dir))
+        assert report["ok"], \
+            f"缺席证据槽的包内重算必须复现:{report['failures'][:3]}"
+
 
 class TestSnapshotConsistency:
     def test_append_blocks_when_run_artifacts_were_altered(self, run_dir):
