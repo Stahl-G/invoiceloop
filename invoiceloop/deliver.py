@@ -72,6 +72,10 @@ def build_deliverable(run_dir: Path) -> dict:
     routing_path = run_dir / "routing_report.json"
     routing = json.loads(routing_path.read_text(encoding="utf-8")) \
         if routing_path.exists() else None
+    derived_path = run_dir / "calculated_due_dates.json"
+    derived = json.loads(derived_path.read_text(encoding="utf-8")) \
+        if derived_path.exists() else {}
+    derived_by_doc = derived.get("records") or {}
     tier1_explicit = ((routing or {}).get("policy") or {}) \
         .get("release_tier1_explicit", True)
     harness_id = (routing or {}).get("harness_id", "HAR-0001")
@@ -86,7 +90,12 @@ def build_deliverable(run_dir: Path) -> dict:
     for row in matrix["rows"]:
         doc_id, field = row["doc_id"], row["field"]
         doc = docs.setdefault(doc_id, {"status": None, "fields": {},
-                                       "blocking_reasons": []})
+                                       "blocking_reasons": [],
+                                       "derived_fields": {}})
+        if doc_id in derived_by_doc:
+            # 派生日期是业务规则结果,不是十字段 raw claim;它不参与
+            # accept/reject/route,且原始 due_date 仍在 fields 中单列。
+            doc["derived_fields"]["calculated_due_date"] = derived_by_doc[doc_id]
         if "type_trust" not in doc:
             check = document_checks.get(doc_id) or {}
             st = check.get("status")

@@ -15,7 +15,8 @@ from pathlib import Path
 from .evidence import sha256_file
 from .ocr import layout, ocr_path, pdf_path
 
-#: review_snapshot_id 覆盖的成分 —— 权威冻结工件,不含投影(矩阵/panel 可重算)
+#: review_snapshot_id 覆盖的成分 —— 权威冻结工件与页面规则派生物,
+#: 不含投影(矩阵/panel 可重算)
 SNAPSHOT_COMPONENTS = (
     "input_manifest.json",
     "artifact_registry.json",
@@ -23,6 +24,7 @@ SNAPSHOT_COMPONENTS = (
     "field_ledger.json",
     "gate_report.json",
     "routing_report.json",
+    "calculated_due_dates.json",
 )
 
 
@@ -115,8 +117,10 @@ def build_input_manifest(doc_ids: list[str], *, include_vision: bool = True) -> 
         ).hexdigest()
     from .harness import load_active
     from . import doctype
+    from .scope import scope_digest
 
     active = load_active(derisk_root())
+    domain_scope = active["policy"].get("domain_scope")
     manifest = {"layout": layout(), "schema_sha256": schema_sha256,
                 "vision_sha256": vision_sha256, "docs": docs}
     canonical = json.dumps(manifest, sort_keys=True, ensure_ascii=False).encode()
@@ -136,6 +140,9 @@ def build_input_manifest(doc_ids: list[str], *, include_vision: bool = True) -> 
         "doctype_digest": doctype.digest(),
         "routing_engine": "routing-v1",
         "adaptive": _adaptive_token(derisk_root()),
+        "domain_scope_digest": (
+            scope_digest(domain_scope) if domain_scope is not None else None
+        ),
     }
     manifest.update(execution)
     manifest["execution_fingerprint"] = hashlib.sha256(
@@ -168,8 +175,10 @@ def compute_review_snapshot(run_dir: Path) -> dict:
     for name in SNAPSHOT_COMPONENTS:
         path = run_dir / name
         if not path.exists():
-            if name == "routing_report.json":
-                continue  # 旧 run 无此工件:不进成分,不是记 null(见上)
+            if name in ("routing_report.json", "calculated_due_dates.json"):
+                # 新增成分对旧 run 保持向后兼容:缺失不进成分,不能把旧
+                # run 现场重算成另一代快照。
+                continue
             components[name] = None
         else:
             components[name] = _sha_or_none(path)

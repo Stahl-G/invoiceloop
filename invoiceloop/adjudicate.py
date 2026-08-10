@@ -78,6 +78,10 @@ REQUIRED_ARTIFACTS = (
     "adjudication_ledger.jsonl",
 )
 
+# 新 run 的可选派生物。它们若存在会进入 bundle 并由 MANIFEST 绑定；旧
+# run 没有它们也仍可按旧契约打包。
+OPTIONAL_ARTIFACTS = ("calculated_due_dates.json",)
+
 
 def append_adjudication(
     run_dir: Path,
@@ -391,6 +395,10 @@ def build_audit_bundle(run_dir: Path) -> Path:
         routing_report = run_dir / "routing_report.json"
         if routing_report.exists():
             members.append(("routing_report.json", routing_report.read_bytes()))
+        for name in OPTIONAL_ARTIFACTS:
+            path = run_dir / name
+            if path.exists():
+                members.append((name, path.read_bytes()))
         for asset_dir in ("crops", "pages"):
             directory = run_dir / asset_dir
             if directory.exists():

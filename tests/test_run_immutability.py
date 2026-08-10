@@ -92,6 +92,23 @@ class TestRefuseOverwrite:
 
 
 class TestIdentityArtifacts:
+    def test_calculated_due_date_is_separate_and_snapshot_bound(self, workspace):
+        result = run([DOC], workspace / "runs" / "run-0001",
+                     include_vision=False, out_of_calibration=True)
+
+        calculated = json.loads(result["calculated_due_dates"].read_text())
+        snapshot = json.loads(result["review_snapshot"].read_text())
+        assert calculated["summary"]["docs"] == 1
+        assert "calculated_due_dates.json" in snapshot["components"]
+        assert snapshot["components"]["calculated_due_dates.json"]
+
+        deliverable = json.loads(
+            (workspace / "runs" / "run-0001" / "deliverable.json").read_text()
+        )
+        doc = deliverable["docs"][DOC]
+        assert "calculated_due_date" in doc["derived_fields"]
+        assert "due_date" in doc["fields"]
+
     def test_input_manifest_and_snapshot_are_deterministic(self, workspace):
         a = run([DOC], workspace / "runs" / "run-0001",
                 include_vision=False, out_of_calibration=True)

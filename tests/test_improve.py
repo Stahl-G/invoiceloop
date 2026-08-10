@@ -798,3 +798,33 @@ class TestAbsentEvidencedLoop:
         assert verdict["ok"] is False
         assert any("缺席探针" in r for r in verdict["refusals"]), \
             verdict["refusals"]
+
+
+class TestSchemaBundle:
+    def test_bundle_requires_all_evaluated_fields_and_changes_descriptions_only(self, ws):
+        descriptions = {
+            field: f"Broadcast-specific description for {field}."
+            for field in improve.FIELDS
+        }
+        cand = improve.propose_schema_bundle(
+            ws, descriptions=descriptions, finding="BROADCAST-F1",
+            prediction="reduce field binding ambiguity")
+        schema = json.loads((cand / "extraction_schema.json").read_text())
+        assert set(schema["properties"]) == set(improve.FIELDS)
+        assert all(schema["properties"][field]["description"] == descriptions[field]
+                   for field in improve.FIELDS)
+        policy = json.loads((cand / "routing_policy.json").read_text())
+        assert policy["harness_id"] == "HAR-0002"
+        assert policy["auto_accept_cohorts"] == []
+
+    def test_bundle_rejects_partial_or_extra_field_set(self, ws):
+        descriptions = {field: "x" for field in improve.FIELDS}
+        descriptions.pop("due_date")
+        with pytest.raises(ValueError, match="缺少字段"):
+            improve.propose_schema_bundle(
+                ws, descriptions=descriptions, finding="F", prediction="P")
+        descriptions["due_date"] = "x"
+        descriptions["made_up"] = "x"
+        with pytest.raises(ValueError, match="多出字段"):
+            improve.propose_schema_bundle(
+                ws, descriptions=descriptions, finding="F", prediction="P")

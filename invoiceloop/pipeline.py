@@ -16,7 +16,7 @@ import json
 import shutil
 from pathlib import Path
 
-from . import __version__, dws, evidence, freeze, gates, harness, matrix, snapshot
+from . import __version__, dws, due_date, evidence, freeze, gates, harness, matrix, snapshot
 from .ocr import OcrUnavailable, derisk_root, layout, load_ocr, pdf_path
 
 
@@ -92,6 +92,18 @@ def run(
             f"运行目录 {out_dir} 已存在且非空 —— 运行不可变,没有 --force。"
             f"--out 请换一个目录;--workspace 会自动分配 runs/run-NNNN"
         )
+    doc_ids = sorted(doc_ids)
+    active_for_scope = harness.load_active(derisk_root())
+    domain_scope = active_for_scope["policy"].get("domain_scope")
+    if domain_scope is not None and not isinstance(domain_scope, dict):
+        raise ValueError("harness 的 domain_scope 必须是 JSON object")
+    from .scope import require_workspace_scope
+
+    workspace_scope = require_workspace_scope(
+        derisk_root(), doc_ids,
+        domain_scope.get("domain") if domain_scope is not None else None,
+    )
+
     # 占坑分两步:mkdir 尽量建,再用 O_EXCL 独占 run_manifest.json。
     # 单看 mkdir 有线程级 TOCTOU(两个进程都看到「不存在」→ 一边 FileExistsError
     # 裸奔,或两边交错写出半成品 —— 81 评 P2);O_EXCL 让输的那个当场拿到
@@ -107,7 +119,6 @@ def run(
             f"运行目录 {out_dir} 已被另一个进程占用(run_manifest.json 已存在)—— "
             f"运行不可变,没有 --force;--out 请换一个目录"
         ) from None
-    doc_ids = sorted(doc_ids)
     events: list[dict] = []
     vision_paths = dws.vision_answer_paths() if include_vision else []
 
@@ -127,6 +138,7 @@ def run(
         "layout": layout(),
         "derisk_root": str(derisk_root()),
         "vision_captured": [path.name for path in vision_paths],
+        "domain_scope": workspace_scope,
     })
     input_manifest = snapshot.build_input_manifest(doc_ids, include_vision=include_vision)
     _write_json(out_dir / "input_manifest.json", input_manifest)
@@ -167,6 +179,36 @@ def run(
         except OcrUnavailable:
             ocr_ok[doc_id] = False
             emit("doc_blocked", doc_id=doc_id, reason="ocr_unavailable", blocking=True)
+
+    # ---- ②b 页面规则派生:raw due_date 与 calculated_due_date 永不混写
+    # 只读独立 OCR。结果是新的、可审计的派生工件;它不改变冻结 raw claim,
+    # 不绕过六门,也不把相对条款伪装成页面上的绝对日期。
+    calculated_due_dates = {
+        doc_id: (due_date.derive_due_date(load_ocr(doc_id))
+                 if ocr_ok[doc_id]
+                 else due_date.unavailable_due_date())
+        for doc_id in doc_ids
+    }
+    _write_json(out_dir / "calculated_due_dates.json", {
+        "artifact": "calculated_due_dates.json",
+        "derivation_version": due_date.DERIVATION_VERSION,
+        "raw_due_date_semantics": (
+            "raw DWS due_date is an explicit-page-date claim; it is never overwritten"
+        ),
+        "records": calculated_due_dates,
+        "summary": {
+            "docs": len(calculated_due_dates),
+            "computed": sum(r["status"] == "computed"
+                             for r in calculated_due_dates.values()),
+            "not_computable": sum(r["status"] == "not_computable"
+                                   for r in calculated_due_dates.values()),
+        },
+    })
+    emit("due_dates_derived",
+         computed=sum(r["status"] == "computed"
+                      for r in calculated_due_dates.values()),
+         not_computable=sum(r["status"] == "not_computable"
+                            for r in calculated_due_dates.values()))
 
     spans: list[dict] = []
     graphs: list[dict] = []
@@ -299,6 +341,7 @@ def run(
         "artifacts": out_dir / "artifact_registry.json",
         "spans": out_dir / "evidence_span_registry.json",
         "ledger": out_dir / "field_ledger.json",
+        "calculated_due_dates": out_dir / "calculated_due_dates.json",
         "gate_report": out_dir / "gate_report.json",
         "matrix": out_dir / "support_matrix.json",
         "panel": out_dir / "support_panel.html",

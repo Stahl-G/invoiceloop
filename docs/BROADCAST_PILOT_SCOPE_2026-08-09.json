@@ -1,0 +1,5350 @@
+{
+ "protocol": "broadcast-pilot-v1",
+ "domain": "us_broadcast_ad_billing",
+ "selection_rule": "strong = FCC-style callsign AND at least two broadcast terms; weak = one-sided evidence; none = neither",
+ "source_workspaces": [
+  "sealed1-workspace",
+  "sealed2-workspace",
+  "heldout-workspace",
+  "sealed3-workspace"
+ ],
+ "n_dual_mode_docs": 400,
+ "strong_n": 224,
+ "weak_n": 110,
+ "none_n": 66,
+ "strong_doc_ids_sha256": "4463e2d0ce0e84cbc20cba4bfa1bc9b2b0ac4d0df010ce60734817182c76d0f2",
+ "weak_doc_ids_sha256": "479772a214bcca307b39768b0193ae33bd08b14691773fef08f1f13f0f859771",
+ "none_doc_ids_sha256": "799c55eded3d0587cb2e48808517b1959fd493fda99f78c4803a5fc4b3cffcc8",
+ "h2_excluded_n": 17,
+ "h2_excluded_doc_ids": [
+  "0cac49233f1648fabf90d0ee",
+  "12eb1b2292544172ba5e59e6",
+  "132ccb35754a4c2791fc03d5",
+  "1925d1e1a8114287905a7864",
+  "265763b2c6f84984806f8eae",
+  "2cf882edf80e4e7682c63b23",
+  "2eba50a5763f42e08279bd75",
+  "3f2af66c127e4ee8a98b2009",
+  "59eec62d07814be1aafeb5db",
+  "61a429b2922d41cd9c002b70",
+  "7a8366ed106f423e85aa3de3",
+  "a76630d6f7f0414293b5ebfd",
+  "c4b4c5a1440e493dbd2b6b33",
+  "e12004780d164ee9ba386f5f",
+  "e879f9c7796e4e24892fcdc0",
+  "eb25ee47999c4d069325fc23",
+  "ee399af64a484ae396a4aeea"
+ ],
+ "evaluation_doc_ids": [
+  "6ceecf3352ce4c9b8ce06e91",
+  "63208ea9674440799fb01d5e",
+  "cb128af5bab94cca9ab40ac4",
+  "796b5ff94f82436a8113bd01",
+  "94ea17b538fd4ffa9ae67710",
+  "29697fb0eccd409590acc519",
+  "2acd7b873a0c4ef1aec45eb6",
+  "fc6dd357dcd64cf28a6f09f7",
+  "c80043eb417041e88c1c3bc7",
+  "3799d280960d493088b5d35c",
+  "64e423ac8ca2434eb859632e",
+  "d75cd7d539d54e8d84b01358",
+  "791908ec8c8841ecb932a466",
+  "b76fa257727e44d5b5ef8d72",
+  "4de7e1efe1544402b7deb7c6",
+  "84dd5f5c0f204c39a8561647",
+  "a59aa2424d7f46b98cc8090d",
+  "2e95329f4c9e48fca33538aa",
+  "bf446717ebaf4f9f874afca0",
+  "e3164d2f5fb74e15a36bdbb3",
+  "4d074e872e2c4a38afd47820",
+  "8a6089b0ee9d491f9b955550",
+  "13c85707c8ea4068ac731c60",
+  "61c446666ea644e683e520d6",
+  "fc336e3fbf8a4c69aea2637d",
+  "b360ddd36d8d4d7aa21ef809",
+  "cdc50569915f4f18813f306f",
+  "863e3854266040d49a14cee0",
+  "2fc175e2f49f4a1fa777598b",
+  "1aa354bec19e4accbab4595f"
+ ],
+ "evaluation_n": 30,
+ "evaluation_doc_ids_sha256": "afefcf797466b283d73ee6452d726bfd1125b20c0cf08bacae0d7e744e09cc03",
+ "development_doc_ids": [
+  "075d4722d308410da3d8e3dd",
+  "08564a1ef0f44863bf4b01be",
+  "086b0b4d815b42b69ac742d6",
+  "0a2366374d1848acb72a2d4d",
+  "0c7df66268614502b65f4a3f",
+  "0cac49233f1648fabf90d0ee",
+  "0d50ad272d9140f185baa596",
+  "0e5092c3abbb4b9e85cfd2fb",
+  "0ef34fe8213b4621acfa8f9f",
+  "0f1ca104aeed4a75b109d4e8",
+  "10067f2d14c54f45b4d11675",
+  "10661754f6114b02b41b11d4",
+  "11187fe66c074b908169f071",
+  "12eb1b2292544172ba5e59e6",
+  "132ccb35754a4c2791fc03d5",
+  "1359f0a816d6422eb9b6a762",
+  "1582cfb7e6ca40d68352e119",
+  "17fb3b3fc1d44c76902b584a",
+  "183b0374f1704ecbbc8d2f33",
+  "18439ef6749143139897637e",
+  "18d17aa901fd4ec69685ae00",
+  "1925d1e1a8114287905a7864",
+  "1cc33092494a4971acda333f",
+  "1dcb333eb25241dca1638883",
+  "1f25ce6778ae493183b6ed98",
+  "216cf63b39294c50910ec131",
+  "239de9223de742a3be49f3e7",
+  "254b7845992547228487acc5",
+  "26334e3999664f13b3d63890",
+  "265763b2c6f84984806f8eae",
+  "274f4c2876b94394849debf5",
+  "28b6b9e30a864295bb5eae3d",
+  "28cec6830f7b43529a3ba378",
+  "294d78b9fdc44ff993bde143",
+  "29fc89e4903345a49368d907",
+  "2b8ce5f74dd749d7a576ed7c",
+  "2cf882edf80e4e7682c63b23",
+  "2da12427d67f41baad26e7a7",
+  "2eba50a5763f42e08279bd75",
+  "2f51e6ea8a384a6980ceca07",
+  "2f68f50595734c558720192c",
+  "2f7b3cfb6a1e491eaf5f7029",
+  "2fcc3819b3ee42ebb701ca56",
+  "31e9ded8e66340da8d1b2c85",
+  "3328230f6ce9455f9ae48224",
+  "39ac40e2e3354e9297d61e03",
+  "39fd2941088a4cd9864d8dbf",
+  "3a28e169b0e149e8930a4021",
+  "3a8fa597bc6c42399db14052",
+  "3d2190ff74564e9f817f1b29",
+  "3d9951ee7e71443a9cb6d45c",
+  "3da79675b3d5451a8e87e22f",
+  "3f18e6af97bb41b29ca25207",
+  "3f2af66c127e4ee8a98b2009",
+  "3f5f84c4129647708dd168f2",
+  "4000a86055c0417fb444dc68",
+  "40532c4e2c6a42bca301ea58",
+  "4091d00062c74b84b9e45af3",
+  "4147dc9fe72b4fb6aed252b6",
+  "442e7b2628b04c479100e73a",
+  "4735a7b50b20482fbd7d55fa",
+  "490e69a4a9504e43a2a5161d",
+  "4d3b8db353484865ad9291e9",
+  "503f49c011c947c29a2cd255",
+  "50bbaa7c37374cc584cb06d3",
+  "53b8b2181b5b4d058d8a2ede",
+  "55ddaf53ab94418e8a07645b",
+  "59ccad4cf4b840deb6eda5fe",
+  "59eec62d07814be1aafeb5db",
+  "5a34aacbc5fc49f3a09c2b06",
+  "5a8c7ec3518c4daa978b4eb9",
+  "5a9493430a9e49b49ae49ad0",
+  "5c1c7960b46f4dfc9a5a44db",
+  "6151c5bfa189436ca7060b19",
+  "61a429b2922d41cd9c002b70",
+  "61b0d3a28d764b2fa75ea4c5",
+  "63b24b6c460c4e309b145d76",
+  "6594a154110146389628fd63",
+  "66517596536a412fba0cbd6c",
+  "66583cda46a344f683756e34",
+  "686fc97705a34f5987ee060b",
+  "6a6b6a39b9914e72b943c579",
+  "6b5ca42333b247b083bbcfa0",
+  "6d3c39ad29f44fda85ebda6a",
+  "6dc350f594e94cec84e2a6f3",
+  "6decf48ff2bc4b94bf2c04e7",
+  "6e0d2175f7ad406cad04be9c",
+  "6fe42d84c106426990a86477",
+  "72a7e1a870f040b38b6df8e0",
+  "72fbc85319b64eacb9fcf964",
+  "742dfb64d1e4439eb7e62d44",
+  "7a8366ed106f423e85aa3de3",
+  "7fe28725724241f1b5eefaa1",
+  "801d44361c8f481eb51313eb",
+  "82abeb6137024319942ca730",
+  "865ec0f8ace544a28770aafc",
+  "8697219373c84cb19a1da8b4",
+  "86cf121fdcb44d9c942db92c",
+  "86d8030245fa4b28a746e47b",
+  "86dcb611a1974c85a76f7ae6",
+  "893d9cc0e7294fdab7fdfd1d",
+  "8fc1fd0aa8e244c39d0b5822",
+  "91dc5269429b44fb9cd26fc2",
+  "920f42aab82d4bb28bf68b79",
+  "95e2e9636613486e828290fb",
+  "969fde2888b14bb99f7aa1f7",
+  "96e0f58a0ef6435daa4852ce",
+  "99d7418a5f2b42ad93894b07",
+  "9a359ef4cc4644ae9b5caaa4",
+  "9a52926255a64fd1aa57c5f8",
+  "9ab6841f3d4e457486bfc645",
+  "9c89f2651d10430eba923a45",
+  "9df71768260847dc84015f01",
+  "9fadde216b7d49b1bb62085a",
+  "a0ccc3e54ee54316a347f811",
+  "a116da9b551a4465b8fc55e5",
+  "a22ba884e85544e78742d5dc",
+  "a39706cb2762474cb3e155b4",
+  "a543304f3384484da4a67142",
+  "a76630d6f7f0414293b5ebfd",
+  "a9b12b8637f0498e96114239",
+  "ab5b46afc84c41ae82b2db90",
+  "abd0ed61962843f4a5379cf8",
+  "adb36db31f5040839e990205",
+  "ae77ce0a6bac49d0989bada9",
+  "aec3d23a0a7c4c54b20199dc",
+  "af4d270d97cf4dc4bec18b1d",
+  "b0bbf8ce196e431faafbc61f",
+  "b2a41a270a7b4c8b9b6f69b3",
+  "b2e6fa6e24434b0dab627226",
+  "b4a7e52977ee4482b65a5740",
+  "b4eb1516fd61447c86cd2156",
+  "ba388b327d254ed384f97624",
+  "ba7418aa3887416e91785b54",
+  "bbd6e70912004112b83dbe39",
+  "bc90438bc6b24b89999283ab",
+  "bcc089ccb3b148238023fa50",
+  "bd8da882c0d945e7974c3878",
+  "c185c64d07f84d1b9eaad102",
+  "c187e9f438b042eeb335b913",
+  "c19343b2784348c5b34b6d80",
+  "c35d89ebd5fa4acfbfad9fe3",
+  "c4b4c5a1440e493dbd2b6b33",
+  "c5c9068e6fd14310915f6146",
+  "c62990cb4561487eb20824e0",
+  "c6a73292f5004df3afee5b72",
+  "cba91ce9767f46e09bd02b98",
+  "cbf70d17d3fe4f7287187358",
+  "cdf65b6accc54facb0d8cf8e",
+  "ce6ab66ef43945ad9e7085fe",
+  "d0380efa5caa47ffb4c9bd46",
+  "d04e832d926c4efdb0ea13bb",
+  "d264eaf836b642c6aae03d8b",
+  "d269a6bcfbe54ce0b6cc2b81",
+  "d376bc702cf6415e991e5680",
+  "d46006725fc04bff84781874",
+  "d53f1ea445534411ad2c95c4",
+  "d5521ef27bcf4aebaf32f9c0",
+  "d6894e91d19844a98c866535",
+  "d875279da638445097f33572",
+  "ddfcaaa66c64422c93409374",
+  "de0b57290cc74fdf8226136b",
+  "df056d6a5ea94b619cd0b241",
+  "e008149e6a1a4619a73506de",
+  "e09f45560d7143708b8b162c",
+  "e12004780d164ee9ba386f5f",
+  "e1a58dd3e11e490cbc1cb87f",
+  "e2517107ab9b4a859a2ae5c8",
+  "e271671362474cab90508f7d",
+  "e2e6326f24fc499198e20ce4",
+  "e4b2cc5f46c4435c92d539b1",
+  "e54b2a08fe4e437187d992db",
+  "e765a01bde8b4bc38c0ace79",
+  "e7a56c0f57ae4680a4513d8f",
+  "e804115bd684499ca577c6f2",
+  "e83fab36c74545199d85e10d",
+  "e879f9c7796e4e24892fcdc0",
+  "e8d2da0e6738488888bcd53b",
+  "e9a885b5e9bc4f76b6b69b96",
+  "eb25ee47999c4d069325fc23",
+  "ee07d38c385e43c3aba7c1f5",
+  "ee399af64a484ae396a4aeea",
+  "f0d621ee4fb24fb197ce7732",
+  "f1285c45438a4ded8679d21c",
+  "f1320edee01c4ff9b002a3f9",
+  "f1b0c5690ac9414dba5770aa",
+  "f2caad44263441f498fa72b5",
+  "f47b8ee00eae416c94a083ca",
+  "f5b647e55a0b45eebefe8e8e",
+  "f6fa97a83b8246a196a5217b",
+  "f9a32ed45b654dd18b2d4cc2",
+  "f9ebd5472d334a8bb1f45e33",
+  "fc7554630cc24a2c8f9db32b",
+  "fea9d968aa154d67950e01ad"
+ ],
+ "development_n": 194,
+ "ood_doc_ids": [
+  "0adfbe4baba7438ba8ab1713",
+  "0dc12237678a4af4ad7a43e3",
+  "0e9fa414a3054e839c72685a",
+  "116cc87fc5d04806818b5a4f",
+  "13761b15770d474e9a46f38f",
+  "1a22a0f5fcf840f683c84818",
+  "1a839f850a73420c9b7357a5",
+  "1f86b7aae6b0494e99113b12",
+  "22698eeb9d224750b1548d47",
+  "250d4fdc5b114f379d1d2c22",
+  "2b1312db3b094993abbd538e",
+  "2bfb291950ef483eb6caaa74",
+  "3716509b15a1497980d0ea86",
+  "3d4fdc5028f14dc2900a6364",
+  "4899eeffe2ee47cb9aee3541",
+  "4975a41e5b88457a976bbb78",
+  "4c2d0e99953d4661acbc15fc",
+  "4e0aac7a35dc412f8911746d",
+  "50678ecc66eb4465ba98b2b6",
+  "5e21b043914946d7a1890913",
+  "5ff67a5505954989950400bd",
+  "62de5ea8c9094191b6f55f2f",
+  "65e34b0561a841339c6ef146",
+  "667b3c4777b943d2947bc1ad",
+  "6945ee4598d34ff4ab8d7a10",
+  "6b9b7d7a7b424195b0b1150c",
+  "766b77d936a440dca14eabde",
+  "78c1760ed76c49e89b95bec9",
+  "7dcd8801807544cba7c1fa34",
+  "878ad70041f840eb923504a3",
+  "87e4da43665346598da57410",
+  "8c805d524e1c4ddea5eca7a2",
+  "9051c9b9b65541f9ae2493f6",
+  "9516c656f9184251a2669378",
+  "9706b37288654c8d8522cf69",
+  "99a96ebc8fc64662a80a990f",
+  "9a08f7fec7e74aa28ade3018",
+  "9c0a4ae17c9b41f188e5924d",
+  "9e62e88925324a259eabfe8c",
+  "9e7949d2167f4c19a03242eb",
+  "a0205ccea52149d492da3dd2",
+  "a2e24c85a4af4318972fb0e2",
+  "a593b7950bf941608353fadf",
+  "a946223d0e6d4a50b00dc09b",
+  "acc86f9b0e544bb6b93d805c",
+  "b110e50fff9e4de2bd31ea73",
+  "b45c2725a2204c03aa5b858a",
+  "b533fab399a3478a93e47227",
+  "b5b4d5fb37b64428958cd7f5",
+  "b764f6cb46b44fd3886914ec",
+  "ba2ad19cfd13489284cc21d6",
+  "c411c13e968c43b59835e5fa",
+  "c8146d486f6d46109e0cc5d5",
+  "c8d26800425448f1ae2115d1",
+  "c954cb6fb3804354be9821d8",
+  "ca154b23196b4278ba87a3ec",
+  "d825ca420cbc41aeaafaa8fb",
+  "dad52236b17e4b939524558a",
+  "e514ace79ddd4d3fa0033062",
+  "ebbfbf0cf1ba430cb9d1a8d9",
+  "ec06bbbd2a074231b98c1ddc",
+  "f579a59d5d7d4ba2986b3c9c",
+  "f8af310e025948d391036bac",
+  "f9bc33f0c55746e28831654a",
+  "fa609d704e8749389fa1e158",
+  "fe035193e1894c1d96ecf3b8"
+ ],
+ "ood_n": 66,
+ "evidence": {
+  "075d4722d308410da3d8e3dd": {
+   "callsigns": [
+    "KZNE",
+    "KZNE-AM",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "broadcast",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 9,
+   "strength": "strong"
+  },
+  "08564a1ef0f44863bf4b01be": {
+   "callsigns": [
+    "WAS",
+    "WEEK",
+    "WILL",
+    "WMAZ"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "airtime",
+    "broadcast",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 39,
+   "strength": "strong"
+  },
+  "086b0b4d815b42b69ac742d6": {
+   "callsigns": [
+    "KEY",
+    "WAY",
+    "WHOP",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "political",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 14,
+   "strength": "strong"
+  },
+  "0948ca6b0ffc4322b24d4fed": {
+   "callsigns": [
+    "KIDS"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "0a2366374d1848acb72a2d4d": {
+   "callsigns": [
+    "WED",
+    "WEEK",
+    "WEST",
+    "WRZZ-FM"
+   ],
+   "keyword_hits": [
+    "agency",
+    "broadcast",
+    "media",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 10,
+   "strength": "strong"
+  },
+  "0a264c8a0e204ae8868ec14f": {
+   "callsigns": [
+    "WILL"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "0adfbe4baba7438ba8ab1713": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "0c56b86aedd445d8a845a287": {
+   "callsigns": [
+    "WHEN",
+    "WILL"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "0c7df66268614502b65f4a3f": {
+   "callsigns": [
+    "KATZ",
+    "KZGO-FM",
+    "WED",
+    "WEST"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "media",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 8,
+   "strength": "strong"
+  },
+  "0cac49233f1648fabf90d0ee": {
+   "callsigns": [
+    "KMAX",
+    "KMAX-AM",
+    "KRPL",
+    "KZZL-FM",
+    "WAS",
+    "WHAT",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "political",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 51,
+   "strength": "strong"
+  },
+  "0d50ad272d9140f185baa596": {
+   "callsigns": [
+    "WEEK",
+    "WERE",
+    "WRSP"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "commercial",
+    "network",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 47,
+   "strength": "strong"
+  },
+  "0d816594cea44819acb980bb": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "0dc12237678a4af4ad7a43e3": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "0e5092c3abbb4b9e85cfd2fb": {
+   "callsigns": [
+    "KST",
+    "WEEK",
+    "WERE",
+    "WRSP"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 42,
+   "strength": "strong"
+  },
+  "0e9fa414a3054e839c72685a": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "0ef34fe8213b4621acfa8f9f": {
+   "callsigns": [
+    "KATZ",
+    "WEST",
+    "WHEN",
+    "WILL",
+    "WITH",
+    "WNWV-FM"
+   ],
+   "keyword_hits": [
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 16,
+   "strength": "strong"
+  },
+  "0f1ca104aeed4a75b109d4e8": {
+   "callsigns": [
+    "KKE",
+    "KKI",
+    "WDAY",
+    "WEEK",
+    "WHAT",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "airtime",
+    "media",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 26,
+   "strength": "strong"
+  },
+  "10067f2d14c54f45b4d11675": {
+   "callsigns": [
+    "KHBM"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 4,
+   "strength": "strong"
+  },
+  "10661754f6114b02b41b11d4": {
+   "callsigns": [
+    "KEY",
+    "WAY",
+    "WHOP",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 17,
+   "strength": "strong"
+  },
+  "11187fe66c074b908169f071": {
+   "callsigns": [
+    "KATZ",
+    "WEEK",
+    "WERE",
+    "WOLF",
+    "WOLF-TV",
+    "WPGH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 19,
+   "strength": "strong"
+  },
+  "116cc87fc5d04806818b5a4f": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "12eb1b2292544172ba5e59e6": {
+   "callsigns": [
+    "WERE"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "network",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 20,
+   "strength": "strong"
+  },
+  "132ccb35754a4c2791fc03d5": {
+   "callsigns": [
+    "KATZ",
+    "WEEK",
+    "WGAL",
+    "WGCB",
+    "WHP",
+    "WHP-TV",
+    "WHTM",
+    "WILL",
+    "WITH",
+    "WLYH",
+    "WPMT"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 20,
+   "strength": "strong"
+  },
+  "1359f0a816d6422eb9b6a762": {
+   "callsigns": [
+    "KINN",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "station"
+   ],
+   "keyword_occurrences": 7,
+   "strength": "strong"
+  },
+  "13761b15770d474e9a46f38f": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "13c85707c8ea4068ac731c60": {
+   "callsigns": [
+    "KBYR-AM",
+    "WAS"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "radio",
+    "station"
+   ],
+   "keyword_occurrences": 11,
+   "strength": "strong"
+  },
+  "1582cfb7e6ca40d68352e119": {
+   "callsigns": [
+    "KVRE-FM",
+    "WERE"
+   ],
+   "keyword_hits": [
+    "broadcast"
+   ],
+   "keyword_occurrences": 3,
+   "strength": "strong"
+  },
+  "17fb3b3fc1d44c76902b584a": {
+   "callsigns": [
+    "KTDZ-FM",
+    "WEST",
+    "WKS"
+   ],
+   "keyword_hits": [
+    "media",
+    "radio",
+    "spot"
+   ],
+   "keyword_occurrences": 6,
+   "strength": "strong"
+  },
+  "183b0374f1704ecbbc8d2f33": {
+   "callsigns": [
+    "WEEK",
+    "WTOV"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "station"
+   ],
+   "keyword_occurrences": 3,
+   "strength": "strong"
+  },
+  "18439ef6749143139897637e": {
+   "callsigns": [
+    "KLMI",
+    "KLMI-FM",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "commercial",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 9,
+   "strength": "strong"
+  },
+  "18d17aa901fd4ec69685ae00": {
+   "callsigns": [
+    "KGPQ"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 4,
+   "strength": "strong"
+  },
+  "1925d1e1a8114287905a7864": {
+   "callsigns": [
+    "KGM",
+    "KGMB",
+    "WOI"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "spot"
+   ],
+   "keyword_occurrences": 9,
+   "strength": "strong"
+  },
+  "1a22a0f5fcf840f683c84818": {
+   "callsigns": [],
+   "keyword_hits": [
+    "media"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "none"
+  },
+  "1a839f850a73420c9b7357a5": {
+   "callsigns": [],
+   "keyword_hits": [
+    "media"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "none"
+  },
+  "1aa354bec19e4accbab4595f": {
+   "callsigns": [
+    "WERE",
+    "WPGH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 13,
+   "strength": "strong"
+  },
+  "1cc33092494a4971acda333f": {
+   "callsigns": [
+    "WAS",
+    "WHDH",
+    "WHDH-TV",
+    "WIN"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "political",
+    "spot"
+   ],
+   "keyword_occurrences": 14,
+   "strength": "strong"
+  },
+  "1cced058d6df46609f5a1223": {
+   "callsigns": [
+    "WIRE",
+    "WLBE"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "1dcb333eb25241dca1638883": {
+   "callsigns": [
+    "WEEK",
+    "WERE"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "commercial",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 17,
+   "strength": "strong"
+  },
+  "1f25ce6778ae493183b6ed98": {
+   "callsigns": [
+    "WED",
+    "WYDC"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "media",
+    "political",
+    "spot"
+   ],
+   "keyword_occurrences": 7,
+   "strength": "strong"
+  },
+  "1f86b7aae6b0494e99113b12": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "216cf63b39294c50910ec131": {
+   "callsigns": [
+    "KMBQ-FM",
+    "WAS"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "radio",
+    "station"
+   ],
+   "keyword_occurrences": 9,
+   "strength": "strong"
+  },
+  "22353f69e49f4d69879fa6ea": {
+   "callsigns": [
+    "WEST",
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "22698eeb9d224750b1548d47": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "239de9223de742a3be49f3e7": {
+   "callsigns": [
+    "WAS",
+    "WKXW"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "spot"
+   ],
+   "keyword_occurrences": 13,
+   "strength": "strong"
+  },
+  "250d4fdc5b114f379d1d2c22": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "254b7845992547228487acc5": {
+   "callsigns": [
+    "WEST",
+    "WFMX"
+   ],
+   "keyword_hits": [
+    "media"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "26334e3999664f13b3d63890": {
+   "callsigns": [
+    "KIM",
+    "WED",
+    "WERE",
+    "WEST",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "radio",
+    "station"
+   ],
+   "keyword_occurrences": 9,
+   "strength": "strong"
+  },
+  "265763b2c6f84984806f8eae": {
+   "callsigns": [
+    "KIQX",
+    "KIUP",
+    "KKDC",
+    "KRSJ",
+    "WEST",
+    "WIL"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "commercial",
+    "media",
+    "political",
+    "station"
+   ],
+   "keyword_occurrences": 12,
+   "strength": "strong"
+  },
+  "26d095ab3e774bd3ad18d9d5": {
+   "callsigns": [
+    "KKMA"
+   ],
+   "keyword_hits": [
+    "political"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "weak"
+  },
+  "274f4c2876b94394849debf5": {
+   "callsigns": [
+    "WKA"
+   ],
+   "keyword_hits": [
+    "agency",
+    "media"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "28b6b9e30a864295bb5eae3d": {
+   "callsigns": [
+    "KZFN-FM",
+    "WAS",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "political",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 25,
+   "strength": "strong"
+  },
+  "28cec6830f7b43529a3ba378": {
+   "callsigns": [
+    "KATZ",
+    "WITH",
+    "WKSQ"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "radio"
+   ],
+   "keyword_occurrences": 6,
+   "strength": "strong"
+  },
+  "294d78b9fdc44ff993bde143": {
+   "callsigns": [
+    "WEEK",
+    "WTVH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "network",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 43,
+   "strength": "strong"
+  },
+  "29639c44ca7f43ad8739bd62": {
+   "callsigns": [
+    "WEST",
+    "WILL",
+    "WIRE",
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "29697fb0eccd409590acc519": {
+   "callsigns": [
+    "KOZX-FM",
+    "WED"
+   ],
+   "keyword_hits": [
+    "media",
+    "station"
+   ],
+   "keyword_occurrences": 6,
+   "strength": "strong"
+  },
+  "29fc89e4903345a49368d907": {
+   "callsigns": [
+    "KHAN",
+    "KIND",
+    "KMSP",
+    "WAS",
+    "WHEN",
+    "WHOM",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "station",
+    "television"
+   ],
+   "keyword_occurrences": 176,
+   "strength": "strong"
+  },
+  "2acd7b873a0c4ef1aec45eb6": {
+   "callsigns": [
+    "WAS",
+    "WEEK",
+    "WEST",
+    "WILL",
+    "WZZM"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "airtime",
+    "broadcast",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 48,
+   "strength": "strong"
+  },
+  "2b1312db3b094993abbd538e": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "2b8ce5f74dd749d7a576ed7c": {
+   "callsigns": [
+    "KKFG-FM",
+    "WERE",
+    "WITH",
+    "WTHF"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "commercial",
+    "media",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 54,
+   "strength": "strong"
+  },
+  "2bfb291950ef483eb6caaa74": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "2ca9a9e76ce546f498be428e": {
+   "callsigns": [
+    "WILL"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "2cf882edf80e4e7682c63b23": {
+   "callsigns": [
+    "KSUX"
+   ],
+   "keyword_hits": [
+    "agency",
+    "radio"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "2da12427d67f41baad26e7a7": {
+   "callsigns": [
+    "WARU-FM",
+    "WILL"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 12,
+   "strength": "strong"
+  },
+  "2dca54cef3fd43beb9e83c13": {
+   "callsigns": [
+    "WHEN",
+    "WORK"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "2e95329f4c9e48fca33538aa": {
+   "callsigns": [
+    "KATZ",
+    "KLKK-FM",
+    "WEST",
+    "WILL",
+    "WITH",
+    "WKS"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "media",
+    "political",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 16,
+   "strength": "strong"
+  },
+  "2eba50a5763f42e08279bd75": {
+   "callsigns": [
+    "KATZ",
+    "KOMP-FM",
+    "WEST"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 8,
+   "strength": "strong"
+  },
+  "2efcfa4761254a039878d1f0": {
+   "callsigns": [
+    "KES"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "2f51e6ea8a384a6980ceca07": {
+   "callsigns": [
+    "KATZ",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "station"
+   ],
+   "keyword_occurrences": 11,
+   "strength": "strong"
+  },
+  "2f68f50595734c558720192c": {
+   "callsigns": [
+    "KATZ",
+    "WED",
+    "WEST"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 10,
+   "strength": "strong"
+  },
+  "2f7b3cfb6a1e491eaf5f7029": {
+   "callsigns": [
+    "WEST",
+    "WOKS-AM"
+   ],
+   "keyword_hits": [
+    "media",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 7,
+   "strength": "strong"
+  },
+  "2f8e44ef734b47c7a051be3b": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "2fc175e2f49f4a1fa777598b": {
+   "callsigns": [
+    "KATZ",
+    "WAS",
+    "WDBZ",
+    "WDBZ-AM",
+    "WEEK",
+    "WEST"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 21,
+   "strength": "strong"
+  },
+  "2fcc3819b3ee42ebb701ca56": {
+   "callsigns": [
+    "WDBT-FM",
+    "WED",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "media"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "31e9ded8e66340da8d1b2c85": {
+   "callsigns": [
+    "WEST"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "media"
+   ],
+   "keyword_occurrences": 4,
+   "strength": "strong"
+  },
+  "31f273adc7384e8f96c36ea6": {
+   "callsigns": [
+    "WUGO"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "3328230f6ce9455f9ae48224": {
+   "callsigns": [
+    "KATZ",
+    "WEST",
+    "WKAA",
+    "WKAA-FM",
+    "WKS"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "media",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 11,
+   "strength": "strong"
+  },
+  "34e2980a6673440ba21cef76": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "34fe381b6950405f85877cce": {
+   "callsigns": [
+    "WEST",
+    "WORK"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "354333042b9e4b7cb27820bf": {
+   "callsigns": [
+    "WEST"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "358a3ab5397e4403a6b9e00a": {
+   "callsigns": [
+    "KAIN",
+    "KGS",
+    "KOIN",
+    "WALF"
+   ],
+   "keyword_hits": [
+    "commercial"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "weak"
+  },
+  "3716509b15a1497980d0ea86": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "374c924c3c804f6193234bd7": {
+   "callsigns": [
+    "WILL"
+   ],
+   "keyword_hits": [
+    "media"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "weak"
+  },
+  "376c8efc28e841eb9cac4095": {
+   "callsigns": [
+    "WHEN",
+    "WORK"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "3799d280960d493088b5d35c": {
+   "callsigns": [
+    "WEST",
+    "WITH",
+    "WSPA"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "spot"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "391cd6c1d61f42f39d266ab4": {
+   "callsigns": [
+    "KAIN",
+    "KDIN",
+    "KGS",
+    "WOLF"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "39ac40e2e3354e9297d61e03": {
+   "callsigns": [
+    "KMOZ",
+    "KMOZ-FM",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "spot"
+   ],
+   "keyword_occurrences": 12,
+   "strength": "strong"
+  },
+  "39dc02d91095494bb8b1da29": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "39fd2941088a4cd9864d8dbf": {
+   "callsigns": [
+    "WED",
+    "WEEK",
+    "WEST"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "media",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 8,
+   "strength": "strong"
+  },
+  "3a28e169b0e149e8930a4021": {
+   "callsigns": [
+    "KBUL",
+    "KBUL-AM",
+    "KCTR",
+    "KCTR-FM",
+    "WAS"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "spot"
+   ],
+   "keyword_occurrences": 16,
+   "strength": "strong"
+  },
+  "3a5499ec4e014045a5c774a6": {
+   "callsigns": [
+    "WILL"
+   ],
+   "keyword_hits": [
+    "media"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "weak"
+  },
+  "3a8fa597bc6c42399db14052": {
+   "callsigns": [
+    "WAST",
+    "WEV",
+    "WITH",
+    "WRAL"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 24,
+   "strength": "strong"
+  },
+  "3b57fd4e47d0472283b96397": {
+   "callsigns": [],
+   "keyword_hits": [
+    "commercial"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "weak"
+  },
+  "3d2190ff74564e9f817f1b29": {
+   "callsigns": [
+    "KROI",
+    "KROI-FM",
+    "WAS",
+    "WEEK"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "spot"
+   ],
+   "keyword_occurrences": 12,
+   "strength": "strong"
+  },
+  "3d4fdc5028f14dc2900a6364": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "3d8745f375c244bd9c9977e6": {
+   "callsigns": [
+    "WEST"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "3d9951ee7e71443a9cb6d45c": {
+   "callsigns": [
+    "WEEK",
+    "WHEN",
+    "WHIO",
+    "WHIO-TV",
+    "WHOM",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "spot"
+   ],
+   "keyword_occurrences": 43,
+   "strength": "strong"
+  },
+  "3da79675b3d5451a8e87e22f": {
+   "callsigns": [
+    "KSAS",
+    "WEST"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 19,
+   "strength": "strong"
+  },
+  "3f18e6af97bb41b29ca25207": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [
+    "agency",
+    "media"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "3f2af66c127e4ee8a98b2009": {
+   "callsigns": [
+    "KDAG-FM",
+    "WERE",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "commercial",
+    "media",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 58,
+   "strength": "strong"
+  },
+  "3f5f84c4129647708dd168f2": {
+   "callsigns": [
+    "KSVT",
+    "WIO"
+   ],
+   "keyword_hits": [
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 8,
+   "strength": "strong"
+  },
+  "3fc64c02dcf442c6a8d1b53e": {
+   "callsigns": [
+    "WILL",
+    "WIRE",
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "4000a86055c0417fb444dc68": {
+   "callsigns": [
+    "KJKS-FM",
+    "KJMD-FM",
+    "KLHI-FM",
+    "KPOA-FM",
+    "WILL"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 24,
+   "strength": "strong"
+  },
+  "40532c4e2c6a42bca301ea58": {
+   "callsigns": [
+    "KEEP",
+    "KEY",
+    "WAY",
+    "WHOP",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 16,
+   "strength": "strong"
+  },
+  "4091d00062c74b84b9e45af3": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [
+    "media",
+    "radio"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "4147dc9fe72b4fb6aed252b6": {
+   "callsigns": [
+    "WEST",
+    "WTGE-FM"
+   ],
+   "keyword_hits": [
+    "agency",
+    "broadcast",
+    "media",
+    "radio",
+    "spot"
+   ],
+   "keyword_occurrences": 37,
+   "strength": "strong"
+  },
+  "41efff0594164274b3fe655b": {
+   "callsigns": [
+    "WEST"
+   ],
+   "keyword_hits": [
+    "agency"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "weak"
+  },
+  "42415cd6ed1745809cb9a4c1": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "442e7b2628b04c479100e73a": {
+   "callsigns": [
+    "KATZ",
+    "KCRR-FM",
+    "WEST",
+    "WHAT",
+    "WILL",
+    "WITH",
+    "WKS"
+   ],
+   "keyword_hits": [
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 22,
+   "strength": "strong"
+  },
+  "45f1811ec4c74141b459f4ea": {
+   "callsigns": [
+    "KSF",
+    "WIRE"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "46c77dfe87fe4fc8a71b15f6": {
+   "callsigns": [
+    "KANT",
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "4735a7b50b20482fbd7d55fa": {
+   "callsigns": [
+    "KATZ",
+    "KIM",
+    "WILL",
+    "WITH",
+    "WKS",
+    "WNBF-AM"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "media",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 11,
+   "strength": "strong"
+  },
+  "4899eeffe2ee47cb9aee3541": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "490e69a4a9504e43a2a5161d": {
+   "callsigns": [
+    "WED",
+    "WERE",
+    "WILL",
+    "WITH",
+    "WRAR-FM"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "broadcast",
+    "media",
+    "station"
+   ],
+   "keyword_occurrences": 8,
+   "strength": "strong"
+  },
+  "4975a41e5b88457a976bbb78": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "499184f33e0144b58c87af9d": {
+   "callsigns": [
+    "WIRE",
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "4be43bd50f7f4cfc9d6530aa": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "4c2d0e99953d4661acbc15fc": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "4d074e872e2c4a38afd47820": {
+   "callsigns": [
+    "WEST"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "station"
+   ],
+   "keyword_occurrences": 3,
+   "strength": "strong"
+  },
+  "4d3b8db353484865ad9291e9": {
+   "callsigns": [
+    "WEST",
+    "WISE",
+    "WKZK"
+   ],
+   "keyword_hits": [
+    "commercial",
+    "media"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "4d4717e6811f4aa1a234d064": {
+   "callsigns": [
+    "WIL",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "4de7e1efe1544402b7deb7c6": {
+   "callsigns": [
+    "WAS",
+    "WHO",
+    "WHOM",
+    "WILL",
+    "WJAR",
+    "WJAR-TV"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "airtime",
+    "broadcast",
+    "commercial",
+    "media",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 41,
+   "strength": "strong"
+  },
+  "4e0aac7a35dc412f8911746d": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "4e5d197fe53e4762bbf6ae3d": {
+   "callsigns": [],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "media",
+    "spot"
+   ],
+   "keyword_occurrences": 14,
+   "strength": "weak"
+  },
+  "503f49c011c947c29a2cd255": {
+   "callsigns": [
+    "WARU-AM",
+    "WILL"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 12,
+   "strength": "strong"
+  },
+  "50678ecc66eb4465ba98b2b6": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "50bbaa7c37374cc584cb06d3": {
+   "callsigns": [
+    "WED",
+    "WLEX",
+    "WLEX-TV"
+   ],
+   "keyword_hits": [
+    "agency",
+    "media",
+    "station"
+   ],
+   "keyword_occurrences": 11,
+   "strength": "strong"
+  },
+  "512ac4d15bf34ed78e035a97": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "5217e02e1d084d5b83c485cd": {
+   "callsigns": [
+    "WHEN",
+    "WORK"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "53b8b2181b5b4d058d8a2ede": {
+   "callsigns": [
+    "KBIU-FM",
+    "WHEN",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "commercial",
+    "media",
+    "political",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 188,
+   "strength": "strong"
+  },
+  "5458ffd5b2654b2f964337d0": {
+   "callsigns": [
+    "WAY"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "5510cc65664d46a69ef906bf": {
+   "callsigns": [],
+   "keyword_hits": [
+    "agency"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "weak"
+  },
+  "55ddaf53ab94418e8a07645b": {
+   "callsigns": [
+    "WYQE"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "spot"
+   ],
+   "keyword_occurrences": 3,
+   "strength": "strong"
+  },
+  "59ccad4cf4b840deb6eda5fe": {
+   "callsigns": [
+    "WAS",
+    "WERE"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 22,
+   "strength": "strong"
+  },
+  "59ce9289c02a41aa9f4d3105": {
+   "callsigns": [
+    "WEST"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "59eec62d07814be1aafeb5db": {
+   "callsigns": [
+    "WED",
+    "WEST",
+    "WVVA",
+    "WVVA-TV"
+   ],
+   "keyword_hits": [
+    "agency",
+    "media",
+    "station"
+   ],
+   "keyword_occurrences": 11,
+   "strength": "strong"
+  },
+  "5a34aacbc5fc49f3a09c2b06": {
+   "callsigns": [
+    "WCWG-TV",
+    "WIDE"
+   ],
+   "keyword_hits": [
+    "media",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 4,
+   "strength": "strong"
+  },
+  "5a8c7ec3518c4daa978b4eb9": {
+   "callsigns": [
+    "WEEK",
+    "WERE",
+    "WOLF"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "commercial",
+    "media",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 20,
+   "strength": "strong"
+  },
+  "5a9493430a9e49b49ae49ad0": {
+   "callsigns": [
+    "KATZ",
+    "WBFB",
+    "WED",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "political"
+   ],
+   "keyword_occurrences": 7,
+   "strength": "strong"
+  },
+  "5b806f79735c49fa883c6ff7": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "5c1c7960b46f4dfc9a5a44db": {
+   "callsigns": [
+    "KATZ",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "station"
+   ],
+   "keyword_occurrences": 9,
+   "strength": "strong"
+  },
+  "5c36744c5a144fc6babf688b": {
+   "callsigns": [
+    "WIRE",
+    "WUN"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "5d60b52d028e4aaa9ee12bcc": {
+   "callsigns": [
+    "WHEN"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "5da5a0e2bded40ad8948d5eb": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "5db8abd6665a4eec93f59e96": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "5e21b043914946d7a1890913": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "5e59b2b43cd94c9e89cea653": {
+   "callsigns": [
+    "WAY"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "5e681745668544bba25efbbd": {
+   "callsigns": [
+    "WIRE",
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "5ef9af1ec5b842b787a44c68": {
+   "callsigns": [
+    "KATZ"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "5ff67a5505954989950400bd": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "60ac38cee797436d837eaa44": {
+   "callsigns": [
+    "WILL"
+   ],
+   "keyword_hits": [
+    "media"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "weak"
+  },
+  "6151c5bfa189436ca7060b19": {
+   "callsigns": [
+    "KVRE-FM",
+    "WERE"
+   ],
+   "keyword_hits": [
+    "broadcast"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "61a429b2922d41cd9c002b70": {
+   "callsigns": [
+    "KEZS-FM",
+    "WEST"
+   ],
+   "keyword_hits": [
+    "agency",
+    "broadcast",
+    "commercial",
+    "media",
+    "political",
+    "radio",
+    "station"
+   ],
+   "keyword_occurrences": 14,
+   "strength": "strong"
+  },
+  "61b0d3a28d764b2fa75ea4c5": {
+   "callsigns": [
+    "KEYW",
+    "KFLD",
+    "KFLD-AM",
+    "KORD",
+    "KORD-FM",
+    "KXRX",
+    "KXRX-FM",
+    "WAS",
+    "WEST"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "spot"
+   ],
+   "keyword_occurrences": 19,
+   "strength": "strong"
+  },
+  "61c446666ea644e683e520d6": {
+   "callsigns": [
+    "KATZ",
+    "WEEK",
+    "WGAL",
+    "WGCB",
+    "WHP",
+    "WHP-TV",
+    "WHTM",
+    "WILL",
+    "WITH",
+    "WLYH",
+    "WPMT"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 20,
+   "strength": "strong"
+  },
+  "629378863a20460585c45d43": {
+   "callsigns": [
+    "KXST-FM",
+    "WEST",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "broadcast"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "weak"
+  },
+  "62de5ea8c9094191b6f55f2f": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "63208ea9674440799fb01d5e": {
+   "callsigns": [
+    "KATZ",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "station"
+   ],
+   "keyword_occurrences": 9,
+   "strength": "strong"
+  },
+  "63b24b6c460c4e309b145d76": {
+   "callsigns": [
+    "WEST",
+    "WXME-AM"
+   ],
+   "keyword_hits": [
+    "media",
+    "spot"
+   ],
+   "keyword_occurrences": 5,
+   "strength": "strong"
+  },
+  "63e72797a71049f0bccba11c": {
+   "callsigns": [
+    "WEST",
+    "WORK"
+   ],
+   "keyword_hits": [
+    "agency"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "weak"
+  },
+  "64e423ac8ca2434eb859632e": {
+   "callsigns": [
+    "WEST"
+   ],
+   "keyword_hits": [
+    "media"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "6594a154110146389628fd63": {
+   "callsigns": [
+    "KXSA"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "station"
+   ],
+   "keyword_occurrences": 3,
+   "strength": "strong"
+  },
+  "65e34b0561a841339c6ef146": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "65ea94315d98478489b684b2": {
+   "callsigns": [
+    "KVEG"
+   ],
+   "keyword_hits": [
+    "media"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "weak"
+  },
+  "66517596536a412fba0cbd6c": {
+   "callsigns": [
+    "WED",
+    "WEST",
+    "WGYE-FM"
+   ],
+   "keyword_hits": [
+    "agency",
+    "media",
+    "station"
+   ],
+   "keyword_occurrences": 5,
+   "strength": "strong"
+  },
+  "66583cda46a344f683756e34": {
+   "callsigns": [
+    "WKS",
+    "WOI-TV"
+   ],
+   "keyword_hits": [
+    "media",
+    "spot"
+   ],
+   "keyword_occurrences": 3,
+   "strength": "strong"
+  },
+  "667b3c4777b943d2947bc1ad": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "686fc97705a34f5987ee060b": {
+   "callsigns": [
+    "KATZ",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 12,
+   "strength": "strong"
+  },
+  "687c6dd1dd2c465485cef4a8": {
+   "callsigns": [
+    "WEST"
+   ],
+   "keyword_hits": [
+    "agency"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "weak"
+  },
+  "6945ee4598d34ff4ab8d7a10": {
+   "callsigns": [],
+   "keyword_hits": [
+    "spot"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "none"
+  },
+  "699b369e9d414eb28dcb4d23": {
+   "callsigns": [
+    "WEST",
+    "WILE"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "6a6b6a39b9914e72b943c579": {
+   "callsigns": [
+    "KUTV"
+   ],
+   "keyword_hits": [
+    "media",
+    "political",
+    "spot"
+   ],
+   "keyword_occurrences": 4,
+   "strength": "strong"
+  },
+  "6ab57799121c486289610ff6": {
+   "callsigns": [
+    "KEPT",
+    "WHEN",
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "6b5ca42333b247b083bbcfa0": {
+   "callsigns": [
+    "KKFG-FM",
+    "WERE",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "commercial",
+    "media",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 66,
+   "strength": "strong"
+  },
+  "6b9b7d7a7b424195b0b1150c": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "6ceecf3352ce4c9b8ce06e91": {
+   "callsigns": [
+    "KBVB-FM",
+    "WAS",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "radio",
+    "station"
+   ],
+   "keyword_occurrences": 9,
+   "strength": "strong"
+  },
+  "6d3c39ad29f44fda85ebda6a": {
+   "callsigns": [
+    "WEB",
+    "WHEN",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency"
+   ],
+   "keyword_occurrences": 6,
+   "strength": "strong"
+  },
+  "6dc350f594e94cec84e2a6f3": {
+   "callsigns": [
+    "KYCA",
+    "WAS",
+    "WERE"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "media",
+    "political",
+    "station"
+   ],
+   "keyword_occurrences": 10,
+   "strength": "strong"
+  },
+  "6decf48ff2bc4b94bf2c04e7": {
+   "callsigns": [
+    "WEST"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "media",
+    "political",
+    "spot",
+    "station",
+    "television"
+   ],
+   "keyword_occurrences": 9,
+   "strength": "strong"
+  },
+  "6e0d2175f7ad406cad04be9c": {
+   "callsigns": [
+    "WCRU",
+    "WERE",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "agency",
+    "broadcast",
+    "media",
+    "station"
+   ],
+   "keyword_occurrences": 11,
+   "strength": "strong"
+  },
+  "6eb341f24f2b4cc1b45eb689": {
+   "callsigns": [
+    "WIEN",
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "6fe42d84c106426990a86477": {
+   "callsigns": [
+    "WAS",
+    "WEST",
+    "WILL"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 5,
+   "strength": "strong"
+  },
+  "720b8b2eb9cc4df5bafaefc3": {
+   "callsigns": [
+    "KON",
+    "WIRE",
+    "WLLT",
+    "WORK"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "72a7e1a870f040b38b6df8e0": {
+   "callsigns": [
+    "KATZ",
+    "WABK",
+    "WED",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "radio"
+   ],
+   "keyword_occurrences": 8,
+   "strength": "strong"
+  },
+  "72fbc85319b64eacb9fcf964": {
+   "callsigns": [
+    "KID-AM",
+    "WAY",
+    "WEB",
+    "WEST",
+    "WITH",
+    "WORK"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "commercial",
+    "media",
+    "radio",
+    "station"
+   ],
+   "keyword_occurrences": 52,
+   "strength": "strong"
+  },
+  "742dfb64d1e4439eb7e62d44": {
+   "callsigns": [
+    "KKVM",
+    "KKVM-FM",
+    "WEST",
+    "WKS"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "media",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 12,
+   "strength": "strong"
+  },
+  "766b77d936a440dca14eabde": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "77ba81f4a62e4ee9a35ac6d5": {
+   "callsigns": [
+    "WIH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "78c1760ed76c49e89b95bec9": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "791908ec8c8841ecb932a466": {
+   "callsigns": [
+    "KATZ",
+    "WBBS-FM",
+    "WERE",
+    "WEST",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "commercial",
+    "media",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 28,
+   "strength": "strong"
+  },
+  "796b5ff94f82436a8113bd01": {
+   "callsigns": [
+    "KAZY",
+    "KBEN",
+    "KDAD",
+    "KFMH",
+    "KHAD",
+    "KHAT",
+    "KIMX",
+    "KIXM",
+    "KJMP",
+    "KRAN",
+    "KRKI",
+    "KROW",
+    "KRQU",
+    "KRRR",
+    "KTED",
+    "KVRG",
+    "KWHO",
+    "KZQL",
+    "WED",
+    "WEEK",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "commercial",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 23,
+   "strength": "strong"
+  },
+  "7a8366ed106f423e85aa3de3": {
+   "callsigns": [
+    "WEST"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "media"
+   ],
+   "keyword_occurrences": 3,
+   "strength": "strong"
+  },
+  "7b992c16a9324c6c94f6e0d3": {
+   "callsigns": [
+    "WORD"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "7c5c8ed6d2624e9fb5485797": {
+   "callsigns": [
+    "WHEN"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "7dcd8801807544cba7c1fa34": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "7fe28725724241f1b5eefaa1": {
+   "callsigns": [
+    "KELT",
+    "WERE",
+    "WITH",
+    "WYKR"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "station"
+   ],
+   "keyword_occurrences": 5,
+   "strength": "strong"
+  },
+  "801d44361c8f481eb51313eb": {
+   "callsigns": [
+    "WED",
+    "WGEM-FM"
+   ],
+   "keyword_hits": [
+    "media",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 8,
+   "strength": "strong"
+  },
+  "812b7e6213e0485ab99e9a48": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "82abeb6137024319942ca730": {
+   "callsigns": [
+    "WAS",
+    "WVII"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "airtime",
+    "broadcast",
+    "political"
+   ],
+   "keyword_occurrences": 8,
+   "strength": "strong"
+  },
+  "84841d69ba38451c8337757d": {
+   "callsigns": [
+    "WEST",
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "848916b2c5264818be60e1f1": {
+   "callsigns": [
+    "WADE",
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "84dd5f5c0f204c39a8561647": {
+   "callsigns": [
+    "KGPQ"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 4,
+   "strength": "strong"
+  },
+  "863e3854266040d49a14cee0": {
+   "callsigns": [
+    "KTMB-FM",
+    "WAS"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "station"
+   ],
+   "keyword_occurrences": 8,
+   "strength": "strong"
+  },
+  "865ec0f8ace544a28770aafc": {
+   "callsigns": [
+    "KATZ",
+    "KCYY",
+    "KCYY-FM",
+    "WAS",
+    "WEEK",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "airtime",
+    "broadcast",
+    "media",
+    "network",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 20,
+   "strength": "strong"
+  },
+  "8697219373c84cb19a1da8b4": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [
+    "agency",
+    "spot"
+   ],
+   "keyword_occurrences": 5,
+   "strength": "strong"
+  },
+  "86cf121fdcb44d9c942db92c": {
+   "callsigns": [
+    "WEST"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "network"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "86d8030245fa4b28a746e47b": {
+   "callsigns": [
+    "KAOK-AM",
+    "KIM",
+    "WHEN",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "commercial",
+    "media",
+    "political",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 181,
+   "strength": "strong"
+  },
+  "86dcb611a1974c85a76f7ae6": {
+   "callsigns": [
+    "KIXX",
+    "WBCQ-FM",
+    "WXME-AM"
+   ],
+   "keyword_hits": [
+    "media",
+    "spot"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "878ad70041f840eb923504a3": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "87e4da43665346598da57410": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "893d9cc0e7294fdab7fdfd1d": {
+   "callsigns": [
+    "KATZ",
+    "WEX"
+   ],
+   "keyword_hits": [
+    "media"
+   ],
+   "keyword_occurrences": 4,
+   "strength": "strong"
+  },
+  "8a6089b0ee9d491f9b955550": {
+   "callsigns": [
+    "WKEE-FM",
+    "WTFS"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "commercial",
+    "media",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 14,
+   "strength": "strong"
+  },
+  "8c2273ca0acf4c52b31fe709": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "8c805d524e1c4ddea5eca7a2": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "8cb096cf81dc43bd95111871": {
+   "callsigns": [
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "agency"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "weak"
+  },
+  "8fc1fd0aa8e244c39d0b5822": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [
+    "media",
+    "radio"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "9051c9b9b65541f9ae2493f6": {
+   "callsigns": [],
+   "keyword_hits": [
+    "media"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "none"
+  },
+  "918004eb9d404fcfb73f25e1": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "91b7c668b4a24ed5b0ac8e35": {
+   "callsigns": [
+    "WIFH",
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "91dc5269429b44fb9cd26fc2": {
+   "callsigns": [
+    "KSCY-FM",
+    "WED",
+    "WEST",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "radio",
+    "station"
+   ],
+   "keyword_occurrences": 7,
+   "strength": "strong"
+  },
+  "920f42aab82d4bb28bf68b79": {
+   "callsigns": [
+    "KATZ",
+    "WED",
+    "WERE",
+    "WEST",
+    "WITH",
+    "WPOR-FM"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "commercial",
+    "media",
+    "radio",
+    "spot",
+    "station",
+    "television"
+   ],
+   "keyword_occurrences": 21,
+   "strength": "strong"
+  },
+  "927248e02cff4efca86c8e7e": {
+   "callsigns": [
+    "KONG"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "9305c59b993e412fb47b2da1": {
+   "callsigns": [
+    "WILL"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "93385fe3deba41c38ce88e1a": {
+   "callsigns": [
+    "WHEN"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "9366897ef8604a39b25e0ec8": {
+   "callsigns": [
+    "KATY",
+    "WEB"
+   ],
+   "keyword_hits": [
+    "media"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "weak"
+  },
+  "94ea17b538fd4ffa9ae67710": {
+   "callsigns": [
+    "KINN",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "station"
+   ],
+   "keyword_occurrences": 7,
+   "strength": "strong"
+  },
+  "9516c656f9184251a2669378": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "95e2e9636613486e828290fb": {
+   "callsigns": [
+    "KDOG-FM",
+    "WAY",
+    "WERE",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "media",
+    "political",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 16,
+   "strength": "strong"
+  },
+  "963d343ef6934b91a140837d": {
+   "callsigns": [
+    "WEST",
+    "WILL",
+    "WORK"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "969fde2888b14bb99f7aa1f7": {
+   "callsigns": [
+    "WERE",
+    "WITH",
+    "WQAH-FM"
+   ],
+   "keyword_hits": [
+    "political"
+   ],
+   "keyword_occurrences": 23,
+   "strength": "strong"
+  },
+  "96e0f58a0ef6435daa4852ce": {
+   "callsigns": [
+    "KBOT",
+    "KBOT-FM",
+    "KENT",
+    "WAVE"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "political",
+    "spot"
+   ],
+   "keyword_occurrences": 13,
+   "strength": "strong"
+  },
+  "9706b37288654c8d8522cf69": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "99a96ebc8fc64662a80a990f": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "99d7418a5f2b42ad93894b07": {
+   "callsigns": [
+    "KNOW",
+    "KTMM",
+    "KTMM-AM",
+    "WEST",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "radio",
+    "spot"
+   ],
+   "keyword_occurrences": 17,
+   "strength": "strong"
+  },
+  "9a08f7fec7e74aa28ade3018": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "9a359ef4cc4644ae9b5caaa4": {
+   "callsigns": [
+    "KWWL",
+    "KWWL-TV",
+    "WALL",
+    "WED"
+   ],
+   "keyword_hits": [
+    "agency",
+    "media",
+    "station"
+   ],
+   "keyword_occurrences": 11,
+   "strength": "strong"
+  },
+  "9a52926255a64fd1aa57c5f8": {
+   "callsigns": [
+    "WLTX",
+    "WLTX-TV"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "media",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 7,
+   "strength": "strong"
+  },
+  "9ab3d13dba034bbba6dd1a79": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "9ab6841f3d4e457486bfc645": {
+   "callsigns": [
+    "WED",
+    "WGEM-FM"
+   ],
+   "keyword_hits": [
+    "media",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 8,
+   "strength": "strong"
+  },
+  "9b501e53f39046ae95ca6b0f": {
+   "callsigns": [
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "9c0a4ae17c9b41f188e5924d": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "9c89f2651d10430eba923a45": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [
+    "media"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "9df71768260847dc84015f01": {
+   "callsigns": [
+    "KOTS",
+    "KOTS-AM",
+    "WED"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 7,
+   "strength": "strong"
+  },
+  "9e62e88925324a259eabfe8c": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "9e7949d2167f4c19a03242eb": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "9f33c0b3592940fd98d1cd72": {
+   "callsigns": [
+    "WHEN",
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "9fadde216b7d49b1bb62085a": {
+   "callsigns": [
+    "KATZ",
+    "WEEK",
+    "WGAL",
+    "WGCB",
+    "WHP",
+    "WHP-TV",
+    "WHTM",
+    "WILL",
+    "WITH",
+    "WLYH",
+    "WOLF",
+    "WPMT"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 20,
+   "strength": "strong"
+  },
+  "a0205ccea52149d492da3dd2": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "a0ccc3e54ee54316a347f811": {
+   "callsigns": [
+    "WCBL",
+    "WCBL-FM"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 5,
+   "strength": "strong"
+  },
+  "a116da9b551a4465b8fc55e5": {
+   "callsigns": [
+    "KVRE-FM",
+    "WERE"
+   ],
+   "keyword_hits": [
+    "broadcast"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "a14811674f9e4b2c99bce2be": {
+   "callsigns": [
+    "KYKD",
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "a187ba31eae2481ca20cdc7a": {
+   "callsigns": [
+    "KYKD",
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "a22ba884e85544e78742d5dc": {
+   "callsigns": [
+    "KIDS",
+    "WKS",
+    "WOI-TV"
+   ],
+   "keyword_hits": [
+    "media",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 10,
+   "strength": "strong"
+  },
+  "a2e24c85a4af4318972fb0e2": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "a39706cb2762474cb3e155b4": {
+   "callsigns": [
+    "KTVL",
+    "WEEK",
+    "WERE",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 31,
+   "strength": "strong"
+  },
+  "a543304f3384484da4a67142": {
+   "callsigns": [
+    "KYLE",
+    "WED",
+    "WGOW-FM"
+   ],
+   "keyword_hits": [
+    "agency",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 37,
+   "strength": "strong"
+  },
+  "a593b7950bf941608353fadf": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "a59aa2424d7f46b98cc8090d": {
+   "callsigns": [
+    "KLEB",
+    "KLEB-AM",
+    "KLRZ",
+    "WED",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "broadcast"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "a69adae11ad848188d797da4": {
+   "callsigns": [
+    "KES"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "a76630d6f7f0414293b5ebfd": {
+   "callsigns": [
+    "KINE",
+    "KINE-FM",
+    "WAS",
+    "WEEK",
+    "WELL",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "radio",
+    "spot",
+    "station",
+    "television"
+   ],
+   "keyword_occurrences": 33,
+   "strength": "strong"
+  },
+  "a946223d0e6d4a50b00dc09b": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "a9b12b8637f0498e96114239": {
+   "callsigns": [
+    "WERE",
+    "WLHC-FM"
+   ],
+   "keyword_hits": [
+    "agency",
+    "broadcast",
+    "media",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 33,
+   "strength": "strong"
+  },
+  "ab5b46afc84c41ae82b2db90": {
+   "callsigns": [
+    "KVRB-FM",
+    "KVRE-FM",
+    "WERE"
+   ],
+   "keyword_hits": [
+    "broadcast"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "abd0ed61962843f4a5379cf8": {
+   "callsigns": [
+    "KCRV-AM",
+    "WEST"
+   ],
+   "keyword_hits": [
+    "media",
+    "radio",
+    "spot"
+   ],
+   "keyword_occurrences": 8,
+   "strength": "strong"
+  },
+  "acc86f9b0e544bb6b93d805c": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "adb36db31f5040839e990205": {
+   "callsigns": [
+    "WAMI",
+    "WAMI-TV",
+    "WBFS",
+    "WEEK",
+    "WFOR",
+    "WLTV",
+    "WPLG",
+    "WPXM",
+    "WSFL",
+    "WSVN",
+    "WTVJ"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "media",
+    "spot"
+   ],
+   "keyword_occurrences": 8,
+   "strength": "strong"
+  },
+  "ae77ce0a6bac49d0989bada9": {
+   "callsigns": [
+    "WAS",
+    "WEEK",
+    "WITH",
+    "WPXI",
+    "WPXI-TV"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "airtime",
+    "broadcast",
+    "media",
+    "network",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 47,
+   "strength": "strong"
+  },
+  "aec3d23a0a7c4c54b20199dc": {
+   "callsigns": [
+    "WAS",
+    "WFVX"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "political"
+   ],
+   "keyword_occurrences": 7,
+   "strength": "strong"
+  },
+  "af4d270d97cf4dc4bec18b1d": {
+   "callsigns": [
+    "WEEK",
+    "WHEN",
+    "WHOM",
+    "WILL",
+    "WITH",
+    "WTVD"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 50,
+   "strength": "strong"
+  },
+  "afe032e87bdd43c2b158c6f9": {
+   "callsigns": [
+    "WAY"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "b0557da98934425180c4f16a": {
+   "callsigns": [
+    "WILL"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "b0bbf8ce196e431faafbc61f": {
+   "callsigns": [
+    "KING",
+    "KSFY",
+    "WAS",
+    "WEEK",
+    "WEY",
+    "WILL"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "spot"
+   ],
+   "keyword_occurrences": 47,
+   "strength": "strong"
+  },
+  "b110e50fff9e4de2bd31ea73": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "b2784d5a07f84664919de89c": {
+   "callsigns": [
+    "WADE",
+    "WILL"
+   ],
+   "keyword_hits": [
+    "media"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "weak"
+  },
+  "b2a41a270a7b4c8b9b6f69b3": {
+   "callsigns": [
+    "WERN",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "agency",
+    "media"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "b2e6fa6e24434b0dab627226": {
+   "callsigns": [
+    "KATZ",
+    "KNBW",
+    "KNEN",
+    "KNEW",
+    "WERE",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 12,
+   "strength": "strong"
+  },
+  "b360ddd36d8d4d7aa21ef809": {
+   "callsigns": [
+    "KATZ",
+    "WED",
+    "WEST"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 6,
+   "strength": "strong"
+  },
+  "b45c2725a2204c03aa5b858a": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "b4a7e52977ee4482b65a5740": {
+   "callsigns": [
+    "KIEL",
+    "WEEK",
+    "WHEN",
+    "WHOM",
+    "WILL",
+    "WITH",
+    "WKBN"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 27,
+   "strength": "strong"
+  },
+  "b4eb1516fd61447c86cd2156": {
+   "callsigns": [
+    "WAGT-TV",
+    "WEEK",
+    "WHOM",
+    "WILL"
+   ],
+   "keyword_hits": [
+    "agency",
+    "political",
+    "spot"
+   ],
+   "keyword_occurrences": 4,
+   "strength": "strong"
+  },
+  "b533fab399a3478a93e47227": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "b5b4d5fb37b64428958cd7f5": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "b6279ff2da834d9ab3fecf07": {
+   "callsigns": [
+    "WHEN",
+    "WORK"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "b652f3ad04e94769b0c88d1c": {
+   "callsigns": [
+    "WILL"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "b764f6cb46b44fd3886914ec": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "b76fa257727e44d5b5ef8d72": {
+   "callsigns": [
+    "WTVQ-TV"
+   ],
+   "keyword_hits": [
+    "agency",
+    "media",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 4,
+   "strength": "strong"
+  },
+  "ba2ad19cfd13489284cc21d6": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "ba388b327d254ed384f97624": {
+   "callsigns": [
+    "KVAL",
+    "WEEK",
+    "WERE"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "commercial",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 32,
+   "strength": "strong"
+  },
+  "ba7418aa3887416e91785b54": {
+   "callsigns": [
+    "KATZ",
+    "WEBB",
+    "WEBB-FM"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "spot"
+   ],
+   "keyword_occurrences": 25,
+   "strength": "strong"
+  },
+  "bbd6e70912004112b83dbe39": {
+   "callsigns": [
+    "WILL"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "network"
+   ],
+   "keyword_occurrences": 13,
+   "strength": "strong"
+  },
+  "bbdc085351b549178bdbfb1a": {
+   "callsigns": [
+    "WILL",
+    "WIRE",
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "bc90438bc6b24b89999283ab": {
+   "callsigns": [
+    "KATZ",
+    "WED",
+    "WYDC"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "commercial",
+    "media",
+    "spot"
+   ],
+   "keyword_occurrences": 17,
+   "strength": "strong"
+  },
+  "bcc089ccb3b148238023fa50": {
+   "callsigns": [
+    "KEN",
+    "WERE",
+    "WITH",
+    "WOKC-AM"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "broadcast",
+    "media",
+    "station"
+   ],
+   "keyword_occurrences": 6,
+   "strength": "strong"
+  },
+  "bd8da882c0d945e7974c3878": {
+   "callsigns": [
+    "KYCA",
+    "WAS",
+    "WERE"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "political",
+    "station"
+   ],
+   "keyword_occurrences": 9,
+   "strength": "strong"
+  },
+  "bf446717ebaf4f9f874afca0": {
+   "callsigns": [
+    "WERE",
+    "WITH",
+    "WYKR"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "station"
+   ],
+   "keyword_occurrences": 6,
+   "strength": "strong"
+  },
+  "c08bae6e22ef44eeb3f92cf8": {
+   "callsigns": [
+    "WORD"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "c185c64d07f84d1b9eaad102": {
+   "callsigns": [
+    "WKA"
+   ],
+   "keyword_hits": [
+    "agency",
+    "media"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "c187e9f438b042eeb335b913": {
+   "callsigns": [
+    "KATZ",
+    "WEST"
+   ],
+   "keyword_hits": [
+    "media"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "c19343b2784348c5b34b6d80": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [
+    "agency",
+    "spot"
+   ],
+   "keyword_occurrences": 5,
+   "strength": "strong"
+  },
+  "c35d89ebd5fa4acfbfad9fe3": {
+   "callsigns": [
+    "KNOW",
+    "WJSA-FM"
+   ],
+   "keyword_hits": [
+    "agency",
+    "broadcast",
+    "network",
+    "political",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 9,
+   "strength": "strong"
+  },
+  "c411c13e968c43b59835e5fa": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "c4b4c5a1440e493dbd2b6b33": {
+   "callsigns": [
+    "KATZ",
+    "KWFI-FM",
+    "WAY",
+    "WEB",
+    "WEST",
+    "WITH",
+    "WORK"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "commercial",
+    "radio",
+    "station"
+   ],
+   "keyword_occurrences": 50,
+   "strength": "strong"
+  },
+  "c5c9068e6fd14310915f6146": {
+   "callsigns": [
+    "KBLG-AM",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "station"
+   ],
+   "keyword_occurrences": 10,
+   "strength": "strong"
+  },
+  "c616442427bf4f69a2443b3e": {
+   "callsigns": [
+    "WAC",
+    "WAVE"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "c62990cb4561487eb20824e0": {
+   "callsigns": [
+    "WHDH-TV",
+    "WTHF"
+   ],
+   "keyword_hits": [
+    "agency",
+    "airtime",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 10,
+   "strength": "strong"
+  },
+  "c6a73292f5004df3afee5b72": {
+   "callsigns": [
+    "KMBQ-FM",
+    "WAS",
+    "WEST"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "radio",
+    "station"
+   ],
+   "keyword_occurrences": 10,
+   "strength": "strong"
+  },
+  "c80043eb417041e88c1c3bc7": {
+   "callsigns": [
+    "WQCW",
+    "WSAZ"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "spot"
+   ],
+   "keyword_occurrences": 17,
+   "strength": "strong"
+  },
+  "c8146d486f6d46109e0cc5d5": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "c8d26800425448f1ae2115d1": {
+   "callsigns": [],
+   "keyword_hits": [
+    "political"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "none"
+  },
+  "c954cb6fb3804354be9821d8": {
+   "callsigns": [],
+   "keyword_hits": [
+    "political"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "none"
+  },
+  "ca154b23196b4278ba87a3ec": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "cb128af5bab94cca9ab40ac4": {
+   "callsigns": [
+    "KRRG",
+    "WEBB",
+    "WED"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 16,
+   "strength": "strong"
+  },
+  "cba91ce9767f46e09bd02b98": {
+   "callsigns": [
+    "KPOA-FM",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 15,
+   "strength": "strong"
+  },
+  "cbf70d17d3fe4f7287187358": {
+   "callsigns": [
+    "WEST",
+    "WKS",
+    "WMYM-AM"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "media",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 12,
+   "strength": "strong"
+  },
+  "cd75c9e34fe940feb44ccef1": {
+   "callsigns": [
+    "KUDA"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "cdc50569915f4f18813f306f": {
+   "callsigns": [
+    "WIDE"
+   ],
+   "keyword_hits": [
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 3,
+   "strength": "strong"
+  },
+  "cdf65b6accc54facb0d8cf8e": {
+   "callsigns": [
+    "WEST",
+    "WFMX"
+   ],
+   "keyword_hits": [
+    "media"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "ce6ab66ef43945ad9e7085fe": {
+   "callsigns": [
+    "WKND",
+    "WOLF"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 18,
+   "strength": "strong"
+  },
+  "d0380efa5caa47ffb4c9bd46": {
+   "callsigns": [
+    "KTVH",
+    "WEEK",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "media",
+    "political",
+    "spot"
+   ],
+   "keyword_occurrences": 5,
+   "strength": "strong"
+  },
+  "d04e832d926c4efdb0ea13bb": {
+   "callsigns": [
+    "WKS"
+   ],
+   "keyword_hits": [
+    "commercial",
+    "media",
+    "network"
+   ],
+   "keyword_occurrences": 3,
+   "strength": "strong"
+  },
+  "d264eaf836b642c6aae03d8b": {
+   "callsigns": [
+    "WKEW",
+    "WPOL",
+    "WSTS"
+   ],
+   "keyword_hits": [
+    "broadcast"
+   ],
+   "keyword_occurrences": 3,
+   "strength": "strong"
+  },
+  "d269a6bcfbe54ce0b6cc2b81": {
+   "callsigns": [
+    "KATZ",
+    "WEST",
+    "WHEN",
+    "WHO",
+    "WILL",
+    "WITH",
+    "WJLB-FM",
+    "WORD",
+    "WTFS"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "commercial",
+    "media",
+    "political",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 179,
+   "strength": "strong"
+  },
+  "d2f429a2333643aeade1aba9": {
+   "callsigns": [
+    "WILL"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "d376bc702cf6415e991e5680": {
+   "callsigns": [
+    "KATZ",
+    "WAS",
+    "WHQT",
+    "WHQT-FM",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "network",
+    "radio",
+    "spot"
+   ],
+   "keyword_occurrences": 22,
+   "strength": "strong"
+  },
+  "d46006725fc04bff84781874": {
+   "callsigns": [
+    "WERE",
+    "WITH",
+    "WTRU"
+   ],
+   "keyword_hits": [
+    "agency",
+    "broadcast",
+    "media",
+    "station"
+   ],
+   "keyword_occurrences": 13,
+   "strength": "strong"
+  },
+  "d53f1ea445534411ad2c95c4": {
+   "callsigns": [
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "network",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 23,
+   "strength": "strong"
+  },
+  "d5521ef27bcf4aebaf32f9c0": {
+   "callsigns": [
+    "WEST",
+    "WXME-AM"
+   ],
+   "keyword_hits": [
+    "media",
+    "spot"
+   ],
+   "keyword_occurrences": 5,
+   "strength": "strong"
+  },
+  "d6894e91d19844a98c866535": {
+   "callsigns": [
+    "WBCQ-FM",
+    "WEST"
+   ],
+   "keyword_hits": [
+    "media",
+    "spot"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "d75cd7d539d54e8d84b01358": {
+   "callsigns": [
+    "KIXX",
+    "WBCQ-FM",
+    "WEST",
+    "WXME-AM"
+   ],
+   "keyword_hits": [
+    "media",
+    "spot"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "d825ca420cbc41aeaafaa8fb": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "d875279da638445097f33572": {
+   "callsigns": [
+    "KATZ",
+    "WEX"
+   ],
+   "keyword_hits": [
+    "media"
+   ],
+   "keyword_occurrences": 3,
+   "strength": "strong"
+  },
+  "d965aaae35104f1d8e2b3760": {
+   "callsigns": [
+    "WILL"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "d9e3164bca9145f4bc8d2838": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "dad52236b17e4b939524558a": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "db046e0d94664532b8176956": {
+   "callsigns": [
+    "WITH",
+    "WMH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "db2e81c790384a11bbde5194": {
+   "callsigns": [
+    "KYKD",
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "db60e02cb0074cd5baf3cf01": {
+   "callsigns": [
+    "WILL"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "dbdd03c16b814e13a412ce04": {
+   "callsigns": [
+    "WITK"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "dd58e5514e2342d2b430188e": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "ddfcaaa66c64422c93409374": {
+   "callsigns": [
+    "WLAW-FM"
+   ],
+   "keyword_hits": [
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "de0b57290cc74fdf8226136b": {
+   "callsigns": [
+    "KUFO",
+    "KXL"
+   ],
+   "keyword_hits": [
+    "agency",
+    "airtime",
+    "media",
+    "radio",
+    "television"
+   ],
+   "keyword_occurrences": 14,
+   "strength": "strong"
+  },
+  "dedc334705bb4a1697e9b358": {
+   "callsigns": [
+    "KEBS",
+    "WAS",
+    "WEST",
+    "WGT",
+    "WIIH",
+    "WITH",
+    "WOT"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "df056d6a5ea94b619cd0b241": {
+   "callsigns": [
+    "KATZ",
+    "WEEK",
+    "WGAL",
+    "WGCB",
+    "WHP",
+    "WHP-TV",
+    "WHTM",
+    "WILL",
+    "WITH",
+    "WLYH",
+    "WPMT"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 22,
+   "strength": "strong"
+  },
+  "dff005614048422183f63a16": {
+   "callsigns": [
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "e008149e6a1a4619a73506de": {
+   "callsigns": [
+    "WED",
+    "WEST",
+    "WHTF-FM",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "media",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 11,
+   "strength": "strong"
+  },
+  "e09db0a270c1486184982f8f": {
+   "callsigns": [
+    "WEST"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "e09f45560d7143708b8b162c": {
+   "callsigns": [
+    "WED",
+    "WEST",
+    "WILL",
+    "WITH",
+    "WKPL-FM"
+   ],
+   "keyword_hits": [
+    "media",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 12,
+   "strength": "strong"
+  },
+  "e12004780d164ee9ba386f5f": {
+   "callsigns": [
+    "KWTO-FM"
+   ],
+   "keyword_hits": [
+    "media",
+    "radio",
+    "spot"
+   ],
+   "keyword_occurrences": 9,
+   "strength": "strong"
+  },
+  "e1a58dd3e11e490cbc1cb87f": {
+   "callsigns": [
+    "KYCA",
+    "WAS",
+    "WERE"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "political",
+    "station"
+   ],
+   "keyword_occurrences": 9,
+   "strength": "strong"
+  },
+  "e2517107ab9b4a859a2ae5c8": {
+   "callsigns": [
+    "WAS",
+    "WHOM",
+    "WILL",
+    "WJAR",
+    "WJAR-TV"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "airtime",
+    "broadcast",
+    "commercial",
+    "media",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 38,
+   "strength": "strong"
+  },
+  "e271671362474cab90508f7d": {
+   "callsigns": [
+    "KATZ",
+    "KDKA",
+    "WEEK",
+    "WILL",
+    "WITH",
+    "WPCW",
+    "WPGH",
+    "WPGH-TV",
+    "WPMY",
+    "WPXI",
+    "WTAE"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 20,
+   "strength": "strong"
+  },
+  "e2e6326f24fc499198e20ce4": {
+   "callsigns": [
+    "WEST"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "media"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "e3164d2f5fb74e15a36bdbb3": {
+   "callsigns": [
+    "WEST",
+    "WWF"
+   ],
+   "keyword_hits": [
+    "media",
+    "network"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "e37d9820e2b94f809defd83b": {
+   "callsigns": [
+    "WILL"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "e4b2cc5f46c4435c92d539b1": {
+   "callsigns": [
+    "KATZ",
+    "WED",
+    "WSKZ-FM"
+   ],
+   "keyword_hits": [
+    "agency",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 4,
+   "strength": "strong"
+  },
+  "e514ace79ddd4d3fa0033062": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "e54b2a08fe4e437187d992db": {
+   "callsigns": [
+    "WANT",
+    "WHAT",
+    "WILL",
+    "WITH",
+    "WJKD",
+    "WJKD-FM"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 12,
+   "strength": "strong"
+  },
+  "e765a01bde8b4bc38c0ace79": {
+   "callsigns": [
+    "KMAQ",
+    "KMAQ-AM",
+    "KMAQ-FM",
+    "WEST"
+   ],
+   "keyword_hits": [
+    "media",
+    "political",
+    "radio",
+    "station"
+   ],
+   "keyword_occurrences": 9,
+   "strength": "strong"
+  },
+  "e7a56c0f57ae4680a4513d8f": {
+   "callsigns": [
+    "KYCA"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "political"
+   ],
+   "keyword_occurrences": 3,
+   "strength": "strong"
+  },
+  "e804115bd684499ca577c6f2": {
+   "callsigns": [
+    "WERE",
+    "WITH",
+    "WTSB"
+   ],
+   "keyword_hits": [
+    "agency",
+    "broadcast",
+    "media",
+    "station"
+   ],
+   "keyword_occurrences": 8,
+   "strength": "strong"
+  },
+  "e83fab36c74545199d85e10d": {
+   "callsigns": [
+    "KVRE-FM",
+    "WAY",
+    "WERE"
+   ],
+   "keyword_hits": [
+    "broadcast"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "e879f9c7796e4e24892fcdc0": {
+   "callsigns": [
+    "WFUN",
+    "WFUN-FM"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "spot"
+   ],
+   "keyword_occurrences": 12,
+   "strength": "strong"
+  },
+  "e8d2da0e6738488888bcd53b": {
+   "callsigns": [
+    "WFLI-AM",
+    "WILL"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 12,
+   "strength": "strong"
+  },
+  "e9a885b5e9bc4f76b6b69b96": {
+   "callsigns": [
+    "KATZ",
+    "WAST",
+    "WEV"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "spot"
+   ],
+   "keyword_occurrences": 10,
+   "strength": "strong"
+  },
+  "ea974676b77e469ca8c97708": {
+   "callsigns": [
+    "KOLN",
+    "WHEN"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "eb25ee47999c4d069325fc23": {
+   "callsigns": [
+    "WERE",
+    "WGOH",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "station"
+   ],
+   "keyword_occurrences": 4,
+   "strength": "strong"
+  },
+  "ebbfbf0cf1ba430cb9d1a8d9": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "ec06bbbd2a074231b98c1ddc": {
+   "callsigns": [],
+   "keyword_hits": [
+    "agency"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "none"
+  },
+  "ec7c3c76460f4a99821d1ff5": {
+   "callsigns": [
+    "WEB",
+    "WIDE",
+    "WIRE"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "eddab0cf6b00409da5b029aa": {
+   "callsigns": [
+    "WALL"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "ee07d38c385e43c3aba7c1f5": {
+   "callsigns": [
+    "WARD",
+    "WLVI-TV"
+   ],
+   "keyword_hits": [
+    "agency",
+    "airtime",
+    "media",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 15,
+   "strength": "strong"
+  },
+  "ee399af64a484ae396a4aeea": {
+   "callsigns": [
+    "WAMI",
+    "WAMI-TV",
+    "WBFS",
+    "WEEK",
+    "WFOR",
+    "WLTV",
+    "WPLG",
+    "WPXM",
+    "WSFL",
+    "WSVN",
+    "WTVJ"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "media",
+    "network",
+    "spot"
+   ],
+   "keyword_occurrences": 13,
+   "strength": "strong"
+  },
+  "f0d621ee4fb24fb197ce7732": {
+   "callsigns": [
+    "WAS",
+    "WEST",
+    "WILL"
+   ],
+   "keyword_hits": [
+    "broadcast",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 5,
+   "strength": "strong"
+  },
+  "f1285c45438a4ded8679d21c": {
+   "callsigns": [
+    "WIDE"
+   ],
+   "keyword_hits": [
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 3,
+   "strength": "strong"
+  },
+  "f1320edee01c4ff9b002a3f9": {
+   "callsigns": [
+    "WAS",
+    "WFVX"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast"
+   ],
+   "keyword_occurrences": 8,
+   "strength": "strong"
+  },
+  "f1b0c5690ac9414dba5770aa": {
+   "callsigns": [
+    "WAMI",
+    "WBFS",
+    "WED",
+    "WEEK",
+    "WFOR",
+    "WLRN",
+    "WLTV",
+    "WLTV-TV",
+    "WPBT",
+    "WPLG",
+    "WPXM",
+    "WSCV",
+    "WSFL",
+    "WSVN",
+    "WTVJ"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "media",
+    "spot"
+   ],
+   "keyword_occurrences": 12,
+   "strength": "strong"
+  },
+  "f2a028185da5413da07076e3": {
+   "callsigns": [
+    "WILL"
+   ],
+   "keyword_hits": [
+    "media"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "weak"
+  },
+  "f2caad44263441f498fa72b5": {
+   "callsigns": [
+    "WEST",
+    "WIFT"
+   ],
+   "keyword_hits": [
+    "spot"
+   ],
+   "keyword_occurrences": 2,
+   "strength": "strong"
+  },
+  "f3046f4775d847b9b60914d4": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [
+    "media"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "weak"
+  },
+  "f40eef50d3754e0bb8920324": {
+   "callsigns": [
+    "WILL"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "f47b8ee00eae416c94a083ca": {
+   "callsigns": [
+    "KRPL",
+    "KZZL-FM",
+    "WAS",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 24,
+   "strength": "strong"
+  },
+  "f4e6e4ad2da5438391b36b80": {
+   "callsigns": [
+    "WAS",
+    "WMEN"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "f579a59d5d7d4ba2986b3c9c": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "f5b647e55a0b45eebefe8e8e": {
+   "callsigns": [
+    "WEST",
+    "WXME-AM"
+   ],
+   "keyword_hits": [
+    "media",
+    "spot"
+   ],
+   "keyword_occurrences": 3,
+   "strength": "strong"
+  },
+  "f6b2768c06404cdd8d510d4d": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "f6fa97a83b8246a196a5217b": {
+   "callsigns": [
+    "KIDS",
+    "WEST",
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media",
+    "network",
+    "radio",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 21,
+   "strength": "strong"
+  },
+  "f7b199fd711149feaf0044c8": {
+   "callsigns": [
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "f8161f6392774af5825837c8": {
+   "callsigns": [
+    "WILL",
+    "WITH"
+   ],
+   "keyword_hits": [
+    "media"
+   ],
+   "keyword_occurrences": 1,
+   "strength": "weak"
+  },
+  "f87af344f9254256bdfaabfb": {
+   "callsigns": [
+    "KIDS"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "f8af310e025948d391036bac": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "f973802bdbcb41be9a4c7a87": {
+   "callsigns": [
+    "WIND",
+    "WITH",
+    "WORK"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  },
+  "f9a32ed45b654dd18b2d4cc2": {
+   "callsigns": [
+    "KHQA",
+    "WEEK",
+    "WERE"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "airtime",
+    "broadcast",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 56,
+   "strength": "strong"
+  },
+  "f9bc33f0c55746e28831654a": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "f9ebd5472d334a8bb1f45e33": {
+   "callsigns": [
+    "WAMI",
+    "WBFS",
+    "WEEK",
+    "WFOR",
+    "WLRN",
+    "WLTV",
+    "WLTV-TV",
+    "WPBT",
+    "WPLG",
+    "WPXM",
+    "WSCV",
+    "WSFL",
+    "WSVN",
+    "WTVJ"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "media",
+    "network",
+    "spot"
+   ],
+   "keyword_occurrences": 10,
+   "strength": "strong"
+  },
+  "fa609d704e8749389fa1e158": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "fc336e3fbf8a4c69aea2637d": {
+   "callsigns": [
+    "KIBB-FM"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "media"
+   ],
+   "keyword_occurrences": 6,
+   "strength": "strong"
+  },
+  "fc6dd357dcd64cf28a6f09f7": {
+   "callsigns": [
+    "WBUI",
+    "WERE"
+   ],
+   "keyword_hits": [
+    "advertiser",
+    "agency",
+    "broadcast",
+    "commercial",
+    "media",
+    "political",
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 12,
+   "strength": "strong"
+  },
+  "fc7554630cc24a2c8f9db32b": {
+   "callsigns": [
+    "WARD",
+    "WPZE-FM"
+   ],
+   "keyword_hits": [
+    "media",
+    "radio",
+    "spot"
+   ],
+   "keyword_occurrences": 10,
+   "strength": "strong"
+  },
+  "fe035193e1894c1d96ecf3b8": {
+   "callsigns": [],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "none"
+  },
+  "fea9d968aa154d67950e01ad": {
+   "callsigns": [
+    "KSBW",
+    "WIDE"
+   ],
+   "keyword_hits": [
+    "spot",
+    "station"
+   ],
+   "keyword_occurrences": 3,
+   "strength": "strong"
+  },
+  "fedd01b20b8c48e096b7ba43": {
+   "callsigns": [
+    "KYKD",
+    "WITH"
+   ],
+   "keyword_hits": [],
+   "keyword_occurrences": 0,
+   "strength": "weak"
+  }
+ },
+ "counts": {
+  "by_strength": {
+   "strong": 224,
+   "weak": 110,
+   "none": 66
+  }
+ }
+}

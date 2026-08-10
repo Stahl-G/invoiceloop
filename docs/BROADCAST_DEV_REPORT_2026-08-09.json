@@ -1,0 +1,151 @@
+{
+ "protocol": "broadcast-pilot-v1",
+ "source": "deterministic_dev_replay_aggregate",
+ "scope_path": "docs/BROADCAST_PILOT_SCOPE_2026-08-09.json",
+ "development_n": 194,
+ "development_doc_ids_sha256": "673ebb5c2a1f3c0ce28def3e6104bdfd16eb7d7556752aaf54c4c3560a46e96b",
+ "runs": [
+  {
+   "label": "sealed1",
+   "path": "/Users/yihongguo/Developer/invoiceloop-data/runs/sealed1",
+   "n_docs": 47
+  },
+  {
+   "label": "sealed2",
+   "path": "/Users/yihongguo/Developer/invoiceloop-data/runs/sealed2",
+   "n_docs": 52
+  },
+  {
+   "label": "heldout-r3",
+   "path": "/Users/yihongguo/Developer/invoiceloop-data/runs/heldout-r3",
+   "n_docs": 52
+  },
+  {
+   "label": "sealed3-b0",
+   "path": "/Users/yihongguo/Developer/invoiceloop-data/runs/sealed3-multiharness/B0-HAR-0001/run",
+   "n_docs": 43
+  }
+ ],
+ "aggregate": {
+  "route_counts": {
+   "auto_absent": 56,
+   "auto_accept": 803,
+   "review": 1081
+  },
+  "gate_counts": {
+   "arithmetic_consistency": 94,
+   "citation_holds": 99,
+   "cross_document_duplicate": 2,
+   "cross_mode_agreement": 403,
+   "doctype_evidence": 5,
+   "extraction_present": 533,
+   "field_wellformed": 37
+  },
+  "field_route_counts": {
+   "amount_due": {
+    "auto_accept": 86,
+    "review": 108
+   },
+   "buyer_name": {
+    "auto_accept": 100,
+    "review": 94
+   },
+   "due_date": {
+    "auto_accept": 16,
+    "review": 178
+   },
+   "invoice_number": {
+    "auto_accept": 141,
+    "review": 53
+   },
+   "issue_date": {
+    "auto_accept": 150,
+    "review": 44
+   },
+   "seller_name": {
+    "auto_accept": 130,
+    "review": 64
+   },
+   "seller_vat_id": {
+    "auto_absent": 44,
+    "auto_accept": 1,
+    "review": 149
+   },
+   "total_gross": {
+    "auto_accept": 81,
+    "review": 113
+   },
+   "total_net": {
+    "auto_accept": 57,
+    "review": 137
+   },
+   "total_vat": {
+    "auto_absent": 12,
+    "auto_accept": 41,
+    "review": 141
+   }
+  },
+  "field_gate_counts": {
+   "amount_due": {
+    "citation_holds": 19,
+    "cross_mode_agreement": 34,
+    "extraction_present": 8,
+    "field_wellformed": 3
+   },
+   "buyer_name": {
+    "cross_mode_agreement": 75,
+    "extraction_present": 36
+   },
+   "due_date": {
+    "cross_mode_agreement": 43,
+    "extraction_present": 140,
+    "field_wellformed": 22
+   },
+   "invoice_number": {
+    "citation_holds": 20,
+    "cross_document_duplicate": 2,
+    "cross_mode_agreement": 32,
+    "extraction_present": 10
+   },
+   "issue_date": {
+    "cross_mode_agreement": 28,
+    "extraction_present": 3,
+    "field_wellformed": 8
+   },
+   "seller_name": {
+    "cross_mode_agreement": 58,
+    "extraction_present": 3
+   },
+   "seller_vat_id": {
+    "citation_holds": 4,
+    "cross_mode_agreement": 6,
+    "extraction_present": 188
+   },
+   "total_gross": {
+    "citation_holds": 24,
+    "cross_mode_agreement": 27,
+    "extraction_present": 12,
+    "field_wellformed": 2
+   },
+   "total_net": {
+    "citation_holds": 16,
+    "cross_mode_agreement": 41,
+    "extraction_present": 44,
+    "field_wellformed": 2
+   },
+   "total_vat": {
+    "citation_holds": 16,
+    "cross_mode_agreement": 59,
+    "extraction_present": 89
+   }
+  },
+  "docs_with_any_review": 193,
+  "docs_seen": 194
+ },
+ "known_constraints": [
+  "Gross/Net agency-commission convention remains applicability review.",
+  "due_date must be explicitly printed; payment terms are not a value.",
+  "EIN, FCC ID and station callsign are not seller_vat_id.",
+  "The report contains no slot values, images, DocILE truth or model drafts."
+ ]
+}

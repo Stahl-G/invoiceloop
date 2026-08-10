@@ -33,7 +33,11 @@ from .ocr_ingest import ocr_pdf
 FIELD_DESCRIPTIONS = {
     "invoice_number": "Seller-assigned invoice identifier.",
     "issue_date": "Date the invoice was issued.",
-    "due_date": "Payment due date.",
+    "due_date": (
+        "Explicitly printed calendar date labelled as the payment due date. "
+        "Do not put a date calculated from Net or other payment terms here; "
+        "the deterministic post-extraction field calculated_due_date is separate."
+    ),
     "seller_name": "Full legal name of the seller.",
     "seller_vat_id": "Seller VAT identifier.",
     "buyer_name": "Full legal name of the buyer.",

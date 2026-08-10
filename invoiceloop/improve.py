@@ -420,6 +420,53 @@ def propose_schema(workspace: Path, *, field: str, description: str,
         provenance="human_authored", schema=parent_schema)
 
 
+def propose_schema_bundle(
+    workspace: Path,
+    *,
+    descriptions: dict[str, str],
+    finding: str,
+    prediction: str,
+) -> Path:
+    """Create one human-reviewable candidate changing only field descriptions.
+
+    The bundle shape is intentionally exact: a model may draft text, but it
+    cannot choose a subset of fields, add properties, write IDs, or activate a
+    harness.  Python assigns the candidate directory and preserves the active
+    routing policy byte-for-byte.
+    """
+    from .harness import load_active
+
+    workspace = Path(workspace)
+    active = load_active(workspace)
+    parent_schema = json.loads(json.dumps(
+        active.get("schema") or default_extraction_schema()))
+    props = parent_schema.setdefault("properties", {})
+    expected = set(FIELDS)
+    supplied = set(descriptions)
+    if supplied != expected:
+        missing = sorted(expected - supplied)
+        extra = sorted(supplied - expected)
+        bits = []
+        if missing:
+            bits.append(f"缺少字段:{'、'.join(missing)}")
+        if extra:
+            bits.append(f"多出字段:{'、'.join(extra)}")
+        raise ValueError("组合 schema 必须逐字段提供十个受评字段描述(" + ";".join(bits) + ")")
+    for field, description in descriptions.items():
+        if not isinstance(description, str) or not description.strip():
+            raise ValueError(f"{field}: description 不能为空")
+        if field not in props:
+            raise ValueError(f"{field!r} 不在 parent schema.properties 里")
+        props[field] = {**props[field], "description": description.strip()}
+    violations = lint_schema(active["schema"], parent_schema)
+    if violations:
+        raise ValueError(refusal_text(violations, subject="这个组合字段描述改动"))
+    return _scaffold_candidate(
+        workspace, dict(active["policy"]),
+        finding=finding, prediction=prediction,
+        provenance="human_authored", schema=parent_schema)
+
+
 def propose(workspace: Path, *, cohort: dict, finding: str,
             prediction: str, kind: str = "auto_accept") -> Path:
     """从 active 策略派生候选 harness(只加一条 cohort)。返回候选目录。

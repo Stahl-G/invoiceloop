@@ -1,0 +1,28 @@
+{
+  "adk": {
+    "executed": true,
+    "runner": "google.adk.runners.Runner",
+    "app_name": "invoiceloop_broadcast_schema",
+    "authors": [
+      "broadcast_schema_writer"
+    ]
+  },
+  "draft": {
+    "rationale": "",
+    "risks": [],
+    "descriptions": {
+      "invoice_number": "The explicitly labelled invoice or bill identifier on the document, excluding contract, order, or contact IDs.",
+      "total_gross": "The printed total gross amount following document labels without arithmetic invention or calculation.",
+      "total_net": "The printed total net amount following document labels without arithmetic invention or calculation.",
+      "total_vat": "The printed total tax or VAT amount following document labels without arithmetic invention or calculation.",
+      "amount_due": "The printed total amount due following document labels without arithmetic invention or calculation.",
+      "seller_vat_id": "The seller Value Added Tax (VAT) identifier only, excluding EIN, FCC ID, or station callsign.",
+      "seller_name": "The paid media seller or broadcast station issuing the invoice.",
+      "buyer_name": "The explicitly billed advertiser or agency.",
+      "issue_date": "The explicit printed date when the invoice was issued.",
+      "due_date": "The explicit printed payment due date on the document, which must never be calculated or inferred from payment terms."
+    }
+  },
+  "authority": "advisory only; Python validation and human signature required",
+  "report_sha256": "60929de98a3eca1ba6b1962d07298f7da64f6086fbe41d13434cc1de3ea3a355"
+}

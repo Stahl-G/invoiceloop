@@ -1,0 +1,48 @@
+{
+  "protocol": "broadcast-pilot-v1",
+  "status": "complete",
+  "scope_sha256": "0f5822ea99a7f54aac5bdc1b3014d8cac1e995348cbbe11716c2d533702cd185",
+  "adk_draft_sha256": "c4512971ceed64e73b2cebbcd5a5a03a301f12ef6ad2e06bd1366bfc843c4936",
+  "extraction": {
+    "credits_spent": 1599.0,
+    "complete_pairs": 30
+  },
+  "calculated_due_dates": {
+    "semantics": "separate deterministic page-rule output; raw due_date is never overwritten",
+    "baseline": {"docs": 30, "computed": 2, "not_computable": 28},
+    "candidate": {"docs": 30, "computed": 2, "not_computable": 28}
+  },
+  "metrics": {
+    "baseline": {
+      "value_hits": 92,
+      "review_slots": 191,
+      "silent_wrong": 23,
+      "decision_slots_for_release": 239,
+      "decision_load_for_release": 0.7966666666666666
+    },
+    "candidate": {
+      "value_hits": 86,
+      "review_slots": 201,
+      "silent_wrong": 17,
+      "decision_slots_for_release": 243,
+      "decision_load_for_release": 0.81
+    },
+    "ood_generic": {
+      "value_hits": 206,
+      "review_slots": 413,
+      "silent_wrong": 29,
+      "decision_slots_for_release": 559,
+      "decision_load_for_release": 0.8469696969696969
+    }
+  },
+  "decision": {
+    "candidate_promoted": false,
+    "reason": "silent_wrong decreased, but review_slots and release decision load increased",
+    "ood_scope_check": "blocked as designed; the scoped candidate cannot run on the generic OOD batch"
+  },
+  "claims": {
+    "human_accuracy": "NOT_MEASURED",
+    "schema_generalization": "NOT_MEASURED",
+    "scope": "paired exploratory pilot on 30 public DocILE documents in the frozen broadcast scope"
+  }
+}
