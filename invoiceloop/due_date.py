@@ -10,6 +10,13 @@ independent OCR, requires an explicitly labelled base date, and records the
 OCR word locations used by the calculation.  If the page says "30 days after
 receipt" but does not print a receipt date, the result is not computable; the
 module does not substitute the invoice date.
+
+Advance-payment terms (``cash in advance`` and kin) are a stated caliber
+ruling, not an inference: the amount was due before the invoice exists, so the
+formula is ``issue_date + 0`` — the same shape DocILE's ``due == issue``
+annotation convention records.  End-of-month variants (EOM/prox) are
+recognised but refused: they are reported as a known-unsupported term, not as
+"no term found".
 """
 
 from __future__ import annotations
@@ -21,7 +28,14 @@ from typing import Any, Iterable
 
 
 CALCULATED_FIELD = "calculated_due_date"
-DERIVATION_VERSION = "due-date-relative-term-v1"
+#: v2(2026-08-10,**先于任何触发率测量**):在 v1 的句式之外补一般应付账款
+#: 词汇里常见的条款形态 —— 连字符 `Net-30`、折扣缩写 `2/10 n/30`、
+#: `due/payable in N days`、`N days net`,以及预付类条款(`cash in advance`
+#: 等)按 **issue_date + 0** 的口径规则计算 —— 与 DocILE 把预付标成
+#: due==issue 的真值惯例一致(全语料 26% 的 date_due 标注是这个形态)。
+#: EOM/prox 月末条款显式识别为「认得但不算」,不再混进「没找到条款」。
+#: 清单来自通用 AP 词汇,不是开发集 OCR 台账;看过命中率之后再加模式 = 拟合。
+DERIVATION_VERSION = "due-date-relative-term-v2"
 
 _DATE_RE = re.compile(
     r"(?<!\d)(?:"
@@ -56,10 +70,34 @@ _TERM_PATTERNS = (
     (
         "issue_date",
         re.compile(
-            r"\bnet\s+(?P<days>\d{1,3})\b|"
+            r"\bnet\s*-?\s*(?P<days>\d{1,3})\b|"
             r"\b(?P<days_after>\d{1,3})\s+days?\s+"
             r"(?:after|from)\s+(?:the\s+)?(?:invoice\s+date|"
-            r"date\s+of\s+(?:the\s+)?invoice|issue\s+date|date\s+issued)\b",
+            r"date\s+of\s+(?:the\s+)?invoice|issue\s+date|date\s+issued|"
+            r"invoice)\b|"
+            r"\b(?:due|payable)\s+(?:in|within)\s+"
+            r"(?P<days_duein>\d{1,3})\s+days?\b|"
+            r"\b(?P<days_net>\d{1,3})\s+days?\s+net\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "issue_date",
+        # 折扣缩写形态 "2/10 n/30" 与 "n/30"。前缀守卫要求 n 前面是
+        # 空白/逗号/分号或行首 —— 零件号 "P/N 30" 的 n 前面是斜杠,不匹配。
+        re.compile(
+            r"(?:^|[\s,;])(?:\d{1,2}\s*/\s*\d{1,2}\s+)?"
+            r"n\s*/\s*(?P<days_n>\d{1,3})\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "issue_date",
+        # 预付类:口径规则 = issue_date + 0(无数字组,days 落 0)。
+        re.compile(
+            r"\b(?:cash\s+in\s+advance|payment\s+in\s+advance|"
+            r"payable\s+in\s+advance|cash\s+with\s+order|"
+            r"prepay(?:ment)?)\b",
             re.IGNORECASE,
         ),
     ),
@@ -75,6 +113,13 @@ _TERM_PATTERNS = (
         "receipt_date",
         re.compile(r"\bdue\s+(?:on|upon)\s+receipt\b", re.IGNORECASE),
     ),
+)
+
+#: 认得但不算的条款变体:月末(EOM/prox)规则涉及月份长度与行业惯例,
+#: 当前版本拒绝计算,但要与「页面上没有条款」区分开 —— 那是两种缺口。
+_UNSUPPORTED_TERM = re.compile(
+    r"\b(?:e\.?o\.?m\.?|end\s+of\s+(?:the\s+)?month|prox)\b",
+    re.IGNORECASE,
 )
 
 
@@ -165,7 +210,11 @@ def _term(lines: list[dict[str, Any]]) -> dict[str, Any] | None:
             match = pattern.search(line["text"])
             if not match:
                 continue
-            days_text = match.groupdict().get("days") or match.groupdict().get("days_after")
+            days_text = next(
+                (v for k, v in match.groupdict().items()
+                 if k.startswith("days") and v),
+                None,
+            )
             matches.append({
                 "base_field": base_field,
                 "days": int(days_text) if days_text else 0,
@@ -181,6 +230,21 @@ def _term(lines: list[dict[str, Any]]) -> dict[str, Any] | None:
     if len(signatures) != 1:
         return {"ambiguous": True, "matches": matches}
     return matches[0]
+
+
+def _unsupported_term(lines: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """页面印着月末类条款(EOM/prox)——认得,但本版本不算。"""
+    for line in lines:
+        match = _UNSUPPORTED_TERM.search(line["text"])
+        if match:
+            return {
+                "term_text": match.group(0),
+                "ocr_word_refs": [
+                    {key: word[key] for key in ("page_idx", "block_idx", "line_idx", "word_idx", "geometry")}
+                    for word in line["words"]
+                ],
+            }
+    return None
 
 
 def _not_computable(reason: str, *, term: dict[str, Any] | None = None,
@@ -217,6 +281,15 @@ def derive_due_date(ocr: dict[str, Any]) -> dict[str, Any]:
     issue = _first_labelled_date(lines, _ISSUE_LABEL)
     receipt = _first_labelled_date(lines, _RECEIPT_LABEL)
     term = _term(lines)
+    unsupported = _unsupported_term(lines)
+    if unsupported is not None:
+        # 页面任何一处出现月末条款即拒算:「Net 30」与「Net 30 EOM」不是
+        # 同一个到期日,而 v2 没有月末规则 —— 不许截掉 EOM 当作普通 net 算。
+        return _not_computable(
+            "page prints an end-of-month/prox term variant; "
+            "this derivation version does not compute those",
+            term=term or unsupported, issue=issue, receipt=receipt,
+        )
     if term is None:
         return _not_computable("no explicit relative payment term found")
     if term.get("ambiguous"):
