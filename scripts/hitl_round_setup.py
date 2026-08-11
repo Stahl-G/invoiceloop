@@ -109,15 +109,38 @@ def _suggestion_rows(ws: Path, run_dir: Path, doc_ids: list[str]) -> dict:
     return rows
 
 
+STAGES_FILE = REPO / "docs" / "hitl_r1_stages.json"
+
+
+def _stage_docs(stage: str) -> tuple[list[str], str]:
+    """增补件( HITL_R1_AMENDMENT_STAGED )的段名单;返回 (doc_ids, run_name)。
+    s1→run-0002 … s5→run-0006(run-0001 是全量参照基线,不进人队列)。"""
+    spec = json.loads(STAGES_FILE.read_text(encoding="utf-8"))
+    entry = spec["stages"][stage]
+    doc_ids = entry["doc_ids"]
+    digest = hashlib.sha256("\n".join(doc_ids).encode()).hexdigest()
+    if digest != entry["doc_ids_sha256"]:
+        raise SystemExit(f"fatal: {stage} 名单 sha 不符,段名单被改过")
+    run_name = f"run-{int(stage[1]) + 1:04d}"
+    return doc_ids, run_name
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--round", required=True, choices=("hitl-r1", "hitl-r2"))
+    ap.add_argument("--stage", choices=("s1", "s2", "s3", "s4", "s5"),
+                    help="阶段化增补件:只跑该段 20 份(仅 hitl-r1 有段名单)")
     ap.add_argument("--no-crops", action="store_true")
     args = ap.parse_args()
 
     ws = REPO / "runs" / args.round
-    doc_list = json.loads((ws / "doc_list.json").read_text())
-    doc_ids = doc_list["doc_ids"]
+    if args.stage:
+        if args.round != "hitl-r1":
+            raise SystemExit("fatal: --stage 目前只有 hitl-r1 的段名单")
+        doc_ids, run_name = _stage_docs(args.stage)
+    else:
+        doc_ids = json.loads((ws / "doc_list.json").read_text())["doc_ids"]
+        run_name = "run-0001"
 
     stats = _populate(ws, doc_ids)
     if stats["missing"]:
@@ -125,7 +148,7 @@ def main() -> None:
                           "missing": stats["missing"]}, indent=1))
         sys.exit(1)
 
-    run_dir = ws / "runs" / "run-0001"
+    run_dir = ws / "runs" / run_name
     if not run_dir.exists():
         active = _har0021_active()
         with _corpus_environment(ws), frozen_harness(active):
@@ -141,11 +164,11 @@ def main() -> None:
         tag: suggest_inject.inject(ws, tag, r, run_dir=run_dir)
         for tag, r in rows.items()}
     (ws / "runs" / "current.json").write_text(
-        '{"run": "run-0001"}\n', encoding="utf-8")
+        json.dumps({"run": run_name}) + "\n", encoding="utf-8")
 
     print(json.dumps({
-        "round": args.round, "docs": len(doc_ids), "corpus": stats,
-        "run": str(run_dir),
+        "round": args.round, "stage": args.stage, "docs": len(doc_ids),
+        "corpus": stats, "run": str(run_dir),
         "suggestions": {t: {k: s[k] for k in ("written", "skipped_existing",
                                               "reread_rows")}
                         for t, s in inject_summary.items()},
