@@ -638,6 +638,18 @@ class TestAcceptPreset:
         assert '>与页面一致</button>' in text
 
 
+class TestAbsentPreset:
+    """确认缺失 = 「页面上没有」的天然理由,同接受预设一套机制
+    (2026-08-11 stahl 复核 run-0002 时要求:点确认缺失不该再手打理由)。"""
+
+    def test_form_carries_absent_preset_and_js_uses_it(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&lang=zh")
+        assert 'data-absent-preset="页面上没有"' in text
+        _, _, js = _req(server, "GET", "/assets.js")
+        assert "absentPreset" in js, "JS 要在选确认缺失时预填、切走时还原"
+        assert "confirm_absent: form.dataset.absentPreset" in js
+
+
 class TestQuickPathCarriesReasonCode:
     """快路按钮自带心码(2026-08-06):按钮文案本来就是一次语义选择,
     再用下拉问一遍是同一件事问两遍(run-0002 心码填写率 8/123 → 挖掘臂

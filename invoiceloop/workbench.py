@@ -225,6 +225,7 @@ _T = {
         "issue_chips": ["matches the page", "wrong value", "wrong location",
                         "illegible", "label-convention conflict", "not on page", "other"],
         "accept_preset": "matches the page",
+        "absent_preset": "not on page",
         "quick_accept": "✓ value is right — accept & next",
         "quick_accept_fp": "✓ right — and this slot did not need review",
         "quick_fp_rationale": "matches the page; this queue rule was a "
@@ -530,6 +531,7 @@ _T = {
         "adjudicator_ph": "裁决人",
         "issue_chips": ["与页面一致", "值不对", "位置不对", "看不清", "口径冲突", "页面上没有", "其他"],
         "accept_preset": "与页面一致",
+        "absent_preset": "页面上没有",
         "quick_accept": "✓ 原值正确 —— 接受,下一条",
         "quick_accept_fp": "✓ 原值正确,而且这条不该进队列",
         "quick_fp_rationale": "与页面一致;这条路由是误报",
@@ -768,13 +770,22 @@ document.addEventListener('change', function (e) {
   }
   var corr = form.querySelector('.wb-corr');
   if (corr) { corr.disabled = e.target.value !== 'correct'; if (!corr.disabled) corr.focus(); }
-  // 接受的天然理由预设:空着就预填「与页面一致」(可改可删);
+  // 接受/确认缺失的天然理由预设:空着就预填(可改可删);
   // 切走且理由一字未动过预设,就还回空白,不把预设带去别的决策
   var ta = form.querySelector('.wb-rationale');
-  var preset = form.dataset.acceptPreset;
-  if (ta && preset) {
-    if (e.target.value === 'accept' && !ta.value.trim()) ta.value = preset;
-    else if (e.target.value !== 'accept' && ta.value === preset) ta.value = '';
+  var presets = { accept: form.dataset.acceptPreset,
+                  confirm_absent: form.dataset.absentPreset };
+  if (ta) {
+    if (presets[e.target.value] && !ta.value.trim()) {
+      ta.value = presets[e.target.value];
+    } else {
+      for (var pk in presets) {
+        if (pk !== e.target.value && presets[pk] && ta.value === presets[pk]) {
+          ta.value = '';
+          break;
+        }
+      }
+    }
   }
   // 心码跟着决策裁剪:配不上的藏掉、残值清掉、一对一的自动预填。
   // 决策变了就重算 —— 界面不该让人拼出一个必然被拒的组合(2026-08-08)
@@ -1783,6 +1794,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         return f"""<div class="wb-decide">{''.join(notes)}{error_html}
 <form class="decide" method="post" action="/decide"
  data-accept-preset="{_esc(_t(lang, 'accept_preset'))}"
+ data-absent-preset="{_esc(_t(lang, 'absent_preset'))}"
 {' data-rejected="1"' if form_error else ''}
 <input type="hidden" name="run" value="{_esc(ctx.name)}">
 <input type="hidden" name="doc" value="{_esc(doc)}">
