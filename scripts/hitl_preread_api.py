@@ -18,6 +18,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "scripts"))
 
 import suggest_inject  # noqa: E402
@@ -78,7 +79,7 @@ def main() -> None:
                                base_url=base)
             rows.extend(to_suggestion_rows(
                 vi._parse_rows(text, doc_id), slots[doc_id]))
-        except Exception as exc:  # noqa: BLE001 —— 记失败,不中断整批
+        except Exception as exc:  # noqa: BLE001 —— 记失败,整批仍跑完以便一次报齐
             failed.append({"doc_id": doc_id, "error": repr(exc)})
 
     summary = suggest_inject.inject(ws, tag, rows, run_dir=run_dir)
@@ -91,6 +92,12 @@ def main() -> None:
                      ("written", "skipped_existing", "reread_rows")},
         "dropped": summary["dropped"], "failed": failed,
     }, ensure_ascii=False, indent=1))
+    raise SystemExit(exit_status(failed))
+
+
+def exit_status(failed: list) -> int:
+    """任一份队列文档失败 = 整批失败。混完整度的建议层让阶段不可比。"""
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

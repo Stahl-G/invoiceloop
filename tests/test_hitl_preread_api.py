@@ -6,7 +6,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from hitl_preread_api import queue_slots, to_suggestion_rows  # noqa: E402
+from hitl_preread_api import (  # noqa: E402
+    exit_status, queue_slots, to_suggestion_rows,
+)
 
 
 def _write_matrix(tmp_path: Path, rows: list[dict]) -> Path:
@@ -50,3 +52,8 @@ def test_to_suggestion_rows_empty_label_defaults_none():
     parsed = [["a", "seller_vat_id", "", "", ""]]
     rows = to_suggestion_rows(parsed, {"seller_vat_id"})
     assert rows[0]["printed_label"] == "NONE"
+
+
+def test_any_doc_failure_is_nonzero_exit():
+    assert exit_status([]) == 0
+    assert exit_status([{"doc_id": "a", "error": "无整页渲染"}]) == 1

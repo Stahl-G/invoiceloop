@@ -739,3 +739,22 @@ class TestSuggestionSeenEntry:
             all("suggestion_seen" not in json.loads(x)
                 for x in (run_dir / "adjudication_ledger.jsonl")
                 .read_text().splitlines()), "校验拒绝 = 一行都没写"
+
+    def test_long_party_name_from_workbench_is_recorded(self, run_dir):
+        """工作台发出 agree:<seller_name 原值>;140 上限会让该槽无法提交。"""
+        name = "Acme Worldwide Industrial " + ("Widgets " * 20)
+        assert len(name) > 140
+        entry = _append(run_dir, claim_id=None, field="seller_name",
+                        decision="abstain", rationale="r",
+                        suggestion_seen=f"agree:{name}")
+        assert entry["suggestion_seen"] == f"agree:{name}"
+
+    def test_value_cap_matches_the_exported_constant(self, run_dir):
+        n = adjudicate.SUGGESTION_SEEN_VALUE_MAX
+        _append(run_dir, claim_id=None, field="buyer_name",
+                decision="abstain", rationale="r",
+                suggestion_seen="agree:" + ("x" * n))
+        with pytest.raises(ValueError, match="suggestion_seen"):
+            _append(run_dir, claim_id=None, field="due_date",
+                    decision="abstain", rationale="r",
+                    suggestion_seen="agree:" + ("x" * (n + 1)))

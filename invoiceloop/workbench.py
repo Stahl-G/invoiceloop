@@ -900,15 +900,14 @@ document.addEventListener('change', function (e) {
   var presets = { accept: form.dataset.acceptPreset,
                   confirm_absent: form.dataset.absentPreset };
   if (ta) {
+    for (var pk in presets) {
+      if (pk !== e.target.value && presets[pk] && ta.value === presets[pk]) {
+        ta.value = '';
+        break;
+      }
+    }
     if (presets[e.target.value] && !ta.value.trim()) {
       ta.value = presets[e.target.value];
-    } else {
-      for (var pk in presets) {
-        if (pk !== e.target.value && presets[pk] && ta.value === presets[pk]) {
-          ta.value = '';
-          break;
-        }
-      }
     }
   }
   // 心码跟着决策裁剪:配不上的藏掉、残值清掉、一对一的自动预填。
@@ -1919,7 +1918,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 <form class="decide" method="post" action="/decide"
  data-accept-preset="{_esc(_t(lang, 'accept_preset'))}"
  data-absent-preset="{_esc(_t(lang, 'absent_preset'))}"
-{' data-rejected="1"' if form_error else ''}
+{' data-rejected="1"' if form_error else ''}>
 <input type="hidden" name="run" value="{_esc(ctx.name)}">
 <input type="hidden" name="doc" value="{_esc(doc)}">
 <input type="hidden" name="field" value="{_esc(field)}">
@@ -3195,11 +3194,14 @@ class _Handler(BaseHTTPRequestHandler):
         from .adjudicate import adjudicate_and_render
 
         form = self._form()
-        run_name = form.get("run", [""])[0]
+        run_name = form.get("run", [""])[0].strip()
         self._last_run = run_name
         form_lang = form.get("lang", [""])[0]
         if form_lang in ("en", "zh"):
             lang = form_lang
+        if not run_name:
+            raise _HttpError(
+                400, "run 不能为空 —— 裁决必须绑到提交那一页的 run,不许回落到 current")
         run = self.bench.get_run(run_name)
         if run is None:
             raise _HttpError(404, f"run 不存在:{run_name}")
