@@ -23,8 +23,10 @@ Shape decisions, pinned; do not quietly change them:
   blocked is red, unavailable is grey.
 
 Route contract (tests/test_workbench.py is the authority):
-    GET  / /queue /adjudicate /report /upload /deliver /files/<run>/<rel> /download/<run>/audit_bundle.zip
+    GET  / /queue /adjudicate /report /upload /deliver /improve /files/<run>/<rel> /download/<run>/audit_bundle.zip
     POST /decide /upload?filename= /ingest /bundle /verify (raw bytes)
+         /improve/mine /improve/adk /improve/adopt /improve/adopt-schema
+         /improve/evaluate /improve/promote
 
 /adjudicate is a Gradescope-style single-slot page: the left column renders the
 full page with bbox highlight overlays (frozen binding in a solid green line,
@@ -105,10 +107,17 @@ _T = {
         "imp_low_yield": "Low-yield candidates (high review, zero correction)",
         "imp_notes": "Reviewer's own words",
         "imp_no_notes": "No reviewer notes yet — run a review round first.",
+        "imp_need_mine": "You already wrote adjudications. This page has not "
+                         "projected them yet. Click “Close out and mine” — "
+                         "do not go back to the queue.",
+        "imp_no_notes_mined": "Mining has run. No qualified notes passed the "
+                              "gate (an empty candidate list is a legal "
+                              "result).",
         "imp_model": "Model draft (advisory — a human decides)",
-        "imp_model_none": "No model draft. Run `invoiceloop suggest "
-                          "--workspace <ws>` to have a model read the notes "
-                          "above and draft proposals.",
+        "imp_model_none": "No model draft yet. Click “Ask Gemini” below "
+                          "(API call). Mining does not draft proposals.",
+        "imp_model_none_unmined": "No draft yet — mine first (the button "
+                                  "above). Mining does not call a model.",
         "imp_cites": "reads",
         "imp_dropped": "Drafts rejected by the validator",
         "imp_cmd": "Proposal command (copy, edit, run — nothing is written "
@@ -116,6 +125,39 @@ _T = {
         "imp_lead": "Every note you wrote while reviewing has been read. "
                     "Below are the rule changes proposed from them — none "
                     "takes effect until you say so, and you can always say no.",
+        "imp_lead_unmined": "This page projects mined notes, not the "
+                            "adjudication ledger. If the queue is already "
+                            "done, close out and mine below — do not go "
+                            "back to the queue.",
+        "imp_mine_hint": "Closeout writes a timing/adoption snapshot for "
+                         "this run, then mines the workspace onto this "
+                         "page. Zero API. It does not change the active "
+                         "harness. An empty candidate list is a legal "
+                         "result.",
+        "imp_mine_btn": "Close out and mine",
+        "imp_mine_btn_again": "Mine again",
+        "imp_closeout_stats": "This run’s closeout: {n} decisions · median "
+                              "{sec} s/slot · suggestion adoption "
+                              "{adopted}/{agree}.",
+        "imp_adk_hint": "Gemini (ADK) reads the mined notes and writes an "
+                        "advisory report. API call. It does not change the "
+                        "active harness. If a proposal matches a mined "
+                        "cohort, Python may write a pending candidate — "
+                        "promotion still needs your signature.",
+        "imp_adk_btn": "Ask Gemini",
+        "imp_adk_btn_again": "Ask Gemini again",
+        "imp_adk_unavailable": "This workbench cannot ask Gemini. The "
+                               "advisory layer is not installed in the "
+                               "Python that is running it — not a missing "
+                               "API key.",
+        "imp_adk_sub": "Gemini ({model}) proposed {m} changes; {n} are "
+                       "flagged for you to look at. Advisory only.",
+        "imp_adk_none": "Gemini has run. No proposal (a legal result).",
+        "imp_adk_review": "look at this",
+        "imp_adk_skip": "not recommended now",
+        "imp_adk_blocking": "{n} evaluation(s) blocked — still advice, "
+                            "nothing is in effect.",
+        "imp_adk_risk": "Risk",
         "imp_alert_h": "Worth your attention: something released "
                        "automatically, which you then overturned",
         "imp_alert_body": "These are cases the system judged safe to handle "
@@ -384,6 +426,10 @@ _T = {
                             "it may have damaged.",
         "notice_promoted": "Promoted. Future runs use the new harness; the "
                            "promotion is in the ledger.",
+        "notice_mined": "Mined. Notes and cohorts are below. Nothing is in "
+                        "effect.",
+        "notice_adk": "Gemini finished. The report is below. Nothing is in "
+                      "effect until you promote.",
         "snapshot": "review_snapshot_id",
         "back": "← back to queue",
         "error_title": "Blocked",
@@ -431,15 +477,46 @@ _T = {
         "imp_low_yield": "低收益候选(高频复核、零修正)",
         "imp_notes": "你写过的全部意见",
         "imp_no_notes": "你还没写过复核意见。先去复核队列过一轮,这里就会有内容。",
+        "imp_need_mine": "你已经写过裁决。这一页还没把它们投影过来。"
+                         "点「关账并挖掘」—— 不要回到复核队列。",
+        "imp_no_notes_mined": "挖掘已跑过。没有带复核意见的 cohort 过审"
+                              "(无候选是合法结果)。",
         "imp_model": "模型草稿(顾问性质,人决定)",
-        "imp_model_none": "没有模型草稿。跑 `invoiceloop suggest "
-                          "--workspace <ws>` 让模型读上面这些原话出提案草稿。",
+        "imp_model_none": "还没有模型草稿。点下面的「让 Gemini 出建议」"
+                          "(会调 API)。挖掘本身不出提案。",
+        "imp_model_none_unmined": "还没有草稿。先点上面的「关账并挖掘」"
+                                  "(零 API,不调模型)。",
         "imp_cites": "读的是",
         "imp_dropped": "被挡下的 AI 建议(没出处或越权)",
         "imp_cmd": "提案命令(复制、改、自己跑)",
         "imp_lead": "你复核发票时写下的每一条意见,系统都读过了。"
                     "下面是据此提出的规则改动 —— 每一条都要你点头才会生效,"
                     "你随时可以不同意。",
+        "imp_lead_unmined": "这一页投影的是挖掘结果,不是裁决账本。"
+                            "队列如果已经判完,点下面的「关账并挖掘」——"
+                            "不要回到复核队列。",
+        "imp_mine_hint": "关账会给本 run 写一份人时/采纳率快照,再把"
+                         "workspace 的裁决挖掘到这一页。零 API,不改当前"
+                         "规则。无候选过审是合法结果。",
+        "imp_mine_btn": "关账并挖掘",
+        "imp_mine_btn_again": "重新挖掘",
+        "imp_closeout_stats": "本 run 关账:{n} 条裁决 · 中位 {sec} 秒/槽 · "
+                              "建议采纳 {adopted}/{agree}。",
+        "imp_adk_hint": "Gemini(ADK)读已挖掘的意见,写一份顾问报告。会调"
+                        "API,不改当前规则。若提案对得上挖掘出的 cohort,"
+                        "Python 可能写出待定候选 —— 要不要生效仍要你署名晋升。",
+        "imp_adk_btn": "让 Gemini 出建议",
+        "imp_adk_btn_again": "再跑一轮 Gemini",
+        "imp_adk_unavailable": "这一台工作台现在出不了 Gemini 建议。"
+                               "顾问层没有装进正在运行它的 Python，"
+                               "不是密钥没配。",
+        "imp_adk_sub": "Gemini({model})提了 {m} 条,其中 {n} 条建议你看。"
+                       "顾问意见,不是放行。",
+        "imp_adk_none": "Gemini 已跑过。没有提案(合法结果)。",
+        "imp_adk_review": "建议你看",
+        "imp_adk_skip": "不建议现在改",
+        "imp_adk_blocking": "{n} 条评测被阻断 —— 下面仍是顾问意见,没有生效。",
+        "imp_adk_risk": "风险",
         "imp_alert_h": "需要你注意:系统自动放过的,被你推翻了",
         "imp_alert_body": "下面这些是系统当时判断「不用麻烦人」、"
                           "而你复核时改掉或驳回了的。这类记录最要紧 —— "
@@ -663,6 +740,8 @@ _T = {
         "notice_proposed": "候选已写出。它还没有生效 —— 评测通过并由你署名晋升才算。",
         "notice_evaluated": "评测完成。数字在下面,包括它可能伤害了什么。",
         "notice_promoted": "已晋升。之后的 run 会用新 harness;晋升记录已入账本。",
+        "notice_mined": "已挖掘。意见和候选在下面。当前规则没有改。",
+        "notice_adk": "Gemini 跑完了。报告在下面。没晋升之前当前规则不变。",
         "snapshot": "review_snapshot_id",
         "back": "← 回到复核队列",
         "error_title": "阻断",
@@ -715,6 +794,51 @@ def _esc(x) -> str:
 def _json_compact(obj) -> str:
     """技术细节折叠区里的一行 JSON(不换行,不缩进)。"""
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
+
+
+def _ledger_has_decisions(run_dir: Path) -> bool:
+    path = Path(run_dir) / "adjudication_ledger.jsonl"
+    if not path.exists():
+        return False
+    return any(line.strip() for line in
+               path.read_text(encoding="utf-8").splitlines())
+
+
+_HRA = None
+
+
+def _hitl_round_analyze(run_dir: Path) -> dict:
+    """同一份 `scripts/hitl_round_analyze.py`(协议 §3),工作台不另写口径。"""
+    global _HRA
+    if _HRA is None:
+        import importlib.util
+        script = (Path(__file__).resolve().parent.parent
+                  / "scripts" / "hitl_round_analyze.py")
+        spec = importlib.util.spec_from_file_location(
+            "invoiceloop._hitl_round_analyze", script)
+        if spec is None or spec.loader is None:
+            raise RuntimeError(f"cannot load {script}")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _HRA = mod
+    return _HRA.analyze(Path(run_dir))
+
+
+def _run_adk_loop(workspace: Path) -> dict:
+    """同一份 `agents.improve_loop.run_improve_loop`。测试可打补丁,避免真调 Gemini。"""
+    from .agents.improve_loop import run_improve_loop
+
+    return run_improve_loop(workspace)
+
+
+def _adk_importable() -> bool:
+    """顾问层是可选 extra,必须问正在跑工作台的这个解释器。"""
+    try:
+        import google.adk  # noqa: F401
+        import google.genai  # noqa: F401
+        return True
+    except ImportError:
+        return False
 
 
 _JS = r"""
@@ -2094,15 +2218,17 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 
     # ---- 改进循环:把复核者原话与(可选的)模型草稿摆在一起给人读
     def improve_page(self, lang: str, run_dir: Path, params: dict) -> str:
-        """**只读页 + 三个写入口。** 面向不写代码的应付会计(AP)。
+        """投影页 + 写入口。面向不写代码的应付会计(AP)。
+
+        这一页读的是 workspace `improve/mine_report.json`,不是裁决账本。
+        没跑过 mine 就是空的 —— 即使队列已经判完。关账挖掘是人点的按钮,
+        GET 不许偷偷跑。
 
         版式是叙事顺序,不是数据结构顺序:
-        「你复核时发现了什么」→「AI 据此建议改什么」→「等你拍板的改动」。
-        工程标识(harness id、digest、cohort 键、路由词)一律收进每张卡
-        底部的「技术细节」折叠区 —— 不删,因为它们是可复算的前提;
-        不摆在最前,因为它们不是 AP 要读的东西(plainwords.py 首段)。
+        「关账挖掘」→「你复核时发现了什么」→「AI 据此建议改什么」
+        →「等你拍板的改动」。工程标识收进每张卡底部的「技术细节」。
 
-        写入口的分级摩擦不变:采纳/试算只写候选,晋升要署名。
+        写入口的分级摩擦不变:挖掘/采纳/试算不改 active,晋升要署名。
         """
         import json as _json
 
@@ -2110,9 +2236,30 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         ws = self.ws
         report_path = ws / "improve" / "mine_report.json"
         sug_path = ws / "improve" / "suggestions.json"
+        adk_path = ws / "improve" / "adk_loop_report.json"
+        mined = report_path.exists()
         report = (_json.loads(report_path.read_text(encoding="utf-8"))
-                  if report_path.exists() else {})
-        parts = [f'<p class="wb-imp-lead">{_esc(_t(lang, "imp_lead"))}</p>']
+                  if mined else {})
+        adk = None
+        if adk_path.exists():
+            try:
+                raw_adk = _json.loads(adk_path.read_text(encoding="utf-8"))
+                adk = raw_adk if isinstance(raw_adk, dict) else None
+            except (OSError, ValueError):
+                adk = None
+        closeout = None
+        closeout_path = ws / "improve" / f"closeout_{ctx.name}.json"
+        if closeout_path.exists():
+            try:
+                raw = _json.loads(closeout_path.read_text(encoding="utf-8"))
+                closeout = raw if isinstance(raw, dict) else None
+            except (OSError, ValueError):
+                closeout = None
+        lead = "imp_lead" if mined else "imp_lead_unmined"
+        parts = [
+            f'<p class="wb-imp-lead">{_esc(_t(lang, lead))}</p>',
+            self._mine_panel_html(lang, ctx, mined=mined, closeout=closeout),
+        ]
 
         # ---- 一、需要你注意:系统放过了,你把它推翻了(安全方向,排最前)
         overturns = report.get("overturned_auto_accepts") or []
@@ -2140,6 +2287,11 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         note_total = sum(len(c.get("notes") or [])
                          for c in report.get("cohorts") or [])
         parts.append(f'<h3 class="wb-imp-h">{_esc(_t(lang, "imp_sug_h"))}</h3>')
+        if mined:
+            parts.append(self._adk_panel_html(
+                lang, ctx, ran=adk is not None))
+        if adk:
+            parts.append(self._adk_report_html(lang, adk))
         if drafts:
             parts.append(
                 f'<p class="wb-imp-sub">'
@@ -2147,9 +2299,10 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                 f'</p>')
             for i, s in enumerate(drafts):
                 parts.append(self._suggestion_html(lang, ctx, i, s))
-        else:
+        elif not adk:
+            empty = "imp_model_none" if mined else "imp_model_none_unmined"
             parts.append(f'<p class="wb-imp-empty">'
-                         f'{_esc(_t(lang, "imp_model_none"))}</p>')
+                         f'{_esc(_t(lang, empty))}</p>')
         # 被挡下的草稿**独立于**留下的草稿显示 —— 全被挡下时更该看见:
         # 那说明 AI 提了一堆没出处或越权的东西,是关于它可信度的重要信息。
         # (先前写在 if drafts 分支里,恰好把最该看见的情形吞掉了)
@@ -2164,7 +2317,9 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         parts.append(self._candidates_html(lang, ctx))
 
         # ---- 四、你自己写的话(原始材料,折叠;AI 的建议都是从这里来的)
-        parts.append(self._notes_html(lang, report))
+        parts.append(self._notes_html(
+            lang, report, mined=mined,
+            has_decisions=_ledger_has_decisions(run_dir)))
 
         body = (f'<div class="wb-improve"><h2>{_esc(_t(lang, "improve"))}</h2>'
                 + "".join(parts) + "</div>")
@@ -2173,7 +2328,119 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                          ooc=ctx.manifest.get("out_of_calibration", False),
                          keep_params=params)
 
-    def _notes_html(self, lang: str, report: dict) -> str:
+    def _mine_panel_html(self, lang: str, ctx: RunCtx, *, mined: bool,
+                         closeout: dict | None) -> str:
+        """关账 + mine:零 API,不改 active。人点,GET 不跑。"""
+        btn = _t(lang, "imp_mine_btn_again" if mined else "imp_mine_btn")
+        stats = ""
+        if closeout:
+            timing = closeout.get("timing") or {}
+            sug = closeout.get("suggestions") or {}
+            sec = timing.get("median_seconds")
+            line = _t(lang, "imp_closeout_stats").format(
+                n=closeout.get("n_decisions", 0),
+                sec="—" if sec is None else sec,
+                adopted=sug.get("adopted", 0),
+                agree=sug.get("agree_slots", 0))
+            stats = f'<p class="wb-imp-sub">{_esc(line)}</p>'
+        return (
+            f'<section class="wb-imp-sug">'
+            f'<p class="wb-imp-sub">{_esc(_t(lang, "imp_mine_hint"))}</p>'
+            f'{stats}'
+            f'<form method="post" action="/improve/mine" class="wb-imp-form">'
+            f'<input type="hidden" name="run" value="{_esc(ctx.name)}">'
+            f'<input type="hidden" name="lang" value="{_esc(lang)}">'
+            f'<button class="wb-btn" type="submit">{_esc(btn)}</button>'
+            f'</form></section>')
+
+    def _adk_panel_html(self, lang: str, ctx: RunCtx, *, ran: bool) -> str:
+        """Gemini/ADK:人点才调 API。没装进本解释器就不给可点的按钮。"""
+        if not _adk_importable():
+            import sys
+
+            return (
+                f'<section class="wb-imp-sug">'
+                f'<p class="wb-imp-empty">'
+                f'{_esc(_t(lang, "imp_adk_unavailable"))}</p>'
+                f'<details class="wb-imp-tech"><summary>'
+                f'{_esc(_t(lang, "imp_tech"))}</summary>'
+                f'<code>{_esc(sys.executable)}</code></details>'
+                f'</section>')
+        btn = _t(lang, "imp_adk_btn_again" if ran else "imp_adk_btn")
+        return (
+            f'<section class="wb-imp-sug">'
+            f'<p class="wb-imp-sub">{_esc(_t(lang, "imp_adk_hint"))}</p>'
+            f'<form method="post" action="/improve/adk" class="wb-imp-form">'
+            f'<input type="hidden" name="run" value="{_esc(ctx.name)}">'
+            f'<input type="hidden" name="lang" value="{_esc(lang)}">'
+            f'<button class="wb-btn" type="submit">{_esc(btn)}</button>'
+            f'</form></section>')
+
+    def _adk_report_html(self, lang: str, report: dict) -> str:
+        """投影 `adk_loop_report.json`。模型没有放行权,用词避开 approved。"""
+        proposals = [p for p in (report.get("proposals") or [])
+                     if isinstance(p, dict)]
+        recs = {v.get("cohort_field"): v
+                for v in (report.get("recommendations") or [])
+                if isinstance(v, dict) and v.get("cohort_field")}
+        blocked = [r for r in (report.get("counterfactual") or [])
+                   if isinstance(r, dict) and r.get("blocking")]
+        sub = _t(lang, "imp_adk_sub").format(
+            model=report.get("model") or "",
+            m=len(proposals),
+            n=report.get("recommended_for_human_review") or 0)
+        parts = [f'<p class="wb-imp-sub">{_esc(sub)}</p>']
+        if blocked:
+            parts.append(
+                f'<p class="wb-imp-empty">'
+                f'{_esc(_t(lang, "imp_adk_blocking").format(n=len(blocked)))}'
+                f'</p>')
+        if not proposals:
+            parts.append(f'<p class="wb-imp-empty">'
+                         f'{_esc(_t(lang, "imp_adk_none"))}</p>')
+        for p in proposals:
+            cohort = p.get("cohort") if isinstance(p.get("cohort"), dict) else {}
+            field = cohort.get("field") or ""
+            v = recs.get(field) or {}
+            if v.get("recommend_for_human_review"):
+                badge = _t(lang, "imp_adk_review")
+            elif v:
+                badge = _t(lang, "imp_adk_skip")
+            else:
+                badge = _t(lang, "imp_ai")
+            title = _pw.headline(p.get("action") or "", _pw.field(field, lang), lang)
+            risk = v.get("risk") or ""
+            reason = v.get("reason") or ""
+            risk_html = (
+                f'<div class="wb-imp-why"><span class="wb-imp-k">'
+                f'{_esc(_t(lang, "imp_adk_risk"))}</span>'
+                f'{_esc(risk)}'
+                + (f' — {_esc(reason)}' if reason else "")
+                + '</div>' if (risk or reason) else "")
+            tech = (f'<details class="wb-imp-tech"><summary>'
+                    f'{_esc(_t(lang, "imp_tech"))}</summary>'
+                    f'<code>action={_esc(p.get("action"))} · '
+                    f'{_esc(_json_compact(cohort))}</code></details>')
+            parts.append(
+                f'<article class="wb-imp-sug">'
+                f'<div class="wb-imp-sug-title">{_esc(title)}</div>'
+                f'<div class="wb-imp-badges">'
+                f'<span class="wb-imp-tag advisory">{_esc(_t(lang, "imp_ai"))}</span>'
+                f'<span class="wb-imp-tag">{_esc(badge)}</span></div>'
+                f'<div class="wb-imp-why"><span class="wb-imp-k">'
+                f'{_esc(_t(lang, "imp_why"))}</span>'
+                f'{_esc(p.get("finding") or "")}</div>'
+                f'<div class="wb-imp-why"><span class="wb-imp-k">'
+                f'{_esc(_t(lang, "imp_then"))}</span>'
+                f'{_esc(p.get("prediction") or "")}</div>'
+                f'{risk_html}{tech}</article>')
+        authority = report.get("authority") or ""
+        if authority:
+            parts.append(f'<p class="wb-imp-note-sm">{_esc(authority)}</p>')
+        return "".join(parts)
+
+    def _notes_html(self, lang: str, report: dict, *, mined: bool,
+                    has_decisions: bool) -> str:
         """复核者原话,按字段归堆。默认折叠 —— 它是**出处**,不是待办。"""
         blocks, total = [], 0
         for c in report.get("cohorts") or []:
@@ -2195,9 +2462,15 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                 f'{_esc(_pw.invoices(c["reviewed"], lang))}'
                 f'<ul class="wb-imp-plainlist">{items}</ul></div>')
         if not blocks:
+            if not mined and has_decisions:
+                empty = "imp_need_mine"
+            elif mined:
+                empty = "imp_no_notes_mined"
+            else:
+                empty = "imp_no_notes"
             return (f'<h3 class="wb-imp-h">{_esc(_t(lang, "imp_notes"))}</h3>'
                     f'<p class="wb-imp-empty">'
-                    f'{_esc(_t(lang, "imp_no_notes"))}</p>')
+                    f'{_esc(_t(lang, empty))}</p>')
         return (f'<details class="wb-imp-notes-box"><summary>'
                 f'{_esc(_t(lang, "imp_notes"))}({total})</summary>'
                 f'<p class="wb-imp-sub">{_esc(_t(lang, "imp_notes_sub"))}</p>'
@@ -2879,6 +3152,10 @@ class _Handler(BaseHTTPRequestHandler):
                 return self._approve(lang)
             if method == "POST" and path == "/verify":
                 return self._verify(lang)
+            if method == "POST" and path == "/improve/mine":
+                return self._imp_mine(lang)
+            if method == "POST" and path == "/improve/adk":
+                return self._imp_adk(lang)
             if method == "POST" and path == "/improve/adopt":
                 return self._imp_adopt(lang)
             if method == "POST" and path == "/improve/adopt-schema":
@@ -3136,18 +3413,57 @@ class _Handler(BaseHTTPRequestHandler):
             pass
         self._redirect(f"/deliver?run={run.name}&lang={lang}&notice=approved")
 
-    # ---- 改进循环的四个写操作
+    # ---- 改进循环的写操作
     #
-    # 分级摩擦是刻意的:adopt / evaluate 写的是**候选**,对 active harness
-    # 零影响,所以给按钮;promote 会改变之后每一张发票的路由,所以要求手打
-    # 署名 + 理由 + 时间,并且只有 improve.gate_verdict 判定通过才渲染表单。
-    # 三个写操作全部落在既有 CLI 的同一批函数上 —— 网页不是第二条路径。
+    # mine:投影账本,不改 active,给人一个按钮(GET 不许偷偷跑)。
+    # adk:Gemini 顾问报告,人点才调 API;不写 suggestions.json,不改 active。
+    # adopt / evaluate:写的是候选,对 active harness 零影响。
+    # promote:改变之后每一张发票的路由,署名 + 理由 + 时间,
+    # 并且只有 improve.gate_verdict 判定通过才渲染表单。
+    # 写操作全部落在既有 CLI 的同一批函数上 —— 网页不是第二条路径。
 
     def _imp_form_run(self, form: dict):
         return self._require_run(form), (form.get("lang", ["zh"])[0] or "zh")
 
     def _imp_back(self, run_name: str, lang: str, notice: str) -> None:
         self._redirect(f"/improve?run={run_name}&lang={lang}&notice={notice}")
+
+    def _imp_mine(self, lang: str) -> None:
+        """关账分析(本 run) + mine(workspace)。零 API,不改 active。"""
+        from . import improve
+
+        form = self._form()
+        run, lang = self._imp_form_run(form)
+        improve.mine(self.bench.ws)
+        ledger = run / "adjudication_ledger.jsonl"
+        if ledger.exists():
+            closeout = _hitl_round_analyze(run)
+            out = self.bench.ws / "improve" / f"closeout_{run.name}.json"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(
+                json.dumps(closeout, indent=1, ensure_ascii=False) + "\n",
+                encoding="utf-8")
+        self._imp_back(run.name, lang, "mined")
+
+    def _imp_adk(self, lang: str) -> None:
+        """Gemini ADK 改进循环。顾问报告;不改 active;不写 suggestions.json。"""
+        from .agents.runtime import (
+            GeminiCredentialMissing, GeminiSDKMissing, ReplayRecordingMissing)
+
+        form = self._form()
+        run, lang = self._imp_form_run(form)
+        if not (self.bench.ws / "improve" / "mine_report.json").exists():
+            raise _HttpError(400, "还没有挖掘报告 —— 先点「关账并挖掘」")
+        if not _adk_importable():
+            raise _HttpError(400, _t(lang, "imp_adk_unavailable"))
+        try:
+            _run_adk_loop(self.bench.ws)
+        except (GeminiCredentialMissing, GeminiSDKMissing,
+                ReplayRecordingMissing) as exc:
+            raise _HttpError(400, str(exc)) from exc
+        except ImportError as exc:
+            raise _HttpError(400, _t(lang, "imp_adk_unavailable")) from exc
+        self._imp_back(run.name, lang, "adk")
 
     def _imp_adopt(self, lang: str) -> None:
         """模型草稿 → cohort 候选。propose + evaluate(反事实,零 API)。"""
@@ -3384,6 +3700,10 @@ def cmd_workbench(
         scope = server.bench.review_scope
         mode += f",限定复核 {len(scope.slots)} 槽({scope.source.name})"
     print(f"InvoiceLoop 工作台:{url}({mode},Ctrl-C 停止)")
+    if not _adk_importable():
+        import sys
+        print(f"Gemini 顾问层未装进 {sys.executable} —— 改进页不会给出可点的按钮",
+              file=sys.stderr)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

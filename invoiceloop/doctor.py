@@ -58,6 +58,16 @@ def cmd_doctor() -> int:
         check(f"credentials:{purpose}", source is not None, False,
               f"{why} —— " + (f"已配置(来源:{source})" if source else "未配置"))
 
+    try:
+        import google.adk  # noqa: F401
+        import google.genai  # noqa: F401
+        check("optional:google-adk", True, False,
+              f"顾问层已装进 {sys.executable}")
+    except ImportError:
+        check("optional:google-adk", False, False,
+              f"顾问层未装进 {sys.executable} —— 工作台改进页不会给出"
+              f"可点的 Gemini 按钮(不阻断产品路径)")
+
     from .ocr import corpus_available, derisk_root
 
     check("research:dws-derisk 存盘证据", corpus_available(), False,

@@ -15,6 +15,8 @@ def test_report_shape_and_research_is_informational(capsys):
     by_name = {c["check"]: c for c in report["checks"]}
     research = by_name["research:dws-derisk 存盘证据"]
     assert research["required"] is False, "研究数据永远不许阻断产品路径"
+    adk = by_name["optional:google-adk"]
+    assert adk["required"] is False, "顾问层 extra 不许阻断产品路径"
     assert rc == 0
 
 

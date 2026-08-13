@@ -154,8 +154,8 @@ def test_loopback_still_rejects_foreign_host(workspace):
 #: 工作台上全部写入路由。裁决账本是「某个人看过并判了」的证词 ——
 #: 公网可写等于任何人都能伪造一条人类裁决。
 POST_ROUTES = ["/decide", "/upload", "/ingest", "/bundle", "/verify",
-               "/improve/adopt", "/improve/adopt-schema",
-               "/improve/evaluate", "/improve/promote"]
+               "/improve/mine", "/improve/adk", "/improve/adopt",
+               "/improve/adopt-schema", "/improve/evaluate", "/improve/promote"]
 
 
 @contextlib.contextmanager

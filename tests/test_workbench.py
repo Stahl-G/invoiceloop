@@ -706,7 +706,7 @@ class TestQuickPathCarriesReasonCode:
 
 
 class TestImprovePage:
-    """改进循环页:只读。原话是主体,模型草稿必须看起来像草稿。"""
+    """改进循环页:投影 mine_report;关账挖掘是人点的写入口。"""
 
     def _mine(self, workspace):
         from invoiceloop import improve
@@ -717,7 +717,42 @@ class TestImprovePage:
         status, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
         assert status == 200
         assert "改进循环" in text
-        assert "没有模型草稿" in text
+        assert 'action="/improve/mine"' in text
+        assert "关账并挖掘" in text
+        assert "还没有草稿" in text
+        assert "先去复核队列过一轮" in text
+        assert not (workspace / "improve" / "mine_report.json").exists(), \
+            "GET /improve 不许偷偷 mine"
+
+    def test_unmined_with_decisions_does_not_send_reviewer_back_to_queue(
+            self, workspace, server):
+        """队列判完后改进页仍空 = 没 mine,不是没写过意见。"""
+        _decide(server, rationale="页面右下角还有一个小写的 total",
+                reason_code="ROUTING_FALSE_POSITIVE")
+        _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert "先去复核队列过一轮" not in text
+        assert "你已经写过裁决" in text
+        assert "关账并挖掘" in text
+        assert "系统都读过了" not in text
+
+    def test_post_mine_projects_notes_and_writes_closeout(
+            self, workspace, server):
+        _decide(server, rationale="页面右下角还有一个小写的 total",
+                reason_code="ROUTING_FALSE_POSITIVE")
+        status, headers, _ = _imp_post(
+            server, "/improve/mine", {"run": RUN, "lang": "zh"})
+        assert status == 303 and "notice=mined" in headers["location"]
+        assert (workspace / "improve" / "mine_report.json").exists()
+        closeout = json.loads(
+            (workspace / "improve" / f"closeout_{RUN}.json").read_text(
+                encoding="utf-8"))
+        assert closeout["n_decisions"] == 1
+        assert closeout["qualifier"].startswith("开发集")
+        _, _, text = _req(server, "GET", headers["location"])
+        assert "页面右下角还有一个小写的 total" in text
+        assert "重新挖掘" in text
+        assert "已挖掘" in text
+        assert "1 条裁决" in text
 
     def test_reviewer_notes_reach_the_page(self, workspace, server):
         _decide(server, rationale="页面右下角还有一个小写的 total",
@@ -729,11 +764,85 @@ class TestImprovePage:
 
     def test_page_writes_nothing(self, workspace, server):
         """唯一写 active 的入口是 improve promote —— 网页上不许有按钮
-        能改策略,只给可复制的命令。"""
+        能改策略。mine 只投影,不改规则。"""
         self._mine(workspace)
         _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
         assert 'action="/improve"' not in text
-        assert "还没写过复核意见" in text
+        assert 'action="/improve/mine"' in text
+        assert "挖掘已跑过" in text
+        assert 'action="/improve/adk"' in text
+        assert "让 Gemini 出建议" in text
+        assert not (workspace / "improve" / "adk_loop_report.json").exists(), \
+            "GET /improve 不许偷偷调 Gemini"
+
+    def test_adk_button_absent_until_mined(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert 'action="/improve/adk"' not in text
+
+    def test_post_adk_without_mine_is_400(self, workspace, server):
+        status, _, text = _imp_post(
+            server, "/improve/adk", {"run": RUN, "lang": "zh"})
+        assert status == 400
+        assert "挖掘报告" in text
+        assert not (workspace / "improve" / "adk_loop_report.json").exists()
+
+    def test_post_adk_projects_the_report(self, workspace, server, monkeypatch):
+        self._mine(workspace)
+
+        def fake_loop(ws):
+            payload = {
+                "advisory": True,
+                "source": "Gemini_Multi_Agent_Improve_Loop",
+                "model": "gemini-3.6-flash",
+                "proposals": [{
+                    "action": "auto_accept",
+                    "cohort": {"field": "total_gross", "tier": "TIER1"},
+                    "finding": "多方印证的含税额从没被改过",
+                    "prediction": "负载下降;风险是放过一个错值",
+                }],
+                "recommendations": [{
+                    "cohort_field": "total_gross",
+                    "recommend_for_human_review": True,
+                    "risk": "LOW",
+                    "reason": "zero corrections",
+                    "values_at_risk": [],
+                }],
+                "recommended_for_human_review": 1,
+                "blocking_evaluations": 0,
+                "counterfactual": [],
+                "authority": "advisory only — the model recommends",
+            }
+            path = workspace / "improve" / "adk_loop_report.json"
+            path.write_text(json.dumps(payload, ensure_ascii=False),
+                            encoding="utf-8")
+            return payload
+
+        monkeypatch.setattr("invoiceloop.workbench._run_adk_loop", fake_loop)
+        status, headers, _ = _imp_post(
+            server, "/improve/adk", {"run": RUN, "lang": "zh"})
+        assert status == 303 and "notice=adk" in headers["location"]
+        assert not (workspace / "improve" / "suggestions.json").exists(), \
+            "ADK 不许写 suggestions.json"
+        _, _, text = _req(server, "GET", headers["location"])
+        assert "多方印证的含税额从没被改过" in text
+        assert "建议你看" in text
+        assert "再跑一轮 Gemini" in text
+        assert "Gemini 跑完了" in text
+
+    def test_adk_missing_extra_does_not_offer_a_clickable_button(
+            self, workspace, server, monkeypatch):
+        """顾问层没装进本解释器:页面要说清,不许给可点按钮,不许甩 pip。"""
+        monkeypatch.setattr("invoiceloop.workbench._adk_importable", lambda: False)
+        self._mine(workspace)
+        _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert "这一台工作台现在出不了 Gemini 建议" in text
+        assert 'action="/improve/adk"' not in text
+        assert "pip install" not in text
+        status, _, body = _imp_post(
+            server, "/improve/adk", {"run": RUN, "lang": "zh"})
+        assert status == 400
+        assert "这一台工作台现在出不了 Gemini 建议" in body
+        assert "pip install" not in body
 
     def test_model_draft_is_marked_advisory_with_its_citations(
             self, workspace, server):
