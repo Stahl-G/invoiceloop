@@ -13,7 +13,10 @@ import json
 
 import pytest
 
-from invoiceloop.agents import adjudicator as adj
+# ADK/GenAI 是可选依赖(`pip install -e ".[gemini]"`)。没装就跳过,
+# 不要让整个 tests/ 收集不起来 —— 干净 clone 必须能跑通测试。
+pytest.importorskip("pydantic", reason="需要 invoiceloop[gemini]")
+from invoiceloop.agents import adjudicator as adj  # noqa: E402
 
 
 @pytest.fixture
