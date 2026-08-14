@@ -147,6 +147,21 @@ a:hover { text-decoration: underline; }
     padding: 18px 22px;
     margin-bottom: 18px;
 }
+.wb-terminated {
+    border-color: var(--wb-warn-line);
+    background: var(--wb-warn-wash);
+    color: var(--wb-warn);
+    font-weight: 600;
+}
+.wb-triad {
+    font-size: 13px;
+    color: var(--wb-ink-soft);
+    padding: 8px 0 4px;
+}
+.wb-triad-cell {
+    display: inline-block;
+    margin-right: 14px;
+}
 .wb-notice {
     border: 1px solid var(--wb-action-line);
     background: var(--wb-action-wash);
@@ -819,6 +834,19 @@ a:hover { text-decoration: underline; }
     font-size: 13px;
 }
 .wb-vision-suggest.muted { opacity: 0.75; }
+.wb-invoice-read {
+    margin: 8px 0;
+    padding: 8px 10px;
+    background: var(--wb-advisory-wash);
+    border: 1px dashed var(--wb-advisory-line);
+    border-radius: var(--wb-radius-sm);
+    font-size: 13px;
+}
+.wb-invoice-read-kv { margin: 2px 0; }
+.wb-invoice-read-why {
+    margin: 6px 0 0;
+    color: var(--wb-muted, #5c5748);
+}
 .wb-vs-label {
     font-size: 11.5px;
     font-weight: 600;

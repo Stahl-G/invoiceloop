@@ -107,3 +107,24 @@ class TestCallGeminiStructured:
                 prompt="test", schema=Dummy,
                 workspace=tmp_path, call_id="missing",
             )
+
+
+class TestPreferHttpxThroughProxy:
+    def test_disables_aiohttp_when_https_proxy_set(self, monkeypatch):
+        from google.genai import _api_client as ac
+        from invoiceloop.agents.runtime import prefer_httpx_through_proxy
+
+        monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:7897")
+        ac.has_aiohttp = True
+        prefer_httpx_through_proxy()
+        assert ac.has_aiohttp is False
+
+    def test_leaves_aiohttp_when_no_proxy(self, monkeypatch):
+        from google.genai import _api_client as ac
+        from invoiceloop.agents.runtime import prefer_httpx_through_proxy
+
+        for key in ("HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"):
+            monkeypatch.delenv(key, raising=False)
+        ac.has_aiohttp = True
+        prefer_httpx_through_proxy()
+        assert ac.has_aiohttp is True

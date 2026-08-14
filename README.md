@@ -128,7 +128,7 @@ routing policy (a *harness*), never by claiming better extraction. A candidate
 policy has to survive a deterministic counterfactual replay plus a human
 signature before it takes effect.
 
-An agent layer (Google ADK, `gemini-3.6-flash`) proposes and argues about
+An agent layer (Google ADK, `gemini-3.7-flash`) proposes and argues about
 candidates. It has no authority: it writes advisory reports only, Python
 recomputes every candidate, and promotion needs Gate 2 plus a signed human
 decision. See [`docs/ADK_INTEGRATION.md`](docs/ADK_INTEGRATION.md), which also

@@ -164,7 +164,7 @@ def _main() -> None:
         help="跑 ADK SequentialAgent(miner→proposer→evaluator→critic)")
     p_agl.add_argument("--workspace", type=Path, required=True)
     p_agl.add_argument("--model", default=None,
-                       help="缺省 gemini-3.6-flash;INVOICELOOP_REPLAY=1 走录音")
+                       help="缺省 gemini-3.7-flash;INVOICELOOP_REPLAY=1 走录音")
 
     p_imp = sub.add_parser("improve", help="改进控制面(v0.2 收窄版,全确定性零模型)")
     imp_sub = p_imp.add_subparsers(dest="improve_command", required=True)

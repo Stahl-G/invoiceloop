@@ -2147,3 +2147,20 @@ class TestSuggestionSeen:
                     seen.append(html.unescape(c.get("value") or ""))
         assert seen, "本 fixture 的队列应带建议隐藏字段"
         assert all(_SUGGESTION_SEEN.fullmatch(v) for v in seen), seen
+
+
+class TestTerminatedRound:
+    """HITL R1 预注册终止:工作台必须挡住继续点队列,一行都不许写。"""
+
+    def test_decide_is_refused_and_writes_nothing(self, workspace, server):
+        (workspace / "round_status.json").write_text(json.dumps({
+            "status": "terminated",
+            "reason_id": "s1_falsified_census_hypothesis",
+        }), encoding="utf-8")
+        status, _, text = _decide(server, claim_id="")
+        assert status == 403
+        assert "terminated" in text.lower()
+        assert _ledger(workspace) == []
+        _, _, queue = _req(server, "GET", f"/queue?run={RUN}&lang=zh")
+        assert "预注册终止" in queue
+        assert 'action="/decide"' not in queue

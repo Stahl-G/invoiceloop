@@ -66,7 +66,10 @@ from . import __version__
 from . import plainwords as _pw
 from .gateinfo import tooltip as _gate_tooltip
 from .ingest import sanitise_doc_id
+from .release_profile import PAYMENT_REQUIRED_V1, parse_release_profile
 from .review import load_decisions, project, target_id_for
+from .review_budget import budget_state
+from .round_status import is_terminated
 from .snapshot import (
     allocate_run_dir,
     build_input_manifest,
@@ -301,6 +304,14 @@ _T = {
         "vision_blind": "vision readers can't read it either",
         "vision_rejected": "same value rejected at freeze — no adopt",
         "vision_rationale": "confirmed vision suggestion",
+        "invoice_read_h": "ADK document reading (advice, not a verdict)",
+        "invoice_read_station": "Station / publication",
+        "invoice_read_agency": "Agency",
+        "invoice_read_advertiser": "Advertiser",
+        "invoice_read_legal": "Legal seller",
+        "invoice_read_remit": "Remittance",
+        "invoice_read_seller": "Seller suggestion",
+        "invoice_read_buyer": "Buyer suggestion",
         "submit": "Submit decision", "confirm": "Confirm",
         "current_note": "Current: {id} · {decision} · {by} · {at} — submitting supersedes it",
         "reason": "Reason",
@@ -452,6 +463,23 @@ _T = {
         "review_scope": "Review scope: {n} slots · {name} · sha256 {digest}",
         "scope_outside": "This slot is outside the active review scope: {doc}/{field}",
         "scope_missing": "The review scope contains slots missing from this run: {slots}",
+        "terminated_banner": "HITL R1 is pre-registered stopped before S2’s first "
+                             "decision. Do not finish this queue and do not splice "
+                             "S2–S5 onto the S1 curve. Record: docs/HITL_R1_TERMINATION_2026-08-14.md",
+        "terminated_decide": "This workspace’s HITL round is terminated — /decide "
+                             "is refused. S1 already falsified the census hypothesis.",
+        "terminated_form": "Round terminated. This slot is not accepting decisions.",
+        "budget_banner": "Working-time budget: {elapsed:.0f} / {cap:.0f} min. "
+                         "Unreviewed slots stay unreviewed — residual error is not zero "
+                         "(unflagged ~12%; unflagged TIER1 7.8%, §8). "
+                         "Stop when the cap is hit; do not census ten fields.",
+        "budget_exhausted": "Working-time budget is used up. Further /decide writes "
+                            "are refused. Remaining slots stay unreviewed.",
+        "walk_outside": "This slot is outside the payment-contract walk: {doc}/{field}",
+        "residual_narrow": "Unreviewed is not correct. Unflagged slots ~12% error; "
+                           "unflagged TIER1 still 7.8% true-wrong (ARCHITECTURE §6/§7, "
+                           "with §8 qualifiers). You sign payment fields and probes.",
+        "triad_h": "Amount triad (look once — you sign amount due)",
         "judgement": "InvoiceLoop assessment",
         "frozen_value": "Frozen value",
         "no_claim": "(no claim)",
@@ -637,6 +665,14 @@ _T = {
         "vision_blind": "读图也看不清",
         "vision_rejected": "同值冻结时被拒,不提供采用",
         "vision_rationale": "确认读图建议",
+        "invoice_read_h": "ADK 读法（建议，不是判决）",
+        "invoice_read_station": "台站 / 刊物",
+        "invoice_read_agency": "代理",
+        "invoice_read_advertiser": "广告主",
+        "invoice_read_legal": "法律开票名",
+        "invoice_read_remit": "汇款栏",
+        "invoice_read_seller": "卖方建议",
+        "invoice_read_buyer": "买方建议",
         "submit": "提交裁决", "confirm": "确认",
         "current_note": "当前裁决 {id} · {decision} · {by} · {at} —— 提交将取代它",
         "reason": "理由",
@@ -763,6 +799,23 @@ _T = {
         "review_scope": "限定复核范围:{n} 槽 · {name} · sha256 {digest}",
         "scope_outside": "这个槽不在当前限定复核范围内:{doc}/{field}",
         "scope_missing": "限定复核范围含有当前 run 不存在的槽:{slots}",
+        "terminated_banner": "HITL R1 已在 S2 第一次裁决前预注册终止。不要点完本队列,"
+                             "也不要把 S2–S5 接到 S1 曲线上。"
+                             "记录:docs/HITL_R1_TERMINATION_2026-08-14.md",
+        "terminated_decide": "本工作区的 HITL 轮次已终止,/decide 拒绝写入。"
+                             "S1 已否定普查假设。",
+        "terminated_form": "轮次已终止。这个槽不再接受裁决。",
+        "budget_banner": "工作时间预算:{elapsed:.0f} / {cap:.0f} 分钟。"
+                         "没看到的槽保持未复核 —— 残余不是零"
+                         "(未挑出约 12%;未 flag 的 TIER1 仍有 7.8%,§8)。"
+                         "预算用尽就停,不要普查十个字段。",
+        "budget_exhausted": "工作时间预算已用尽,/decide 拒绝再写。"
+                            "剩下的槽保持未复核。",
+        "walk_outside": "这个槽不在付款契约行走范围内:{doc}/{field}",
+        "residual_narrow": "未复核不是正确。未挑出约 12% 偏差;未被 flag 的 TIER1 "
+                           "仍有 7.8% 真错(ARCHITECTURE §6/§7,带 §8 限定)。"
+                           "人签的是付款字段和探针。",
+        "triad_h": "金额三元组(看一次 —— 你签的是应付金额)",
         "judgement": "InvoiceLoop 判定",
         "frozen_value": "冻结值",
         "no_claim": "(无声明)",
@@ -1247,6 +1300,20 @@ class RunCtx:
         for model, rows in load_vision_answers(vision_dir=vision_dir).items():
             for key, ans in rows.items():
                 self.vision.setdefault(key, []).append((model, ans["value"]))
+        self.invoice_read: dict[str, dict] = {}
+        reading_path = self.dir / "vision" / "invoice_read.json"
+        if reading_path.exists():
+            try:
+                packed = json.loads(reading_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                packed = {}
+            if packed.get("advisory"):
+                model = packed.get("model") or ""
+                for doc_id, rec in (packed.get("docs") or {}).items():
+                    if isinstance(rec, dict):
+                        rec = dict(rec)
+                        rec.setdefault("model", model)
+                        self.invoice_read[doc_id] = rec
 
     def slot(self, doc_id: str, field: str) -> dict | None:
         return self.projection.get(target_id_for(self.snapshot_id, doc_id, field))
@@ -1265,18 +1332,34 @@ class Workbench:
                              if self.review_scope else frozenset())
 
     def _scope_banner(self, lang: str) -> str:
-        if self.review_scope is None:
-            return ""
-        text = _t(lang, "review_scope", n=len(self.review_scope.slots),
-                  name=self.review_scope.source.name,
-                  digest=self.review_scope.sha256[:12])
-        return f'<div class="wb-scope" role="status">{_esc(text)}</div>'
+        parts = []
+        if is_terminated(self.ws):
+            parts.append(
+                f'<div class="wb-banner wb-terminated" role="alert">'
+                f'{_esc(_t(lang, "terminated_banner"))}</div>'
+            )
+        run = self.current_run()
+        if run is not None:
+            state = budget_state(self.ws, run)
+            if state:
+                parts.append(
+                    f'<div class="wb-banner" role="status">'
+                    f'{_esc(_t(lang, "budget_banner",
+                              elapsed=state["elapsed_seconds"] / 60,
+                              cap=state["cap_minutes"]))}</div>'
+                )
+        if self.review_scope is not None:
+            text = _t(lang, "review_scope", n=len(self.review_scope.slots),
+                      name=self.review_scope.source.name,
+                      digest=self.review_scope.sha256[:12])
+            parts.append(f'<div class="wb-scope" role="status">{_esc(text)}</div>')
+        return "".join(parts)
 
     def review_order(self, ctx: RunCtx, lang: str = "zh") -> list[dict]:
         """Rows this server may review, in the scope file's exact order."""
         ordered = self._queue_order(ctx)
         if self.review_scope is None:
-            return ordered
+            return self._walk_release_profile(ctx, ordered)
         by_key = {(r["doc_id"], r["field"]): r for r in ordered}
         missing = [f"{doc}|{field}" for doc, field in self.review_scope.slots
                    if (doc, field) not in by_key]
@@ -1286,17 +1369,74 @@ class Workbench:
                              run=ctx.name)
         return [by_key[key] for key in self.review_scope.slots]
 
+    @staticmethod
+    def _walk_release_profile(ctx: RunCtx, ordered: list[dict]) -> list[dict]:
+        """Default walking queue under a release_profile: gating review slots
+        plus QA probes. Census policies (no profile) keep the full order.
+        A review_scope write boundary, when present, is applied instead.
+        """
+        routing_path = ctx.dir / "routing_report.json"
+        if not routing_path.exists():
+            return ordered
+        routing = json.loads(routing_path.read_text(encoding="utf-8"))
+        profile = parse_release_profile(routing.get("policy") or {})
+        if profile is None:
+            return ordered
+        gate = profile["fields"]
+        walk = []
+        for row in ordered:
+            codes = [str(c) for c in (row.get("reason_codes") or [])]
+            is_qa = any(c.startswith("QA_SAMPLE") for c in codes)
+            in_q = row.get("in_human_queue", row.get("requires_adjudication"))
+            if is_qa or (in_q and row["field"] in gate):
+                walk.append(row)
+        return Workbench._order_release_walk(walk)
+
+    @staticmethod
+    def _order_release_walk(walk: list[dict]) -> list[dict]:
+        """Weakest document first, then payment-field order.
+
+        Rank must be precomputed. ``list.sort`` leaves the list empty
+        while the key function runs (CPython), so a key that scans
+        ``walk`` itself hits ``min(())``.
+        """
+        rank = {"unsupported": 0, "single_source": 1, "corroborated": 2}
+        field_ord = {name: i for i, name in enumerate(PAYMENT_REQUIRED_V1)}
+        by_doc: dict[str, int] = {}
+        for row in walk:
+            strength = rank.get(row.get("support_strength"), 9)
+            doc_id = row["doc_id"]
+            prev = by_doc.get(doc_id)
+            if prev is None or strength < prev:
+                by_doc[doc_id] = strength
+        return sorted(
+            walk,
+            key=lambda r: (
+                by_doc.get(r["doc_id"], 9), r["doc_id"],
+                field_ord.get(r["field"], 99), r["field"],
+            ),
+        )
+
     def require_review_slot(self, run_dir: Path, doc: str, field: str,
                             lang: str = "zh") -> None:
         """Refuse writes from stale tabs or hand-edited URLs outside the scope."""
-        if self.review_scope is None:
+        if self.review_scope is not None:
+            ctx = RunCtx(run_dir)
+            self.review_order(ctx, lang)
+            if (doc, field) not in self._review_keys:
+                raise _HttpError(409, _t(lang, "scope_outside", doc=doc, field=field),
+                                 run=ctx.name)
             return
         ctx = RunCtx(run_dir)
-        # Validate the whole scope against this run before testing membership;
-        # a scope/run mismatch is a blocking configuration error, not a 404.
-        self.review_order(ctx, lang)
-        if (doc, field) not in self._review_keys:
-            raise _HttpError(409, _t(lang, "scope_outside", doc=doc, field=field),
+        routing_path = ctx.dir / "routing_report.json"
+        if not routing_path.exists():
+            return
+        routing = json.loads(routing_path.read_text(encoding="utf-8"))
+        if parse_release_profile(routing.get("policy") or {}) is None:
+            return
+        allowed = {(r["doc_id"], r["field"]) for r in self.review_order(ctx, lang)}
+        if (doc, field) not in allowed:
+            raise _HttpError(409, _t(lang, "walk_outside", doc=doc, field=field),
                              run=ctx.name)
 
     # ---- run 定位
@@ -1463,7 +1603,15 @@ class Workbench:
             cards.append(f'<h2 class="wb-section">{_esc(_t(lang, key, n=len(items)))}</h2>')
             cards.extend(self.row_card(lang, ctx, r, tip, adjudicator) for r, tip in items)
         pct = int(100 * decided / len(rows)) if rows else 0
+        residual = ""
+        routing_path = ctx.dir / "routing_report.json"
+        if routing_path.exists():
+            routing = json.loads(routing_path.read_text(encoding="utf-8"))
+            if parse_release_profile(routing.get("policy") or {}):
+                residual = (f'<div class="wb-banner">{_esc(_t(lang, "residual_narrow"))}'
+                            f'</div>')
         body = f"""
+{residual}
 <div class="wb-progress" title="{_esc(_t(lang, 'reviewed', x=decided, y=len(rows)))}">
 <div class="wb-progress-bar" style="width:{pct}%"></div></div>
 <p>{_esc(_t(lang, 'reviewed', x=decided, y=len(rows)))}</p>
@@ -1626,6 +1774,70 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                     f'{_esc(tip["decided_at"])}">{label}{corr}</span>')
         return f'<span class="wb-status pending">{_esc(_t(lang, "pending"))}</span>'
 
+    @staticmethod
+    def _invoice_read_card(lang: str, rec: dict | None) -> str:
+        """Document-level ADK reading. Advice; never a verdict."""
+        if not rec:
+            return ""
+        rows = [
+            ("invoice_read_station", rec.get("station_or_publication")
+             or rec.get("seller_name")),
+            ("invoice_read_agency", rec.get("agency")),
+            ("invoice_read_advertiser", rec.get("advertiser")),
+            ("invoice_read_legal", rec.get("legal_seller")),
+            ("invoice_read_remit",
+             " · ".join(p for p in (
+                 rec.get("remittance_name") or "",
+                 rec.get("remittance_role") or "",
+             ) if p)),
+            ("invoice_read_seller", rec.get("seller_name")),
+            ("invoice_read_buyer", rec.get("buyer_name")),
+        ]
+        items = []
+        for key, val in rows:
+            if not val:
+                continue
+            items.append(
+                f'<div class="wb-invoice-read-kv">'
+                f'<span class="wb-raw">{_esc(_t(lang, key))}</span> '
+                f'{_esc(str(val))}</div>')
+        rationale = rec.get("rationale") or ""
+        if rationale:
+            items.append(
+                f'<p class="wb-invoice-read-why">{_esc(rationale)}</p>')
+        if not items:
+            return ""
+        model = rec.get("model") or ""
+        head = _t(lang, "invoice_read_h")
+        if model:
+            head = f"{head} · {model}"
+        return (f'<div class="wb-invoice-read">'
+                f'<div class="wb-evlabel">{_esc(head)}</div>'
+                f'{"".join(items)}</div>')
+
+    def _triad_context(self, lang: str, ctx: RunCtx, row: dict) -> str:
+        """Show Gross / Net / Due together on the payment amount slot."""
+        if row["field"] != "amount_due":
+            return ""
+        order = ("total_gross", "total_net", "amount_due")
+        by_field = {r["field"]: r for r in ctx.matrix.get("rows") or []
+                    if r["doc_id"] == row["doc_id"] and r["field"] in order}
+        cells = []
+        for name in order:
+            sib = by_field.get(name)
+            if sib is None:
+                continue
+            label = _FIELD_LABEL[lang].get(name, name)
+            val = sib.get("value")
+            shown = _t(lang, "no_value") if val in (None, "") else str(val)
+            cells.append(
+                f'<span class="wb-triad-cell"><span class="wb-raw">{_esc(label)}</span> '
+                f'{_esc(shown)}</span>')
+        if not cells:
+            return ""
+        return (f'<div class="wb-triad"><div class="wb-evlabel">'
+                f'{_esc(_t(lang, "triad_h"))}</div>{" ".join(cells)}</div>')
+
     def row_card(self, lang: str, ctx: RunCtx, row: dict, tip: dict | None,
                  adjudicator: str) -> str:
         doc, field = row["doc_id"], row["field"]
@@ -1656,6 +1868,8 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 <a class="wb-adj-link" href="{adj_href}">{_esc(_t(lang, "open_adj"))}</a>
 </div>
 <div class="wb-task">{_esc(task)}</div>
+{self._triad_context(lang, ctx, row)}
+{self._invoice_read_card(lang, ctx.invoice_read.get(doc))}
 {self._vision_suggest(lang, ctx, row)}
 {self._evidence(lang, ctx, row)}
 {self._decide_form(lang, ctx, row, tip, conflict, len(orphans), adjudicator)}
@@ -1779,6 +1993,13 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                      next_hint: str = "", form_values: dict | None = None,
                      form_error: str = "") -> str:
         doc, field = row["doc_id"], row["field"]
+        if is_terminated(self.ws):
+            return (f'<p class="wb-notice warn">'
+                    f'{_esc(_t(lang, "terminated_form"))}</p>')
+        run_state = budget_state(self.ws, ctx.dir)
+        if run_state and run_state["exhausted"]:
+            return (f'<p class="wb-notice warn">'
+                    f'{_esc(_t(lang, "budget_exhausted"))}</p>')
         # 提交被拒时的回填(2026-08-08):本站服务器端渲染,回填只能在服务端做。
         # 保留的是复核者**打出来的**东西 —— 理由、修正值、署名,以及他刚做的
         # 那个判断;丢一次就要重打一次,而重打的代价会把理由写短,
@@ -2135,6 +2356,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 {self._doctype_html(lang, ctx, row)}
 <div class="wb-task">{_esc(task)}</div>
 {why}
+{self._invoice_read_card(lang, ctx.invoice_read.get(doc))}
 <div class="wb-adj-verdict">
 <h2 class="wb-adj-colhead">{_esc(_t(lang, 'judgement'))}</h2>
 <div class="wb-adj-kv"><span class="wb-adj-k">{_esc(_t(lang, 'frozen_value'))}</span>
@@ -3205,6 +3427,11 @@ class _Handler(BaseHTTPRequestHandler):
         run = self.bench.get_run(run_name)
         if run is None:
             raise _HttpError(404, f"run 不存在:{run_name}")
+        if is_terminated(self.bench.ws):
+            raise _HttpError(403, _t(lang, "terminated_decide"), run=run_name)
+        state = budget_state(self.bench.ws, run)
+        if state and state["exhausted"]:
+            raise _HttpError(403, _t(lang, "budget_exhausted"), run=run_name)
         doc = form.get("doc", [""])[0]
         field = form.get("field", [""])[0]
         # review scope 是写权限边界,不是页面过滤。旧标签页或手改 POST
