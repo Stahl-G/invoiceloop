@@ -6,6 +6,8 @@ import json
 
 import pytest
 
+pytest.importorskip("pydantic", reason="需要 invoiceloop[gemini]")
+
 from invoiceloop.agents.invoice_read import (
     InvoiceReading,
     reading_call_id,

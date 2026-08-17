@@ -5,17 +5,29 @@ code or work incorporated into the Project." This file is that disclosure. It is
 written to be checkable: every claim below can be verified against the git history
 in this repository, and the commands to do so are at the bottom.
 
-**Submission Period:** 2026-08-03 09:00 PT — 2026-08-31 17:00 PT.
+This file is the **All Things Agentic** disclosure (submission window 2026-08-03
+09:00 PT — 2026-08-31 17:00 PT). The same repository is also entered in the
+DevNetwork Nutrient DWS challenge (2026-08-17 — 2026-09-03). Nutrient DWS is the
+document-intelligence layer; InvoiceLoop is the evidence, review, and approval
+layer on top of it. Google ADK is a second-layer proposer for routing policy, not
+the extraction engine.
+
+**All Things Agentic submission period:** 2026-08-03 09:00 PT — 2026-08-31 17:00 PT.
 
 ## Short version
 
-This repository was created on **2026-08-01 at 10:24 PT**, roughly 47 hours before
-the Submission Period opened. It is not a pre-existing product entering a hackathon;
-it is a project that started two days early.
+The project and local Git history began on **2026-08-01 at 10:24 PT** (first
+commit `380f8ef`, timestamp 2026-08-02 00:24 +07). The **public GitHub repository**
+was created later, on **2026-08-07 at 11:09 UTC** (`created_at` on
+https://github.com/Stahl-G/invoiceloop), preserving that earlier commit history.
+
+It is not a pre-existing product entering a hackathon; it is a project that
+started two days before the All Things Agentic window. Do not read GitHub's
+`created_at` as the start of the work.
 
 **42 commits on `main` pre-date 2026-08-03 09:00 PT.** That number is frozen —
-nothing can be added to the past. Everything after it was written during the
-Submission Period; the current count grows with every commit, so it is not stated
+nothing can be added to the past. Everything after it was written during a
+submission window; the current count grows with every commit, so it is not stated
 here as a fixed figure. Count it yourself with the command at the bottom.
 
 (Counting every branch that ever existed locally — including four commits on an
