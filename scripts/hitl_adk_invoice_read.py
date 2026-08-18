@@ -27,6 +27,7 @@ from invoiceloop.agents.invoice_read import (  # noqa: E402
     SUGGEST_TAG,
     load_page_images,
     make_invoice_reader,
+    read_docs,
     save_readings,
     to_suggestion_rows,
 )
@@ -38,12 +39,9 @@ def _doc_ids(run_dir: Path) -> list[str]:
     return sorted({row["doc_id"] for row in sm["rows"]})
 
 
-def _already_read(run_dir: Path) -> set[str]:
-    path = run_dir / "vision" / "invoice_read.json"
-    if not path.exists():
-        return set()
-    packed = json.loads(path.read_text(encoding="utf-8"))
-    return set((packed.get("docs") or {}).keys())
+def _already_read(run_dir: Path, model: str) -> set[str]:
+    """按 model 分键 —— 换模型重跑必须真的重读,不是整批 skip。"""
+    return read_docs(run_dir, model)
 
 
 def main() -> None:
@@ -63,7 +61,7 @@ def main() -> None:
     ws = run_dir.parent.parent
     doc_ids = _doc_ids(run_dir)
     n_docs = len(doc_ids)
-    done = _already_read(run_dir)
+    done = _already_read(run_dir, model)
     read = make_invoice_reader(model=model, workspace=ws)
 
     docs: dict[str, dict] = {}
@@ -71,7 +69,8 @@ def main() -> None:
     failed: list[dict[str, str]] = []
     for i, doc_id in enumerate(doc_ids, 1):
         if doc_id in done:
-            print(f"[{i}/{n_docs}] {doc_id} skip (already read)", flush=True)
+            print(f"[{i}/{n_docs}] {doc_id} skip (already read by {model})",
+                  flush=True)
             continue
         print(f"[{i}/{n_docs}] {doc_id}", flush=True)
         last_exc: Exception | None = None
@@ -101,9 +100,13 @@ def main() -> None:
         if packed_path.exists() else {"docs": {}}
     from invoiceloop.agents.invoice_read import InvoiceReading
     inject_rows = []
+    # 重建覆盖文件里**全部**读法,包括别的模型读的。建议行的 provenance
+    # 必须用那份读法自己的 model,不是本次 --model,否则旧读法被改名。
+    top_model = str(packed.get("model") or model)
     for doc_id, rec in (packed.get("docs") or {}).items():
+        doc_model = str(rec.get("model") or top_model)
         inject_rows.extend(to_suggestion_rows(
-            doc_id, InvoiceReading.model_validate(rec), model=model))
+            doc_id, InvoiceReading.model_validate(rec), model=doc_model))
     summary = suggest_inject.inject(ws, SUGGEST_TAG, inject_rows, run_dir=run_dir)
     print(json.dumps({
         "run": str(run_dir),

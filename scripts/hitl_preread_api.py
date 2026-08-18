@@ -24,6 +24,7 @@ sys.path.insert(0, str(REPO / "scripts"))
 import suggest_inject  # noqa: E402
 from invoiceloop import env as env_mod  # noqa: E402
 from invoiceloop import vision_ingest as vi  # noqa: E402
+from invoiceloop.evidence import page_images  # noqa: E402
 
 
 def queue_slots(run_dir: Path) -> dict[str, set[str]]:
@@ -70,7 +71,7 @@ def main() -> None:
     slots = queue_slots(run_dir)
     rows, failed = [], []
     for doc_id in sorted(slots):
-        pages = sorted((run_dir / "pages").glob(f"{doc_id}-*.png"))
+        pages = page_images(run_dir / "pages", doc_id)
         if not pages:
             failed.append({"doc_id": doc_id, "error": "无整页渲染"})
             continue
@@ -82,17 +83,38 @@ def main() -> None:
         except Exception as exc:  # noqa: BLE001 —— 记失败,整批仍跑完以便一次报齐
             failed.append({"doc_id": doc_id, "error": repr(exc)})
 
-    summary = suggest_inject.inject(ws, tag, rows, run_dir=run_dir)
-    print(json.dumps({
+    summary = publish_rows(ws, tag, rows, run_dir=run_dir, failed=failed)
+    report = {
         "run": str(run_dir), "model": model, "tag": tag,
         "queue_slots": sum(len(f) for f in slots.values()),
         "docs": len(slots),
         "abstained": sum(1 for r in rows if not r["value"]),
-        "injected": {k: summary[k] for k in
-                     ("written", "skipped_existing", "reread_rows")},
-        "dropped": summary["dropped"], "failed": failed,
-    }, ensure_ascii=False, indent=1))
+        "failed": failed,
+    }
+    if summary is None:
+        # 被拒绝要看得见:否则「一行没写」和「注入成功但没内容」长得一样。
+        report["injected"] = None
+        report["refused"] = {"reason": "batch_incomplete",
+                             "withheld_rows": len(rows)}
+    else:
+        report["injected"] = {k: summary[k] for k in
+                              ("written", "skipped_existing", "reread_rows")}
+        report["dropped"] = summary["dropped"]
+    print(json.dumps(report, ensure_ascii=False, indent=1))
     raise SystemExit(exit_status(failed))
+
+
+def publish_rows(ws: Path, tag: str, rows: list[dict], *,
+                 run_dir: Path, failed: list) -> dict | None:
+    """整批完整才注入,失败批次返回 None 且一行不写。
+
+    `exit_status` 早写了「混完整度的建议层让阶段不可比」,但原先是先注入再退
+    非零 —— 失败的批次照样把半套建议留在工作台上,打开或放弃重试都会看到。
+    `inject` 是 append-only 且有 skipped_existing,修好失败项后重跑安全。
+    """
+    if failed:
+        return None
+    return suggest_inject.inject(ws, tag, rows, run_dir=run_dir)
 
 
 def exit_status(failed: list) -> int:

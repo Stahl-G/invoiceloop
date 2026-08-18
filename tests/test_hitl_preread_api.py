@@ -57,3 +57,46 @@ def test_to_suggestion_rows_empty_label_defaults_none():
 def test_any_doc_failure_is_nonzero_exit():
     assert exit_status([]) == 0
     assert exit_status([{"doc_id": "a", "error": "无整页渲染"}]) == 1
+
+
+# ---- 失败批次不许留下半套建议(PR #1 review)
+
+def _run_for_publish(tmp_path: Path) -> Path:
+    run_dir = tmp_path / "ws" / "runs" / "run-0001"
+    run_dir.mkdir(parents=True)
+    return run_dir
+
+
+def test_publish_rows_writes_when_every_doc_succeeded(tmp_path):
+    from hitl_preread_api import publish_rows
+
+    run_dir = _run_for_publish(tmp_path)
+    ws = tmp_path / "ws"
+    rows = [{"doc_id": "a", "field": "total_gross", "value": "1.00",
+             "printed_label": "Gross:", "note": ""}]
+
+    summary = publish_rows(ws, "tag", rows, run_dir=run_dir, failed=[])
+
+    assert summary is not None
+    assert summary["written"] == 1
+    assert (run_dir / "vision" / "answers6.tag.tsv").exists()
+
+
+def test_publish_rows_refuses_a_partial_batch(tmp_path):
+    """任一份队列文档失败 = 整批不注入。
+
+    exit_status 的 docstring 早写了「混完整度的建议层让阶段不可比」,
+    但代码原先先注入再退非零 —— 失败批次照样把半套建议留在工作台上。
+    """
+    from hitl_preread_api import publish_rows
+
+    run_dir = _run_for_publish(tmp_path)
+    ws = tmp_path / "ws"
+    rows = [{"doc_id": "a", "field": "total_gross", "value": "1.00",
+             "printed_label": "Gross:", "note": ""}]
+
+    summary = publish_rows(ws, "tag", rows, run_dir=run_dir,
+                           failed=[{"doc_id": "b", "error": "无整页渲染"}])
+
+    assert summary is None
+    assert not (run_dir / "vision" / "answers6.tag.tsv").exists()

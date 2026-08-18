@@ -115,3 +115,55 @@ class TestCmdVision:
                        "printed_label", "合计"):
             assert needle in prompt
         assert "1 页" in prompt
+
+
+# ---- 整页 PNG 的读回:前缀相撞与页序(PR #1 review)
+
+def test_page_images_do_not_borrow_another_docs_pages(tmp_path):
+    """``inv`` 不许吃掉 ``inv-copy`` 的页。
+
+    glob(f"{doc_id}-*.png") 在一个 doc_id 是另一个的连字符前缀时把两份单据
+    的页读成一份,ADK 就会照着两张不同的发票出一份读法。
+    """
+    from invoiceloop.evidence import page_images
+
+    pages = tmp_path / "pages"
+    pages.mkdir()
+    for name in ("inv-1.png", "inv-2.png",
+                 "inv-copy-1.png", "inv-copy-2.png"):
+        (pages / name).write_bytes(b"x")
+
+    assert [p.name for p in page_images(pages, "inv")] == ["inv-1.png", "inv-2.png"]
+    assert [p.name for p in page_images(pages, "inv-copy")] == [
+        "inv-copy-1.png", "inv-copy-2.png"]
+
+
+def test_page_images_sort_by_page_number_not_lexically(tmp_path):
+    """10 页以上的单据不许排成 1, 10, 2。"""
+    from invoiceloop.evidence import page_images
+
+    pages = tmp_path / "pages"
+    pages.mkdir()
+    for n in (1, 2, 10, 11):
+        (pages / f"doc-{n}.png").write_bytes(b"x")
+
+    assert [p.name for p in page_images(pages, "doc")] == [
+        "doc-1.png", "doc-2.png", "doc-10.png", "doc-11.png"]
+
+
+def test_page_images_ignore_non_numeric_suffixes(tmp_path):
+    """后缀不是页号的不是这份单据的页。"""
+    from invoiceloop.evidence import page_images
+
+    pages = tmp_path / "pages"
+    pages.mkdir()
+    (pages / "doc-1.png").write_bytes(b"x")
+    (pages / "doc-thumb.png").write_bytes(b"x")
+
+    assert [p.name for p in page_images(pages, "doc")] == ["doc-1.png"]
+
+
+def test_page_images_on_missing_dir_is_empty(tmp_path):
+    from invoiceloop.evidence import page_images
+
+    assert page_images(tmp_path / "nope", "doc") == []
