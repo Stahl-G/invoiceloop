@@ -18,6 +18,7 @@ from typing import Any, Callable, Literal
 
 from pydantic import BaseModel, Field
 
+from invoiceloop.evidence import page_images
 from invoiceloop.fields import FIELD_KINDS
 
 APP_NAME = "invoiceloop_invoice_read"
@@ -47,6 +48,11 @@ class InvoiceReading(BaseModel):
     rationale: str = Field(description="Why this reading, for the reviewer")
     confidence: Confidence = "medium"
 
+
+#: 固定的 user message。**不带 doc_id、不带文件名、不带任何随单据变化的文本** ——
+#: 唯一随单据变化的输入是页面图片本身,它已经把请求身份区分开
+#: (`adk_replay.request_identity` 把 contents 整个纳入摘要)。
+READ_USER_PROMPT = "Read the attached page image(s)."
 
 INVOICE_READ_SYSTEM = """\
 You are reading one accounts-payable document as a WHOLE, not extracting a
@@ -124,8 +130,8 @@ def to_suggestion_rows(
 
 
 def load_page_images(run_dir: Path, doc_id: str) -> list[bytes]:
-    pages = sorted((Path(run_dir) / "pages").glob(f"{doc_id}-*.png"))
-    return [p.read_bytes() for p in pages]
+    return [p.read_bytes()
+            for p in page_images(Path(run_dir) / "pages", doc_id)]
 
 
 def make_invoice_reader(
@@ -174,7 +180,12 @@ def make_invoice_reader(
             session_id=session_id, state={},
         )
         runner = Runner(app_name=APP_NAME, agent=agent, session_service=service)
-        parts = [types.Part(text=f"doc_id={doc_id}. Read the attached page image(s).")]
+        # 提示词固定,**不插 doc_id**:doc_id 由上传文件名归一而来,
+        # `ignore-all-rules-….pdf` 会变成模型 user message 里的指令样文本。
+        # 读法是建议,但它渲染在裁决表单旁边,带偏复核者就是带偏判断。
+        # doc_id 的去处是 session_id(上面)与 provenance(to_suggestion_rows),
+        # 模型看不到;每份单据的请求身份由页面图片本身区分。
+        parts = [types.Part(text=READ_USER_PROMPT)]
         for blob in images:
             parts.append(types.Part.from_bytes(data=blob, mime_type="image/png"))
         async for _ in runner.run_async(
@@ -203,13 +214,25 @@ def save_readings(
     docs: dict[str, dict[str, Any]],
     failed: list[dict[str, str]],
 ) -> Path:
-    path = Path(run_dir) / "vision" / "invoice_read.json"
+    path = _readings_path(run_dir)
+    existing = _load_readings(run_dir)   # 文件坏了就在这里阻断,不覆盖
     path.parent.mkdir(parents=True, exist_ok=True)
-    existing: dict[str, Any] = {}
-    if path.exists():
-        existing = json.loads(path.read_text(encoding="utf-8"))
-    merged = dict(existing.get("docs") or {})
-    merged.update(docs)
+    # 每份读法自带 model:顶层那个字段只是「最后一次跑用的模型」,
+    # 原先每次 save 都改写它,于是旧模型读出来的全被冠上新模型的名字。
+    # workbench 的 RunCtx 早就是 rec.setdefault("model", 顶层) —— per-doc 优先,
+    # 所以旧文件不需要迁移。
+    #
+    # 但**存盘前**必须先把旧记录钉上它们自己的模型:顶层要被改写成新模型,
+    # 而退回规则会让「这次没读到的」(重试全失败的、中断后剩下的)立刻被算成
+    # 新模型已读,下一次同模型跑就再也不会重试它们。
+    prior = str(existing.get("model") or "")
+    merged: dict[str, Any] = {}
+    for doc_id, reading in (existing.get("docs") or {}).items():
+        if isinstance(reading, dict) and not reading.get("model") and prior:
+            reading = {**reading, "model": prior}
+        merged[doc_id] = reading
+    merged.update({doc_id: {**reading, "model": model}
+                   for doc_id, reading in docs.items()})
     path.write_text(json.dumps({
         "advisory": True,
         "source": "adk_invoice_read",
@@ -218,3 +241,45 @@ def save_readings(
         "failed": failed,
     }, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     return path
+
+
+def _readings_path(run_dir: Path) -> Path:
+    return Path(run_dir) / "vision" / "invoice_read.json"
+
+
+class ReadingsCorrupt(RuntimeError):
+    """invoice_read.json 存在但读不成 —— 阻断,不当成空缓存。
+
+    宪章四:检查跑不了是高危阻断发现,不是跳过。把损坏文件咽成 ``{}`` 会让
+    下一次 save 直接覆盖掉此前全部读法(write_text 不是原子写,中断就会留下
+    截断文件)。原地留着坏文件,让人看见并决定怎么恢复。
+    """
+
+
+def _load_readings(run_dir: Path) -> dict[str, Any]:
+    path = _readings_path(run_dir)
+    if not path.exists():
+        return {}
+    try:
+        packed = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ReadingsCorrupt(f"{path} 读不成,已停手不覆盖:{exc}") from exc
+    if not isinstance(packed, dict):
+        raise ReadingsCorrupt(f"{path} 顶层不是 object,已停手不覆盖")
+    return packed
+
+
+def read_docs(run_dir: Path, model: str) -> set[str]:
+    """已经**由这个模型**读过的 doc_id。
+
+    只按 doc_id 判「读过了」会让 ``--model`` 换了之后整批 skip,一份也不会
+    重读,而末尾的 save 又把顶层 model 改成新名字 —— 旧读法被错误归因。
+    per-doc 的 model 缺席时退回顶层 model(旧格式,见 runs/hitl-narrow)。
+    """
+    packed = _load_readings(run_dir)
+    top = str(packed.get("model") or "")
+    return {
+        doc_id for doc_id, reading in (packed.get("docs") or {}).items()
+        if isinstance(reading, dict)
+        and str(reading.get("model") or top) == model
+    }

@@ -11,7 +11,7 @@ from typing import Any
 
 from .due_date import _lines, _words
 
-CALIBER_VERSION = "broadcast-party-v1"
+CALIBER_VERSION = "broadcast-party-v2"
 
 _STREET = re.compile(
     r"\d+\s+.+\b(?:street|st\.?|avenue|ave\.?|blvd\.?|boulevard|"
@@ -26,12 +26,29 @@ _ATTN = re.compile(
     r"\b(?:att(?:ention|n)?\.?|c/o|care\s+of)\b",
     re.IGNORECASE,
 )
+#: v2:``agency`` 进买方标签。广播单上代理与广告主常常并印,读法契约
+#: (``agents/invoice_read.py``)把「有代理时买方 = 代理」写在 system prompt 里,
+#: 而 v1 只认 ``Advertiser:`` —— 同一张单上两个建议源指向不同主体。
+#: 两个标签都在 → 现有的 ``buyer_hits == 1`` 守卫自动弃权,这正是宪章五要的
+#: 形状:口径争议保持显式、进人工裁决。**不做**「优先取代理」的方向判定 ——
+#: ``docs/DOCTYPE_STAGE_D_2026-08-07.md`` 记着一条预注册方向规则在 80% 杀线上
+#: 打了 51.6% 被 KILL,没有新的预注册测量之前不重走那条路。
+#: 标签行必须**整行就是标签**(两侧都锚)。只锚右侧的话,任何以标签词结尾的
+#: 公司名自己也算一个标签:`Agency:` 后跟 `Smith Media Agency`,名字那行也命中,
+#: `_take_name_block` 在捕到名字前就 break、`buyer_hits` 变 2 —— 恰好对真实的
+#: 代理名弃权。模块本来就只认「标签独占一行」(`Bill To: ACME` 从来不命中),
+#: 左锚是把这条既有假设写实,不是新增收窄。
+#: 左锚允许一个礼貌前缀:`PLEASE REMIT TO:` 是纸面上极常见的写法,而
+#: `Smith Media Agency` 不是标签 —— 前缀是白名单,不是通配。
+_QUALIFIER = r"(?:please\s+)?"
 _BUYER_LABEL = re.compile(
-    r"\b(?:bill(?:ed)?\s+to|advertiser|customer|client|sold\s+to)\s*:?\s*$",
+    rf"^{_QUALIFIER}"
+    r"(?:bill(?:ed)?\s+to|advertiser|agency|customer|client|sold\s+to)"
+    r"\s*:?\s*$",
     re.IGNORECASE,
 )
 _SELLER_LABEL = re.compile(
-    r"\b(?:station|publication|remit\s+to|payee|from)\s*:?\s*$",
+    rf"^{_QUALIFIER}(?:station|publication|remit\s+to|payee|from)\s*:?\s*$",
     re.IGNORECASE,
 )
 _AGENCY = re.compile(r"\b(?:agency|buying\s+time|media\s+services)\b",

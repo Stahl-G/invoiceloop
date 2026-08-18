@@ -213,6 +213,29 @@ def render_pages(pdf_path: Path, out_dir: Path) -> list[str]:
     return sorted(p.name for p in out_dir.glob(f"{pdf_path.stem}-*.png"))
 
 
+def page_images(pages_dir: Path, doc_id: str) -> list[Path]:
+    """一份单据的整页 PNG,按**页号**排序。
+
+    裸 ``glob(f"{doc_id}-*.png")`` 有两个坑,两个都真出过错的形状:
+
+    - **前缀相撞**:``inv`` 会吃掉 ``inv-copy-1.png``,于是两份不同的发票
+      被当成一份读 —— 读法与建议会落到错的单据上;
+    - **字典序**:``-10.png`` 排在 ``-2.png`` 前面,十页以上的单据页序是乱的。
+
+    所以后缀必须整段是页号,排序按整数。渲染目录不存在返回空列表
+    (与 ``render_pages`` 同一条纪律:缺页是要人看见的形状,不是异常)。
+    """
+    pages_dir = Path(pages_dir)
+    if not pages_dir.is_dir():
+        return []
+    numbered: list[tuple[int, Path]] = []
+    for path in pages_dir.glob(f"{doc_id}-*.png"):
+        suffix = path.stem[len(doc_id) + 1:]
+        if suffix.isdigit():
+            numbered.append((int(suffix), path))
+    return [path for _, path in sorted(numbered, key=lambda item: item[0])]
+
+
 # ------------------------------------------------------------------ 证据片段
 
 @dataclass

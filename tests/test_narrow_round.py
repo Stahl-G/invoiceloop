@@ -200,3 +200,93 @@ def test_narrow_setup_does_not_inject_derived_into_due_date(tmp_path):
     assert "derived" not in rows
     assert all(r["field"] != "due_date"
                for bucket in rows.values() for r in bucket)
+
+
+def _run_with_ledger(ws: Path, name: str, stamps: list[str]) -> Path:
+    """A replayable run dir: event_log makes it visible to runs()/get_run()."""
+    run = ws / "runs" / name
+    run.mkdir(parents=True)
+    (run / "event_log.jsonl").write_text('{"seq": 0}\n', encoding="utf-8")
+    (run / "adjudication_ledger.jsonl").write_text(
+        "".join(json.dumps({"decided_at": ts, "field": "amount_due"}) + "\n"
+                for ts in stamps),
+        encoding="utf-8")
+    return run
+
+
+def test_budget_banner_follows_the_displayed_run(tmp_path):
+    """The banner must describe the run the page is showing.
+
+    Forms and /decide enforce against the displayed run, so a banner read
+    from current.json reports one run's elapsed time while decisions land
+    under another — misleading the reviewer and contaminating the recorded
+    time budget.
+    """
+    from invoiceloop.workbench import Workbench
+
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    (ws / "review_budget.json").write_text(json.dumps({"cap_minutes": 10}))
+    _run_with_ledger(ws, "run-0001", [])
+    _run_with_ledger(ws, "run-0002", ["2026-08-14T00:00:00+00:00",
+                                      "2026-08-14T00:05:00+00:00"])
+    (ws / "runs" / "current.json").write_text(json.dumps({"run": "run-0002"}))
+
+    bench = Workbench(ws)
+    assert "0 / 10" in bench._scope_banner("en", "run-0001")
+    assert "5 / 10" in bench._scope_banner("en", "run-0002")
+    # No run named = fall back to current.json, today's behaviour.
+    assert "5 / 10" in bench._scope_banner("en", None)
+
+
+# ---- 代理与广告主并存时的买方口径(PR #1 review)
+
+def test_buyer_abstains_when_agency_and_advertiser_both_printed():
+    """两个候选买方 = 口径争议,建议层弃权。
+
+    invoice_read 的读法契约把「有代理时买方 = 代理」写在 system prompt 里,
+    而 caliber 原先只认 Advertiser: —— 同一张单上两个建议源指向不同主体,
+    复核者被摆了两个矛盾的建议。DOCTYPE_STAGE_D 记着一条预注册的买卖方
+    方向规则在 80% 杀线上打了 51.6% 被 KILL;没有新的预注册测量之前不上
+    方向启发式。弃权只会撤回建议,永远造不出一个错的。
+    """
+    out = suggest_party_names(_ocr(
+        "Agency:",
+        "Buying Time Inc.",
+        "Advertiser:",
+        "Acme Motors",
+    ))
+    assert "buyer_name" not in out
+
+
+def test_advertiser_alone_still_suggests_the_buyer():
+    """没有代理块时,advertiser 仍是买方 —— 弃权不许扩大成永不建议。"""
+    out = suggest_party_names(_ocr(
+        "Advertiser:",
+        "Acme Motors",
+        "500 Main Street",
+    ))
+    assert out["buyer_name"]["value"] == "Acme Motors"
+
+
+def test_agency_name_ending_in_agency_still_suggests():
+    """`Agency:` 后面跟 `Smith Media Agency` 不许把公司名也当成标签行。
+
+    v2 把 agency 加进买方标签时用的是 `\\bagency\\s*:?\\s*$` —— 没有左锚,
+    于是任何以 Agency 结尾的公司名自己也算一个买方标签:_take_name_block
+    在捕到名字前就 break,buyer_hits 变 2,恰好对**真实的代理名**弃权。
+    """
+    for name in ("Smith Media Agency", "Horizon Agency", "Buying Time Inc."):
+        out = suggest_party_names(_ocr("Agency:", name, "500 Main Street"))
+        assert out["buyer_name"]["value"] == name, name
+
+
+def test_please_prefixed_labels_are_still_labels():
+    """`PLEASE REMIT TO:` / `PLEASE BILL TO:` 是纸面常见写法,左锚不许挡掉。"""
+    seller = suggest_party_names(_ocr(
+        "PLEASE REMIT TO:", "WXYZ-TV", "123 Broadcast Drive"))
+    assert seller["seller_name"]["value"] == "WXYZ-TV"
+
+    buyer = suggest_party_names(_ocr(
+        "PLEASE BILL TO:", "Acme Motors", "500 Main Street"))
+    assert buyer["buyer_name"]["value"] == "Acme Motors"

@@ -64,6 +64,7 @@ from pathlib import Path
 
 from . import __version__
 from . import plainwords as _pw
+from .evidence import page_images
 from .gateinfo import tooltip as _gate_tooltip
 from .ingest import sanitise_doc_id
 from .release_profile import PAYMENT_REQUIRED_V1, parse_release_profile
@@ -1335,14 +1336,16 @@ class Workbench:
         self._review_keys = (frozenset(self.review_scope.slots)
                              if self.review_scope else frozenset())
 
-    def _scope_banner(self, lang: str) -> str:
+    def _scope_banner(self, lang: str, run_name: str | None = None) -> str:
         parts = []
         if is_terminated(self.ws):
             parts.append(
                 f'<div class="wb-banner wb-terminated" role="alert">'
                 f'{_esc(_t(lang, "terminated_banner"))}</div>'
             )
-        run = self.current_run()
+        # 预算横幅必须描述**正在显示的** run:表单与 /decide 都按显示的 run
+        # 落账,横幅若读 current.json,页面会报另一个 run 的已用时。
+        run = self.get_run(run_name)
         if run is not None:
             state = budget_state(self.ws, run)
             if state:
@@ -1545,7 +1548,7 @@ class Workbench:
 <span class="wb-lang"><a href="{lang_href}">{"中文" if other == "zh" else "EN"}</a></span>
 </div></div>
 <div class="wb-thesis">{_esc(_t(lang, 'thesis'))}</div>
-{self._scope_banner(lang)}{notice_html}{ooc_html}
+{self._scope_banner(lang, nav_run)}{notice_html}{ooc_html}
 <main class="wb-main">{body}</main>
 <script src="/assets.js"></script>
 </body></html>"""
@@ -1989,8 +1992,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                     f'p{s["page"]} · <span class="wb-label">{_esc(s["printed_label"])}</span><br>'
                     f'<span class="wb-ocr">{_esc(s["ocr_text"][:160])}</span></div></div>')
         if not containing and not cited:
-            pages = sorted((ctx.dir / "pages").glob(f"{row['doc_id']}-*.png")) \
-                if (ctx.dir / "pages").exists() else []
+            pages = page_images(ctx.dir / "pages", row["doc_id"])
             if pages:
                 links = " ".join(
                     f'<a href="/files/{ctx.name}/pages/{p.name}" target="_blank">p{i + 1}</a>'
@@ -2267,10 +2269,10 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                  if s in ctx.spans_by_id and s not in row["span_ids"]]
         doctype_evidence = self._doctype_overlay(ctx, doc)
         pages_dir = ctx.dir / "pages"
-        available = sorted(
-            int(p.stem.rsplit("-", 1)[1])
-            for p in pages_dir.glob(f"{doc}-*.png")
-            if p.stem.rsplit("-", 1)[1].isdigit()) if pages_dir.is_dir() else []
+        # 走 helper:裸 glob 会让 `inv` 收进 `inv-copy-1.png` 的页签,
+        # 点开去取 `inv-3.png` 就是空白 —— 把错页摆到签字的人眼前。
+        available = [int(p.stem.rsplit("-", 1)[1])
+                     for p in page_images(pages_dir, doc)]
         span_pages = {s["page"] for s in containing + cited
                       if s.get("bbox_rel")}
         if doctype_evidence is not None:

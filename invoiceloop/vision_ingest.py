@@ -169,7 +169,7 @@ def cmd_vision(workspace: Path, *, tag: str = "D", model: str | None = None,
     if not docs:
         raise SystemExit(f"输入契约:{workspace}/input/pdfs/ 里没有 .pdf 文件")
 
-    from .evidence import render_pages
+    from .evidence import page_images, render_pages
 
     tsv = _tsv_path(workspace, tag)
     tsv.parent.mkdir(parents=True, exist_ok=True)
@@ -183,9 +183,9 @@ def cmd_vision(workspace: Path, *, tag: str = "D", model: str | None = None,
             summary["skipped"] += 1
             continue
         try:
-            if not list(pages_dir.glob(f"{doc_id}-*.png")):
+            if not page_images(pages_dir, doc_id):
                 render_pages(pdf, pages_dir)
-            pages = sorted(pages_dir.glob(f"{doc_id}-*.png"))
+            pages = page_images(pages_dir, doc_id)
             text = read_doc(doc_id, pages, model=model, api_key=key,
                             base_url=base_url, _post=_post)
             rows = _parse_rows(text, doc_id)
