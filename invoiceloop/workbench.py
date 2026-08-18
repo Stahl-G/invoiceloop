@@ -480,6 +480,7 @@ _T = {
                            "unflagged TIER1 still 7.8% true-wrong (ARCHITECTURE §6/§7, "
                            "with §8 qualifiers). You sign payment fields and probes.",
         "triad_h": "Amount triad (look once — you sign amount due)",
+        "derived_due_h": "Calculated from payment terms (not the printed due date)",
         "judgement": "InvoiceLoop assessment",
         "frozen_value": "Frozen value",
         "no_claim": "(no claim)",
@@ -816,6 +817,7 @@ _T = {
                            "仍有 7.8% 真错(ARCHITECTURE §6/§7,带 §8 限定)。"
                            "人签的是付款字段和探针。",
         "triad_h": "金额三元组(看一次 —— 你签的是应付金额)",
+        "derived_due_h": "条款算出的到期日(不是纸面 due_date,不要写进该槽)",
         "judgement": "InvoiceLoop 判定",
         "frozen_value": "冻结值",
         "no_claim": "(无声明)",
@@ -1314,6 +1316,8 @@ class RunCtx:
                         rec = dict(rec)
                         rec.setdefault("model", model)
                         self.invoice_read[doc_id] = rec
+        calc = _load("calculated_due_dates.json", {}) or {}
+        self.calculated_due = calc.get("records") or {}
 
     def slot(self, doc_id: str, field: str) -> dict | None:
         return self.projection.get(target_id_for(self.snapshot_id, doc_id, field))
@@ -1838,6 +1842,27 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
         return (f'<div class="wb-triad"><div class="wb-evlabel">'
                 f'{_esc(_t(lang, "triad_h"))}</div>{" ".join(cells)}</div>')
 
+    def _derived_due_context(self, lang: str, ctx: RunCtx, row: dict) -> str:
+        """Show calculated_due_date next to the raw due_date slot, not as Adopt."""
+        if row["field"] != "due_date":
+            return ""
+        rec = ctx.calculated_due.get(row["doc_id"])
+        if not isinstance(rec, dict) or rec.get("status") != "computed":
+            return ""
+        value = rec.get("value")
+        if value in (None, ""):
+            return ""
+        formula = rec.get("formula") or ""
+        term = ((rec.get("inputs") or {}).get("term_text") or "").strip()
+        detail = str(value)
+        if formula:
+            detail = f"{detail} · {formula}"
+        if term:
+            detail = f"{detail} · {term}"
+        return (f'<div class="wb-derived-due"><div class="wb-evlabel">'
+                f'{_esc(_t(lang, "derived_due_h"))}</div>'
+                f'<span class="wb-raw">{_esc(detail)}</span></div>')
+
     def row_card(self, lang: str, ctx: RunCtx, row: dict, tip: dict | None,
                  adjudicator: str) -> str:
         doc, field = row["doc_id"], row["field"]
@@ -1869,6 +1894,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 </div>
 <div class="wb-task">{_esc(task)}</div>
 {self._triad_context(lang, ctx, row)}
+{self._derived_due_context(lang, ctx, row)}
 {self._invoice_read_card(lang, ctx.invoice_read.get(doc))}
 {self._vision_suggest(lang, ctx, row)}
 {self._evidence(lang, ctx, row)}
@@ -2356,6 +2382,8 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 {self._doctype_html(lang, ctx, row)}
 <div class="wb-task">{_esc(task)}</div>
 {why}
+{self._triad_context(lang, ctx, row)}
+{self._derived_due_context(lang, ctx, row)}
 {self._invoice_read_card(lang, ctx.invoice_read.get(doc))}
 <div class="wb-adj-verdict">
 <h2 class="wb-adj-colhead">{_esc(_t(lang, 'judgement'))}</h2>

@@ -69,10 +69,17 @@ def test_profile_reject_only_gates_contract_tier1():
     policy = {"release_profile": {"id": "payment_required_v1"}}
     assert release_profile.reject_blocks_document(
         "amount_due", policy=policy, tier1=TIER1)
+    assert release_profile.reject_blocks_document(
+        "seller_name", policy=policy, tier1=TIER1), \
+        "契约内 TIER2 拒绝也挡付款 —— seller_name 是 payment_required_v1 成员"
     assert not release_profile.reject_blocks_document(
         "total_gross", policy=policy, tier1=TIER1)
+    assert not release_profile.reject_blocks_document(
+        "buyer_name", policy=policy, tier1=TIER1)
     assert release_profile.reject_blocks_document(
         "total_gross", policy={}, tier1=TIER1)
+    assert not release_profile.reject_blocks_document(
+        "seller_name", policy={}, tier1=TIER1)
 
 
 def test_touch_metrics_count_gating_and_qa():
@@ -232,3 +239,11 @@ class TestDeliverHonoursProfile:
         assert doc["fields"]["total_gross"]["status"] == "rejected"
         assert doc["status"] == "ready_for_approval", \
             "契约外 TIER1 拒绝留在矩阵上,不挡付款放行"
+
+    def test_reject_seller_blocks_payment_profile(self, ws):
+        out = _promote_profile(ws)
+        _decide(out, "seller_name", "reject")
+        doc = deliver.build_deliverable(out)["docs"][DOC]
+        assert doc["fields"]["seller_name"]["status"] == "rejected"
+        assert doc["status"] == "blocked"
+        assert any("seller_name" in r for r in doc["blocking_reasons"])

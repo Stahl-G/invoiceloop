@@ -2,8 +2,9 @@
 """Assemble the HITL-narrow round (docs/HITL_NARROW_PROTOCOL_2026-08-14.md).
 
 Frozen HAR-0023 (payment_required_v1, TIER1 explicit off). Display-only
-suggestions: caliber names, amount triad, derived due dates. No xmode,
-no API preread. Product active / HAR-0021 untouched.
+suggestions: caliber names and amount triad. Derived due dates stay in
+``calculated_due_dates.json`` (never injected into raw ``due_date``).
+No xmode, no API preread. Product active / HAR-0021 untouched.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from invoiceloop import pipeline  # noqa: E402
 from invoiceloop.amount_triad import suggest_amount_triad  # noqa: E402
 from invoiceloop.harness import schema_digest  # noqa: E402
 from invoiceloop.party_caliber import suggest_party_names  # noqa: E402
+from invoiceloop.round_status import write_round_status  # noqa: E402
 from invoiceloop.routing import policy_digest  # noqa: E402
 from invoiceloop.sealed_batch import _corpus_environment, frozen_harness  # noqa: E402
 
@@ -55,9 +57,8 @@ def _load_docs() -> list[str]:
     return doc_ids
 
 
-def _suggestion_rows(ws: Path, run_dir: Path, doc_ids: list[str]) -> dict:
-    rows: dict[str, list[dict]] = {"caliber": [], "triad": [], "derived": []}
-    calc = json.loads((run_dir / "calculated_due_dates.json").read_text())
+def _suggestion_rows(ws: Path, doc_ids: list[str]) -> dict:
+    rows: dict[str, list[dict]] = {"caliber": [], "triad": []}
     for doc in doc_ids:
         ocr = json.loads((ws / "ocr" / f"{doc}.json").read_text(encoding="utf-8"))
         for field, rec in suggest_party_names(ocr).items():
@@ -71,14 +72,6 @@ def _suggestion_rows(ws: Path, run_dir: Path, doc_ids: list[str]) -> dict:
                 "doc_id": doc, "field": field, "value": rec["value"],
                 "printed_label": "NONE",
                 "note": f"triad {rec['rule_id']} {rec['version']}",
-            })
-        rec = (calc.get("records") or {}).get(doc) or {}
-        value = rec.get("value")
-        if value:
-            rows["derived"].append({
-                "doc_id": doc, "field": "due_date", "value": str(value),
-                "printed_label": "NONE",
-                "note": f"derived {rec.get('rule_id')} {rec.get('formula')}",
             })
     return rows
 
@@ -95,13 +88,15 @@ def main() -> None:
     budget_path = ws / "review_budget.json"
     if budget_path.exists():
         budget_path.unlink()
-    (ws / "round_status.json").write_text(json.dumps({
+    status_action = write_round_status(ws, {
         "round": "hitl-narrow",
         "status": "live",
         "harness_id": "HAR-0023",
         "protocol": "docs/HITL_NARROW_PROTOCOL_2026-08-14.md",
         "caliber": str(CALIBER.relative_to(REPO)),
-    }, indent=1) + "\n", encoding="utf-8")
+    })
+    if status_action == "preserved_terminated":
+        print("round_status 已是 terminated,setup 不复活")
 
     stats = r1setup._populate(ws, doc_ids)
     if stats["missing"]:
@@ -120,7 +115,7 @@ def main() -> None:
     else:
         print(f"run 已存在,重放:{run_dir}")
 
-    rows = _suggestion_rows(ws, run_dir, doc_ids)
+    rows = _suggestion_rows(ws, doc_ids)
     inject_summary = {
         tag: suggest_inject.inject(ws, tag, r, run_dir=run_dir)
         for tag, r in rows.items()}

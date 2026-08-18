@@ -100,10 +100,17 @@ def reject_blocks_document(
     policy: Mapping[str, Any] | None,
     tier1: frozenset[str],
 ) -> bool:
-    """TIER1 reject blocks posting only when the field is in the gate set."""
-    if field not in tier1:
+    """Whether a human reject of this field keeps the document from posting.
+
+    Census (no profile): TIER1 reject blocks; TIER2 does not.
+    Under a profile: any gating-field reject blocks, including TIER2
+    members of the frozen set such as ``seller_name``.
+    """
+    if field not in gating_fields(policy):
         return False
-    return field in gating_fields(policy)
+    if parse_release_profile(policy) is None:
+        return field in tier1
+    return True
 
 
 def document_touch_metrics(

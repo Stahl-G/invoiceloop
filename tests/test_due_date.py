@@ -192,3 +192,14 @@ def test_unambiguous_mdy_numeric_date_is_computable():
 
 def test_same_calendar_day_in_both_orders_is_computable():
     assert _parse_date("05/05/2026") == date(2026, 5, 5)
+
+
+def test_ambiguous_labelled_date_is_not_replaced_by_later_unambiguous_date():
+    """同一行先写歧义开票日再写无歧义到期日 —— 不许拿到期日当 issue 去加 Net 30。"""
+    result = derive_due_date(_ocr(
+        "Invoice Date: 05/06/2026 Due Date: 07/20/2026",
+        "Payment Terms: Net 30",
+    ))
+    assert result["status"] == "not_computable"
+    assert result["value"] is None
+    assert result["value"] != "2026-08-19"

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 FILENAME = "round_status.json"
 
@@ -30,3 +30,25 @@ def load_round_status(workspace: Path) -> dict[str, Any] | None:
 def is_terminated(workspace: Path) -> bool:
     status = load_round_status(workspace)
     return bool(status) and status.get("status") == "terminated"
+
+
+def write_round_status(
+    workspace: Path,
+    payload: Mapping[str, Any],
+    *,
+    overwrite_terminated: bool = False,
+) -> str:
+    """Write ``round_status.json``.
+
+    Returns ``\"written\"`` or ``\"preserved_terminated\"``. A terminated
+    round is a human freeze; setup reruns must not silently revive it.
+    """
+    path = Path(workspace) / FILENAME
+    if not overwrite_terminated and is_terminated(workspace):
+        return "preserved_terminated"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(dict(payload), indent=1, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return "written"

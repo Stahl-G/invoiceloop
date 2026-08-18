@@ -198,14 +198,34 @@ def _parse_date(text: str) -> date | None:
     return None
 
 
-def _date_candidates(line: dict[str, Any], label: re.Pattern[str]) -> list[tuple[date, dict[str, Any]]]:
+def _numeric_date_ambiguous(text: str) -> bool:
+    """True when MDY and DMY both parse and are not the same calendar day."""
+    candidate = text.strip().replace("  ", " ")
+    if _try_formats(candidate, _NAMED_MONTH_FORMATS) is not None:
+        return False
+    mdy = _try_formats(candidate, _NUMERIC_MDY)
+    dmy = _try_formats(candidate, _NUMERIC_DMY)
+    return mdy is not None and dmy is not None and mdy != dmy
+
+
+#: Sentinel: a date-shaped token on a labelled line that we must not drop,
+#: otherwise a later unambiguous date on the same line is treated as the
+#: labelled value (``Invoice Date: 05/06/2026 Due Date: 07/20/2026``).
+_AMBIGUOUS_NUMERIC = object()
+
+
+def _date_candidates(line: dict[str, Any], label: re.Pattern[str]) -> list[tuple[Any, dict[str, Any]]]:
     text = line["text"]
     match = label.search(text)
     if not match:
         return []
-    candidates: list[tuple[date, dict[str, Any]]] = []
+    candidates: list[tuple[Any, dict[str, Any]]] = []
     for date_match in _DATE_RE.finditer(text):
-        parsed = _parse_date(date_match.group(0).replace(",", ""))
+        raw = date_match.group(0).replace(",", "")
+        if _numeric_date_ambiguous(raw):
+            parsed: Any = _AMBIGUOUS_NUMERIC
+        else:
+            parsed = _parse_date(raw)
         if parsed is None:
             continue
         refs = [
@@ -226,11 +246,18 @@ def _first_labelled_date(lines: list[dict[str, Any]], label: re.Pattern[str]) ->
     candidates = [item for line in lines for item in _date_candidates(line, label)]
     if not candidates:
         return None
+    # An ambiguous numeric token counts as a labelled value we cannot use.
+    # Dropping it would let a later unambiguous date on the same line win.
+    if any(item[0] is _AMBIGUOUS_NUMERIC for item in candidates):
+        return None
     # More than one labelled date is ambiguous; do not choose by proximity.
     unique = {item[0] for item in candidates}
     if len(unique) != 1:
         return None
-    return candidates[0]
+    parsed, meta = candidates[0]
+    if not isinstance(parsed, date):
+        return None
+    return parsed, meta
 
 
 def _term(lines: list[dict[str, Any]]) -> dict[str, Any] | None:

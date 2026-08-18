@@ -69,6 +69,26 @@ def test_triad_does_not_put_commission_in_due():
     assert "_commission" not in out
 
 
+def test_triad_does_not_borrow_a_labelled_next_line():
+    out = suggest_amount_triad(_ocr(
+        "Gross Billings",
+        "Agency Commission $150.00",
+        "Net Due $850.00",
+    ))
+    assert "total_gross" not in out
+    assert out["amount_due"]["value"] == "$850.00"
+
+
+def test_triad_borrows_unlabelled_continuation():
+    out = suggest_amount_triad(_ocr(
+        "Gross Billings",
+        "$1,000.00",
+        "Net Due $850.00",
+    ))
+    assert out["total_gross"]["value"] == "$1,000.00"
+    assert out["amount_due"]["value"] == "$850.00"
+
+
 def test_ambiguous_two_gross_labels_abstain():
     out = suggest_amount_triad(_ocr(
         "Gross Billings $1,000.00",
@@ -138,3 +158,36 @@ def test_release_walk_orders_weakest_doc_first():
         "invoice_number", "amount_due",
     ]
     assert Workbench._order_release_walk([]) == []
+
+
+def test_write_round_status_preserves_terminated(tmp_path):
+    from invoiceloop.round_status import load_round_status, write_round_status
+
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    first = write_round_status(ws, {"round": "hitl-narrow", "status": "terminated"})
+    assert first == "written"
+    again = write_round_status(ws, {"round": "hitl-narrow", "status": "live"})
+    assert again == "preserved_terminated"
+    assert load_round_status(ws)["status"] == "terminated"
+
+
+def test_narrow_setup_does_not_inject_derived_into_due_date(tmp_path):
+    import importlib.util
+
+    repo = Path(__file__).resolve().parent.parent
+    spec = importlib.util.spec_from_file_location(
+        "hitl_narrow_setup", repo / "scripts" / "hitl_narrow_setup.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    ws = tmp_path / "ws"
+    (ws / "ocr").mkdir(parents=True)
+    doc = "doc-a"
+    (ws / "ocr" / f"{doc}.json").write_text(json.dumps(_ocr(
+        "Invoice Date: July 1, 2026", "Payment Terms: Net 30",
+        "Gross Billings $1,000.00", "Net Due $850.00",
+    )))
+    rows = mod._suggestion_rows(ws, [doc])
+    assert "derived" not in rows
+    assert all(r["field"] != "due_date"
+               for bucket in rows.values() for r in bucket)

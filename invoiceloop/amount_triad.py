@@ -53,7 +53,11 @@ def suggest_amount_triad(ocr: dict[str, Any]) -> dict[str, dict[str, Any]]:
             continue
         money = _money_on(text)
         if money is None and i + 1 < len(texts):
-            money = _money_on(texts[i + 1])
+            nxt = texts[i + 1]
+            # Continuation line only: a labelled next row (commission, net
+            # due, …) is not this field's value.
+            if _money_on(nxt) and not any(p.search(nxt) for _, p in _LABELS):
+                money = _money_on(nxt)
         if money is None:
             continue
         for field, pattern in _LABELS:

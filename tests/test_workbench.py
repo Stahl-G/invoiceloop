@@ -1476,6 +1476,31 @@ class TestAdjudicatePage:
         assert 'data-decision="accept"' in text
         assert 'data-rationale="与页面一致"' in text
 
+    def test_amount_due_adjudicate_shows_triad(self, workspace, server):
+        """金额三元组必须出现在 /adjudicate,不能只在队列卡上。"""
+        _, _, text = _req(
+            server, "GET",
+            f"/adjudicate?run={RUN}&doc={DOC}&field=amount_due&lang=zh")
+        assert "金额三元组" in text
+        assert "wb-triad" in text
+
+    def test_due_date_adjudicate_shows_derived_context(self, workspace, server):
+        run = workspace / "runs" / RUN
+        calc = json.loads((run / "calculated_due_dates.json").read_text())
+        calc.setdefault("records", {})[DOC] = {
+            "status": "computed", "value": "2026-07-31",
+            "formula": "issue_date + 30 calendar days",
+            "inputs": {"term_text": "Net 30"},
+        }
+        (run / "calculated_due_dates.json").write_text(
+            json.dumps(calc), encoding="utf-8")
+        _, _, text = _req(
+            server, "GET",
+            f"/adjudicate?run={RUN}&doc={DOC}&field=due_date&lang=zh")
+        assert "条款算出的到期日" in text
+        assert "2026-07-31" in text
+        assert "wb-derived-due" in text
+
     def test_quick_draft_button_on_rejected_rows(self, workspace, server):
         """草稿被冻结拒的槽(无声明):快路 = correct 预填被拒草稿的值 ——
         绑定失败是机械门槛,人看页面确认后对就是对人证成立。"""

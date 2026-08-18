@@ -62,9 +62,9 @@ lint 拒绝(第一版只许加 cohort)。晋升仍要 `--approved-by` + evaluate
 
 整单层,仅当政策带了 `release_profile` 时:
 
-- 挡住 `ready_for_approval` 的,只剩契约字段上的 `pending` / `abstained`,
-  以及契约内 TIER1 的 `reject`,以及账本完整性破坏(`accepted_unbound`、
-  文档级阻断)
+- 挡住 `ready_for_approval` 的,只剩契约字段上的 `pending` / `abstained` /
+  `reject`(含 TIER2 契约成员,如 `seller_name`),以及账本完整性破坏
+  (`accepted_unbound`、文档级阻断)
 - 契约外字段的 `pending` / `pending_tier1` **不挡付款**。它们留在矩阵上,
   意思就是未人工复核
 - 契约内 TIER1 的 `pending_tier1`(路由已是 `auto_accept`)不挡
