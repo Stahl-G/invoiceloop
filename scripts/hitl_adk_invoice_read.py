@@ -44,6 +44,21 @@ def _already_read(run_dir: Path, model: str) -> set[str]:
     return read_docs(run_dir, model)
 
 
+def rereads_already_injected(run_dir: Path, tag: str,
+                             reread: set[str]) -> set[str]:
+    """本次重读过、但在该 tag 下已经有建议行的 doc_id。
+
+    非空 = 注入会 skip 掉它们,工作台留着上一个模型的值。
+    """
+    tsv = run_dir / "vision" / f"answers6.{tag}.tsv"
+    if not tsv.exists() or not reread:
+        return set()
+    injected = {line.split("\t")[0]
+                for line in tsv.read_text(encoding="utf-8").splitlines()[1:]
+                if line.strip()}
+    return reread & injected
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--run-dir", required=True, type=Path)
@@ -107,6 +122,17 @@ def main() -> None:
         doc_model = str(rec.get("model") or top_model)
         inject_rows.extend(to_suggestion_rows(
             doc_id, InvoiceReading.model_validate(rec), model=doc_model))
+    stale = rereads_already_injected(run_dir, SUGGEST_TAG, set(docs))
+    if stale:
+        # inject 是 append-only,已有的 (doc, field) 会被 skip —— 重读过的单据
+        # 会保留上一个模型的值和 provenance,工作台上就是一层新旧混着的建议。
+        # 换 tag 另起一层,不要就地改写既有的建议记录。
+        print(json.dumps({
+            "fatal": "本次重读的单据在该 tag 下已有建议行,append-only 写不进去",
+            "tag": SUGGEST_TAG, "reread_docs": sorted(stale),
+            "fix": "换一个 tag(另起一层建议),或换一个 run",
+        }, ensure_ascii=False, indent=1))
+        raise SystemExit(1)
     summary = suggest_inject.inject(ws, SUGGEST_TAG, inject_rows, run_dir=run_dir)
     print(json.dumps({
         "run": str(run_dir),

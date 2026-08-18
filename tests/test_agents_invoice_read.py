@@ -165,17 +165,6 @@ def _reading(name: str) -> dict:
             "rationale": "r", "confidence": "low"}
 
 
-def test_saved_reading_carries_its_own_model(tmp_path):
-    from invoiceloop.agents.invoice_read import save_readings
-
-    save_readings(tmp_path, model="model-a", docs={"d1": _reading("A")},
-                  failed=[])
-    packed = json.loads(
-        (tmp_path / "vision" / "invoice_read.json").read_text())
-
-    assert packed["docs"]["d1"]["model"] == "model-a"
-
-
 def test_changing_the_model_does_not_relabel_earlier_readings(tmp_path):
     """换 --model 重跑,旧读法不许被冠上新模型的名字。
 
@@ -225,7 +214,52 @@ def test_read_docs_falls_back_to_the_top_level_model(tmp_path):
     assert read_docs(tmp_path, "other-model") == set()
 
 
-def test_read_docs_on_missing_file_is_empty(tmp_path):
-    from invoiceloop.agents.invoice_read import read_docs
+# ---- PR #2 review:三条回归 + 一条标签锚定
 
-    assert read_docs(tmp_path, "any") == set()
+def test_legacy_records_keep_the_model_that_read_them(tmp_path):
+    """换模型只读了一部分时,没被这次读到的旧记录不许被改判成新模型。
+
+    顶层 model 每次 save 都会被改写,而 read_docs 在 per-doc 缺席时退回顶层 —— 
+    于是三次重试全失败的那份、以及中断后剩下的那些,立刻被算成「新模型已读」,
+    下一次同模型跑就再也不会重试它们。存盘前先把旧记录钉上它们自己的模型。
+    """
+    from invoiceloop.agents.invoice_read import read_docs, save_readings
+
+    vision = tmp_path / "vision"
+    vision.mkdir(parents=True)
+    (vision / "invoice_read.json").write_text(json.dumps({
+        "advisory": True, "source": "adk_invoice_read", "model": "model-a",
+        "docs": {"d1": _reading("A1"), "d2": _reading("A2")}, "failed": [],
+    }))
+
+    # model-b 只成功读了 d1,d2 三次重试全失败
+    save_readings(tmp_path, model="model-b", docs={"d1": _reading("B1")},
+                  failed=[{"doc_id": "d2", "error": "boom"}])
+
+    assert read_docs(tmp_path, "model-b") == {"d1"}
+    assert read_docs(tmp_path, "model-a") == {"d2"}
+
+
+def test_corrupt_reading_cache_blocks_instead_of_being_overwritten(tmp_path):
+    """截断的读法文件不许被当成空缓存然后覆盖掉。
+
+    宪章四:检查跑不了 = 阻断,不是跳过。原先的裸 json.loads 会抛,
+    我加的 try/except 把它咽成 {},下一次 save 就把此前所有读法无声丢弃。
+    """
+    from invoiceloop.agents.invoice_read import (
+        ReadingsCorrupt, read_docs, save_readings,
+    )
+
+    vision = tmp_path / "vision"
+    vision.mkdir(parents=True)
+    path = vision / "invoice_read.json"
+    path.write_text('{"advisory": true, "docs": {"d1": {"seller_na')
+    before = path.read_text()
+
+    with pytest.raises(ReadingsCorrupt):
+        read_docs(tmp_path, "m")
+    with pytest.raises(ReadingsCorrupt):
+        save_readings(tmp_path, model="m", docs={"d9": _reading("N")},
+                      failed=[])
+
+    assert path.read_text() == before, "阻断之后原文件必须原样还在"

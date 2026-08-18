@@ -269,10 +269,13 @@ def test_advertiser_alone_still_suggests_the_buyer():
     assert out["buyer_name"]["value"] == "Acme Motors"
 
 
-def test_agency_alone_is_the_billed_party():
-    out = suggest_party_names(_ocr(
-        "Agency:",
-        "Buying Time Inc.",
-        "1655 Palm Beach Lakes Blvd",
-    ))
-    assert out["buyer_name"]["value"] == "Buying Time Inc."
+def test_agency_name_ending_in_agency_still_suggests():
+    """`Agency:` 后面跟 `Smith Media Agency` 不许把公司名也当成标签行。
+
+    v2 把 agency 加进买方标签时用的是 `\\bagency\\s*:?\\s*$` —— 没有左锚,
+    于是任何以 Agency 结尾的公司名自己也算一个买方标签:_take_name_block
+    在捕到名字前就 break,buyer_hits 变 2,恰好对**真实的代理名**弃权。
+    """
+    for name in ("Smith Media Agency", "Horizon Agency", "Buying Time Inc."):
+        out = suggest_party_names(_ocr("Agency:", name, "500 Main Street"))
+        assert out["buyer_name"]["value"] == name, name

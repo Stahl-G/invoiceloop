@@ -215,13 +215,22 @@ def save_readings(
     failed: list[dict[str, str]],
 ) -> Path:
     path = _readings_path(run_dir)
+    existing = _load_readings(run_dir)   # 文件坏了就在这里阻断,不覆盖
     path.parent.mkdir(parents=True, exist_ok=True)
-    existing = _load_readings(run_dir)
-    merged = dict(existing.get("docs") or {})
     # 每份读法自带 model:顶层那个字段只是「最后一次跑用的模型」,
     # 原先每次 save 都改写它,于是旧模型读出来的全被冠上新模型的名字。
     # workbench 的 RunCtx 早就是 rec.setdefault("model", 顶层) —— per-doc 优先,
     # 所以旧文件不需要迁移。
+    #
+    # 但**存盘前**必须先把旧记录钉上它们自己的模型:顶层要被改写成新模型,
+    # 而退回规则会让「这次没读到的」(重试全失败的、中断后剩下的)立刻被算成
+    # 新模型已读,下一次同模型跑就再也不会重试它们。
+    prior = str(existing.get("model") or "")
+    merged: dict[str, Any] = {}
+    for doc_id, reading in (existing.get("docs") or {}).items():
+        if isinstance(reading, dict) and not reading.get("model") and prior:
+            reading = {**reading, "model": prior}
+        merged[doc_id] = reading
     merged.update({doc_id: {**reading, "model": model}
                    for doc_id, reading in docs.items()})
     path.write_text(json.dumps({
@@ -238,15 +247,26 @@ def _readings_path(run_dir: Path) -> Path:
     return Path(run_dir) / "vision" / "invoice_read.json"
 
 
+class ReadingsCorrupt(RuntimeError):
+    """invoice_read.json 存在但读不成 —— 阻断,不当成空缓存。
+
+    宪章四:检查跑不了是高危阻断发现,不是跳过。把损坏文件咽成 ``{}`` 会让
+    下一次 save 直接覆盖掉此前全部读法(write_text 不是原子写,中断就会留下
+    截断文件)。原地留着坏文件,让人看见并决定怎么恢复。
+    """
+
+
 def _load_readings(run_dir: Path) -> dict[str, Any]:
     path = _readings_path(run_dir)
     if not path.exists():
         return {}
     try:
         packed = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
-    return packed if isinstance(packed, dict) else {}
+    except (OSError, ValueError) as exc:
+        raise ReadingsCorrupt(f"{path} 读不成,已停手不覆盖:{exc}") from exc
+    if not isinstance(packed, dict):
+        raise ReadingsCorrupt(f"{path} 顶层不是 object,已停手不覆盖")
+    return packed
 
 
 def read_docs(run_dir: Path, model: str) -> set[str]:

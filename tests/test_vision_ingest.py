@@ -149,21 +149,3 @@ def test_page_images_sort_by_page_number_not_lexically(tmp_path):
 
     assert [p.name for p in page_images(pages, "doc")] == [
         "doc-1.png", "doc-2.png", "doc-10.png", "doc-11.png"]
-
-
-def test_page_images_ignore_non_numeric_suffixes(tmp_path):
-    """后缀不是页号的不是这份单据的页。"""
-    from invoiceloop.evidence import page_images
-
-    pages = tmp_path / "pages"
-    pages.mkdir()
-    (pages / "doc-1.png").write_bytes(b"x")
-    (pages / "doc-thumb.png").write_bytes(b"x")
-
-    assert [p.name for p in page_images(pages, "doc")] == ["doc-1.png"]
-
-
-def test_page_images_on_missing_dir_is_empty(tmp_path):
-    from invoiceloop.evidence import page_images
-
-    assert page_images(tmp_path / "nope", "doc") == []

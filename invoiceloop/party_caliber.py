@@ -33,13 +33,18 @@ _ATTN = re.compile(
 #: 形状:口径争议保持显式、进人工裁决。**不做**「优先取代理」的方向判定 ——
 #: ``docs/DOCTYPE_STAGE_D_2026-08-07.md`` 记着一条预注册方向规则在 80% 杀线上
 #: 打了 51.6% 被 KILL,没有新的预注册测量之前不重走那条路。
+#: 标签行必须**整行就是标签**(两侧都锚)。只锚右侧的话,任何以标签词结尾的
+#: 公司名自己也算一个标签:`Agency:` 后跟 `Smith Media Agency`,名字那行也命中,
+#: `_take_name_block` 在捕到名字前就 break、`buyer_hits` 变 2 —— 恰好对真实的
+#: 代理名弃权。模块本来就只认「标签独占一行」(`Bill To: ACME` 从来不命中),
+#: 左锚是把这条既有假设写实,不是新增收窄。
 _BUYER_LABEL = re.compile(
-    r"\b(?:bill(?:ed)?\s+to|advertiser|agency|customer|client|sold\s+to)"
+    r"^(?:bill(?:ed)?\s+to|advertiser|agency|customer|client|sold\s+to)"
     r"\s*:?\s*$",
     re.IGNORECASE,
 )
 _SELLER_LABEL = re.compile(
-    r"\b(?:station|publication|remit\s+to|payee|from)\s*:?\s*$",
+    r"^(?:station|publication|remit\s+to|payee|from)\s*:?\s*$",
     re.IGNORECASE,
 )
 _AGENCY = re.compile(r"\b(?:agency|buying\s+time|media\s+services)\b",
