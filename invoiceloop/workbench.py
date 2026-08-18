@@ -3675,10 +3675,12 @@ class _Handler(BaseHTTPRequestHandler):
         self._imp_back(run.name, lang, "mined")
 
     def _imp_adk(self, lang: str) -> None:
-        """Gemini ADK 改进循环。顾问报告;不改 active;不写 suggestions.json。"""
-        from .agents.runtime import (
-            GeminiCredentialMissing, GeminiSDKMissing, ReplayRecordingMissing)
+        """Gemini ADK 改进循环。顾问报告;不改 active;不写 suggestions.json。
 
+        顾问层是可选 extra。`agents.runtime` 模块级导入 pydantic,core
+        解释器没有 `[gemini]` 时这里绝不能先 import —— 否则缺 extra 的
+        POST 会 500,而不是 400。
+        """
         form = self._form()
         run, lang = self._imp_form_run(form)
         if not (self.bench.ws / "improve" / "mine_report.json").exists():
@@ -3687,11 +3689,13 @@ class _Handler(BaseHTTPRequestHandler):
             raise _HttpError(400, _t(lang, "imp_adk_unavailable"))
         try:
             _run_adk_loop(self.bench.ws)
-        except (GeminiCredentialMissing, GeminiSDKMissing,
-                ReplayRecordingMissing) as exc:
-            raise _HttpError(400, str(exc)) from exc
         except ImportError as exc:
             raise _HttpError(400, _t(lang, "imp_adk_unavailable")) from exc
+        except (RuntimeError, OSError) as exc:
+            if type(exc).__name__ in (
+                    "GeminiCredentialMissing", "ReplayRecordingMissing"):
+                raise _HttpError(400, str(exc)) from exc
+            raise
         self._imp_back(run.name, lang, "adk")
 
     def _imp_adopt(self, lang: str) -> None:

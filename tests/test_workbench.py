@@ -886,13 +886,19 @@ class TestImprovePage:
     def test_page_writes_nothing(self, workspace, server):
         """唯一写 active 的入口是 improve promote —— 网页上不许有按钮
         能改策略。mine 只投影,不改规则。"""
+        from invoiceloop.workbench import _adk_importable
+
         self._mine(workspace)
         _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
         assert 'action="/improve"' not in text
         assert 'action="/improve/mine"' in text
         assert "挖掘已跑过" in text
-        assert 'action="/improve/adk"' in text
-        assert "让 Gemini 出建议" in text
+        if _adk_importable():
+            assert 'action="/improve/adk"' in text
+            assert "让 Gemini 出建议" in text
+        else:
+            assert 'action="/improve/adk"' not in text
+            assert "这一台工作台现在出不了 Gemini 建议" in text
         assert not (workspace / "improve" / "adk_loop_report.json").exists(), \
             "GET /improve 不许偷偷调 Gemini"
 
@@ -938,6 +944,8 @@ class TestImprovePage:
                             encoding="utf-8")
             return payload
 
+        monkeypatch.setattr("invoiceloop.workbench._adk_importable",
+                            lambda: True)
         monkeypatch.setattr("invoiceloop.workbench._run_adk_loop", fake_loop)
         status, headers, _ = _imp_post(
             server, "/improve/adk", {"run": RUN, "lang": "zh"})
