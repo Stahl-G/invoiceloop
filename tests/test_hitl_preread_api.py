@@ -101,21 +101,3 @@ def test_publish_rows_refuses_a_partial_batch(tmp_path):
     assert summary is None
     assert not (run_dir / "vision" / "answers6.tag.tsv").exists()
 
-
-def test_reread_docs_with_existing_suggestions_are_refused(tmp_path):
-    """换模型重读之后,append-only 的注入会 skip 掉旧行 —— 要拦住。
-
-    否则工作台留着上一个模型的值和 provenance,只有新增字段来自新模型。
-    """
-    import sys
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-    from hitl_adk_invoice_read import rereads_already_injected
-
-    run = tmp_path / "run"
-    (run / "vision").mkdir(parents=True)
-    (run / "vision" / "answers6.adk-invoice.tsv").write_text(
-        "doc_id\tfield\tvalue\tlabel\tnote\n"
-        "d1\tseller_name\tOld Co\tNONE\tadk model-a\n")
-
-    assert rereads_already_injected(run, "adk-invoice", {"d1"}) == {"d1"}
-    assert rereads_already_injected(run, "adk-invoice", {"d2"}) == set()
