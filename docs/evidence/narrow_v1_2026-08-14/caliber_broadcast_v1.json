@@ -1,0 +1,24 @@
+{
+  "caliber_id": "broadcast-payment-v1",
+  "version": 1,
+  "approved_by": "stahl",
+  "approved_at": "2026-08-14",
+  "evidence_basis": "HITL R1 S1: buyer/seller/due_date dominated working time as caliber disputes, not printed-value checks. Suggestions only; never writes the ledger.",
+  "rules": {
+    "buyer_name": {
+      "id": "billed-block-keep-attn-strip-street",
+      "in_walk": false,
+      "text": "Billed name block: keep company and Attn/c/o; drop street, city, ZIP."
+    },
+    "seller_name": {
+      "id": "station-or-publication",
+      "in_walk": true,
+      "text": "Station or publication name, not the agency."
+    },
+    "due_date": {
+      "id": "printed-or-calculated-net-terms",
+      "in_walk": false,
+      "text": "Printed calendar due date, else due_date.py relative-term derivation. NET 30 is terms, not a due amount."
+    }
+  }
+}

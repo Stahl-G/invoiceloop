@@ -25,6 +25,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import threading
 import zipfile
 import zlib
@@ -60,6 +61,13 @@ REASON_CODE_COMBOS: dict[str, frozenset[str]] = {
     "WRONG_VALUE": frozenset({"correct", "reject"}),
     "ROUTING_FALSE_POSITIVE": frozenset({"accept", "confirm_absent"}),
 }
+
+#: 工作台隐藏字段是 agree:<页面原值> / agree_rejected:<页面原值>。
+#: PARTY 名(seller_name / buyer_name)常超过 140 字;上限必须盖住渲染层
+#: 实际会写出的值,否则该槽每一次提交都被校验挡住,人没法把隐藏字段拿掉。
+SUGGESTION_SEEN_VALUE_MAX = 2000
+_SUGGESTION_SEEN = re.compile(
+    rf"(?:split|blind|agree(?:_rejected)?:[^\t\n\r]{{1,{SUGGESTION_SEEN_VALUE_MAX}}})")
 
 #: 打包进 audit bundle 的工件(缺了算包没打全,不静默跳过)
 REQUIRED_ARTIFACTS = (
@@ -128,11 +136,8 @@ def append_adjudication(
             and reviewer_confidence not in ("high", "medium", "low"):
         raise ValueError("reviewer_confidence 必须是 high/medium/low")
     if suggestion_seen is not None:
-        import re as _re
-
-        if not isinstance(suggestion_seen, str) or not _re.fullmatch(
-                r"(split|blind|agree(_rejected)?:[^\t\n\r]{1,140})",
-                suggestion_seen):
+        if not isinstance(suggestion_seen, str) \
+                or not _SUGGESTION_SEEN.fullmatch(suggestion_seen):
             raise ValueError(
                 "suggestion_seen 必须是 split|blind|agree:<值>|"
                 "agree_rejected:<值> 之一 —— 它记渲染时展示了什么,"

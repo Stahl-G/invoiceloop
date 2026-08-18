@@ -147,7 +147,7 @@ One path only: `LlmAgent(output_schema=<Pydantic model>)`, handed by ADK to
 `google-genai`. The unstructured `call_gemini_model` has been **deleted** — it
 swallowed JSON parse errors, and nothing a machine consumes may travel that way.
 
-Model: `gemini-3.6-flash` (`runtime.DEFAULT_GEMINI_MODEL`), overridable via
+Model: `gemini-3.7-flash` (`runtime.DEFAULT_GEMINI_MODEL`), overridable via
 `GEMINI_MODEL`. Missing credentials with replay off raise
 `GeminiCredentialMissing` — never a silent downgrade.
 

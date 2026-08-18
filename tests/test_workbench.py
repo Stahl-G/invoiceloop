@@ -14,12 +14,15 @@ fixture 形状照抄 test_run_immutability.py(同一仓库的最小 workspace)�
 
 from __future__ import annotations
 
+import html
 import http.client
 import io
 import json
 import re
+import shutil
 import threading
 import zipfile
+from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import quote, urlencode
 
@@ -154,12 +157,40 @@ def _decide(port: int, **over) -> tuple[int, dict, str]:
                 headers={"Content-Type": "application/x-www-form-urlencoded"})
 
 
-def _ledger(workspace: Path) -> list[dict]:
-    p = workspace / "runs" / RUN / "adjudication_ledger.jsonl"
+def _ledger(workspace: Path, run: str = RUN) -> list[dict]:
+    p = workspace / "runs" / run / "adjudication_ledger.jsonl"
     if not p.exists():
         return []
     return [json.loads(x) for x in p.read_text(encoding="utf-8").splitlines()
             if x.strip()]
+
+
+class _FormCollector(HTMLParser):
+    """stdlib HTML 解析:浏览器会看到的 form 属性 vs 控件,不是源码正则。"""
+
+    def __init__(self):
+        super().__init__()
+        self.forms: list[dict] = []
+        self._cur: dict | None = None
+
+    def handle_starttag(self, tag, attrs):
+        ad = dict(attrs)
+        if tag == "form":
+            self._cur = {"attrs": ad, "controls": []}
+            self.forms.append(self._cur)
+        elif tag in ("input", "textarea", "select", "button") \
+                and self._cur is not None:
+            self._cur["controls"].append(ad)
+
+    def handle_endtag(self, tag):
+        if tag == "form":
+            self._cur = None
+
+
+def _decide_forms(page: str) -> list[dict]:
+    parser = _FormCollector()
+    parser.feed(page)
+    return [f for f in parser.forms if f["attrs"].get("class") == "decide"]
 
 
 def _repack(data: bytes, mutate) -> bytes:
@@ -649,6 +680,96 @@ class TestAbsentPreset:
         assert "absentPreset" in js, "JS 要在选确认缺失时预填、切走时还原"
         assert "confirm_absent: form.dataset.absentPreset" in js
 
+    def test_switching_presets_fills_after_clearing(self, workspace, server):
+        """accept ↔ confirm_absent 必须在同一次 change 里清掉旧预设再填新的。
+
+        旧写法是 if (空) 填; else { 清; break } —— 切过去时 textarea
+        不是空的,走进 else,新预设落不进,rationale required 拦住提交。
+        """
+        _, _, js = _req(server, "GET", "/assets.js")
+        block_start = js.find("if (ta) {")
+        assert block_start != -1
+        block_end = js.find("wbReasonSync(form, e.target.value)", block_start)
+        assert block_end != -1
+        block = js[block_start:block_end]
+        clear = block.find("ta.value = ''")
+        fill = block.find(
+            "if (presets[e.target.value] && !ta.value.trim())")
+        assert clear != -1 and fill != -1
+        assert clear < fill, "必须先清掉另一个预设,再(若空)填当前预设"
+        assert "else {" not in block, \
+            "清和填不能互斥;else 会在切预设时 break,新预设落不进去"
+
+
+class TestDecideFormRunBinding:
+    """decide <form> 必须把 run 交给浏览器当控件,不能吞进开始标签属性。
+
+    缺 > 时 HTML 把随后的 <input name="run"> 读成 form 属性,提交没有
+    run,/decide 回落到 current.json —— 多 run 的 HITL workspace 会把
+    run-0001 页上的裁决写进当时的 current(例如 run-0002)。
+    """
+
+    def test_form_start_tag_closes_before_run_input(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&filter=all")
+        assert re.search(
+            r'<form class="decide"[^>]*>\s*'
+            r'<input type="hidden" name="run"',
+            text,
+        ), "开始标签必须在第一个控件前用 > 合上"
+
+    def test_browser_dom_has_run_as_a_control(self, workspace, server):
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&filter=all")
+        forms = _decide_forms(text)
+        assert forms, "队列页应有 decide 表单"
+        for form in forms:
+            assert form["attrs"].get("name") != "run", \
+                "run 落在 form 属性上 = 开始标签没合上,浏览器不会提交它"
+            assert not any(k.startswith("<") for k in form["attrs"]), \
+                f"form 属性混进了标签残片:{list(form['attrs'])}"
+            runs = [c.get("value") for c in form["controls"]
+                    if c.get("name") == "run"]
+            assert runs == [RUN], f"每个 decide 表单必须有 run 控件,收到 {runs}"
+
+    def test_queue_without_run_still_falls_back_to_current(
+            self, workspace, server):
+        status, _, text = _req(server, "GET", "/queue?filter=all")
+        assert status == 200
+        forms = _decide_forms(text)
+        assert forms and all(
+            any(c.get("name") == "run" and c.get("value") == RUN
+                for c in f["controls"]) for f in forms)
+
+    def test_empty_run_does_not_write_the_current_run(
+            self, workspace, server):
+        shutil.copytree(workspace / "runs" / RUN,
+                        workspace / "runs" / "run-0002")
+        (workspace / "runs" / "current.json").write_text(
+            '{"run": "run-0002"}', encoding="utf-8")
+        claim = _claim_id_for(server, DOC, "total_gross")
+        body = {
+            "doc": DOC, "field": "total_gross", "claim_id": claim,
+            "decision": "accept", "rationale": "证据齐",
+            "adjudicator": "alice",
+        }
+        status, _, text = _req(
+            server, "POST", "/decide",
+            body=urlencode(body).encode(),
+            headers={"Content-Type": "application/x-www-form-urlencoded"})
+        assert status == 400
+        assert "不许回落到 current" in text
+        assert _ledger(workspace, RUN) == []
+        assert _ledger(workspace, "run-0002") == []
+
+        body["run"] = RUN
+        status, _, _ = _req(
+            server, "POST", "/decide",
+            body=urlencode(body).encode(),
+            headers={"Content-Type": "application/x-www-form-urlencoded"})
+        assert status == 303
+        assert len(_ledger(workspace, RUN)) == 1
+        assert _ledger(workspace, "run-0002") == [], \
+            "绑 run-0001 的提交不许写进当时的 current"
+
 
 class TestQuickPathCarriesReasonCode:
     """快路按钮自带心码(2026-08-06):按钮文案本来就是一次语义选择,
@@ -765,13 +886,19 @@ class TestImprovePage:
     def test_page_writes_nothing(self, workspace, server):
         """唯一写 active 的入口是 improve promote —— 网页上不许有按钮
         能改策略。mine 只投影,不改规则。"""
+        from invoiceloop.workbench import _adk_importable
+
         self._mine(workspace)
         _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
         assert 'action="/improve"' not in text
         assert 'action="/improve/mine"' in text
         assert "挖掘已跑过" in text
-        assert 'action="/improve/adk"' in text
-        assert "让 Gemini 出建议" in text
+        if _adk_importable():
+            assert 'action="/improve/adk"' in text
+            assert "让 Gemini 出建议" in text
+        else:
+            assert 'action="/improve/adk"' not in text
+            assert "这一台工作台现在出不了 Gemini 建议" in text
         assert not (workspace / "improve" / "adk_loop_report.json").exists(), \
             "GET /improve 不许偷偷调 Gemini"
 
@@ -817,6 +944,8 @@ class TestImprovePage:
                             encoding="utf-8")
             return payload
 
+        monkeypatch.setattr("invoiceloop.workbench._adk_importable",
+                            lambda: True)
         monkeypatch.setattr("invoiceloop.workbench._run_adk_loop", fake_loop)
         status, headers, _ = _imp_post(
             server, "/improve/adk", {"run": RUN, "lang": "zh"})
@@ -1346,6 +1475,31 @@ class TestAdjudicatePage:
         assert 'wb-quick-ok' in text, "有声明槽位必须有一键接受"
         assert 'data-decision="accept"' in text
         assert 'data-rationale="与页面一致"' in text
+
+    def test_amount_due_adjudicate_shows_triad(self, workspace, server):
+        """金额三元组必须出现在 /adjudicate,不能只在队列卡上。"""
+        _, _, text = _req(
+            server, "GET",
+            f"/adjudicate?run={RUN}&doc={DOC}&field=amount_due&lang=zh")
+        assert "金额三元组" in text
+        assert "wb-triad" in text
+
+    def test_due_date_adjudicate_shows_derived_context(self, workspace, server):
+        run = workspace / "runs" / RUN
+        calc = json.loads((run / "calculated_due_dates.json").read_text())
+        calc.setdefault("records", {})[DOC] = {
+            "status": "computed", "value": "2026-07-31",
+            "formula": "issue_date + 30 calendar days",
+            "inputs": {"term_text": "Net 30"},
+        }
+        (run / "calculated_due_dates.json").write_text(
+            json.dumps(calc), encoding="utf-8")
+        _, _, text = _req(
+            server, "GET",
+            f"/adjudicate?run={RUN}&doc={DOC}&field=due_date&lang=zh")
+        assert "条款算出的到期日" in text
+        assert "2026-07-31" in text
+        assert "wb-derived-due" in text
 
     def test_quick_draft_button_on_rejected_rows(self, workspace, server):
         """草稿被冻结拒的槽(无声明):快路 = correct 预填被拒草稿的值 ——
@@ -2012,3 +2166,34 @@ class TestSuggestionSeen:
         assert s == 400, "自由文本不许进账本 —— 它会把噪声喂给采纳率统计"
         assert "suggestion_seen" in text
         assert _ledger(workspace) == [], "校验拒绝 = 一行都没写"
+
+    def test_every_emitted_suggestion_seen_passes_append(
+            self, workspace, server):
+        """工作台写出的隐藏字段必须是 append_adjudication 收得下的形状。"""
+        from invoiceloop.adjudicate import _SUGGESTION_SEEN
+
+        _, _, text = _req(server, "GET", f"/queue?run={RUN}&filter=all")
+        seen = []
+        for form in _decide_forms(text):
+            for c in form["controls"]:
+                if c.get("name") == "suggestion_seen":
+                    seen.append(html.unescape(c.get("value") or ""))
+        assert seen, "本 fixture 的队列应带建议隐藏字段"
+        assert all(_SUGGESTION_SEEN.fullmatch(v) for v in seen), seen
+
+
+class TestTerminatedRound:
+    """HITL R1 预注册终止:工作台必须挡住继续点队列,一行都不许写。"""
+
+    def test_decide_is_refused_and_writes_nothing(self, workspace, server):
+        (workspace / "round_status.json").write_text(json.dumps({
+            "status": "terminated",
+            "reason_id": "s1_falsified_census_hypothesis",
+        }), encoding="utf-8")
+        status, _, text = _decide(server, claim_id="")
+        assert status == 403
+        assert "terminated" in text.lower()
+        assert _ledger(workspace) == []
+        _, _, queue = _req(server, "GET", f"/queue?run={RUN}&lang=zh")
+        assert "预注册终止" in queue
+        assert 'action="/decide"' not in queue

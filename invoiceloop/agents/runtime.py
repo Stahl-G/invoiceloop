@@ -24,7 +24,7 @@ from pydantic import BaseModel
 
 from invoiceloop import env
 
-DEFAULT_GEMINI_MODEL = "gemini-3.6-flash"
+DEFAULT_GEMINI_MODEL = "gemini-3.7-flash"
 
 
 class ReplayRecordingMissing(FileNotFoundError):
@@ -237,6 +237,31 @@ def call_gemini_structured(
     }
 
 
+def _http_proxy_url() -> str | None:
+    for key in ("HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"):
+        value = os.environ.get(key)
+        if value:
+            return value
+    return None
+
+
+def prefer_httpx_through_proxy() -> None:
+    """Keep Clash/HTTP(S)_PROXY; stop google-genai from using aiohttp.
+
+    google-genai prefers aiohttp when that package is installed. aiohttp's
+    HTTPS-via-HTTP-proxy TLS handshake resets on Clash mixed-port (curl and
+    httpx both succeed with CONNECT). Disabling aiohttp makes the SDK use
+    httpx, which honors HTTPS_PROXY so Clash rule groups still apply.
+    """
+    if not _http_proxy_url():
+        return
+    try:
+        from google.genai import _api_client as ac
+    except ImportError:
+        return
+    ac.has_aiohttp = False
+
+
 def export_credential_for_adk(workspace: Path | str | None = None) -> str | None:
     """把 invoiceloop 解析到的凭据放进进程环境,供 ADK 自建的 client 使用。
 
@@ -255,4 +280,5 @@ def export_credential_for_adk(workspace: Path | str | None = None) -> str | None
     # 只设 GOOGLE_API_KEY:两个都设的话 google-genai 每次调用都警告
     # "Both GOOGLE_API_KEY and GEMINI_API_KEY are set."
     os.environ["GOOGLE_API_KEY"] = api_key
+    prefer_httpx_through_proxy()
     return api_key

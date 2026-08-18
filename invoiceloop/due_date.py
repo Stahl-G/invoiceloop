@@ -35,7 +35,10 @@ CALCULATED_FIELD = "calculated_due_date"
 #: due==issue 的真值惯例一致(全语料 26% 的 date_due 标注是这个形态)。
 #: EOM/prox 月末条款显式识别为「认得但不算」,不再混进「没找到条款」。
 #: 清单来自通用 AP 词汇,不是开发集 OCR 台账;看过命中率之后再加模式 = 拟合。
-DERIVATION_VERSION = "due-date-relative-term-v2"
+#: v3(2026-08-13):数字日期不再默认美式 MDY。月名日期照旧;纯数字同时能
+#: 读成 MDY 与 DMY 且不是同一天 → 拒算,与 fields.normalise 对 03/04 的
+#: 纪律一致。无歧义的 15/01(只能 DMY)与 07/20(只能 MDY)仍算。
+DERIVATION_VERSION = "due-date-relative-term-v3"
 
 _DATE_RE = re.compile(
     r"(?<!\d)(?:"
@@ -52,10 +55,17 @@ _DATE_RE = re.compile(
     re.IGNORECASE,
 )
 
-_MONTH_FORMATS = (
+_NAMED_MONTH_FORMATS = (
     "%B %d, %Y", "%b %d, %Y", "%B %d %Y", "%b %d %Y",
-    "%d %B %Y", "%d %b %Y", "%m/%d/%Y", "%m-%d-%Y", "%m.%d.%Y",
+    "%d %B %Y", "%d %b %Y",
+)
+_NUMERIC_MDY = (
+    "%m/%d/%Y", "%m-%d-%Y", "%m.%d.%Y",
     "%m/%d/%y", "%m-%d-%y", "%m.%d.%y",
+)
+_NUMERIC_DMY = (
+    "%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y",
+    "%d/%m/%y", "%d-%m-%y", "%d.%m.%y",
 )
 
 _ISSUE_LABEL = re.compile(
@@ -158,9 +168,8 @@ def _lines(words: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     return result
 
 
-def _parse_date(text: str) -> date | None:
-    candidate = text.strip().replace("  ", " ")
-    for fmt in _MONTH_FORMATS:
+def _try_formats(candidate: str, fmts: tuple[str, ...]) -> date | None:
+    for fmt in fmts:
         try:
             return datetime.strptime(candidate, fmt).date()
         except ValueError:
@@ -168,14 +177,55 @@ def _parse_date(text: str) -> date | None:
     return None
 
 
-def _date_candidates(line: dict[str, Any], label: re.Pattern[str]) -> list[tuple[date, dict[str, Any]]]:
+def _parse_date(text: str) -> date | None:
+    """Parse a date without silently picking MDY vs DMY.
+
+    Named-month forms are unambiguous. Numeric forms are tried as both
+    month-first and day-first; if both succeed and disagree, return None.
+    """
+    candidate = text.strip().replace("  ", " ")
+    named = _try_formats(candidate, _NAMED_MONTH_FORMATS)
+    if named is not None:
+        return named
+    mdy = _try_formats(candidate, _NUMERIC_MDY)
+    dmy = _try_formats(candidate, _NUMERIC_DMY)
+    if mdy is None:
+        return dmy
+    if dmy is None:
+        return mdy
+    if mdy == dmy:
+        return mdy
+    return None
+
+
+def _numeric_date_ambiguous(text: str) -> bool:
+    """True when MDY and DMY both parse and are not the same calendar day."""
+    candidate = text.strip().replace("  ", " ")
+    if _try_formats(candidate, _NAMED_MONTH_FORMATS) is not None:
+        return False
+    mdy = _try_formats(candidate, _NUMERIC_MDY)
+    dmy = _try_formats(candidate, _NUMERIC_DMY)
+    return mdy is not None and dmy is not None and mdy != dmy
+
+
+#: Sentinel: a date-shaped token on a labelled line that we must not drop,
+#: otherwise a later unambiguous date on the same line is treated as the
+#: labelled value (``Invoice Date: 05/06/2026 Due Date: 07/20/2026``).
+_AMBIGUOUS_NUMERIC = object()
+
+
+def _date_candidates(line: dict[str, Any], label: re.Pattern[str]) -> list[tuple[Any, dict[str, Any]]]:
     text = line["text"]
     match = label.search(text)
     if not match:
         return []
-    candidates: list[tuple[date, dict[str, Any]]] = []
+    candidates: list[tuple[Any, dict[str, Any]]] = []
     for date_match in _DATE_RE.finditer(text):
-        parsed = _parse_date(date_match.group(0).replace(",", ""))
+        raw = date_match.group(0).replace(",", "")
+        if _numeric_date_ambiguous(raw):
+            parsed: Any = _AMBIGUOUS_NUMERIC
+        else:
+            parsed = _parse_date(raw)
         if parsed is None:
             continue
         refs = [
@@ -196,11 +246,18 @@ def _first_labelled_date(lines: list[dict[str, Any]], label: re.Pattern[str]) ->
     candidates = [item for line in lines for item in _date_candidates(line, label)]
     if not candidates:
         return None
+    # An ambiguous numeric token counts as a labelled value we cannot use.
+    # Dropping it would let a later unambiguous date on the same line win.
+    if any(item[0] is _AMBIGUOUS_NUMERIC for item in candidates):
+        return None
     # More than one labelled date is ambiguous; do not choose by proximity.
     unique = {item[0] for item in candidates}
     if len(unique) != 1:
         return None
-    return candidates[0]
+    parsed, meta = candidates[0]
+    if not isinstance(parsed, date):
+        return None
+    return parsed, meta
 
 
 def _term(lines: list[dict[str, Any]]) -> dict[str, Any] | None:

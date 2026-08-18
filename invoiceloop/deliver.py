@@ -22,11 +22,13 @@ review's P0):
   consequence at the exit, so corroboration alone does not release them); a TIER2
   corroborated slot → unreviewed_corroborated (the value ships, labelled honestly
   as not individually reviewed).
-- Per document: a rejected TIER1 slot, or an adjudication pointing at a claim
-  that does not exist → blocked; any pending or abstained slot → pending; a
-  release carrying document-level blocking findings (missing OCR and the like) is
-  labelled released_with_caveats — a document released while a check could not
-  run must never look as clean as one where every check passed.
+- Per document: a rejected TIER1 slot **that gates posting**, or an adjudication
+  pointing at a claim that does not exist → blocked; any **gating** pending or
+  abstained slot → pending. Without ``release_profile`` the gate is all ten
+  scored fields (census, including pending_tier1). With a profile, only that
+  field set gates posting; pending_tier1 on an auto-accepted TIER1 slot does
+  not block — document-level approve is the human signature. A release carrying
+  document-level blocking findings is labelled released_with_caveats.
 """
 
 from __future__ import annotations
@@ -35,6 +37,12 @@ import json
 from pathlib import Path
 
 from .fields import TIER1
+from .release_profile import (
+    document_touch_metrics,
+    parse_release_profile,
+    reject_blocks_document,
+    status_blocks_posting,
+)
 from .review import load_decisions, project, target_id_for
 from .snapshot import load_or_derive_snapshot
 
@@ -76,8 +84,8 @@ def build_deliverable(run_dir: Path) -> dict:
     derived = json.loads(derived_path.read_text(encoding="utf-8")) \
         if derived_path.exists() else {}
     derived_by_doc = derived.get("records") or {}
-    tier1_explicit = ((routing or {}).get("policy") or {}) \
-        .get("release_tier1_explicit", True)
+    policy = ((routing or {}).get("policy") or {})
+    tier1_explicit = policy.get("release_tier1_explicit", True)
     harness_id = (routing or {}).get("harness_id", "HAR-0001")
     # route/requires 以 routing_report(快照成分)为准,不以 matrix 行为准 ——
     # matrix 是投影;改了投影行不许改变交付语义(评审裁决三)
@@ -145,7 +153,7 @@ def build_deliverable(run_dir: Path) -> dict:
             elif decision == "reject":
                 entry = {"value": None, "status": "rejected",
                          "source": tip["decision_id"]}
-                if field in TIER1:
+                if reject_blocks_document(field, policy=policy, tier1=TIER1):
                     doc["blocking_reasons"].append(
                         f"关键字段 {field} 被 {tip['decision_id']} 拒绝")
             else:  # abstain:人也无法判定 —— 未决,不许带着它放行
@@ -192,10 +200,10 @@ def build_deliverable(run_dir: Path) -> dict:
 
     approvals = latest_by_doc(run_dir)
     for doc_id, doc in docs.items():
-        statuses = {f["status"] for f in doc["fields"].values()}
         if doc["blocking_reasons"]:
             doc["status"] = "blocked"
-        elif statuses & set(PENDING_STATUSES):
+        elif any(status_blocks_posting(name, entry["status"], policy=policy)
+                 for name, entry in doc["fields"].items()):
             doc["status"] = "pending"
         else:
             # 槽全部处置完毕 = **自动化的终点**,不是记账授权的起点。
@@ -265,16 +273,7 @@ def build_deliverable(run_dir: Path) -> dict:
         key = str(n)
         histogram[key] = histogram.get(key, 0) + 1
     median = counts[len(counts) // 2] if counts else 0
-    return {
-        "run": run_dir.name,
-        "review_snapshot_id": snapshot_id,
-        # 顶层记 harness —— 它此前只以 `source: "policy:HAR-000N"` 出现在被
-        # 策略放行的槽上,所以零 straight-through 的 run 里,决定「哪些槽
-        # 不用问人」的那份策略在交付物里完全不出现。冻结账本不在这里重记:
-        # field_ledger.json 已是 review_snapshot 的成分。
-        "harness_id": harness_id,
-        "docs": dict(sorted(docs.items())),
-        "summary": {
+    summary = {
             "docs": len(docs), "by_status": by_status,
             "slots": n_slots,
             "decision_load_for_release": n_decide / max(n_slots, 1),
@@ -292,7 +291,22 @@ def build_deliverable(run_dir: Path) -> dict:
             "median_fields_in_human_queue": median,
             "mean_fields_in_human_queue":
                 (sum(counts) / len(counts)) if counts else 0.0,
-        },
+    }
+    if parse_release_profile(policy) is not None:
+        # 下一轮 HITL 的首要数字:零触达张数、契约未解槽、探针数。
+        # 无 profile 时不写这个键 —— HAR-0001 交付物形状保持普查重放。
+        summary["release_contract"] = document_touch_metrics(
+            (routing or {}).get("routes") or [], policy)
+    return {
+        "run": run_dir.name,
+        "review_snapshot_id": snapshot_id,
+        # 顶层记 harness —— 它此前只以 `source: "policy:HAR-000N"` 出现在被
+        # 策略放行的槽上,所以零 straight-through 的 run 里,决定「哪些槽
+        # 不用问人」的那份策略在交付物里完全不出现。冻结账本不在这里重记:
+        # field_ledger.json 已是 review_snapshot 的成分。
+        "harness_id": harness_id,
+        "docs": dict(sorted(docs.items())),
+        "summary": summary,
         "note": ("harness_id 是产生本次路由的策略;冻结账本由 review_snapshot_id "
                  "绑定,不在此重记。"
                  "纯投影:最终值只来自 field_ledger 与裁决账本(support_matrix "

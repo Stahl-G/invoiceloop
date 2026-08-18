@@ -2,8 +2,12 @@ name: ci
 
 on: [push, pull_request]
 
+# ADK / pydantic stay an optional extra. Core must stay green on
+# `pip install -e ".[dev]"`; agent tests run in a second job that installs
+# `.[dev,gemini]`. Do not fold google-adk into base dependencies.
+
 jobs:
-  test:
+  core:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,7 +24,21 @@ jobs:
         run: .venv/bin/python -m invoiceloop doctor
       - name: Self-contained demo (zero API)
         run: .venv/bin/python -m invoiceloop demo --out /tmp/demo-ws
-      - name: Test suite
-        # 研究测试(语料对拍/留出复算)在无语料的 CI 上按设计跳过(corpus_available 守卫),
-        # 产品路径全部照跑
-        run: .venv/bin/python -m pytest tests/ -q
+      - name: Product-path tests
+        # 研究测试在无语料的 CI 上按设计跳过(corpus_available)。
+        # agent 测试需要 pydantic / google-adk,走旁边的 agent job。
+        run: .venv/bin/python -m pytest tests/ -q --ignore-glob='tests/test_agents_*.py'
+
+  agent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install with Gemini extra
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -e ".[dev,gemini]"
+      - name: Agent / ADK tests
+        run: .venv/bin/python -m pytest tests/test_agents_*.py -q

@@ -82,7 +82,7 @@ assert any(f["gate_id"] == "visual_corroboration" for f in gate["findings"]), \
     "demo 的读图门 warning(买卖双方抽反)必须在"
 PY
 
-echo "== pytest(研究数据缺失时研究测试自动跳过,产品路径不受影响)=="
-INVOICELOOP_DWS_DERISK=/nonexistent "$VENV/python" -m pytest -q
+echo "== pytest(研究数据缺失时研究测试自动跳过;agent 测试需要 [gemini],此处不装)=="
+INVOICELOOP_DWS_DERISK=/nonexistent "$VENV/python" -m pytest tests/ -q --ignore-glob='tests/test_agents_*.py'
 
 echo "fresh-venv check OK"

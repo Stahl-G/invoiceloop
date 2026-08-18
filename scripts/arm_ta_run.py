@@ -36,7 +36,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--decided-at", required=True,
                     help="ISO 8601;整臂一个时间戳,工件不读墙钟")
-    ap.add_argument("--model", default="gemini-3.6-flash")
+    ap.add_argument("--model", default="gemini-3.7-flash")
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--retries", type=int, default=4,
                     help="仅对传输层失败退避重试;写入口拒绝不重试")
