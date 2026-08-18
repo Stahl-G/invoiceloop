@@ -291,3 +291,38 @@ def test_reread_conflict_survives_a_retry(tmp_path):
     assert conflicting_rereads(run, "adk-invoice", ["d1"], "model-b") == {"d1"}
     # 同模型续跑不是冲突:d1 已由 model-a 读过,不在待读集里
     assert conflicting_rereads(run, "adk-invoice", ["d1"], "model-a") == set()
+
+
+def test_conflict_exits_before_the_reader_is_built(tmp_path, monkeypatch):
+    """拒绝必须发生在建 reader 之前 —— 不是「读完整批再说写不进去」。
+
+    这条钉的是调用顺序,不是判断本身:检查一旦被挪回 save_readings 之后,
+    拒绝就在重试时消失(已经回归过两次),而且整批 API 调用已经花掉了。
+    """
+    import sys
+    scripts = str(Path(__file__).resolve().parent.parent / "scripts")
+    sys.path.insert(0, scripts)
+    import hitl_adk_invoice_read as script
+    from invoiceloop.agents.invoice_read import save_readings
+
+    run = tmp_path / "ws" / "runs" / "run-0001"
+    (run / "vision").mkdir(parents=True)
+    (run / "support_matrix.json").write_text(json.dumps(
+        {"rows": [{"doc_id": "d1", "field": "seller_name"}], "summary": {}}))
+    save_readings(run, model="model-a", docs={"d1": _reading("Old Co")},
+                  failed=[])
+    (run / "vision" / "answers6.adk-invoice.tsv").write_text(
+        "doc_id\tfield\tvalue\tlabel\tnote\n"
+        "d1\tseller_name\tOld Co\tNONE\tadk model-a\n")
+
+    def _must_not_run(**kwargs):
+        raise AssertionError("拒绝之前不许建 reader / 花 API")
+
+    monkeypatch.setattr(script, "make_invoice_reader", _must_not_run)
+    monkeypatch.setattr(sys, "argv", [
+        "hitl_adk_invoice_read.py", "--run-dir", str(run),
+        "--model", "model-b"])
+
+    with pytest.raises(SystemExit) as exc:
+        script.main()
+    assert exc.value.code == 1

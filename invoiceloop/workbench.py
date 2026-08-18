@@ -2269,10 +2269,10 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                  if s in ctx.spans_by_id and s not in row["span_ids"]]
         doctype_evidence = self._doctype_overlay(ctx, doc)
         pages_dir = ctx.dir / "pages"
-        available = sorted(
-            int(p.stem.rsplit("-", 1)[1])
-            for p in pages_dir.glob(f"{doc}-*.png")
-            if p.stem.rsplit("-", 1)[1].isdigit()) if pages_dir.is_dir() else []
+        # 走 helper:裸 glob 会让 `inv` 收进 `inv-copy-1.png` 的页签,
+        # 点开去取 `inv-3.png` 就是空白 —— 把错页摆到签字的人眼前。
+        available = [int(p.stem.rsplit("-", 1)[1])
+                     for p in page_images(pages_dir, doc)]
         span_pages = {s["page"] for s in containing + cited
                       if s.get("bbox_rel")}
         if doctype_evidence is not None:

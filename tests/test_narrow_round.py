@@ -281,8 +281,12 @@ def test_agency_name_ending_in_agency_still_suggests():
         assert out["buyer_name"]["value"] == name, name
 
 
-def test_please_remit_to_is_still_a_label():
-    """`PLEASE REMIT TO:` 是纸面常见写法,左锚不许把它挡掉。"""
-    out = suggest_party_names(_ocr(
+def test_please_prefixed_labels_are_still_labels():
+    """`PLEASE REMIT TO:` / `PLEASE BILL TO:` 是纸面常见写法,左锚不许挡掉。"""
+    seller = suggest_party_names(_ocr(
         "PLEASE REMIT TO:", "WXYZ-TV", "123 Broadcast Drive"))
-    assert out["seller_name"]["value"] == "WXYZ-TV"
+    assert seller["seller_name"]["value"] == "WXYZ-TV"
+
+    buyer = suggest_party_names(_ocr(
+        "PLEASE BILL TO:", "Acme Motors", "500 Main Street"))
+    assert buyer["buyer_name"]["value"] == "Acme Motors"

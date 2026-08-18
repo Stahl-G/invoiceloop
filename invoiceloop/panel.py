@@ -138,8 +138,8 @@ def _row_html(row: dict, spans_by_id: dict, run_dir: Path, overlay: dict | None 
         evidence.extend(_span_html(s, run_dir) for s in cited_only)
     if not containing and not cited_only:
         # 没有任何引用(DWS 没返回值时总是如此)—— 复核者需要整页自己找
-        pages = sorted((run_dir / "pages").glob(f"{row['doc_id']}-*.png")) \
-            if (run_dir / "pages").exists() else []
+        from .evidence import page_images
+        pages = page_images(run_dir / "pages", row["doc_id"])
         if pages:
             links = " ".join(
                 f'<a href="pages/{p.name}" target="_blank">p{i + 1}</a>'
