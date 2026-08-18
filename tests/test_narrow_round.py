@@ -89,6 +89,15 @@ def test_triad_borrows_unlabelled_continuation():
     assert out["amount_due"]["value"] == "$850.00"
 
 
+def test_triad_binds_each_same_line_label_to_its_own_amount():
+    out = suggest_amount_triad(_ocr(
+        "Gross $1,000.00 Commission $150.00 Net Due $850.00",
+    ))
+    assert out["total_gross"]["value"] == "$1,000.00"
+    assert out["amount_due"]["value"] == "$850.00"
+    assert "_commission" not in out
+
+
 def test_ambiguous_two_gross_labels_abstain():
     out = suggest_amount_triad(_ocr(
         "Gross Billings $1,000.00",

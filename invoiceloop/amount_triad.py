@@ -12,7 +12,7 @@ from typing import Any
 
 from .due_date import _lines, _words
 
-TRIAD_VERSION = "amount-triad-v1"
+TRIAD_VERSION = "amount-triad-v2"
 
 _MONEY = re.compile(
     r"\$?\d{1,3}(?:,\d{3})+(?:\.\d{2})?|\$\d+(?:\.\d{2})?|\d+\.\d{2}"
@@ -43,6 +43,38 @@ def _money_on(text: str) -> str | None:
     return hits[-1]
 
 
+def _label_spans(text: str) -> list[tuple[int, int, str]]:
+    """Non-overlapping label spans; longer match wins at the same start."""
+    raw: list[tuple[int, int, str]] = []
+    for field, pattern in _LABELS:
+        for match in pattern.finditer(text):
+            raw.append((match.start(), match.end(), field))
+    raw.sort(key=lambda item: (item[0], -(item[1] - item[0])))
+    spans: list[tuple[int, int, str]] = []
+    occupied: list[tuple[int, int]] = []
+    for start, end, field in raw:
+        if any(start < other_end and end > other_start
+               for other_start, other_end in occupied):
+            continue
+        spans.append((start, end, field))
+        occupied.append((start, end))
+    spans.sort()
+    return spans
+
+
+def _bind_line(text: str) -> dict[str, list[str]]:
+    """Each label takes the first money token after it and before the next label."""
+    spans = _label_spans(text)
+    money = [(match.start(), match.group(0)) for match in _MONEY.finditer(text)]
+    found: dict[str, list[str]] = {}
+    for i, (_, end, field) in enumerate(spans):
+        limit = spans[i + 1][0] if i + 1 < len(spans) else len(text)
+        token = next((tok for start, tok in money if end <= start < limit), None)
+        if token is not None:
+            found.setdefault(field, []).append(token)
+    return found
+
+
 def suggest_amount_triad(ocr: dict[str, Any]) -> dict[str, dict[str, Any]]:
     """Map scored amount fields to an OCR-labelled money token."""
     texts = [str(line.get("text") or "").strip()
@@ -51,18 +83,18 @@ def suggest_amount_triad(ocr: dict[str, Any]) -> dict[str, dict[str, Any]]:
     for i, text in enumerate(texts):
         if not text:
             continue
-        money = _money_on(text)
-        if money is None and i + 1 < len(texts):
+        bound = _bind_line(text)
+        for field, values in bound.items():
+            found.setdefault(field, []).extend(values)
+        spans = _label_spans(text)
+        # A single labelled row with no amount may continue onto the next
+        # line only when that line has money and no label of its own.
+        if (len(spans) == 1 and spans[0][2] not in bound
+                and i + 1 < len(texts)):
             nxt = texts[i + 1]
-            # Continuation line only: a labelled next row (commission, net
-            # due, …) is not this field's value.
-            if _money_on(nxt) and not any(p.search(nxt) for _, p in _LABELS):
-                money = _money_on(nxt)
-        if money is None:
-            continue
-        for field, pattern in _LABELS:
-            if pattern.search(text):
-                found.setdefault(field, []).append(money)
+            nxt_money = _money_on(nxt)
+            if nxt_money and not _label_spans(nxt):
+                found.setdefault(spans[0][2], []).append(nxt_money)
     out: dict[str, dict[str, Any]] = {}
     for field in ("total_gross", "amount_due", "total_net"):
         values = found.get(field) or []
