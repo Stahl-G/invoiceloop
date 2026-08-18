@@ -279,3 +279,10 @@ def test_agency_name_ending_in_agency_still_suggests():
     for name in ("Smith Media Agency", "Horizon Agency", "Buying Time Inc."):
         out = suggest_party_names(_ocr("Agency:", name, "500 Main Street"))
         assert out["buyer_name"]["value"] == name, name
+
+
+def test_please_remit_to_is_still_a_label():
+    """`PLEASE REMIT TO:` 是纸面常见写法,左锚不许把它挡掉。"""
+    out = suggest_party_names(_ocr(
+        "PLEASE REMIT TO:", "WXYZ-TV", "123 Broadcast Drive"))
+    assert out["seller_name"]["value"] == "WXYZ-TV"

@@ -38,13 +38,17 @@ _ATTN = re.compile(
 #: `_take_name_block` 在捕到名字前就 break、`buyer_hits` 变 2 —— 恰好对真实的
 #: 代理名弃权。模块本来就只认「标签独占一行」(`Bill To: ACME` 从来不命中),
 #: 左锚是把这条既有假设写实,不是新增收窄。
+#: 左锚允许一个礼貌前缀:`PLEASE REMIT TO:` 是纸面上极常见的写法,而
+#: `Smith Media Agency` 不是标签 —— 前缀是白名单,不是通配。
+_QUALIFIER = r"(?:please\s+)?"
 _BUYER_LABEL = re.compile(
-    r"^(?:bill(?:ed)?\s+to|advertiser|agency|customer|client|sold\s+to)"
+    rf"^{_QUALIFIER}"
+    r"(?:bill(?:ed)?\s+to|advertiser|agency|customer|client|sold\s+to)"
     r"\s*:?\s*$",
     re.IGNORECASE,
 )
 _SELLER_LABEL = re.compile(
-    r"^(?:station|publication|remit\s+to|payee|from)\s*:?\s*$",
+    rf"^{_QUALIFIER}(?:station|publication|remit\s+to|payee|from)\s*:?\s*$",
     re.IGNORECASE,
 )
 _AGENCY = re.compile(r"\b(?:agency|buying\s+time|media\s+services)\b",

@@ -266,20 +266,28 @@ def test_corrupt_reading_cache_blocks_instead_of_being_overwritten(tmp_path):
     assert path.read_text() == before, "阻断之后原文件必须原样还在"
 
 
-def test_reread_docs_with_existing_suggestions_are_refused(tmp_path):
-    """换模型重读之后,append-only 的注入会 skip 掉旧行 —— 要拦住。
+def test_reread_conflict_survives_a_retry(tmp_path):
+    """拒绝必须耐重试 —— 从「尚未读的」算,不是从「本次读到的」算。
 
-    否则工作台留着上一个模型的值和 provenance,只有新增字段来自新模型。
+    原先第一次跑已经把新模型的读法存了盘才检查,重试时它们进 done、
+    本次读到的为空,拒绝自己消失,inject 于是 append-only 跳过旧行,
+    工作台留着上一个模型的建议。
     """
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-    from hitl_adk_invoice_read import rereads_already_injected
+    from hitl_adk_invoice_read import conflicting_rereads
+    from invoiceloop.agents.invoice_read import save_readings
 
     run = tmp_path / "run"
     (run / "vision").mkdir(parents=True)
+    save_readings(run, model="model-a", docs={"d1": _reading("Old Co")},
+                  failed=[])
     (run / "vision" / "answers6.adk-invoice.tsv").write_text(
         "doc_id\tfield\tvalue\tlabel\tnote\n"
         "d1\tseller_name\tOld Co\tNONE\tadk model-a\n")
 
-    assert rereads_already_injected(run, "adk-invoice", {"d1"}) == {"d1"}
-    assert rereads_already_injected(run, "adk-invoice", {"d2"}) == set()
+    assert conflicting_rereads(run, "adk-invoice", ["d1"], "model-b") == {"d1"}
+    # 拒绝之后什么都没存盘,所以重试判得一模一样
+    assert conflicting_rereads(run, "adk-invoice", ["d1"], "model-b") == {"d1"}
+    # 同模型续跑不是冲突:d1 已由 model-a 读过,不在待读集里
+    assert conflicting_rereads(run, "adk-invoice", ["d1"], "model-a") == set()

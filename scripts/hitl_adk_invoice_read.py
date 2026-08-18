@@ -46,7 +46,7 @@ def _already_read(run_dir: Path, model: str) -> set[str]:
 
 def rereads_already_injected(run_dir: Path, tag: str,
                              reread: set[str]) -> set[str]:
-    """本次重读过、但在该 tag 下已经有建议行的 doc_id。
+    """`reread` 里在该 tag 下已经有建议行的 doc_id。
 
     非空 = 注入会 skip 掉它们,工作台留着上一个模型的值。
     """
@@ -57,6 +57,17 @@ def rereads_already_injected(run_dir: Path, tag: str,
                 for line in tsv.read_text(encoding="utf-8").splitlines()[1:]
                 if line.strip()}
     return reread & injected
+
+
+def conflicting_rereads(run_dir: Path, tag: str, doc_ids: list[str],
+                        model: str) -> set[str]:
+    """**还没读**、但该 tag 下已有建议行的 doc_id —— 读之前就能判。
+
+    从「本模型尚未读过的」算起,不是从「本次读到的」算起:后者在存盘之后
+    就变空了,拒绝会在重试时自己消失。这个只读盘上既有状态,重试幂等。
+    """
+    pending = {d for d in doc_ids if d not in read_docs(run_dir, model)}
+    return rereads_already_injected(run_dir, tag, pending)
 
 
 def main() -> None:
@@ -77,6 +88,18 @@ def main() -> None:
     doc_ids = _doc_ids(run_dir)
     n_docs = len(doc_ids)
     done = _already_read(run_dir, model)
+    # 冲突检查必须在**读之前**:inject 是 append-only,重读过的单据写不进去,
+    # 工作台会留着上一个模型的值。放在读完之后检查是不耐重试的 —— 第一次跑
+    # 已经把读法存了盘,重试时它们进 done、pending 变空、检查就绕过去了。
+    # 前置还顺带省掉整批 API 调用。
+    conflict = conflicting_rereads(run_dir, SUGGEST_TAG, doc_ids, model)
+    if conflict:
+        print(json.dumps({
+            "fatal": "待读的单据在该 tag 下已有建议行,append-only 写不进去",
+            "tag": SUGGEST_TAG, "conflicting_docs": sorted(conflict),
+            "fix": "换一个 tag(另起一层建议),或换一个 run",
+        }, ensure_ascii=False, indent=1))
+        raise SystemExit(1)
     read = make_invoice_reader(model=model, workspace=ws)
 
     docs: dict[str, dict] = {}
@@ -122,17 +145,6 @@ def main() -> None:
         doc_model = str(rec.get("model") or top_model)
         inject_rows.extend(to_suggestion_rows(
             doc_id, InvoiceReading.model_validate(rec), model=doc_model))
-    stale = rereads_already_injected(run_dir, SUGGEST_TAG, set(docs))
-    if stale:
-        # inject 是 append-only,已有的 (doc, field) 会被 skip —— 重读过的单据
-        # 会保留上一个模型的值和 provenance,工作台上就是一层新旧混着的建议。
-        # 换 tag 另起一层,不要就地改写既有的建议记录。
-        print(json.dumps({
-            "fatal": "本次重读的单据在该 tag 下已有建议行,append-only 写不进去",
-            "tag": SUGGEST_TAG, "reread_docs": sorted(stale),
-            "fix": "换一个 tag(另起一层建议),或换一个 run",
-        }, ensure_ascii=False, indent=1))
-        raise SystemExit(1)
     summary = suggest_inject.inject(ws, SUGGEST_TAG, inject_rows, run_dir=run_dir)
     print(json.dumps({
         "run": str(run_dir),
