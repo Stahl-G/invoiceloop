@@ -30,12 +30,24 @@ result missed the pre-registered line.
 | `SEALED3_PROTOCOL.md` / `SEALED3_MULTIHARNESS_ADDENDUM_2026-08-08.md` / `SEALED3_RESULTS.md` | 100 drand-seeded unseen documents, opened once under six frozen harnesses plus an exact repeat. HAR-0004 cut the human queue 62.4% -> 52.7% and reproduced 3.75x triage lift, but one new silent absence failed the pre-registered qualification gate. The ADK due-date candidate saved another 3.3pp at the cost of five more silent absences |
 | `evidence/sealed3_multiharness_2026-08-08/` | Git-frozen routing policies and a compact machine-readable result summary; the full run/bundle stays in the research data directory and is content-addressed from the result |
 | `ABSENCE_V3_DERIVATION_V2_DEV_2026-08-10.md` | Engine v3 (one-edit fuzzy) clears seller_vat_id to 234 saves / 0 silent on dev; the remaining total_net×1 and due_date×8 silents are caliber disputes, not lexicon gaps; derivation v2 fires on 8/300 |
-| `SEALED4_PROTOCOL.md` / `SEALED4_AMENDMENT_BROADCAST_2026-08-10.md` | The only remaining unseen qualification set. Not yet extracted: the amendment (pre-extraction, frozen) redraws the 100 from a broadcast-scoped subpool (union 4,196), re-pins the main arm to the broadcast harness (HAR-0019 at writing), and pre-registers the T1/T2 truth-caliber rules with the nine dev cases listed one by one |
+| `SEALED4_PROTOCOL.md` / `SEALED4_AMENDMENT_BROADCAST_2026-08-10.md` / `SEALED4_RESULTS.md` | Opened 2026-08-10 on the broadcast-scoped pool. Qualification **passed** on the strong subset: human queue 63.7% → 47.2% (HAR-0001 → HAR-0021), both silent-error classes did not rise, H1–H7 passed. That pool only — not a general-DocILE qualification |
 | `SEALED1_PROTOCOL.md` / `SEALED1_RESULTS.md` | Historical 100-document sealed result: triage lift 4.03×; decision load 82.9% → 64.2%. Measured 2026-08-03 before later exposure; still valid for that revision, but spent for new measurements |
 | `SEALED2_PROTOCOL.md` / `SEALED2_RESULTS.md` | Second sealed batch, lift 3.19×. **Held-out status revoked 2026-08-07** — the protocol's own clause 3 fired. Enforced in `improve.SEALED_SET_REVOCATIONS`, not merely written down |
 | `FIELD_COVERAGE.md` | Which fields are scored, frozen before SEALED-2 |
 | `BASELINE_COMPARISON_SEALED1.md` | Against a confidence-threshold baseline at a fixed operating point: TIER1 silent error 9.62% vs 21.91% |
 | `BASELINE_COMPARISON.md` / `R0_BASELINE_2026-08-05.md` | Earlier baseline work |
+
+## HITL and the payment-posting contract (2026-08-14)
+
+The current product contract is not "adjudicate every scored field". It is a
+frozen `release_profile`. These four files are that turn, not extra lab notes.
+
+| File | What it is |
+|---|---|
+| [`RELEASE_PROFILE_DESIGN_2026-08-14.md`](RELEASE_PROFILE_DESIGN_2026-08-14.md) | Product contract: `payment_required_v1` gates posting on `invoice_number`, `seller_name`, `amount_due`. Absence of the key is census. Does not relax routing and does not grant export |
+| [`HITL_R1_TERMINATION_2026-08-14.md`](HITL_R1_TERMINATION_2026-08-14.md) | HITL R1 pre-registered termination after S1 falsified the census-walk hypothesis (20/20 opened, median 52s/slot). S2–S5 were not spliced onto the S1 curve |
+| [`HITL_NARROW_PROTOCOL_2026-08-14.md`](HITL_NARROW_PROTOCOL_2026-08-14.md) | Protocol for the follow-up payment-contract walk |
+| [`HITL_NARROW_2026-08-14.md`](HITL_NARROW_2026-08-14.md) | Development-set result of that walk (4/20 zero-touch, 0 unresolved payment fields, 0 probe reversals), with confounders listed. Not a qualification result |
 
 ## Measurement records
 

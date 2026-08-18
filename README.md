@@ -113,6 +113,34 @@ the ledger; who approved what is audit trail, not clutter.
 Values come only from the frozen ledger and the adjudication ledger. **The support
 matrix is never the value source.**
 
+## Posting is not a ten-field census
+
+A routing policy with no `release_profile` is **census**: every scored field
+still `pending`, `pending_tier1`, or `abstained` keeps the document from
+`ready_for_approval`. Packaged HAR-0001 stays that way so sealed replay does
+not drift.
+
+The product contract since 2026-08-14 is `payment_required_v1`. Posting waits
+on `invoice_number`, `seller_name`, and `amount_due`. Other scored fields stay
+on the support matrix, labelled unreviewed. A named human still has to approve
+the document. The machine still cannot export. Design:
+[`docs/RELEASE_PROFILE_DESIGN_2026-08-14.md`](docs/RELEASE_PROFILE_DESIGN_2026-08-14.md).
+
+HITL round 1 tested the older census walk — AI pre-read plus a ten-field queue —
+on a development set of 20 documents. All 20 opened; median time 52 seconds per
+slot; the pre-registered time estimate was off by about five times. The round
+was **pre-registered terminated** before S2's first adjudication. S2–S5 were
+not spliced onto the S1 curve. Record:
+[`docs/HITL_R1_TERMINATION_2026-08-14.md`](docs/HITL_R1_TERMINATION_2026-08-14.md).
+
+The follow-up walk used the payment contract, on a separate 20-document
+development set: 4/20 documents never entered the walk, the three payment
+fields had 0 unresolved slots, and 0 QA probes reversed an auto-accept or
+auto-absent. Unopened is not correct — residual error still carries the
+ARCHITECTURE §8 qualifiers. The arm had confounders (mid-round ADK inject,
+protocol edits after the first decision) and is not a qualification result.
+Record: [`docs/HITL_NARROW_2026-08-14.md`](docs/HITL_NARROW_2026-08-14.md).
+
 ## Evidence
 
 All from stored Nutrient DWS responses — verifying them needs no API calls.
