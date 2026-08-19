@@ -39,15 +39,18 @@ result missed the pre-registered line.
 
 ## HITL and the payment-posting contract (2026-08-14)
 
-The current product contract is not "adjudicate every scored field". It is a
-frozen `release_profile`. These four files are that turn, not extra lab notes.
+The default harness remains census (HAR-0021). `payment_required_v1` is an
+optional posting profile used by the HITL-narrow workbench; it has not been
+promoted. These files are that turn, not extra lab notes.
 
 | File | What it is |
 |---|---|
-| [`RELEASE_PROFILE_DESIGN_2026-08-14.md`](RELEASE_PROFILE_DESIGN_2026-08-14.md) | Product contract: `payment_required_v1` gates posting on `invoice_number`, `seller_name`, `amount_due`. Absence of the key is census. Does not relax routing and does not grant export |
+| [`RELEASE_PROFILE_DESIGN_2026-08-14.md`](RELEASE_PROFILE_DESIGN_2026-08-14.md) | Optional posting profile: `payment_required_v1` gates posting on `invoice_number`, `seller_name`, `amount_due`. Absence of the key is census. Does not relax routing and does not grant export |
 | [`HITL_R1_TERMINATION_2026-08-14.md`](HITL_R1_TERMINATION_2026-08-14.md) | HITL R1 pre-registered termination after S1 falsified the census-walk hypothesis (20/20 opened, median 52s/slot). S2–S5 were not spliced onto the S1 curve |
 | [`HITL_NARROW_PROTOCOL_2026-08-14.md`](HITL_NARROW_PROTOCOL_2026-08-14.md) | Protocol for the follow-up payment-contract walk |
-| [`HITL_NARROW_2026-08-14.md`](HITL_NARROW_2026-08-14.md) | Development-set result of that walk (4/20 zero-touch, 0 unresolved payment fields, 0 probe reversals), with confounders listed. Not a qualification result |
+| [`HITL_NARROW_2026-08-14.md`](HITL_NARROW_2026-08-14.md) | Development-set result of that walk (4/20 zero-touch, 0 unresolved payment fields, 0 probe reversals), with confounders listed. Not a qualification result. Not the same measurement as the 660-document run |
+| [`DOCTOUCH_PREREG_2026-08-18.md`](DOCTOUCH_PREREG_2026-08-18.md) | Pre-registration for the 660-document zero-API touch measurement. Frozen before any result |
+| [`DOCTOUCH_RESULTS_2026-08-18.md`](DOCTOUCH_RESULTS_2026-08-18.md) | Development-set result: HAR-0023 zero-touch 10.8% (about 89% still opened). Predictions that missed are listed. Not a qualification result |
 
 ## Measurement records
 

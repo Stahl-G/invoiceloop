@@ -1,0 +1,47 @@
+{
+ "source": "runs/doctouch-2026-08-18/arms/HAR-0023",
+ "n_docs": 660,
+ "open_shape": {
+  "amount_due+invoice_number": 53,
+  "QA_ONLY_NON_GATE": 42,
+  "invoice_number": 76,
+  "amount_due+seller_name": 79,
+  "ZERO": 71,
+  "seller_name": 67,
+  "amount_due": 141,
+  "amount_due+invoice_number+seller_name": 79,
+  "invoice_number+seller_name": 52
+ },
+ "amount_due": {
+  "in_review": 352,
+  "routing_first_code": {
+   "GATE_FAIL:arithmetic_consistency": 131,
+   "GATE_FAIL:cross_mode_agreement": 53,
+   "UNSUPPORTED": 51,
+   "SLOT_BLOCKING": 50,
+   "GATE_FAIL:citation_holds": 43,
+   "CLEAN": 21,
+   "GATE_FAIL:field_wellformed": 3
+  },
+  "gate_report_arithmetic_consistency": {
+   "fail_all_slots": 140,
+   "fail_and_in_review": 140
+  },
+  "note": "首选原因码 arithmetic 131; gate_report fail 140; 差额 9 张路由因 UNSUPPORTED 抢先。无法复现 106。"
+ },
+ "seller_name": {
+  "in_review": 277,
+  "routing_first_code": {
+   "GATE_FAIL:cross_mode_agreement": 178,
+   "UNSUPPORTED": 66,
+   "SLOT_BLOCKING": 33
+  },
+  "gate_report_cross_mode_agreement": {
+   "fail_all_slots": 242,
+   "fail_and_in_review": 242
+  },
+  "note": "首选原因码 178/277=64%; gate_report fail 242/277=87%。差额 64 张被 UNSUPPORTED(47) 或 SLOT_BLOCKING(17) 抢先。"
+ },
+ "three_gate_all_auto": 113,
+ "zero_touch_if_qa_ignored": 126
+}
