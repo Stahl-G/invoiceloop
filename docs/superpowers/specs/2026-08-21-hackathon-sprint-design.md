@@ -25,13 +25,15 @@
 (用户定)。全职冲刺。
 
 **凭证**:新 DWS token 已写入 `.env` 的 `DWS_API_KEY`(gitignored,永不进
-仓库;额度 50 万 credits)。旧 key 保留在 `DWS_API_KEYS` 轮换。
+仓库;用户报告额度 50 万,本轮 400 次调用远低于此)。旧 key 保留在
+`DWS_API_KEYS` 轮换。
 
 ---
 
-## 1. 资格集确认轮( Nutrient 头牌)
+## 1. 资格集确认轮(Nutrient 头牌)
 
-定名:`QUALIFICATION_NARROW_2026-08-22`(以冻结日为准)。
+定名:`QUALIFICATION_NARROW_<冻结日>`;D1(2026-08-21)冻结,名字随冻结
+commit 落定。运行目录 `runs/qual-narrow-<冻结日>/`。
 
 **要回答的问题**:窄放行契约在**未曝光文档**上的零触达率。doctouch 08-18
 是全曝光开发集(660 份,10.8%);结果文档 §6 明确:在资格集给出同闸定义
@@ -49,7 +51,8 @@
 ### 1.2 提取(唯一 API 花费)
 
 - 200 份 × 双模式(understand + agentic)= **400 次调用**,响应存
-  `runs/qual-narrow/raw/`(`doctouch_arms.py::discover_dual_mode` 自动发现)。
+  `runs/qual-narrow-<冻结日>/raw/`(`doctouch_arms.py::discover_dual_mode`
+  自动发现新 raw 目录)。
 - 并发 ≤ 4;失败重试 1 次;仍失败 → 记 `blocking`,不跳过、不静默缩样本
   (硬约束:负面发现即阻断)。
 - 串行 ~21s/份,预计 ≤ 3h,后台跑。
@@ -98,9 +101,10 @@ reject / 改任何闸)。修掉 HITL-narrow 自认混淆中的两条(中途注�
 
 - 20 份的建议在**任何裁决开始前**全部预生成,存盘为工件(响应原文 +
   sha256)。
-- 账本每槽记:`suggestion_seen` + 工件哈希 + 模型 id + prompt/schema
-  digest。复用 `hitl_adk_invoice_read.py` + `suggest.py` + 现有
-  `suggestion_seen` 字段;新增仅两个溯源字段(schema 改动随协议冻结)。
+- 账本每槽记:`suggestion_seen` + 工件哈希 + 模型 id;prompt/schema
+  digest 全轮一份(建议预生成前冻结,不随槽变)。复用
+  `hitl_adk_invoice_read.py` + `suggest.py` + 现有 `suggestion_seen`
+  字段;新增为两个每槽溯源字段 + 一个每轮 digest(schema 改动随协议冻结)。
 
 ### 2.3 预注册预测(错了照登)
 
