@@ -118,6 +118,12 @@ def append_adjudication(
     (`agree:<值>` / `agree_rejected:<值>` / `split` / `blind`),机器在
     渲染时写入隐藏字段 —— 它记的是"人当时看见了什么",不是人的判断,
     挖建议采纳率靠它,缺省 None 不影响旧账本。
+
+    suggestion_seen 之外的两个溯源字段(suggestion_artifact_sha256 /
+    suggestion_model)**不接受调用方传入**:它们由 suggest_provenance.derive
+    从 run 目录里走前冻结的建议表导出,并与 suggestion_seen 三向对账。
+    浏览器只能提交裁决,不能提交证据身份。没有冻结表的 run(demo、旧轮)
+    两个字段不出现,行为一字不变。
     """
     run_dir = Path(run_dir)
     if reason_code is not None:
@@ -182,6 +188,15 @@ def append_adjudication(
             f"decided_at {decided_at!r} 不是 ISO 8601 时间 —— 账本里的时间必须"
             f"可机读,「下礼拜吧」进不了审计轨迹(82 评 P2)"
         ) from None
+
+    # 建议溯源:服务端导出,不收调用方给的值。load 会重算 live TSV /
+    # upstream / 全量 slots,并与仓库里的走前副本对锚;derive 再做三向对账。
+    # 任何一处对不上抛 ValueError —— 与其他校验同路,一行都不写。
+    from .suggest_provenance import derive as _derive_provenance
+    from .suggest_provenance import load as _load_provenance
+
+    provenance = _derive_provenance(
+        _load_provenance(run_dir), doc_id, field, suggestion_seen)
 
     manifest = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
     if doc_id not in set(manifest.get("docs", [])):
@@ -279,6 +294,9 @@ def append_adjudication(
                 entry["carried_from_decision_id"] = carried_from_decision_id
             if suggestion_seen is not None:
                 entry["suggestion_seen"] = suggestion_seen
+            if provenance is not None:
+                entry["suggestion_artifact_sha256"] = provenance[0]
+                entry["suggestion_model"] = provenance[1]
             with (run_dir / "adjudication_ledger.jsonl").open("a", encoding="utf-8") as fh:
                 fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
                 fh.flush()
