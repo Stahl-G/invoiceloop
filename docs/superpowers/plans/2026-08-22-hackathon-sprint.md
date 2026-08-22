@@ -54,7 +54,8 @@ spec 是设计,这里是核过实现之后的实施计划。两处数字/机制�
 |---|---|
 | `invoiceloop/suggest_provenance.py` | 从 TSV 建冻结建议表;`derive()` 按 `(run, doc, field)` 导出(工件哈希, 模型 id)并与 `suggestion_seen` 三向对账 |
 | `scripts/suggest_provenance_freeze.py` | 建议预生成之后冻结:把 TSV 每一行(人真正看见的那条)与读法摘要一起写成溯源表 |
-| `scripts/freeze_evidence.py` | 把 run 目录里的冻结工件复制进 `docs/evidence/<round>/` 并写 `MANIFEST.sha256`(`runs/` 是 gitignored symlink,不复制就没有仓库内锚点) |
+| `scripts/freeze_evidence.py` | 把冻结工件复制进 `docs/evidence/<round>/<stage>/` 并写 `MANIFEST.sha256`;**一个 stage 只能冻一次**(`runs/` 是 gitignored symlink,不复制就没有仓库内锚点) |
+| `scripts/writeset.py` | run 目录的文件哈希快照与差集 —— P5 靠它证明 agent 那一趟只碰了 `vision/` 与 `agent_calls/` |
 | `scripts/qual_walk_plan.py` | 从资格集 200 份的路由报告里抽 20 份行走集(最小哈希,只取人队列 ≥1 槽) |
 | `scripts/qual_adk_walk_setup.py` | 装配行走工作区、跑 HAR-0023 流水线(复用 `doctouch_arms.assemble`) |
 | `scripts/qual_walk_analyze.py` | 行走结果 P1–P5 对照 |
@@ -66,6 +67,8 @@ spec 是设计,这里是核过实现之后的实施计划。两处数字/机制�
 | `tests/test_doctouch_arms_doclist.py` | 名单过滤测试 |
 | `tests/test_suggest_provenance.py` | 溯源导出、三向对账、冻结表构建与拒绝覆盖 |
 | `tests/test_qual_walk_plan.py` | 行走集抽样与工作台队列谓词一致 |
+| `tests/test_freeze_evidence.py` | 冻结分阶段不可变,后一次不改写前一次 |
+| `tests/test_writeset.py` | 账本被动过时写集看得见 |
 | `tests/test_lint_release_profile.py` | lint 回归:机器不许 propose `release_profile` |
 
 **修改**
@@ -85,10 +88,11 @@ spec 是设计,这里是核过实现之后的实施计划。两处数字/机制�
 
 ## Phase A —— 资格集确认轮(Nutrient 头牌)
 
-### Task 0: 证据落盘助手(先做,后面每一次冻结都用它)
+### Task 0: 证据落盘助手(分阶段不可变)
 
 **Files:**
 - Create: `scripts/freeze_evidence.py`
+- Test: `tests/test_freeze_evidence.py`
 
 `runs/` 是指向 `../invoiceloop-data/runs` 的 symlink,且被 `.gitignore:10` 忽略
 (`git ls-files runs/` = 0)。所以 `git add runs/...` 兑现不了「冻结状态已提交」——
@@ -96,50 +100,145 @@ spec 是设计,这里是核过实现之后的实施计划。两处数字/机制�
 `docs/evidence/<round>/`(见 `docs/evidence/narrow_v1_2026-08-14/`、
 `docs/evidence/absence_v3_2026-08-10/`),本任务把它做成一条命令。
 
-- [ ] **Step 1: 写 `scripts/freeze_evidence.py`**
+**分阶段,不是一个 round 一个目录。** 一轮里要冻结好几次(资格轮:名单 → 提取小结 →
+四臂结果;行走轮:走前工件 → 走后账本)。若每次都往同一个 `MANIFEST.sha256` 里写当次的
+条目,第二次就把第一次的条目删掉了 —— 等于改写已冻结的历史,而这份 manifest 存在的
+全部意义就是「这些东西在那个 commit 时是这个样子」。所以:
+**`docs/evidence/<round>/<stage>/`,manifest 一旦存在就拒绝任何写入。**
+
+- [ ] **Step 1: 写失败的测试**
+
+新建 `tests/test_freeze_evidence.py`:
+
+```python
+"""证据落盘:分阶段不可变。已冻结的清单不许被后来的冻结改写。"""
+
+from __future__ import annotations
+
+import hashlib
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+
+import freeze_evidence  # noqa: E402
+
+
+@pytest.fixture
+def repo(tmp_path, monkeypatch):
+    monkeypatch.setattr(freeze_evidence, "REPO", tmp_path)
+    src = tmp_path / "src"
+    src.mkdir()
+    return tmp_path, src
+
+
+def test_a_second_stage_cannot_erase_the_first(repo):
+    """一轮里冻结好几次。若共用一份 manifest,后一次会把前一次的条目删掉 ——
+    前一个 commit 背书过的清单就此消失,而清单的全部意义就是那个背书。"""
+    root, src = repo
+    (src / "doc_list.json").write_text("a", encoding="utf-8")
+    (src / "metrics.json").write_text("b", encoding="utf-8")
+    freeze_evidence.freeze("r1", "plan", [src / "doc_list.json"])
+    freeze_evidence.freeze("r1", "arms", [src / "metrics.json"])
+    plan = (root / "docs/evidence/r1/plan/MANIFEST.sha256").read_text(encoding="utf-8")
+    arms = (root / "docs/evidence/r1/arms/MANIFEST.sha256").read_text(encoding="utf-8")
+    assert "doc_list.json" in plan and "metrics.json" not in plan
+    assert "metrics.json" in arms and "doc_list.json" not in arms
+
+
+def test_refreezing_the_same_stage_is_refused(repo):
+    """同一阶段冻结两次 = 想改写历史。哪怕内容一模一样也拒绝:
+    通过了就等于承认这个阶段可以再写一次。"""
+    root, src = repo
+    (src / "a.json").write_text("a", encoding="utf-8")
+    freeze_evidence.freeze("r1", "plan", [src / "a.json"])
+    with pytest.raises(SystemExit, match="已冻结"):
+        freeze_evidence.freeze("r1", "plan", [src / "a.json"])
+
+
+def test_manifest_records_the_bytes_that_were_copied(repo):
+    """清单里的哈希必须是落盘副本自己的哈希 —— 不然它证明不了任何事。"""
+    root, src = repo
+    (src / "a.json").write_text("hello", encoding="utf-8")
+    freeze_evidence.freeze("r1", "plan", [src / "a.json"])
+    stage = root / "docs/evidence/r1/plan"
+    digest, name = (stage / "MANIFEST.sha256").read_text(
+        encoding="utf-8").split()
+    assert name == "a.json"
+    assert digest == hashlib.sha256((stage / "a.json").read_bytes()).hexdigest()
+
+
+def test_a_missing_artifact_blocks(repo):
+    """要冻的东西不在 = 上一步没跑成。半份证据比没有更糟。"""
+    root, src = repo
+    with pytest.raises(SystemExit, match="不存在"):
+        freeze_evidence.freeze("r1", "plan", [src / "nope.json"])
+```
+
+- [ ] **Step 2: 跑测试确认失败**
+
+```bash
+.venv/bin/python -m pytest tests/test_freeze_evidence.py -x -q
+```
+预期:`ModuleNotFoundError: No module named 'freeze_evidence'`
+
+- [ ] **Step 3: 写 `scripts/freeze_evidence.py`**
 
 ```python
 #!/usr/bin/env python3
-"""把 run 目录里的冻结工件复制进 docs/evidence/<round>/ 并写 MANIFEST.sha256。
+"""把 run 目录里的冻结工件复制进 docs/evidence/<round>/<stage>/ 并写 MANIFEST.sha256。
 
 存在的理由很实际:runs/ 是 gitignored 的 symlink,`git add runs/...` 不成立,
 于是「协议冻结的 commit 先于结果」这条纪律在 git 历史里根本看不见。
 
-已存在且内容不同 = 阻断。冻结工件被改写过,而前面的 commit 已经背书了旧版本。
+分阶段不可变:一个 stage 只能冻一次,manifest 存在即拒绝。一轮里冻好几次
+(名单 / 提取小结 / 四臂 / 走前工件 / 走后账本)必须各占一个 stage ——
+共用一份 manifest 的话,后一次会把前一次的条目删掉,而前一个 commit 已经
+背书过那份清单了。
 """
 
 from __future__ import annotations
 
 import argparse
 import hashlib
+import re
 import shutil
-import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
 
 def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def freeze(round_name: str, items: list[Path]) -> Path:
-    dest = REPO / "docs" / "evidence" / round_name
-    dest.mkdir(parents=True, exist_ok=True)
+def freeze(round_name: str, stage: str, items: list[Path]) -> Path:
+    for part, label in ((round_name, "round"), (stage, "stage")):
+        if not _NAME.fullmatch(part):
+            raise SystemExit(f"fatal: 非法 {label} 名:{part!r}")
+    dest = REPO / "docs" / "evidence" / round_name / stage
+    manifest = dest / "MANIFEST.sha256"
+    if manifest.exists():
+        raise SystemExit(
+            f"fatal: {round_name}/{stage} 已冻结过 —— 冻结是一次性的。"
+            f"新证据用新 stage;真要重来就换 round 名。\n"
+            f"  现有清单:{manifest}")
     lines = []
-    for src in sorted(items):
+    staged: list[tuple[Path, Path]] = []
+    for src in sorted(set(items)):
         if not src.is_file():
             raise SystemExit(f"fatal: 要冻结的工件不存在:{src}")
-        digest = _sha(src)
-        target = dest / src.name
-        if target.exists() and _sha(target) != digest:
-            raise SystemExit(
-                f"fatal: {target.name} 已冻结过且内容不同 —— 前一个 commit "
-                f"背书的是旧版本。要重来就换一个 round 名。")
-        if not target.exists():
-            shutil.copyfile(src, target)
-        lines.append(f"{digest}  {src.name}")
-    manifest = dest / "MANIFEST.sha256"
+        staged.append((src, dest / src.name))
+    names = [dst.name for _, dst in staged]
+    if len(set(names)) != len(names):
+        raise SystemExit(f"fatal: 同名工件撞车,一个 stage 内不许重名:{sorted(names)}")
+    dest.mkdir(parents=True, exist_ok=True)
+    for src, dst in staged:
+        shutil.copyfile(src, dst)
+        lines.append(f"{_sha(dst)}  {dst.name}")
     manifest.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return dest
 
@@ -147,9 +246,12 @@ def freeze(round_name: str, items: list[Path]) -> Path:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--round", required=True, dest="round_name")
+    ap.add_argument("--stage", required=True,
+                    help="本轮的第几次冻结,如 plan / extract / arms / "
+                         "prewalk / postwalk。一个 stage 只能冻一次")
     ap.add_argument("items", nargs="+", type=Path)
     args = ap.parse_args()
-    dest = freeze(args.round_name, args.items)
+    dest = freeze(args.round_name, args.stage, args.items)
     print((dest / "MANIFEST.sha256").read_text(encoding="utf-8"), end="")
     print(f"→ {dest.relative_to(REPO)}")
 
@@ -158,21 +260,27 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 2: 确认 `runs/` 的确进不了仓库(这是本任务存在的理由)**
+- [ ] **Step 4: 跑测试确认通过**
+
+```bash
+.venv/bin/python -m pytest tests/test_freeze_evidence.py -q
+```
+预期:`4 passed`
+
+- [ ] **Step 5: 确认 `runs/` 的确进不了仓库(这是本任务存在的理由)**
 
 ```bash
 ls -la runs | head -1
 grep -n '^runs$' .gitignore
 git ls-files runs/ | wc -l
 ```
-预期:第一行显示 `runs -> ../invoiceloop-data/runs`;`.gitignore` 第 10 行是 `runs`;
-tracked 文件数 `0`。
+预期:`runs -> ../invoiceloop-data/runs`;`.gitignore` 第 10 行是 `runs`;tracked 文件数 `0`。
 
-- [ ] **Step 3: 提交**
+- [ ] **Step 6: 提交**
 
 ```bash
-git add scripts/freeze_evidence.py
-git commit -m "Add an evidence-freezing helper: runs/ is a gitignored symlink, so a frozen artifact only becomes a repository anchor once it is copied under docs/evidence."
+git add scripts/freeze_evidence.py tests/test_freeze_evidence.py
+git commit -m "Add a stage-immutable evidence freezer: runs/ is a gitignored symlink, and a second freeze must never rewrite a manifest an earlier commit already endorsed."
 ```
 
 ---
@@ -685,6 +793,9 @@ git commit -m "Gate the arm runner on an explicit doc list: without it the quali
 
 ```bash
 cp runs/qual-narrow-2026-08-22/doc_list.json docs/qual_narrow_doc_list.json
+.venv/bin/python scripts/freeze_evidence.py \
+  --round qual-narrow-2026-08-22 --stage plan \
+  runs/qual-narrow-2026-08-22/doc_list.json
 ```
 
 - [ ] **Step 2: 写协议正文**
@@ -803,7 +914,9 @@ raw 里的响应数 = 0
 - [ ] **Step 4: 提交 —— 这一条 commit 必须先于任何提取**
 
 ```bash
-git add docs/QUALIFICATION_NARROW_PROTOCOL_2026-08-22.md docs/qual_narrow_doc_list.json
+git add docs/QUALIFICATION_NARROW_PROTOCOL_2026-08-22.md \
+        docs/qual_narrow_doc_list.json \
+        docs/evidence/qual-narrow-2026-08-22/plan/
 git commit -m "Freeze the qualification-round protocol and its 200-document list before any extraction: pool 4,831 never-touched, min-hash sampling, five predictions on the record."
 ```
 
@@ -881,10 +994,10 @@ print('名单', len(want), '→ 过滤后', len(select_sources(discover_dual_mod
 - [ ] **Step 6: 提交存盘响应**
 
 ```bash
-.venv/bin/python scripts/freeze_evidence.py --round qual-narrow-2026-08-22 \
-  runs/qual-narrow-2026-08-22/extract_summary.json \
-  runs/qual-narrow-2026-08-22/doc_list.json
-git add docs/evidence/qual-narrow-2026-08-22/
+.venv/bin/python scripts/freeze_evidence.py \
+  --round qual-narrow-2026-08-22 --stage extract \
+  runs/qual-narrow-2026-08-22/extract_summary.json
+git add docs/evidence/qual-narrow-2026-08-22/extract/
 git commit -m "Record the qualification-round extraction summary: 400 dual-mode calls over the 200 never-touched documents."
 ```
 
@@ -979,7 +1092,7 @@ D 臂的 `silent_wrong` ≤ B 臂即 P6 成立。
 # QUALIFICATION_NARROW_2026-08-22 结果(未曝光资格集,n=200)
 
 协议:`docs/QUALIFICATION_NARROW_PROTOCOL_2026-08-22.md`(冻结于提取之前)
-数据:`runs/qual-narrow-2026-08-22/doctouch/doctouch_metrics.json`
+数据:`docs/evidence/qual-narrow-2026-08-22/arms/doctouch_metrics.json`
 复算:零 API。四臂全部从存盘响应投影,`--doc-list` 锁死这 200 份。
 
 ## 0. 阻断状态
@@ -1021,7 +1134,17 @@ D 臂的 `silent_wrong` ≤ B 臂即 P6 成立。
 
 ## 4. 可以对外说的一句话
 
-[P2 成立时:「在 200 份此前从未被本项目接触过的 DocILE 发票上,窄放行契约
+**升级为「产品能力」的闸有四条,全过才准写,P2 只是其中一条:**
+
+1. 无阻断:`extract_summary.json` 的 `failures` 为空。
+2. 样本完整:四臂各测满 200 份,`--doc-list` 无缺件。
+3. 安全:P4(真静默 ≤ 3)与 P6(D 臂 `silent_wrong` ≤ B 臂)都成立。
+4. 效果:P2 成立。
+
+任何一条不过,数字照登,措辞退回 08-18 的限定句。**猜中预测和产品安全是两回事** ——
+零触达率再好看,若 D 臂让更多错值静默通过,那就不是能力是隐患。
+
+[四条全过时:「在 200 份此前从未被本项目接触过的 DocILE 发票上,窄放行契约
 (invoice_number / seller_name / amount_due 三字段)让 [X]%(95% CI [lo]–[hi])的文档
 在路由阶段无需任何人打开。」后面必须跟 ARCHITECTURE §8 的三条限定。
 **区间不能省** —— 200 份的一个百分数看起来比它实际的精度高。]
@@ -1039,10 +1162,11 @@ D 臂的 `silent_wrong` ≤ B 臂即 P6 成立。
 - [ ] **Step 6: 提交**
 
 ```bash
-.venv/bin/python scripts/freeze_evidence.py --round qual-narrow-2026-08-22 \
+.venv/bin/python scripts/freeze_evidence.py \
+  --round qual-narrow-2026-08-22 --stage arms \
   runs/qual-narrow-2026-08-22/doctouch/doctouch_metrics.json \
   runs/qual-narrow-2026-08-22/doctouch/arms/HAR-0023/routing_report.json
-git add docs/evidence/qual-narrow-2026-08-22/ \
+git add docs/evidence/qual-narrow-2026-08-22/arms/ \
         docs/QUALIFICATION_NARROW_RESULTS_2026-08-23.md
 git commit -m "Report the qualification round on 200 never-touched documents against its five pre-registered predictions."
 ```
@@ -1072,6 +1196,12 @@ Task 6–7 是代码,Task 8–10 是跑轮。
   表里有 / 账本说没看见 → 阻断;表里没有 / 账本说看见了 → 阻断;
   `agree:<值>` 的值与表里冻结的 `displayed_value` 不符 → 阻断。
 - 没有冻结表的 run(demo、旧轮)一切照旧,两个字段不出现。
+- **冻结表本身也要被核。** 只信盘上那份 JSON 是不够的:走中途多注入一个 reader,
+  页面可能显示 `split`,而 `derive` 照样把原 reader 的哈希记进账本;把 TSV 和 JSON
+  一起改掉,两边又自洽。所以 `load()` 每次都重算 —— live TSV 的 sha 必须等于冻结的
+  `artifact_sha256`、`invoice_read.json` 必须等于 `upstream_sha256`、
+  `build_slots()` 的全量结果必须与冻结 `slots` **逐槽相等**;并且当走前副本已经
+  提交进 `docs/evidence/<round>/prewalk/` 时,盘上这份 JSON 必须等于那份副本。
 
 第三条对账正是 P1 覆盖率的**写时**保障:「整套隐藏字段丢失」这种故障在落账那一刻就被挡住,
 不必等到事后统计 —— 而事后统计的分母若取自账本自己,恰恰会让这种故障从分母里消失。
@@ -1148,6 +1278,84 @@ class TestDerive:
                                          "agree:INV-1") is None
         assert suggest_provenance.derive(None, "doc1", "invoice_number",
                                          None) is None
+
+
+class TestLoadVerifiesTheLiveArtifacts:
+    """冻结表说了什么不重要,盘上此刻是什么才重要。"""
+
+    @staticmethod
+    def _run(tmp_path: Path) -> Path:
+        import sys
+
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+        import suggest_provenance_freeze
+
+        run_dir = tmp_path / "run-0001"
+        (run_dir / "vision").mkdir(parents=True)
+        (run_dir / "vision" / "answers6.adk-invoice.tsv").write_text(
+            "doc\tfield\tvalue\tprinted_label\tnote\n"
+            "doc1\tinvoice_number\tINV-1\tNONE\tgemini-3.7-flash\n",
+            encoding="utf-8")
+        (run_dir / "vision" / "invoice_read.json").write_text(json.dumps({
+            "advisory": True, "source": "adk_invoice_read",
+            "model": MODEL,
+            "docs": {"doc1": {"invoice_number": "INV-1", "model": MODEL}},
+            "failed": [],
+        }), encoding="utf-8")
+        suggest_provenance_freeze.freeze(
+            run_dir, tag="adk-invoice", round_name="t",
+            frozen_at="2026-08-25T09:00:00+00:00")
+        return run_dir
+
+    def test_a_clean_run_loads(self, tmp_path):
+        run_dir = self._run(tmp_path)
+        prov = suggest_provenance.load(run_dir, repo_root=tmp_path)
+        assert prov["slots"]["doc1|invoice_number"]["displayed_value"] == "INV-1"
+
+    def test_a_second_reader_injected_after_the_freeze_blocks(self, tmp_path):
+        """走中途多注入一个 tag:页面会因读者分歧显示 split,而按 slot 查表
+        仍查得到原 tag 的哈希 —— 账本会记下一份指错工件的完整溯源。"""
+        run_dir = self._run(tmp_path)
+        (run_dir / "vision" / "answers6.other.tsv").write_text(
+            "doc\tfield\tvalue\tprinted_label\tnote\n"
+            "doc1\tseller_name\tACME\tNONE\tsomething-else\n",
+            encoding="utf-8")
+        with pytest.raises(ValueError, match="冻结之后变过"):
+            suggest_provenance.load(run_dir, repo_root=tmp_path)
+
+    def test_an_edited_display_row_blocks(self, tmp_path):
+        run_dir = self._run(tmp_path)
+        tsv = run_dir / "vision" / "answers6.adk-invoice.tsv"
+        tsv.write_text(tsv.read_text(encoding="utf-8").replace("INV-1", "INV-2"),
+                       encoding="utf-8")
+        with pytest.raises(ValueError, match="冻结之后变过"):
+            suggest_provenance.load(run_dir, repo_root=tmp_path)
+
+    def test_tsv_and_map_edited_together_still_blocks_against_the_repo_copy(
+            self, tmp_path):
+        """两边一起改就自洽了 —— 仓库里那份走前副本是唯一改不动的锚。"""
+        run_dir = self._run(tmp_path)
+        live = run_dir / "vision" / suggest_provenance.FILENAME
+        stage = tmp_path / "docs" / "evidence" / "t" / "prewalk"
+        stage.mkdir(parents=True)
+        import hashlib
+
+        (stage / "MANIFEST.sha256").write_text(
+            f"{hashlib.sha256(live.read_bytes()).hexdigest()}  "
+            f"{suggest_provenance.FILENAME}\n", encoding="utf-8")
+        tsv = run_dir / "vision" / "answers6.adk-invoice.tsv"
+        tsv.write_text(tsv.read_text(encoding="utf-8").replace("INV-1", "INV-2"),
+                       encoding="utf-8")
+        prov = json.loads(live.read_text(encoding="utf-8"))
+        prov["slots"]["doc1|invoice_number"]["displayed_value"] = "INV-2"
+        prov["slots"]["doc1|invoice_number"]["row_sha256"] = hashlib.sha256(
+            b"adk-invoice\tdoc1\tinvoice_number\tINV-2\tNONE\t"
+            b"gemini-3.7-flash").hexdigest()
+        prov["readers"]["adk-invoice"]["artifact_sha256"] = hashlib.sha256(
+            tsv.read_bytes()).hexdigest()
+        live.write_text(json.dumps(prov, ensure_ascii=False), encoding="utf-8")
+        with pytest.raises(ValueError, match="走前副本不符|冻结之后变过"):
+            suggest_provenance.load(run_dir, repo_root=tmp_path)
 
 
 def test_build_map_reads_every_injected_tag(tmp_path):
@@ -1242,12 +1450,82 @@ def build_slots(run_dir: Path) -> dict[str, dict[str, str]]:
     return slots
 
 
-def load(run_dir: Path) -> dict[str, Any] | None:
-    """→ 冻结表;文件不在返回 None(没冻结过建议的 run 照常工作)。"""
+def _file_sha(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _verify_live(run_dir: Path, prov: Mapping[str, Any]) -> None:
+    """盘上此刻的建议,必须逐槽等于走前冻结的那一份。
+
+    只比对 JSON 里记的东西是不够的:走中途多注入一个 tag,页面会因为读者分歧
+    显示 split,而按 slot 查表仍能查到原 tag 的哈希 —— 账本于是记下一份看起来
+    完整、其实指错了工件的溯源。所以这里重算全量 slots 做集合与逐字段比对。
+    """
+    frozen = prov.get("slots") or {}
+    live = build_slots(run_dir)
+    added = sorted(set(live) - set(frozen))
+    removed = sorted(set(frozen) - set(live))
+    drifted = sorted(
+        k for k in set(live) & set(frozen)
+        if any(live[k].get(f) != frozen[k].get(f)
+               for f in ("tag", "displayed_value", "row_sha256")))
+    if added or removed or drifted:
+        raise ValueError(
+            f"建议在冻结之后变过 —— 新增 {added[:5]} / 消失 {removed[:5]} / "
+            f"改动 {drifted[:5]}。走中途补建议或改 TSV 按废臂条款处理,"
+            f"不能悄悄记进账本")
+    for tag, reader in (prov.get("readers") or {}).items():
+        for rel_key, sha_key in (("artifact", "artifact_sha256"),
+                                 ("upstream", "upstream_sha256")):
+            rel = reader.get(rel_key)
+            if not rel:
+                continue
+            path = Path(run_dir) / rel
+            if not path.is_file():
+                raise ValueError(f"tag {tag!r} 的 {rel_key} 工件不见了:{rel}")
+            if _file_sha(path) != reader.get(sha_key):
+                raise ValueError(
+                    f"tag {tag!r} 的 {rel} 内容与冻结的 {sha_key} 不符 —— "
+                    f"人看的不是工件里那份")
+
+
+def _verify_repo_copy(prov: Mapping[str, Any], live_path: Path,
+                      repo_root: Path) -> None:
+    """走前副本已提交时,盘上这份 JSON 必须等于它。
+
+    把 TSV 与 JSON 一起改掉,_verify_live 会两边自洽地放行。仓库里那份
+    走前副本是唯一不在 run 目录里、改不动的锚。
+    """
+    round_name = str(prov.get("round") or "")
+    if not round_name:
+        raise ValueError("冻结表没有 round 名 —— 找不到走前副本就锚不住")
+    manifest = (Path(repo_root) / "docs" / "evidence" / round_name
+                / "prewalk" / "MANIFEST.sha256")
+    if not manifest.is_file():
+        return  # 走前副本尚未提交(开发/测试路径);live 校验仍然生效
+    for line in manifest.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        digest, _, name = line.partition("  ")
+        if name.strip() == FILENAME and digest.strip() != _file_sha(live_path):
+            raise ValueError(
+                f"{FILENAME} 与 {manifest} 里的走前副本不符 —— "
+                f"冻结表在走开始之后被改过")
+
+
+def load(run_dir: Path, *, repo_root: Path | None = None) -> dict[str, Any] | None:
+    """→ 冻结表(已核过);文件不在返回 None(没冻结过建议的 run 照常工作)。
+
+    核验失败抛 ValueError —— 由 append_adjudication 转成「一行都不写」。
+    """
     path = Path(run_dir) / "vision" / FILENAME
     if not path.is_file():
         return None
-    return json.loads(path.read_text(encoding="utf-8"))
+    prov = json.loads(path.read_text(encoding="utf-8"))
+    _verify_live(Path(run_dir), prov)
+    _verify_repo_copy(prov, path,
+                      repo_root or Path(__file__).resolve().parent.parent)
+    return prov
 
 
 def derive(prov: Mapping[str, Any] | None, doc_id: str, field: str,
@@ -1292,7 +1570,9 @@ def derive(prov: Mapping[str, Any] | None, doc_id: str, field: str,
 ```bash
 .venv/bin/python -m pytest tests/test_suggest_provenance.py -q
 ```
-预期:`7 passed`
+预期:`11 passed`(其中 `TestLoadVerifiesTheLiveArtifacts` 依赖 Task 7 的
+`suggest_provenance_freeze`,先写 Task 7 的脚本再回来跑,或让这 4 条暂时红着 ——
+两个任务本来就是一体的,分开只为 commit 粒度)
 
 - [ ] **Step 5: 接进 `append_adjudication`**
 
@@ -1303,6 +1583,8 @@ def derive(prov: Mapping[str, Any] | None, doc_id: str, field: str,
     # 建议溯源:服务端导出,不收调用方给的值。三向对账不过 = 一行都不写。
     from .suggest_provenance import derive, load as load_provenance
 
+    # load 会重算 live TSV / upstream / 全量 slots,并与仓库里的走前副本对锚。
+    # 任何一处对不上抛 ValueError —— 与其他校验同路,一行都不写。
     provenance = derive(load_provenance(run_dir), doc_id, field, suggestion_seen)
 ```
 
@@ -1547,7 +1829,7 @@ if __name__ == "__main__":
 ```bash
 .venv/bin/python -m pytest tests/test_suggest_provenance.py -q
 ```
-预期:`10 passed`
+预期:`14 passed`
 
 - [ ] **Step 5: 提交**
 
@@ -1594,13 +1876,16 @@ SALT = "invoiceloop-qual-adk-walk-v1"
 AUTO = ("auto_accept", "auto_absent")
 
 
-def eligible(routes: list[dict], policy: dict) -> list[str]:
-    """工作台**真的会排进队列**的槽 ≥1 的文档。
+def queue_slots(routes: list[dict], policy: dict) -> list[tuple[str, str]]:
+    """工作台**真的会排进队列**的 (doc_id, field)。
 
     不能用「任意非 auto 路由」:HAR-0023 带 release_profile,工作台走的是
     workbench._walk_release_profile —— 只有 gating 字段的待裁决槽和 QA 探针
     进队列。按非 auto 抽,会抽到打开之后队列是空的文档。
     这里复用同一个谓词,改了那边这里必须跟着改。
+
+    Task 10 的完整性闸也吃这个函数:「该走的槽走完了没有」与「该抽哪些文档」
+    必须是同一个定义,两处各写一遍迟早会分叉。
     """
     profile = parse_release_profile(policy or {})
     gate = profile["fields"] if profile else None
@@ -1612,8 +1897,13 @@ def eligible(routes: list[dict], policy: dict) -> list[str]:
         if in_q is None:
             in_q = row.get("route") not in AUTO
         if is_qa or (in_q and (gate is None or row["field"] in gate)):
-            out.add(str(row["doc_id"]))
+            out.add((str(row["doc_id"]), str(row["field"])))
     return sorted(out)
+
+
+def eligible(routes: list[dict], policy: dict) -> list[str]:
+    """队列槽 ≥1 的文档。"""
+    return sorted({doc for doc, _ in queue_slots(routes, policy)})
 
 
 def pick(doc_ids: list[str], n: int) -> list[str]:
@@ -1724,7 +2014,43 @@ def test_census_policy_keeps_every_review_slot():
 `eligible_n` 是**队列口径**的合格数,会明显小于「非 auto 路由的文档数」——
 两者相等说明谓词没生效,停下来查。
 
-- [ ] **Step 3: 写行走协议正文**
+- [ ] **Step 3: 定模型并做真实探针(必须在协议冻结之前)**
+
+协议 §3 要写死模型名,所以模型必须在这条 commit 之前定完、并且**真的调通过**。
+第一版把这一步排在 Task 9,那时协议已经冻结了 —— 顺序自相矛盾。
+
+代码默认是 `gemini-3.7-flash`(`invoiceloop/agents/runtime.py:27`),ATA 的 08-07
+存证用的是 `gemini-3.6-flash`。**用默认的 3.7**:硬性要求只说 Gemini 3.5+,3.7 满足;
+跟着代码默认走可以少一处「文档说 A、代码跑 B」的裂缝。
+
+探针必须是**一次真实调用**,不是打印常量。用仓库内嵌样本,不碰资格集
+(资格集的任何一份在行走轮开始前都不许被模型看过):
+
+```bash
+set -a && . ./.env && set +a && \
+.venv/bin/python -m invoiceloop demo --out /tmp/adk-probe >/dev/null && \
+.venv/bin/python -c "
+import json, pathlib, sys
+sys.path.insert(0, '.')
+from invoiceloop.agents.invoice_read import load_page_images, make_invoice_reader
+from invoiceloop.agents.runtime import DEFAULT_GEMINI_MODEL
+run = sorted(pathlib.Path('/tmp/adk-probe/runs').glob('run-*'))[-1]
+doc = sorted({r['doc_id'] for r in json.loads(
+    (run / 'support_matrix.json').read_text())['rows']})[0]
+read = make_invoice_reader(model=DEFAULT_GEMINI_MODEL, workspace=pathlib.Path('/tmp/adk-probe'))
+out = read(doc, load_page_images(run, doc))
+print('model', DEFAULT_GEMINI_MODEL, '| confidence', out.confidence,
+      '| seller', (out.seller_name or out.station_or_publication)[:40])
+"
+```
+预期:一行,含 `model gemini-3.7-flash` 与一个非空读法。**调不通就停在这里** ——
+把 `DEFAULT_GEMINI_MODEL` 换成能调通的那个,写进协议 §3,再往下走。冻结之后不许换。
+
+```bash
+rm -rf /tmp/adk-probe
+```
+
+- [ ] **Step 4: 写行走协议正文**
 
 新建 `docs/QUAL_ADK_WALK_PROTOCOL_2026-08-24.md`,把 Step 2 打印的两个 sha256 填进 §2:
 
@@ -1746,7 +2072,7 @@ agent(Gemini,走 google-adk)以**协议内一等公民**身份参与人工行走
 ## 2. 行走集
 
 - 来源:`runs/qual-narrow-2026-08-22/doctouch/arms/HAR-0023/routing_report.json`
-- 合格条件:臂 D 下 `workbench._walk_release_profile` 会排进队列的槽 ≥1 —— 
+- 合格条件:臂 D 下 `workbench._walk_release_profile` 会排进队列的槽 ≥1 ——
   即 **gating 字段(invoice_number / seller_name / amount_due)的待裁决槽,或 QA 探针**。
   用「任意非 auto 路由」会抽到打开后队列为空的文档。合格 [填] 份,`eligible_sha256` = `<抄 Step 2>`
 - 抽样:最小哈希,盐 `invoiceloop-qual-adk-walk-v1`,取 20 份。
@@ -1760,6 +2086,9 @@ agent(Gemini,走 google-adk)以**协议内一等公民**身份参与人工行走
 修掉 HITL-narrow 自认混淆里的两条(中途注入、中途改协议)。
 
 1. 20 份的建议在**任何裁决开始之前**全部生成完毕。
+0. 模型在本协议冻结之前定完并真实调通:**`gemini-3.7-flash`**
+   (`invoiceloop/agents/runtime.py::DEFAULT_GEMINI_MODEL`)。探针用仓库内嵌样本,
+   不碰资格集。冻结之后换模型 = 废臂。
 2. 生成完立刻冻结成溯源工件:`scripts/suggest_provenance_freeze.py` 写
    `vision/suggestion_provenance.json`,含每份读法的 sha256、全轮一份的
    prompt digest 与 schema digest。该文件已存在则拒绝覆盖。
@@ -1791,7 +2120,7 @@ agent(Gemini,走 google-adk)以**协议内一等公民**身份参与人工行走
 含学习效应混淆(第二十份比第一份熟),照登不修正。
 ```
 
-- [ ] **Step 4: 提交 —— 这一条 commit 必须先于任何裁决**
+- [ ] **Step 5: 提交 —— 这一条 commit 必须先于任何裁决**
 
 ```bash
 git add scripts/qual_walk_plan.py tests/test_qual_walk_plan.py \
@@ -1899,13 +2228,37 @@ def main() -> None:
              "missing": stats["missing"]}, ensure_ascii=False, indent=1))
 
     run_dir = ws / "runs" / "run-0001"
-    if not run_dir.exists():
-        with _corpus_environment(ws), frozen_harness(_har0023_active()):
+    active = _har0023_active()
+    identity = {
+        "harness_id": active["harness_id"],
+        "policy_digest": active["policy_digest"],
+        "policy_sha256": active["policy_sha256"],
+        "schema_sha256": active["schema_sha256"],
+        "doc_ids_sha256": hashlib.sha256(
+            "\n".join(doc_ids).encode("utf-8")).hexdigest(),
+        "protocol": "docs/QUAL_ADK_WALK_PROTOCOL_2026-08-24.md",
+    }
+    id_path = run_dir / "run_identity.json"
+    if run_dir.exists():
+        # 「目录在就重放」会把上一次用别的策略/名单跑出来的东西当成这一次的。
+        # doctouch_arms 的臂目录踩过同一个坑,这里同样处理。
+        prior = json.loads(id_path.read_text(encoding="utf-8")) \
+            if id_path.is_file() else None
+        if prior != identity:
+            raise SystemExit(json.dumps({
+                "fatal": "run 已存在,但策略/schema/名单与本次不同 —— "
+                         "复用它会把上一次的结果当成这一次的",
+                "prior": prior, "now": identity,
+            }, ensure_ascii=False, indent=1))
+        print(f"run 已存在且身份一致,重放:{run_dir}")
+    else:
+        with _corpus_environment(ws), frozen_harness(active):
             pipeline.run(doc_ids, run_dir,
                          render_crops=not args.no_crops,
                          include_vision=False, out_of_calibration=True)
-    else:
-        print(f"run 已存在,重放:{run_dir}")
+        id_path.write_text(
+            json.dumps(identity, ensure_ascii=False, indent=1) + "\n",
+            encoding="utf-8")
 
     (ws / "runs" / "current.json").write_text(
         json.dumps({"run": "run-0001"}) + "\n", encoding="utf-8")
@@ -1929,32 +2282,158 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 2: 装配并跑流水线**
+- [ ] **Step 2: 先提交 setup 脚本,再跑它**
+
+`snapshot._code_revision` 跑的是 `git status --porcelain --untracked-files=no`
+(`invoiceloop/snapshot.py:62-64`)—— **未跟踪的文件不算脏**。所以拿一个还没提交的
+`qual_adk_walk_setup.py` 起 run,`input_manifest` 里会盖一个干干净净的 HEAD sha,
+而「这批数字是哪份代码产生的」这个指纹于是是假的。顺序必须是先提交后跑。
+
+```bash
+.venv/bin/python -m pytest tests/test_qual_walk_plan.py tests/test_freeze_evidence.py \
+  tests/test_suggest_provenance.py -q
+git add scripts/qual_adk_walk_setup.py
+git commit -m "Add the ADK walk setup: assemble from the qualification corpus and run HAR-0023 frozen."
+git status --porcelain --untracked-files=no
+```
+预期:测试全绿;最后一条**无输出**(工作树干净),否则 run 会被盖上假指纹。
+
+- [ ] **Step 3: 装配并跑流水线**
 
 ```bash
 .venv/bin/python scripts/qual_adk_walk_setup.py
 ```
 预期:一段 JSON,`docs: 20`、`harness_id: "HAR-0023"`、`touch` 里 `docs: 20`、以及两条 next 命令。
 
-- [ ] **Step 3: 定模型并验可用(协议冻结前必须做完)**
+- [ ] **Step 4: 写 `scripts/writeset.py` 与它的测试**
 
-代码默认是 `gemini-3.7-flash`(`invoiceloop/agents/runtime.py:27`),而 ATA 的
-08-07 存证用的是 `gemini-3.6-flash`。**用默认的 3.7**,理由:硬性要求只说
-Gemini 3.5+,3.7 满足;跟着代码默认走可以少一个「文档说 A、代码跑 B」的裂缝。
-定下来之后写进协议 §3,冻结后不再换(换模型 = 废臂)。
+P5「零权威」原先只查了三件事,其中最实的一条是「没有裁决署名是模型名」——
+那只证明没人把模型名填进 `adjudicator`,证明不了 agent 没动过别的东西。
+真要证的是:模型那一趟**只碰了 `vision/` 与 `agent_calls/`**,账本、门禁报告、
+快照一个字节没动。
 
-先用一份文档验通,再跑全量:
+新建 `scripts/writeset.py`:
+
+```python
+#!/usr/bin/env python3
+"""run 目录的文件哈希快照与差集 —— 用来证明某一趟只动了该动的东西。
+
+snapshot 存一份 {相对路径: sha256};diff 拿旧快照与当前状态比,
+输出新增/删除/改动的相对路径。零依赖,不读墙钟。
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+
+
+def snapshot(run_dir: Path) -> dict[str, str]:
+    run_dir = Path(run_dir)
+    out = {}
+    for path in sorted(run_dir.rglob("*")):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(run_dir).as_posix()
+        out[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return out
+
+
+def diff(before: dict[str, str], after: dict[str, str]) -> dict:
+    added = sorted(set(after) - set(before))
+    removed = sorted(set(before) - set(after))
+    modified = sorted(k for k in set(before) & set(after)
+                      if before[k] != after[k])
+    return {"added": added, "removed": removed, "modified": modified,
+            "changed": sorted(added + removed + modified)}
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("command", choices=("snapshot", "diff"))
+    ap.add_argument("--run-dir", required=True, type=Path)
+    ap.add_argument("--out", required=True, type=Path)
+    ap.add_argument("--before", type=Path,
+                    help="diff 用:之前那份快照")
+    args = ap.parse_args()
+    if args.command == "snapshot":
+        payload = snapshot(args.run_dir)
+    else:
+        if args.before is None:
+            raise SystemExit("diff 需要 --before")
+        payload = diff(json.loads(args.before.read_text(encoding="utf-8")),
+                       snapshot(args.run_dir))
+    args.out.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=1) + "\n",
+        encoding="utf-8")
+    print(json.dumps(payload if args.command == "diff"
+                     else {"files": len(payload)},
+                     ensure_ascii=False, indent=1))
+
+
+if __name__ == "__main__":
+    main()
+```
+
+新建 `tests/test_writeset.py`:
+
+```python
+"""写集:证明某一趟只动了该动的东西。改了账本却报"干净"是这里唯一要挡的失败。"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+
+import writeset  # noqa: E402
+
+
+def test_a_modified_ledger_shows_up_as_changed(tmp_path):
+    """agent 那一趟若碰了 adjudication_ledger.jsonl,P5 必须看得见。"""
+    (tmp_path / "vision").mkdir()
+    ledger = tmp_path / "adjudication_ledger.jsonl"
+    ledger.write_text("{}\n", encoding="utf-8")
+    before = writeset.snapshot(tmp_path)
+    ledger.write_text("{}\n{}\n", encoding="utf-8")
+    (tmp_path / "vision" / "answers6.adk-invoice.tsv").write_text(
+        "x\n", encoding="utf-8")
+    d = writeset.diff(before, writeset.snapshot(tmp_path))
+    assert "adjudication_ledger.jsonl" in d["modified"]
+    assert "vision/answers6.adk-invoice.tsv" in d["added"]
+    assert [x for x in d["changed"] if not x.startswith("vision/")] == \
+        ["adjudication_ledger.jsonl"]
+
+
+def test_a_deleted_artifact_is_not_silently_clean(tmp_path):
+    """只比"现在有什么"会把删除当成没发生。"""
+    (tmp_path / "gate_report.json").write_text("{}", encoding="utf-8")
+    before = writeset.snapshot(tmp_path)
+    (tmp_path / "gate_report.json").unlink()
+    assert writeset.diff(before, writeset.snapshot(tmp_path))["removed"] == \
+        ["gate_report.json"]
+```
 
 ```bash
-set -a && . ./.env && set +a && \
-.venv/bin/python -c "
-from invoiceloop.agents.runtime import DEFAULT_GEMINI_MODEL
-print('default model =', DEFAULT_GEMINI_MODEL)
-"
+.venv/bin/python -m pytest tests/test_writeset.py -q
+git add scripts/writeset.py tests/test_writeset.py
+git commit -m "Record what a run directory looked like before and after, so zero authority can be shown as a write-set rather than an absent signature."
 ```
-预期:`default model = gemini-3.7-flash`。与协议 §3 写的不一致就停下来,先对齐再冻结。
+预期:`2 passed`
 
-- [ ] **Step 4: 预生成 20 份建议(唯一的 Gemini 花费)**
+- [ ] **Step 5: 记录 ADK 跑之前的写集**
+
+```bash
+.venv/bin/python scripts/writeset.py snapshot \
+  --run-dir runs/qual-adk-walk/runs/run-0001 \
+  --out runs/qual-adk-walk/writeset_before.json
+```
+预期:`{"files": <数百>}`
+
+- [ ] **Step 6: 预生成 20 份建议(唯一的 Gemini 花费,模型已在 Task 8 Step 3 冻结)**
 
 不传 `--model`,让它走 `DEFAULT_GEMINI_MODEL` —— 写死一个字符串就是再造一处会漂的真相。
 
@@ -1966,7 +2445,18 @@ set -a && . ./.env && set +a && \
 预期:逐份打印 `[i/20] <doc_id>`,末尾一段 JSON 含 `"docs": 20`、`"failed": []`、`"injected"`。
 `failed` 非空则退出码为 1 —— 把失败明细带进结果文档,**不要为了凑满 20 而重跑换模型**(换模型 = 废臂)。
 
-- [ ] **Step 5: 冻结溯源工件(裁决开始之前的最后一步)**
+- [ ] **Step 7: 算 ADK 那一趟的写集**
+
+```bash
+.venv/bin/python scripts/writeset.py diff \
+  --run-dir runs/qual-adk-walk/runs/run-0001 \
+  --before runs/qual-adk-walk/writeset_before.json \
+  --out runs/qual-adk-walk/runs/run-0001/agent_writeset.json
+```
+预期:`changed` 里**每一项**都以 `vision/` 或 `agent_calls/` 开头。
+出现别的路径就停下来 —— 那是 P5 的实证反例,不是噪声。
+
+- [ ] **Step 8: 冻结溯源工件**
 
 ```bash
 .venv/bin/python scripts/suggest_provenance_freeze.py \
@@ -1976,21 +2466,23 @@ set -a && . ./.env && set +a && \
 ```
 预期:一段 JSON,`frozen_slots` 约 40–80(20 份 × 每份 1–4 个字段)、`model: "gemini-3.7-flash"`、工件哈希与两个 digest 前缀。
 
-- [ ] **Step 6: 提交冻结状态 —— 这一条 commit 必须先于第一条裁决**
+- [ ] **Step 9: 提交冻结状态 —— 这一条 commit 必须先于第一条裁决**
 
 ```bash
-.venv/bin/python scripts/freeze_evidence.py --round qual-adk-walk-2026-08-25 \
+.venv/bin/python scripts/freeze_evidence.py \
+  --round qual-adk-walk-2026-08-25 --stage prewalk \
   runs/qual-adk-walk/runs/run-0001/vision/invoice_read.json \
   runs/qual-adk-walk/runs/run-0001/vision/suggestion_provenance.json \
-  runs/qual-adk-walk/runs/run-0001/vision/answers6.adk-invoice.tsv
-git add scripts/qual_adk_walk_setup.py docs/evidence/qual-adk-walk-2026-08-25/
+  runs/qual-adk-walk/runs/run-0001/vision/answers6.adk-invoice.tsv \
+  runs/qual-adk-walk/runs/run-0001/agent_writeset.json
+git add docs/evidence/qual-adk-walk-2026-08-25/prewalk/
 git commit -m "Pre-generate and freeze all twenty ADK readings before a single slot is adjudicated."
 ```
 
 `runs/` 是 gitignored symlink,直接 `git add runs/...` 不成立 —— 必须走 `freeze_evidence.py`
 把副本放进 `docs/evidence/`,这条 commit 才真的是「裁决前的冻结锚点」。
 
-- [ ] **Step 7: 走**
+- [ ] **Step 10: 走**
 
 ```bash
 .venv/bin/python -m invoiceloop workbench --workspace runs/qual-adk-walk --port 8793
@@ -2022,12 +2514,13 @@ for line in sys.stdin:
 
 3. 协议不许中途改。想改 = 停下来,按废臂条款声明。
 
-- [ ] **Step 8: 提交账本**
+- [ ] **Step 11: 提交账本**
 
 ```bash
-.venv/bin/python scripts/freeze_evidence.py --round qual-adk-walk-2026-08-25 \
+.venv/bin/python scripts/freeze_evidence.py \
+  --round qual-adk-walk-2026-08-25 --stage postwalk \
   runs/qual-adk-walk/runs/run-0001/adjudication_ledger.jsonl
-git add docs/evidence/qual-adk-walk-2026-08-25/
+git add docs/evidence/qual-adk-walk-2026-08-25/postwalk/
 git commit -m "Record the twenty-document ADK walk: every slot the agent spoke on carries its artifact digest and model id."
 ```
 
@@ -2061,49 +2554,86 @@ sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "scripts"))
 
 import hitl_round_analyze  # noqa: E402
+import qual_walk_plan  # noqa: E402
 from invoiceloop import suggest_provenance  # noqa: E402
 from invoiceloop.fields import FIELD_KINDS, normalise  # noqa: E402
 
 
-def provenance_coverage(entries: list[dict], prov: dict) -> dict:
-    """P1:走前冻结的建议槽,裁决过的那些是不是 100% 带完整溯源。
+def exposure_sets(run_dir: Path, prov: dict, entries: list[dict]) -> dict:
+    """四类曝光分开数 —— 混在一起就会把「agent 参与了」说得比事实大。
 
-    **分母来自冻结表,不来自账本。** 第一版是「统计已有 suggestion_seen 的
-    账本行」—— 那样一来,「该展示建议的槽,账本一个字没记」这个最该被发现的
-    故障会直接从分母里消失,覆盖率照样 100%。分母必须是外部的:
-    冻结表的槽 ∩ 实际裁决过的槽。
-
-    (append_adjudication 的三向对账已经在写时挡住了这类故障,所以这里正常
-    应当为 0 缺口。两道防线不冗余:写时挡的是新账本,这里查的是既有账本 ——
-    包括对账逻辑上线之前写的行。)
+    HITL-narrow 实测(2026-08-14 那一轮,本计划写作时复算):
+    队列槽 32,其中**只有 19 个有字段级建议**,13 个没有;而 16 份队列文档
+    **全部**显示了文档级 ADK 卡片。所以「文档卡曝光」和「字段建议曝光」是
+    两个数,「agent 在每个槽都发言」是假的。
     """
-    frozen = set(prov.get("slots") or {})
+    routing = json.loads(
+        (run_dir / "routing_report.json").read_text(encoding="utf-8"))
+    expected = {f"{d}|{f}" for d, f in
+                qual_walk_plan.queue_slots(routing["routes"],
+                                           routing.get("policy") or {})}
+    reading = json.loads((run_dir / "vision" / "invoice_read.json")
+                         .read_text(encoding="utf-8"))
+    card_docs = set(reading.get("docs") or {})
+    field_slots = set(prov.get("slots") or {})
+    adjudicated = {f"{e['doc_id']}|{e['field']}" for e in entries}
+    return {
+        "expected_queue_slots": len(expected),
+        "expected_queue_docs": len({k.split("|")[0] for k in expected}),
+        "document_card_docs": len(card_docs),
+        "queue_docs_with_a_card": len(
+            {k.split("|")[0] for k in expected} & card_docs),
+        "field_suggestion_slots": len(field_slots),
+        "queue_slots_with_a_field_suggestion": len(expected & field_slots),
+        "queue_slots_without_a_field_suggestion": sorted(expected - field_slots),
+        "adjudicated_slots": len(adjudicated),
+        "queue_slots_not_adjudicated": sorted(expected - adjudicated),
+        "adjudicated_outside_the_queue": sorted(adjudicated - expected),
+        "walk_complete": not (expected - adjudicated),
+        "_expected": sorted(expected),
+        "_adjudicated": sorted(adjudicated),
+    }
+
+
+def provenance_coverage(entries: list[dict], prov: dict, sets: dict) -> dict:
+    """P1:该走的槽走完之后,其中有建议的每一槽是不是都带**正确**的溯源。
+
+    两处与第一版不同,都是被挑出来的:
+
+    1. **先过完整性闸。** 分母取 frozen ∩ adjudicated 的话,没走完的槽会
+       自己从分母消失 —— 走一半也能得 100%。所以 walk_complete 为假时
+       coverage 照算但 P1 **不可评**,不许写成成立。
+    2. **逐槽精确相等,不是非空。** 三个字段填着别的哈希一样"非空"。
+       期望值由 suggest_provenance.derive 重新导出,与账本逐字节比。
+    """
+    frozen = prov.get("slots") or {}
     latest: dict[str, dict] = {}
     for entry in sorted(entries, key=lambda e: e["seq"]):
         latest[f"{entry['doc_id']}|{entry['field']}"] = entry
-    adjudicated = set(latest)
-    denom_keys = sorted(frozen & adjudicated)
-    complete = 0
+    denom_keys = [k for k in sets["_expected"]
+                  if k in frozen and k in latest]
+    exact = 0
     gaps = []
     for key in denom_keys:
         entry = latest[key]
-        missing = [name for name in ("suggestion_seen",
-                                     "suggestion_artifact_sha256",
-                                     "suggestion_model")
-                   if not entry.get(name)]
-        if not missing:
-            complete += 1
+        doc_id, field = key.split("|", 1)
+        want = suggest_provenance.derive(
+            prov, doc_id, field, entry.get("suggestion_seen"))
+        got = (entry.get("suggestion_artifact_sha256"),
+               entry.get("suggestion_model"))
+        if want is not None and got == want:
+            exact += 1
         else:
             gaps.append({"decision_id": entry["decision_id"], "slot": key,
-                         "missing": missing})
+                         "want": want, "got": got})
     return {
-        "frozen_slots": len(frozen),
-        "adjudicated_slots": len(adjudicated),
-        "frozen_and_adjudicated": len(denom_keys),
-        "with_full_provenance": complete,
-        "coverage": round(complete / len(denom_keys), 4) if denom_keys else None,
+        "walk_complete": sets["walk_complete"],
+        "evaluable": sets["walk_complete"] and bool(denom_keys),
+        "denominator": "预期队列槽 ∩ 冻结建议槽 ∩ 已裁决槽",
+        "denominator_n": len(denom_keys),
+        "with_exact_provenance": exact,
+        "coverage": round(exact / len(denom_keys), 4) if denom_keys else None,
         "gaps": gaps,
-        "adjudicated_but_never_frozen": sorted(adjudicated - frozen),
     }
 
 
@@ -2157,12 +2687,30 @@ def authority_violations(entries: list[dict], prov: dict, run_dir: Path) -> dict
     claims_drafted_by_agent = [
         c["claim_id"] for c in claims
         if str(c.get("drafted_by") or "") in (models | tags)]
+    # 写集:ADK 跑之前/之后 run 目录的文件哈希差集(Task 9 Step 4 记的)。
+    # 只查署名字符串证明不了「agent 没有权威」—— 它只证明没人把模型名填进
+    # adjudicator。真正要证的是:模型那一趟只碰了 vision/ 与 agent_calls/,
+    # 账本、门禁报告、快照一个字节没动。
+    ws_path = run_dir / "agent_writeset.json"
+    writeset_ok = None
+    unexpected_writes: list[str] = []
+    if ws_path.is_file():
+        ws = json.loads(ws_path.read_text(encoding="utf-8"))
+        allowed = ("vision/", "agent_calls/")
+        unexpected_writes = sorted(
+            path for path in (ws.get("changed") or [])
+            if not path.startswith(allowed))
+        writeset_ok = not unexpected_writes
     return {
         "decisions_signed_by_a_model": signed_by_model,
         "suggestion_paths_in_snapshot_contract": suggestion_in_contract,
         "claims_drafted_by_the_agent": claims_drafted_by_agent,
+        "agent_writeset_recorded": writeset_ok is not None,
+        "agent_writeset_clean": writeset_ok,
+        "unexpected_writes": unexpected_writes,
         "clean": not (signed_by_model or suggestion_in_contract
-                      or claims_drafted_by_agent),
+                      or claims_drafted_by_agent or unexpected_writes)
+                 and writeset_ok is True,
     }
 
 
@@ -2178,9 +2726,11 @@ def main() -> None:
     claims = {c["claim_id"]: c for c in json.loads(
         (run_dir / "field_ledger.json").read_text())["claims"]}
     prov = suggest_provenance.load(run_dir) or {}
+    sets = exposure_sets(run_dir, prov, entries)
     print(json.dumps({
         **base,
-        "P1_provenance": provenance_coverage(entries, prov),
+        "exposure": {k: v for k, v in sets.items() if not k.startswith("_")},
+        "P1_provenance": provenance_coverage(entries, prov, sets),
         "P2_adoption": base["suggestions"],
         "P3_timing": base["timing"],
         "P4_model_dissent_adopted": model_dissent_adopted(entries, claims),
@@ -2204,11 +2754,15 @@ if __name__ == "__main__":
 .venv/bin/python -c "
 import json, pathlib
 a = json.loads(pathlib.Path('runs/qual-adk-walk/walk_analysis.json').read_text())
-print('P1 覆盖', a['P1_provenance']['with_full_provenance'], '/',
-      a['P1_provenance']['frozen_and_adjudicated'],
-      '=', a['P1_provenance']['coverage'],
-      '| 冻结槽', a['P1_provenance']['frozen_slots'],
-      '| 裁决过但没冻结', len(a['P1_provenance']['adjudicated_but_never_frozen']))
+e = a['exposure']
+print('队列槽', e['expected_queue_slots'], '| 走完了吗', e['walk_complete'],
+      '| 没走的', len(e['queue_slots_not_adjudicated']))
+print('文档卡', e['queue_docs_with_a_card'], '/', e['expected_queue_docs'], '份文档',
+      '| 字段建议', e['queue_slots_with_a_field_suggestion'], '/',
+      e['expected_queue_slots'], '槽')
+print('P1 精确溯源', a['P1_provenance']['with_exact_provenance'], '/',
+      a['P1_provenance']['denominator_n'], '=', a['P1_provenance']['coverage'],
+      '| 可评', a['P1_provenance']['evaluable'])
 print('P2 采纳', a['P2_adoption']['adopted'], '/',
       a['P2_adoption']['agree_slots'], '=', a['P2_adoption']['adoption_rate'])
 print('P3 中位', a['P3_timing']['median_seconds'], 's  (n_timed',
@@ -2217,7 +2771,13 @@ print('P4 模型异议被采纳', a['P4_model_dissent_adopted']['n'])
 print('P5 零权威', a['P5_authority']['clean'])
 "
 ```
-预期:五行。P1 应当是 `1.0` 且「裁决过但没冻结」为 0;P5 应当是 `True`。
+预期:七行。`walk_complete` 必须为 `True`(队列没走完 → P1 不可评,不许写成成立);
+P1 `coverage` 应当是 `1.0` 且 `evaluable` 为 `True`;P5 `clean` 为 `True`。
+
+**「字段建议 / 队列槽」这一行不会是 1:1。** HITL-narrow 实测 19/32 ——
+41% 的队列槽没有字段级建议,而 16/16 份队列文档都显示了文档级 ADK 卡片。
+本轮大概率同样。这个数照登,它正是「文档卡曝光 ≠ 字段建议曝光」的证据。
+
 P2/P3/P4 是实测,好坏都照登。P1 不是 1.0 就把 `gaps` 明细贴进结果文档 §0,按阻断处理。
 
 - [ ] **Step 3: 写结果文档**
@@ -2228,7 +2788,8 @@ P2/P3/P4 是实测,好坏都照登。P1 不是 1.0 就把 `gaps` 明细贴进结
 # QUAL_ADK_WALK_2026-08-24 结果(n=20 文档)
 
 协议:`docs/QUAL_ADK_WALK_PROTOCOL_2026-08-24.md`(冻结于第一条裁决之前)
-数据:`runs/qual-adk-walk/walk_analysis.json`
+数据:`docs/evidence/qual-adk-walk-2026-08-25/analysis/walk_analysis.json`
+走前工件:`docs/evidence/qual-adk-walk-2026-08-25/prewalk/`(冻结先于第一条裁决)
 账本:`runs/qual-adk-walk/runs/run-0001/adjudication_ledger.jsonl`(sha256 见分析输出)
 复算:零 API。
 
@@ -2249,12 +2810,27 @@ P2/P3/P4 是实测,好坏都照登。P1 不是 1.0 就把 `gaps` 明细贴进结
 | P4 | 模型异议被采纳 ≥ 1 槽 | [填] | [成立 / 不成立] |
 | P5 | 零权威违反 | [填] | [成立 / 不成立] |
 
+## 1b. 曝光分层(三个数不是一个数)
+
+| | 数 |
+|---|---|
+| 预期队列槽(HAR-0023 下工作台真会排的) | [填] |
+| 其中有**字段级**建议的槽 | [填] |
+| 其中没有字段级建议的槽 | [填] |
+| 队列文档 / 其中显示了**文档级** ADK 卡片的 | [填] / [填] |
+
+HITL-narrow(2026-08-14)同口径复算:队列槽 32,有字段建议的 19,没有的 13;
+队列文档 16 份**全部**显示了文档卡。所以「agent 在每个槽都发言」不成立,
+成立的是「agent 在每份文档上都发言,在约六成的槽上给到了字段级建议」。
+本轮按同样的分层报,不合并。
+
 ## 2. 「有机结合」到底证明了什么
 
-**证明了**:一个模型可以在一条人工审批流程里从第一槽就在场、每次发言都在
-账本上留下可复算的溯源(哪份工件、哪个模型、什么时候冻结的),而**完全不持有
-任何权威** —— 它不能接受、不能拒绝、不能改闸,它的输出连 review_snapshot
-的 components 都进不去。P1 与 P5 是这句话的两条可测证据。
+**证明了**:一个模型可以在一条人工审批流程里**从第一槽就在场**(文档级卡片覆盖
+全部队列文档)、**凡它出过字段级建议的槽**都在账本上留下可复算且精确匹配的溯源
+(哪份工件、哪个模型、什么时候冻结的),而**完全不持有任何权威** —— 它不能接受、不能拒绝、不能改闸,它的输出连 review_snapshot
+的 components 都进不去。P1 与 P5 是这句话的两条可测证据 —— P1 的分母是**预期队列槽 ∩ 冻结建议槽 ∩ 已裁决槽**
+且队列必须走完,P5 靠 ADK 那一趟的写集(只碰 `vision/` 与 `agent_calls/`)而不是署名字符串。
 
 **没证明**:模型的建议让人更快或更准。P3 是同一个人走 20 份的中位耗时,含
 学习效应混淆,没有对照组。P2 的采纳率不是准确率 —— 人采纳了不等于对。
@@ -2274,7 +2850,11 @@ P2/P3/P4 是实测,好坏都照登。P1 不是 1.0 就把 `gaps` 明细贴进结
 - [ ] **Step 4: 提交**
 
 ```bash
-git add scripts/qual_walk_analyze.py runs/qual-adk-walk/walk_analysis.json \
+.venv/bin/python scripts/freeze_evidence.py \
+  --round qual-adk-walk-2026-08-25 --stage analysis \
+  runs/qual-adk-walk/walk_analysis.json
+git add scripts/qual_walk_analyze.py \
+        docs/evidence/qual-adk-walk-2026-08-25/analysis/ \
         docs/QUAL_ADK_WALK_RESULTS_2026-08-25.md
 git commit -m "Report the ADK walk against its five predictions: the agent spoke on every slot it was given and held no authority on any of them."
 ```
@@ -2393,11 +2973,14 @@ the claim we make is the claim we can check.
 `README.md` 第 20 行附近那半句论证补全成一段:
 
 ```markdown
-**Where this mechanism generalises.** Nothing in the six gates knows what an
-invoice is. They know that a claimed value must be locatable on a page, that
-an independent reading of that page must contain it, that two extraction modes
-must agree, and that arithmetic between claimed values must hold. That set of
-questions applies to any document domain where the support relation is
+**Where this mechanism generalises.** Parts of this system are invoice-specific
+and parts are not, and the distinction is the whole point. Invoice-specific:
+the field schema, the amount identity (net + tax = gross), the cross-document
+duplicate-invoice-number check, and the document-type gate. Domain-neutral: the
+*binding* core — the rule that
+an independent reading of that page must contain it, and that two independent extraction modes
+must agree. Porting to another domain means keeping the binding core and
+rewriting the domain checks. That core applies wherever the support relation is
 geometric — where "is this true?" reduces to "is this on the page, here?"
 Receipts, purchase orders, bills of lading, remittance advices, and delivery
 notes all *appear* to fall inside it: each is a page with printed values whose
@@ -2616,7 +3199,7 @@ git status --short
 | 8/22 D1 | 0–4 | 证据落盘助手 + 抽样器 + 名单过滤 + 冻结协议 → 后台启动 400 次提取(~1.5h) |
 | 8/23 D2 | 5 | 四臂跑完,写资格集结果文档(P1–P5 对照) |
 | 8/24 D3 | 6–8 | 溯源导出与对账 + 冻结工件脚本 + 抽行走集 + 冻结行走协议 |
-| 8/25 D4 | 9 | 装配、预生成 20 份建议、冻结工件、走完 20 份 |
+| 8/25 D4 | 9 | 提交 setup → 装配 → 写集快照 → 预生成 20 份建议 → 写集差集 → 冻结工件 → 走完队列 |
 | 8/26 D5 | 10 | 行走结果 P1–P5,写结果文档 |
 | 8/27 D6 | 11 | lint 回归 + 便宜分 + 诚实重跑自评 |
 | 8/28 D7 | 12 | 录制、剪辑、表单、README、披露刷新 |
@@ -2628,8 +3211,14 @@ git status --short
 - 提取失败 = blocking 记录,不跳过、不补抽、不缩样本。
 - 协议文本冻结后不改;改了 = 臂不干净,照登。
 - 预测错了照登,不回改预测。
-- 所有新代码带测试,且每条测试钉住一个用户可见的失败(抽样器可复算、
-  名单缺件阻断、半份溯源被拒、放行契约不被机器改宽)。
+- **带测试的是会静默出错的东西**,每条测试钉住一个用户可见的失败:抽样器可复算
+  (`test_qualify`)、名单缺件阻断(`test_doctouch_arms_doclist`)、冻结清单不被改写
+  (`test_freeze_evidence`)、溯源三向对账与 live 核验(`test_suggest_provenance`)、
+  行走集与队列同谓词(`test_qual_walk_plan`)、写集看得见账本被动过(`test_writeset`)、
+  放行契约不被机器改宽(`test_lint_release_profile`)。
+  **没有单测的是编排脚本**(`qual_adk_walk_setup.py`、`qual_walk_analyze.py`)——
+  它们只跑一次、失败即刻可见,给它们造 fixture 的成本高于收益。不写"所有新代码带测试"
+  这种兑现不了的话。
 - 任何对外数字带 `ARCHITECTURE.md` §8 三条限定;不说工件证明不了的话。
 - 凭证只在 `.env`(gitignored):不进仓库、不进 run 目录、不进 bundle、不进日志、
   不写进任何文档。
