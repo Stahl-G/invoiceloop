@@ -4,7 +4,7 @@
 
 **Goal:** 在两个黑客松截止前,拿到两条冻结证据 —— 窄放行契约在**未曝光** 200 份上的零触达率,以及一个 agent 以协议内一等公民身份参与的 20 份人工行走 —— 然后用它们收材料。
 
-**Architecture:** 两条证据线共用一次提取。资格轮先抽 200 份从未被碰过的 DocILE 文档、跑 400 次双模式 DWS 调用,再零 API 地把四个路由臂投影出来;ADK 行走从这 200 份里确定性抽 20 份,建议全部**走前预生成并冻结成工件**,账本每槽记下当时屏幕上那条建议出自哪份工件、哪个模型。新代码集中在四处:抽样器(`heldout.py`)、名单过滤(`doctouch_arms.py`)、溯源字段(`adjudicate.py` + 新模块 `suggest_provenance.py`)、工作台隐藏字段(`workbench.py`)。其余全是搬运既有实现。
+**Architecture:** 两条证据线共用一次提取。资格轮先抽 200 份从未被碰过的 DocILE 文档、跑 400 次双模式 DWS 调用,再零 API 地把四个路由臂投影出来;ADK 行走从这 200 份里确定性抽 20 份,建议全部**走前预生成并冻结成工件**,账本每槽记下当时屏幕上那条建议出自哪份工件、哪个模型。新代码集中在四处:抽样器(`heldout.py`)、名单过滤(`doctouch_arms.py`)、溯源导出与对账(新模块 `suggest_provenance.py` + `adjudicate.py`)、证据落盘(`scripts/freeze_evidence.py`)。工作台一行不改 —— 溯源在服务端导出,浏览器只提交裁决。其余全是搬运既有实现。
 
 **Tech Stack:** Python 3(仓库自带 `.venv`)、pytest、Nutrient DWS 抽取 API、google-adk + Gemini(顾问层)、DocILE 校准语料(`~/Developer/dws-derisk/data/docile/`)。
 
@@ -24,6 +24,24 @@ spec 是设计,这里是核过实现之后的实施计划。两处数字/机制�
 - **不需要 OCR 步骤。** 4,831 份全部已有 pdf + 词级 OCR(实测 missing 0/0),资格轮的全部 API 花费就是那 400 次抽取。
 - **不需要并发。** `heldout.cmd_extract` 是串行的,400 次 × ~10.5s ≈ 70–90 分钟,低于 spec 给的 3h 上限。spec 的「并发 ≤ 4」是不必要的新机制(GOAL.md 五:少造机制),不做。
 
+另有四条是本计划第一版的缺陷,已在执行前修掉(2026-08-22 外部评审,逐条核实过):
+
+- **`runs/` 进不了仓库。** 它是指向 `../invoiceloop-data/runs` 的 symlink,且 `.gitignore:10`
+  忽略它(`git ls-files runs/` = 0)。所以「首条裁决前已提交冻结状态」不能靠 `git add runs/...`
+  兑现。改用仓库既有做法:证据副本进 `docs/evidence/<round>/`,名单进 `docs/*_doc_list.json`
+  (narrow_v1、absence_v3 都是这么做的),不另建 evidence repo。
+- **冻结的必须是「人真正看见的那一行」。** 裁决页的建议来自 `vision/answers6.<tag>.tsv`
+  (`_vision_state` ← `ctx.vision` ← `load_vision_answers`),而 `invoice_read.json` 是它的上游。
+  `suggest_inject.inject` 会 `skipped_existing`、也会 `dropped`,两者双向可漂。所以冻结
+  **TSV 的每一行**(`doc | field | displayed_value | tag` + 行哈希 + 整表哈希),读法摘要作为上游溯源一并留存。
+- **溯源由服务端导出,浏览器不当证据写者。** `suggestion_artifact_sha256` 与 `suggestion_model`
+  是 `(run, doc, field)` + 冻结表的纯函数,`append_adjudication` 自己查得到。让页面发这两个字段,
+  等于让旧标签页或改过的请求决定证据身份,而后端只查格式。改成:页面只发 `suggestion_seen`,
+  后端查冻结表导出溯源,**并与 `suggestion_seen` 对账** —— 一方说展示过、另一方查不到 = 阻断。
+- **P1 的分母不能来自账本自己。** 原写法只统计已有 `suggestion_seen` 的行,于是「整套隐藏字段
+  丢失」这个最该被发现的故障会直接从分母消失,覆盖率照样 100%。分母改成
+  **冻结建议表 ∩ 实际裁决过的槽**。
+
 时间线整体比 spec 晚一天(spec 的 D1 是 8/21,实际从 8/22 起),缓冲仍够:8/30 前交 ATA,9/1 交 Nutrient。
 
 ---
@@ -34,8 +52,9 @@ spec 是设计,这里是核过实现之后的实施计划。两处数字/机制�
 
 | 路径 | 职责 |
 |---|---|
-| `invoiceloop/suggest_provenance.py` | 建议工件溯源:读 `<run>/vision/suggestion_provenance.json`,把「哪些读者在这一槽出过声」映射成(工件哈希, 模型 id) |
-| `scripts/suggest_provenance_freeze.py` | 建议预生成之后冻结溯源文件:逐份读法算 sha256,写盘 |
+| `invoiceloop/suggest_provenance.py` | 从 TSV 建冻结建议表;`derive()` 按 `(run, doc, field)` 导出(工件哈希, 模型 id)并与 `suggestion_seen` 三向对账 |
+| `scripts/suggest_provenance_freeze.py` | 建议预生成之后冻结:把 TSV 每一行(人真正看见的那条)与读法摘要一起写成溯源表 |
+| `scripts/freeze_evidence.py` | 把 run 目录里的冻结工件复制进 `docs/evidence/<round>/` 并写 `MANIFEST.sha256`(`runs/` 是 gitignored symlink,不复制就没有仓库内锚点) |
 | `scripts/qual_walk_plan.py` | 从资格集 200 份的路由报告里抽 20 份行走集(最小哈希,只取人队列 ≥1 槽) |
 | `scripts/qual_adk_walk_setup.py` | 装配行走工作区、跑 HAR-0023 流水线(复用 `doctouch_arms.assemble`) |
 | `scripts/qual_walk_analyze.py` | 行走结果 P1–P5 对照 |
@@ -45,7 +64,8 @@ spec 是设计,这里是核过实现之后的实施计划。两处数字/机制�
 | `docs/QUAL_ADK_WALK_RESULTS_2026-08-25.md` | 行走结果 |
 | `tests/test_qualify.py` | 资格池/抽样器测试 |
 | `tests/test_doctouch_arms_doclist.py` | 名单过滤测试 |
-| `tests/test_suggest_provenance.py` | 溯源模块 + 账本字段 + 工作台隐藏字段测试 |
+| `tests/test_suggest_provenance.py` | 溯源导出、三向对账、冻结表构建与拒绝覆盖 |
+| `tests/test_qual_walk_plan.py` | 行走集抽样与工作台队列谓词一致 |
 | `tests/test_lint_release_profile.py` | lint 回归:机器不许 propose `release_profile` |
 
 **修改**
@@ -56,7 +76,7 @@ spec 是设计,这里是核过实现之后的实施计划。两处数字/机制�
 | `invoiceloop/__main__.py` | 追加 `qualify plan` / `qualify extract` 子命令 |
 | `scripts/doctouch_arms.py` | 追加 `select_sources()` 与 `--doc-list` |
 | `invoiceloop/adjudicate.py` | `append_adjudication` 追加 `suggestion_artifact_sha256` / `suggestion_model` |
-| `invoiceloop/workbench.py` | `RunCtx` 载入溯源表;`_decide_form` 多写两个隐藏字段;`/decide` 透传 |
+| `invoiceloop/workbench.py` | `RunCtx` 载入冻结建议表(只为渲染断言用);**不新增任何隐藏字段** —— 溯源由 `append_adjudication` 服务端导出 |
 | `README.md` | 「For judges」三命令 quickstart + 新数字 |
 | `DISCLOSURE.md` | 赛期内模块清单补 doctouch / release_profile / qual 新增 |
 | `docs/RUBRIC_V01_SCORE_2026-08-06.md` | 不改;新自评另开一份 |
@@ -64,6 +84,98 @@ spec 是设计,这里是核过实现之后的实施计划。两处数字/机制�
 ---
 
 ## Phase A —— 资格集确认轮(Nutrient 头牌)
+
+### Task 0: 证据落盘助手(先做,后面每一次冻结都用它)
+
+**Files:**
+- Create: `scripts/freeze_evidence.py`
+
+`runs/` 是指向 `../invoiceloop-data/runs` 的 symlink,且被 `.gitignore:10` 忽略
+(`git ls-files runs/` = 0)。所以 `git add runs/...` 兑现不了「冻结状态已提交」——
+它要么报 `beyond a symbolic link`,要么被忽略。仓库既有做法是把不可变副本放进
+`docs/evidence/<round>/`(见 `docs/evidence/narrow_v1_2026-08-14/`、
+`docs/evidence/absence_v3_2026-08-10/`),本任务把它做成一条命令。
+
+- [ ] **Step 1: 写 `scripts/freeze_evidence.py`**
+
+```python
+#!/usr/bin/env python3
+"""把 run 目录里的冻结工件复制进 docs/evidence/<round>/ 并写 MANIFEST.sha256。
+
+存在的理由很实际:runs/ 是 gitignored 的 symlink,`git add runs/...` 不成立,
+于是「协议冻结的 commit 先于结果」这条纪律在 git 历史里根本看不见。
+
+已存在且内容不同 = 阻断。冻结工件被改写过,而前面的 commit 已经背书了旧版本。
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import shutil
+import sys
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+
+
+def _sha(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def freeze(round_name: str, items: list[Path]) -> Path:
+    dest = REPO / "docs" / "evidence" / round_name
+    dest.mkdir(parents=True, exist_ok=True)
+    lines = []
+    for src in sorted(items):
+        if not src.is_file():
+            raise SystemExit(f"fatal: 要冻结的工件不存在:{src}")
+        digest = _sha(src)
+        target = dest / src.name
+        if target.exists() and _sha(target) != digest:
+            raise SystemExit(
+                f"fatal: {target.name} 已冻结过且内容不同 —— 前一个 commit "
+                f"背书的是旧版本。要重来就换一个 round 名。")
+        if not target.exists():
+            shutil.copyfile(src, target)
+        lines.append(f"{digest}  {src.name}")
+    manifest = dest / "MANIFEST.sha256"
+    manifest.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return dest
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--round", required=True, dest="round_name")
+    ap.add_argument("items", nargs="+", type=Path)
+    args = ap.parse_args()
+    dest = freeze(args.round_name, args.items)
+    print((dest / "MANIFEST.sha256").read_text(encoding="utf-8"), end="")
+    print(f"→ {dest.relative_to(REPO)}")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+- [ ] **Step 2: 确认 `runs/` 的确进不了仓库(这是本任务存在的理由)**
+
+```bash
+ls -la runs | head -1
+grep -n '^runs$' .gitignore
+git ls-files runs/ | wc -l
+```
+预期:第一行显示 `runs -> ../invoiceloop-data/runs`;`.gitignore` 第 10 行是 `runs`;
+tracked 文件数 `0`。
+
+- [ ] **Step 3: 提交**
+
+```bash
+git add scripts/freeze_evidence.py
+git commit -m "Add an evidence-freezing helper: runs/ is a gitignored symlink, so a frozen artifact only becomes a repository anchor once it is copied under docs/evidence."
+```
+
+---
 
 ### Task 1: 资格池与最小哈希抽样
 
@@ -98,9 +210,12 @@ sys.path.insert(0, str(REPO / "scripts"))
 @pytest.mark.skipif(not corpus_available(), reason="校准档案不在")
 class TestQualPool:
     def test_pool_excludes_every_document_that_was_ever_touched(self):
-        """池里混进一份跑过的文档 = 「未曝光」这个头条主张直接是假的。"""
-        from doctouch_arms import discover_dual_mode
+        """池里混进一份跑过的文档 = 「未曝光」这个头条主张直接是假的。
 
+        三个曝光集**都必须是冻结的**:活查 discover_dual_mode() 在 Task 4
+        之后必然自打嘴巴 —— 那 200 份提取完就有了双模式响应,却仍在池里。
+        冻结时的盘上快照由 cmd_plan_qual 写进 doc_list.json。
+        """
         pool = set(heldout.qual_pool())
         manifest = {
             e["doc_id"] for e in json.loads(
@@ -109,10 +224,22 @@ class TestQualPool:
         sealed4 = set(json.loads(
             (REPO / "docs" / "sealed4_doc_list.json")
             .read_text(encoding="utf-8"))["doc_ids"])
-        on_disk = set(discover_dual_mode())
         assert not pool & manifest, "开发期曝光清单里的文档进了资格池"
         assert not pool & sealed4, "SEALED-4 已抽的 100 份进了资格池"
-        assert not pool & on_disk, "盘上已有双模式响应的文档进了资格池"
+
+    def test_frozen_list_never_touched_anything_on_disk_at_freeze_time(self):
+        """冻结那一刻盘上有双模式响应的文档,一份都不在名单里。
+
+        名单落盘后这条永远为真(两边都是冻结值);Task 3 另有一条**活查**
+        的闸,那才是提取前的实时把关。名单还没落盘就跳过。
+        """
+        path = REPO / "docs" / "qual_narrow_doc_list.json"
+        if not path.is_file():
+            pytest.skip("名单尚未冻结(Task 3 之前)")
+        spec = json.loads(path.read_text(encoding="utf-8"))
+        touched = set(spec["dual_mode_on_disk_at_freeze"])
+        assert touched, "冻结时的盘上快照不能是空的 —— 空集让这条测试无话可说"
+        assert not set(spec["doc_ids"]) & touched
 
     def test_pool_members_all_have_pdf_and_word_ocr(self):
         """缺 OCR 的文档会被 doctouch_arms.assemble 静默剔掉 —— 报告仍写
@@ -151,6 +278,8 @@ def test_plan_writes_the_list_before_any_call(tmp_path):
     assert payload["context"] == heldout.DEFAULT_QUAL_CONTEXT
     assert payload["doc_ids_sha256"] == heldout.doc_ids_line_digest(ids)
     assert payload["pool_sha256"] == heldout.doc_ids_line_digest(heldout.qual_pool())
+    assert payload["dual_mode_on_disk_at_freeze"], "盘上快照必须落盘,否则复算时无从判断"
+    assert not set(ids) & set(payload["dual_mode_on_disk_at_freeze"])
     assert not list((tmp_path / "raw").glob("*.json")), "plan 阶段不许有任何响应"
 ```
 
@@ -159,7 +288,7 @@ def test_plan_writes_the_list_before_any_call(tmp_path):
 ```bash
 .venv/bin/python -m pytest tests/test_qualify.py -x -q
 ```
-预期:`AttributeError: module 'invoiceloop.heldout' has no attribute 'qual_pool'`
+预期:`AttributeError: module 'invoiceloop.heldout' has no attribute 'qual_pool'`(6 条全红)
 
 同时把 spec 里那个 5,020 的算术核掉:
 
@@ -247,6 +376,19 @@ def cmd_plan_qual(workspace: Path, *, n: int = 200,
     workspace = prepare_workspace(workspace)
     pool = qual_pool()
     ids = qual_list(n, context=context)
+    # 冻结这一刻「盘上已有双模式响应」的快照。活查这件事只在提取之前有意义:
+    # 提取一跑完,本轮 200 份自己就有响应了,再活查就是自打嘴巴。
+    import sys as _sys
+
+    _sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    from doctouch_arms import discover_dual_mode  # noqa: E402
+
+    touched = sorted(discover_dual_mode())
+    leaked = sorted(set(ids) & set(touched))
+    if leaked:
+        raise RuntimeError(
+            f"名单里有 {len(leaked)} 份盘上已有双模式响应 —— 「未曝光」不成立:"
+            f"{leaked[:5]}")
     payload = {
         "n": n,
         "pool_size": len(pool),
@@ -259,12 +401,15 @@ def cmd_plan_qual(workspace: Path, *, n: int = 200,
         "context": context,
         "pool_sha256": doc_ids_line_digest(pool),
         "doc_ids_sha256": doc_ids_line_digest(ids),
+        "dual_mode_on_disk_at_freeze": touched,
+        "dual_mode_on_disk_sha256": doc_ids_line_digest(touched),
         "doc_ids": ids,
     }
     (workspace / "doc_list.json").write_text(
         json.dumps(payload, indent=1, ensure_ascii=False) + "\n",
         encoding="utf-8")
     print(f"pool={payload['pool_size']}  qual n={n}  context={context}")
+    print(f"冻结时盘上双模式 {len(touched)} 份,与名单交集 0")
     print(f"pool_sha256={payload['pool_sha256']}")
     print(f"doc_ids_sha256={payload['doc_ids_sha256']}")
     print(f"名单已落盘:{workspace / 'doc_list.json'} —— 先提交,再调用")
@@ -276,7 +421,7 @@ def cmd_plan_qual(workspace: Path, *, n: int = 200,
 ```bash
 .venv/bin/python -m pytest tests/test_qualify.py -q
 ```
-预期:`5 passed`
+预期:`5 passed, 1 skipped`(名单尚未冻结,`test_frozen_list_...` skip)
 
 - [ ] **Step 5: 接 CLI**
 
@@ -323,7 +468,7 @@ from .heldout import QUAL_CONTEXTS as _QUAL_CONTEXTS
 ```bash
 .venv/bin/python -m invoiceloop qualify plan --workspace /tmp/qualcheck --n 3
 ```
-预期:打印 `pool=4831  qual n=3  context=qual-narrow-v1`、两行 sha256、以及名单落盘路径。
+预期:打印 `pool=4831  qual n=3  context=qual-narrow-v1`、`冻结时盘上双模式 660 份,与名单交集 0`、两行 sha256、名单落盘路径。
 
 ```bash
 rm -rf /tmp/qualcheck
@@ -445,6 +590,43 @@ def select_sources(sources: dict[str, Path],
           + (f"(名单 {args.doc_list})" if requested else ""), flush=True)
 ```
 
+再把臂循环里 `if not arm_dir.exists():` 那段换成带身份核对的版本 —— 原写法只看目录在不在,
+**换了策略跑进同一个 out 目录会静默复用上一次的结果**:
+
+```python
+    for arm in ("HAR-0001", "HAR-0021", "HAR-0023"):
+        arm_dir = out / "arms" / arm
+        active = active_for(arm)
+        identity = {
+            "harness_id": arm,
+            "policy_digest": active["policy_digest"],
+            "policy_sha256": active["policy_sha256"],
+            "schema_sha256": active["schema_sha256"],
+            "doc_ids_sha256": hashlib.sha256(
+                "\n".join(sorted(doc_ids)).encode("utf-8")).hexdigest(),
+        }
+        id_path = arm_dir / "arm_identity.json"
+        if arm_dir.exists():
+            prior = json.loads(id_path.read_text(encoding="utf-8")) \
+                if id_path.is_file() else None
+            if prior != identity:
+                raise SystemExit(json.dumps({
+                    "fatal": "臂目录已存在,但策略/schema/名单与本次不同 —— "
+                             "复用它会把上一次的结果当成这一次的",
+                    "arm": arm, "dir": str(arm_dir),
+                    "prior": prior, "now": identity,
+                }, ensure_ascii=False, indent=1))
+            print(f"复用 {arm}(身份一致)", flush=True)
+        else:
+            print(f"跑 {arm}…", flush=True)
+            with _corpus_environment(ws), frozen_harness(active):
+                pipeline.run(doc_ids, arm_dir, render_crops=False,
+                             include_vision=False, out_of_calibration=True)
+            id_path.write_text(
+                json.dumps(identity, ensure_ascii=False, indent=1) + "\n",
+                encoding="utf-8")
+```
+
 再把 `assemble` 之后那两行改成:
 
 ```python
@@ -463,6 +645,9 @@ def select_sources(sources: dict[str, Path],
 .venv/bin/python -m pytest tests/test_doctouch_arms_doclist.py -q
 ```
 预期:`3 passed`
+
+臂身份那段没有单测:它的失败面是「换策略重跑同一个 out 目录」,构造这个场景要跑两次完整流水线,
+成本远高于收益。执行 Task 5 时目录是空的,走的是新建分支;真要复用时那条 SystemExit 会当场报出来。
 
 ```bash
 .venv/bin/python -c "
@@ -496,7 +681,7 @@ git commit -m "Gate the arm runner on an explicit doc list: without it the quali
 .venv/bin/python -m invoiceloop qualify plan \
   --workspace runs/qual-narrow-2026-08-22 --n 200
 ```
-预期:`pool=4831  qual n=200  context=qual-narrow-v1`,后跟 `pool_sha256=…`、`doc_ids_sha256=…`、名单落盘路径。**把这两个 sha256 抄进下一步的协议正文。**
+预期:`pool=4831  qual n=200  context=qual-narrow-v1`、`冻结时盘上双模式 660 份,与名单交集 0`、`pool_sha256=…`、`doc_ids_sha256=…`、名单落盘路径。**把两个 sha256 抄进下一步的协议正文。** 交集非 0 会直接 RuntimeError,提取跑不起来。
 
 ```bash
 cp runs/qual-narrow-2026-08-22/doc_list.json docs/qual_narrow_doc_list.json
@@ -578,6 +763,10 @@ cp runs/qual-narrow-2026-08-22/doc_list.json docs/qual_narrow_doc_list.json
 | P3 | C ≥ D | `release_tier1_explicit: false` 的 QA 探针只增触达 |
 | P4 | 真静默 ≤ 3 | 不高于 doctouch 各臂 |
 | P5 | 三闸全自动占比 15–19% | doctouch 盘上 17.1%,合取机制应复现 |
+| P6 | D 臂 `silent_wrong` ≤ B 臂 `silent_wrong` | 窄放行只减少**打开张数**,不该让错值更多地静默通过。这是本轮的安全终点,与 P4 的真静默分开报 |
+
+零触达率按二项分布报 95% Wilson 区间(n=200,点估计 ±7 个百分点量级)。
+**区间与点估计一起进对外句子** —— 200 份的一个百分数看起来比它实际的精度高。
 
 ## 6. 结果语义与顺序纪律
 
@@ -692,15 +881,16 @@ print('名单', len(want), '→ 过滤后', len(select_sources(discover_dual_mod
 - [ ] **Step 6: 提交存盘响应**
 
 ```bash
-git add runs/qual-narrow-2026-08-22/extract_summary.json
+.venv/bin/python scripts/freeze_evidence.py --round qual-narrow-2026-08-22 \
+  runs/qual-narrow-2026-08-22/extract_summary.json \
+  runs/qual-narrow-2026-08-22/doc_list.json
+git add docs/evidence/qual-narrow-2026-08-22/
 git commit -m "Record the qualification-round extraction summary: 400 dual-mode calls over the 200 never-touched documents."
 ```
 
-`raw/` 是否进仓库按仓库既有惯例走:
-
-```bash
-git check-ignore -v runs/qual-narrow-2026-08-22/raw/ || echo "raw 未被忽略 —— 照 sealed4 的先例决定是否入库"
-```
+`raw/`(400 份响应,约数十 MB)留在 `runs/` 不入库,与 sealed4 同待遇;
+`extract_summary.json` 里的 `done/failed/spent_estimate` 加上 `doc_list.json` 的
+`doc_ids_sha256` 就足以复算「跑了哪 200 份、成没成」。
 
 ---
 
@@ -758,7 +948,30 @@ print(f'三闸全自动 {full}/{len(auto)} = {100.0*full/max(len(auto),1):.1f}%'
 ```
 预期:一行百分比。落在 15–19 就是 P5 成立。
 
-- [ ] **Step 4: 写结果文档**
+- [ ] **Step 4: 算零触达率的 95% 区间与 P6**
+
+```bash
+.venv/bin/python -c "
+import json, math, pathlib
+m = json.loads(pathlib.Path(
+    'runs/qual-narrow-2026-08-22/doctouch/doctouch_metrics.json').read_text())
+def wilson(k, n, z=1.96):
+    if not n: return (None, None)
+    ph = k / n; d = 1 + z*z/n
+    c = (ph + z*z/(2*n)) / d
+    h = z*math.sqrt(ph*(1-ph)/n + z*z/(4*n*n)) / d
+    return (round(100*(c-h), 1), round(100*(c+h), 1))
+for arm, rec in m['arms'].items():
+    a = rec['metrics'].get('ALL', {})
+    lo, hi = wilson(a.get('zero_touch_docs', 0), a.get('docs', 0))
+    print(f\"{arm:36s} 零触达 {a.get('zero_touch_pct')}% [95% CI {lo}–{hi}]  \"
+          f\"silent_wrong {a.get('silent_wrong')}\")
+"
+```
+预期:四行,每行带点估计、Wilson 区间与 `silent_wrong`。
+D 臂的 `silent_wrong` ≤ B 臂即 P6 成立。
+
+- [ ] **Step 5: 写结果文档**
 
 新建 `docs/QUALIFICATION_NARROW_RESULTS_2026-08-23.md`,骨架如下,方括号处填 Step 1–3 的实测值。**先写预测栏,再填实测栏,不许回改预测。**
 
@@ -796,6 +1009,7 @@ print(f'三闸全自动 {full}/{len(auto)} = {100.0*full/max(len(auto),1):.1f}%'
 | P3 | C ≥ D | [填] | [成立 / 不成立] |
 | P4 | 真静默 ≤ 3 | [填] | [成立 / 不成立] |
 | P5 | 三闸全自动 15–19% | [填] | [成立 / 不成立] |
+| P6 | D 臂 `silent_wrong` ≤ B 臂 | [填] | [成立 / 不成立] |
 
 [逐条一句话说明。预测错了照登,不改预测、不补理由把它说圆。]
 
@@ -808,8 +1022,9 @@ print(f'三闸全自动 {full}/{len(auto)} = {100.0*full/max(len(auto),1):.1f}%'
 ## 4. 可以对外说的一句话
 
 [P2 成立时:「在 200 份此前从未被本项目接触过的 DocILE 发票上,窄放行契约
-(invoice_number / seller_name / amount_due 三字段)让 [X]% 的文档在路由阶段
-无需任何人打开。」后面必须跟 ARCHITECTURE §8 的三条限定。]
+(invoice_number / seller_name / amount_due 三字段)让 [X]%(95% CI [lo]–[hi])的文档
+在路由阶段无需任何人打开。」后面必须跟 ARCHITECTURE §8 的三条限定。
+**区间不能省** —— 200 份的一个百分数看起来比它实际的精度高。]
 
 [P2 不成立时:保留 08-18 §6 的限定句原文,并写明本轮实测值与它的关系。]
 
@@ -821,10 +1036,13 @@ print(f'三闸全自动 {full}/{len(auto)} = {100.0*full/max(len(auto),1):.1f}%'
 - DocILE 是一个语料。换域名、换版式、换语言,这个数字不迁移。
 ```
 
-- [ ] **Step 5: 提交**
+- [ ] **Step 6: 提交**
 
 ```bash
-git add runs/qual-narrow-2026-08-22/doctouch/doctouch_metrics.json \
+.venv/bin/python scripts/freeze_evidence.py --round qual-narrow-2026-08-22 \
+  runs/qual-narrow-2026-08-22/doctouch/doctouch_metrics.json \
+  runs/qual-narrow-2026-08-22/doctouch/arms/HAR-0023/routing_report.json
+git add docs/evidence/qual-narrow-2026-08-22/ \
         docs/QUALIFICATION_NARROW_RESULTS_2026-08-23.md
 git commit -m "Report the qualification round on 200 never-touched documents against its five pre-registered predictions."
 ```
@@ -837,18 +1055,34 @@ git commit -m "Report the qualification round on 200 never-touched documents aga
 
 Task 6–7 是代码,Task 8–10 是跑轮。
 
-### Task 6: 溯源字段进账本
+### Task 6: 溯源由服务端导出并与账本对账
 
 **Files:**
-- Modify: `invoiceloop/adjudicate.py:60-72`(正则)、`:94-152`(签名与校验)、`:256-282`(entry)
+- Create: `invoiceloop/suggest_provenance.py`
+- Modify: `invoiceloop/adjudicate.py:94-152`(校验与导出)、`:256-282`(entry)
 - Test: `tests/test_suggest_provenance.py`
+
+**设计要点(与本计划第一版不同)**:溯源**不经过浏览器**。
+`suggestion_artifact_sha256` 与 `suggestion_model` 是 `(run, doc, field)` 加冻结建议表的
+纯函数,`append_adjudication` 自己查得到。让页面把它们发上来,等于让旧标签页或改过的请求
+决定证据身份,而后端只查了格式。所以:
+
+- 页面只发 `suggestion_seen`(它必须来自渲染 —— 记的是人当时看见了什么,后端事后推不出来)。
+- 后端查冻结表导出两个溯源字段,**并与 `suggestion_seen` 三向对账**:
+  表里有 / 账本说没看见 → 阻断;表里没有 / 账本说看见了 → 阻断;
+  `agree:<值>` 的值与表里冻结的 `displayed_value` 不符 → 阻断。
+- 没有冻结表的 run(demo、旧轮)一切照旧,两个字段不出现。
+
+第三条对账正是 P1 覆盖率的**写时**保障:「整套隐藏字段丢失」这种故障在落账那一刻就被挡住,
+不必等到事后统计 —— 而事后统计的分母若取自账本自己,恰恰会让这种故障从分母里消失。
 
 - [ ] **Step 1: 写失败的测试**
 
 新建 `tests/test_suggest_provenance.py`:
 
 ```python
-"""建议工件溯源:账本每槽能不能说清「当时屏幕上那条建议出自哪份工件」。"""
+"""建议工件溯源:账本每槽能不能说清「当时屏幕上那条建议出自哪份工件」,
+以及说不清的时候会不会阻断。"""
 
 from __future__ import annotations
 
@@ -857,242 +1091,89 @@ from pathlib import Path
 
 import pytest
 
-from invoiceloop import adjudicate
+from invoiceloop import suggest_provenance
 
 SHA_A = "a" * 64
-SHA_B = "b" * 64
+MODEL = "gemini-3.7-flash"
 
 
-def _kwargs(**over):
-    base = dict(
-        claim_id="CL-0001", doc_id="doc1", field="invoice_number",
-        decision="accept", rationale="页面左上角",
-        adjudicator="tester", decided_at="2026-08-24T10:00:00+00:00",
-    )
+def _map(**over):
+    base = {
+        "round": "test-round",
+        "frozen_at": "2026-08-25T09:00:00+00:00",
+        "prompt_digest": "p" * 64,
+        "schema_digest": "s" * 64,
+        "readers": {"adk-invoice": {
+            "model": MODEL, "artifact": "vision/answers6.adk-invoice.tsv",
+            "artifact_sha256": SHA_A}},
+        "slots": {"doc1|invoice_number": {
+            "tag": "adk-invoice", "displayed_value": "INV-1",
+            "row_sha256": "r" * 64, "reading_sha256": "d" * 64}},
+    }
     base.update(over)
     return base
 
 
-class TestValidation:
-    """校验在 append_adjudication 里,不需要 run 目录 —— 这些用例全部
-    在 manifest 读取之前就该抛。"""
+class TestDerive:
+    def test_returns_the_artifact_and_model_for_a_frozen_slot(self):
+        assert suggest_provenance.derive(
+            _map(), "doc1", "invoice_number", "agree:INV-1") == (SHA_A, MODEL)
 
-    def test_provenance_without_suggestion_seen_is_refused(self, tmp_path):
-        """没展示过建议的槽带着工件哈希 = 账本在替一次没发生的展示背书。"""
-        with pytest.raises(ValueError, match="必须与 suggestion_seen 同行"):
-            adjudicate.append_adjudication(
-                tmp_path, **_kwargs(),
-                suggestion_artifact_sha256=SHA_A,
-                suggestion_model="gemini-3.6-flash")
+    def test_a_slot_the_reviewer_saw_but_the_map_never_froze_blocks(self):
+        """走中途补生成的建议会长这样 —— 废臂条款点名的那条,写时就该挡。"""
+        with pytest.raises(ValueError, match="冻结表里没有"):
+            suggest_provenance.derive(
+                _map(), "doc2", "invoice_number", "agree:INV-9")
 
-    def test_half_a_provenance_is_refused(self, tmp_path):
-        """只有哈希没有模型 id,复算不出来 —— 半份溯源比没有更糟,
-        它看起来像证据。"""
-        with pytest.raises(ValueError, match="必须成对"):
-            adjudicate.append_adjudication(
-                tmp_path, **_kwargs(), suggestion_seen="agree:INV-1",
-                suggestion_artifact_sha256=SHA_A)
+    def test_a_frozen_slot_the_ledger_claims_nobody_saw_blocks(self):
+        """P1 覆盖率最该发现的故障:该展示建议的槽,账本却一个字都没记。
+        取自账本的分母会让它消失,所以要在写时挡。"""
+        with pytest.raises(ValueError, match="冻结表里有"):
+            suggest_provenance.derive(_map(), "doc1", "invoice_number", None)
 
-    def test_non_sha256_artifact_is_refused(self, tmp_path):
-        with pytest.raises(ValueError, match="sha256"):
-            adjudicate.append_adjudication(
-                tmp_path, **_kwargs(), suggestion_seen="agree:INV-1",
-                suggestion_artifact_sha256="not-a-hash",
-                suggestion_model="gemini-3.6-flash")
+    def test_a_displayed_value_that_drifted_from_the_frozen_row_blocks(self):
+        """TSV 在冻结之后被改过 —— 人看见的与工件里的不是同一条。"""
+        with pytest.raises(ValueError, match="与冻结值不符"):
+            suggest_provenance.derive(
+                _map(), "doc1", "invoice_number", "agree:INV-CHANGED")
 
-    def test_free_text_model_id_is_refused(self, tmp_path):
-        """模型 id 是要拿来分组统计的。自由文本会让「哪个模型的建议被采纳」
-        算不出来。"""
-        with pytest.raises(ValueError, match="suggestion_model"):
-            adjudicate.append_adjudication(
-                tmp_path, **_kwargs(), suggestion_seen="agree:INV-1",
-                suggestion_artifact_sha256=SHA_A,
-                suggestion_model="gemini 3.6 flash（顾问）")
+    def test_split_and_blind_need_no_value_match(self):
+        """读者分歧/全弃权时屏幕上没有可比的值,只要槽在表里就算对得上。"""
+        assert suggest_provenance.derive(
+            _map(), "doc1", "invoice_number", "split") == (SHA_A, MODEL)
 
-    def test_mismatched_hash_and_model_counts_are_refused(self, tmp_path):
-        """两个读者的哈希配一个模型 id —— 对不齐就说不清哪个哈希属于谁,
-        而「哪个模型的建议被采纳」正是靠这个配对算的。"""
-        with pytest.raises(ValueError, match="条数必须相同"):
-            adjudicate.append_adjudication(
-                tmp_path, **_kwargs(), suggestion_seen="agree:INV-1",
-                suggestion_artifact_sha256=f"{SHA_A},{SHA_B}",
-                suggestion_model="gemini-3.6-flash")
+    def test_no_frozen_map_means_no_provenance_and_no_blocking(self):
+        """demo 与旧轮没有冻结表,必须照常能裁决。"""
+        assert suggest_provenance.derive(None, "doc1", "invoice_number",
+                                         "agree:INV-1") is None
+        assert suggest_provenance.derive(None, "doc1", "invoice_number",
+                                         None) is None
+
+
+def test_build_map_reads_every_injected_tag(tmp_path):
+    """冻结的必须是**人真正看见的那一行** —— 裁决页的建议来自
+    answers6.<tag>.tsv,不是 invoice_read.json。inject 会 skip 已有行、
+    也会 drop 坏行,两者能漂开。"""
+    vision = tmp_path / "vision"
+    vision.mkdir()
+    (vision / "answers6.adk-invoice.tsv").write_text(
+        "doc\tfield\tvalue\tprinted_label\tnote\n"
+        "doc1\tinvoice_number\tINV-1\tNONE\tgemini-3.7-flash role=payee\n"
+        "doc1\tseller_name\tACME\tNONE\tgemini-3.7-flash role=payee\n",
+        encoding="utf-8")
+    slots = suggest_provenance.build_slots(tmp_path)
+    assert sorted(slots) == ["doc1|invoice_number", "doc1|seller_name"]
+    assert slots["doc1|invoice_number"]["displayed_value"] == "INV-1"
+    assert slots["doc1|invoice_number"]["tag"] == "adk-invoice"
+    assert len(slots["doc1|invoice_number"]["row_sha256"]) == 64
+    assert slots["doc1|invoice_number"]["row_sha256"] != \
+        slots["doc1|seller_name"]["row_sha256"]
 ```
 
 - [ ] **Step 2: 跑测试确认失败**
 
 ```bash
 .venv/bin/python -m pytest tests/test_suggest_provenance.py -x -q
-```
-预期:`TypeError: append_adjudication() got an unexpected keyword argument 'suggestion_artifact_sha256'`
-
-- [ ] **Step 3: 写实现 —— 正则**
-
-`invoiceloop/adjudicate.py` 中 `_SUGGESTION_SEEN` 那个正则之后追加:
-
-```python
-#: 建议工件溯源(ADK 行走轮)。多读者按 tag 排序后逗号连接;单读者退化成单值。
-#: 记的是**工件的哈希**不是建议的值 —— 值能从工件复算,哈希能证明工件没被改过。
-_SUGGESTION_ARTIFACT = re.compile(r"[0-9a-f]{64}(?:,[0-9a-f]{64})*")
-SUGGESTION_MODEL_MAX = 200
-_SUGGESTION_MODEL = re.compile(r"[A-Za-z0-9._\-]+(?:,[A-Za-z0-9._\-]+)*")
-```
-
-- [ ] **Step 4: 写实现 —— 签名与校验**
-
-`append_adjudication` 的签名里,`suggestion_seen: str | None = None,` 之后追加两行:
-
-```python
-    suggestion_artifact_sha256: str | None = None,
-    suggestion_model: str | None = None,
-```
-
-docstring 末尾追加一段:
-
-```python
-    suggestion_artifact_sha256 / suggestion_model 可选,必须成对、且必须与
-    suggestion_seen 同行:它们回答的是「一年后回看这条裁决,能不能重算出
-    当时屏幕上那条建议」。工件哈希指向预生成并冻结的读法记录,模型 id 让
-    「哪个模型的建议被采纳」可分组统计。
-```
-
-现有 `if suggestion_seen is not None:` 那个校验块之后追加:
-
-```python
-    if suggestion_artifact_sha256 is not None or suggestion_model is not None:
-        if suggestion_seen is None:
-            raise ValueError(
-                "建议溯源字段必须与 suggestion_seen 同行 —— 没展示过建议的槽"
-                "带着工件哈希,账本就在替一次没发生的展示背书")
-        if suggestion_artifact_sha256 is None or suggestion_model is None:
-            raise ValueError(
-                "工件哈希与模型 id 必须成对 —— 半份溯源复算不出来,"
-                "而它看起来像证据")
-        if not _SUGGESTION_ARTIFACT.fullmatch(str(suggestion_artifact_sha256)):
-            raise ValueError(
-                "suggestion_artifact_sha256 必须是 sha256 十六进制串"
-                "(多读者用逗号连接)")
-        if len(str(suggestion_model)) > SUGGESTION_MODEL_MAX \
-                or not _SUGGESTION_MODEL.fullmatch(str(suggestion_model)):
-            raise ValueError(
-                f"suggestion_model 只认 [A-Za-z0-9._-] 与逗号、且 ≤"
-                f"{SUGGESTION_MODEL_MAX} 字 —— 自由文本会让「哪个模型的建议"
-                f"被采纳」算不出来")
-        if len(str(suggestion_artifact_sha256).split(",")) \
-                != len(str(suggestion_model).split(",")):
-            raise ValueError(
-                "工件哈希与模型 id 的条数必须相同 —— 对不齐就说不清"
-                "哪个哈希属于哪个模型")
-```
-
-- [ ] **Step 5: 写实现 —— entry**
-
-`if suggestion_seen is not None: entry["suggestion_seen"] = suggestion_seen` 之后追加:
-
-```python
-            if suggestion_artifact_sha256 is not None:
-                entry["suggestion_artifact_sha256"] = suggestion_artifact_sha256
-            if suggestion_model is not None:
-                entry["suggestion_model"] = suggestion_model
-```
-
-- [ ] **Step 6: 跑测试确认通过,并确认旧账本没坏**
-
-```bash
-.venv/bin/python -m pytest tests/test_suggest_provenance.py tests/test_adjudicate.py -q
-```
-预期:新文件 5 条全过,`test_adjudicate.py` 原有条数一条不少也全过 —— 两个新参数缺省 None,不改变任何旧行为。
-
-- [ ] **Step 7: 提交**
-
-```bash
-git add invoiceloop/adjudicate.py tests/test_suggest_provenance.py
-git commit -m "Let a ledger row name the suggestion artifact and model it was shown alongside, refusing half a provenance."
-```
-
----
-
-### Task 7: 溯源模块与工作台隐藏字段
-
-**Files:**
-- Create: `invoiceloop/suggest_provenance.py`
-- Create: `scripts/suggest_provenance_freeze.py`
-- Modify: `invoiceloop/workbench.py:1300-1320`(RunCtx)、`:2150-2160`(`_decide_form`)、`:3491`(`/decide`)
-- Test: `tests/test_suggest_provenance.py`(追加)
-
-- [ ] **Step 1: 写失败的测试(追加到 `tests/test_suggest_provenance.py` 末尾)**
-
-```python
-class TestSlotProvenance:
-    def test_maps_readers_to_their_artifact_and_model(self):
-        from invoiceloop import suggest_provenance
-
-        prov = {"readers": {"adk-invoice": {
-            "model": "gemini-3.6-flash", "docs": {"doc1": SHA_A}}}}
-        assert suggest_provenance.slot_provenance(
-            prov, "doc1", ["adk-invoice"]) == (SHA_A, "gemini-3.6-flash")
-
-    def test_unknown_reader_yields_nothing_for_the_whole_slot(self):
-        """一个读者查不到就整槽不给溯源。凑出来的半份会被当成完整证据读。"""
-        from invoiceloop import suggest_provenance
-
-        prov = {"readers": {"adk-invoice": {
-            "model": "gemini-3.6-flash", "docs": {"doc1": SHA_A}}}}
-        assert suggest_provenance.slot_provenance(
-            prov, "doc1", ["adk-invoice", "triad"]) is None
-
-    def test_document_without_a_frozen_reading_yields_nothing(self):
-        """建议是走中途补生成的(废臂条款点名的那条),这里就查不到 ——
-        查不到即无溯源,而不是编一个。"""
-        from invoiceloop import suggest_provenance
-
-        prov = {"readers": {"adk-invoice": {
-            "model": "gemini-3.6-flash", "docs": {"doc1": SHA_A}}}}
-        assert suggest_provenance.slot_provenance(
-            prov, "doc2", ["adk-invoice"]) is None
-
-    def test_digest_ignores_key_order_and_indentation(self):
-        """工件哈希要能跨「重新排版过的同一份读法」保持稳定,
-        否则每次改写盘缩进都会让全轮溯源对不上。"""
-        from invoiceloop import suggest_provenance
-
-        assert suggest_provenance.record_digest({"a": 1, "b": "x"}) == \
-            suggest_provenance.record_digest({"b": "x", "a": 1})
-
-
-def test_freeze_writes_a_digest_for_every_document_that_was_read(tmp_path):
-    """P1 的前提:有建议工件的槽 100% 带溯源。工件里有的文档一个都不能漏。"""
-    import sys
-
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-    import suggest_provenance_freeze as freeze
-
-    run_dir = tmp_path / "run-0001"
-    (run_dir / "vision").mkdir(parents=True)
-    (run_dir / "vision" / "invoice_read.json").write_text(json.dumps({
-        "advisory": True, "source": "adk_invoice_read",
-        "model": "gemini-3.6-flash",
-        "docs": {"doc1": {"seller_name": "ACME", "model": "gemini-3.6-flash"},
-                 "doc2": {"seller_name": "BETA", "model": "gemini-3.6-flash"}},
-        "failed": [],
-    }), encoding="utf-8")
-
-    freeze.freeze(run_dir, tag="adk-invoice", round_name="test-round",
-                  frozen_at="2026-08-24T09:00:00+00:00")
-
-    prov = json.loads((run_dir / "vision" / "suggestion_provenance.json")
-                      .read_text(encoding="utf-8"))
-    docs = prov["readers"]["adk-invoice"]["docs"]
-    assert sorted(docs) == ["doc1", "doc2"]
-    assert all(len(d) == 64 for d in docs.values())
-    assert docs["doc1"] != docs["doc2"], "两份不同的读法不能算出同一个哈希"
-    assert prov["prompt_digest"] and prov["schema_digest"]
-```
-
-- [ ] **Step 2: 跑测试确认失败**
-
-```bash
-.venv/bin/python -m pytest tests/test_suggest_provenance.py -x -q -k "SlotProvenance or freeze"
 ```
 预期:`ModuleNotFoundError: No module named 'invoiceloop.suggest_provenance'`
 
@@ -1106,7 +1187,16 @@ def test_freeze_writes_a_digest_for_every_document_that_was_read(tmp_path):
 能不能重算出当时屏幕上那条建议。所以记的是**工件的哈希**,不是建议的值:
 值能从工件复算,哈希能证明工件没被改过。
 
-查不到就整槽不给溯源。凑出来的半份会被下游当成完整证据读,那比没有更糟。
+两条设计约束,都是踩过的:
+
+1. **冻结 TSV,不是冻结读法。** 裁决页显示的建议来自 answers6.<tag>.tsv
+   (workbench._vision_state ← ctx.vision ← dws.load_vision_answers)。
+   invoice_read.json 只是它的上游 —— suggest_inject.inject 会跳过已有
+   (doc, field)、也会丢掉坏行,两者能漂开。冻结上游等于冻结了一份
+   人没看过的东西。
+2. **导出在服务端,不在浏览器。** 工件哈希与模型 id 是 (run, doc, field)
+   加冻结表的纯函数,append_adjudication 自己查得到。让页面用隐藏字段
+   发上来,旧标签页和改过的请求就能决定证据身份。
 """
 
 from __future__ import annotations
@@ -1114,61 +1204,237 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping
 
 FILENAME = "suggestion_provenance.json"
+HEADER_COLS = 5
 
 
 def record_digest(record: Mapping[str, Any]) -> str:
-    """一份读法记录的 sha256:排序键、紧凑分隔符 —— 与写盘缩进无关。"""
+    """一份记录的 sha256:排序键、紧凑分隔符 —— 与写盘缩进无关。"""
     return hashlib.sha256(json.dumps(
         record, sort_keys=True, ensure_ascii=False,
         separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
+def build_slots(run_dir: Path) -> dict[str, dict[str, str]]:
+    """扫 run 目录下所有 answers6.*.tsv → {「doc|field」: 冻结行}。
+
+    键取全部 tag 的并集,与 workbench 的 ctx.vision 同一个来源:那边也是
+    把所有 tag 合并之后判 _vision_state。少扫一个 tag,对账就会误报。
+    """
+    slots: dict[str, dict[str, str]] = {}
+    for tsv in sorted((Path(run_dir) / "vision").glob("answers6.*.tsv")):
+        tag = tsv.name[len("answers6."):-len(".tsv")]
+        for line in tsv.read_text(encoding="utf-8").splitlines()[1:]:
+            if not line.strip():
+                continue
+            cols = line.split("\t")
+            if len(cols) < 3 or not cols[0].strip() or not cols[1].strip():
+                continue
+            key = f"{cols[0].strip()}|{cols[1].strip()}"
+            slots[key] = {
+                "tag": tag,
+                "displayed_value": cols[2],
+                "row_sha256": hashlib.sha256(
+                    f"{tag}\t{line}".encode("utf-8")).hexdigest(),
+            }
+    return slots
+
+
 def load(run_dir: Path) -> dict[str, Any] | None:
-    """→ 溯源表;文件不在返回 None(没冻结过建议的 run 照常工作)。"""
+    """→ 冻结表;文件不在返回 None(没冻结过建议的 run 照常工作)。"""
     path = Path(run_dir) / "vision" / FILENAME
     if not path.is_file():
         return None
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def slot_provenance(prov: Mapping[str, Any] | None, doc_id: str,
-                    readers: Sequence[str]) -> tuple[str, str] | None:
-    """→ (逗号连接的工件哈希, 逗号连接的模型 id);任一读者查不到 → None。
+def derive(prov: Mapping[str, Any] | None, doc_id: str, field: str,
+           suggestion_seen: str | None) -> tuple[str, str] | None:
+    """→ (工件 sha256, 模型 id);没有冻结表返回 None。对不上就抛 ValueError。
 
-    readers 是**这一槽上真正出过声**的读者 tag(workbench 的 ctx.vision
-    键),不是全轮读者表 —— 溯源要对得上人当时看见的那条建议。
+    三向对账。任何一边说了另一边不认的话,都是阻断,不是「尽力而为」:
+    - 表里没有、账本说看见了  → 走中途补生成的建议(废臂条款点名的那条)
+    - 表里有、账本说没看见    → 该展示建议的槽一个字没记(P1 最该抓的故障)
+    - 值对不上                → 冻结之后 TSV 被改过,人看的不是工件里那条
     """
-    if not prov or not readers:
+    if not prov:
         return None
-    table = prov.get("readers") or {}
-    hashes: list[str] = []
-    models: list[str] = []
-    for tag in sorted(set(readers)):
-        rec = table.get(tag)
-        if not rec:
-            return None
-        digest = (rec.get("docs") or {}).get(doc_id)
-        model = rec.get("model")
-        if not digest or not model:
-            return None
-        hashes.append(str(digest))
-        models.append(str(model))
-    return ",".join(hashes), ",".join(models)
+    slots = prov.get("slots") or {}
+    key = f"{doc_id}|{field}"
+    entry = slots.get(key)
+    if suggestion_seen is None:
+        if entry is not None:
+            raise ValueError(
+                f"冻结表里有 {key} 的建议,这条裁决却没记 suggestion_seen —— "
+                f"该展示建议的槽一个字都没记下来,先查渲染再裁决")
+        return None
+    if entry is None:
+        raise ValueError(
+            f"冻结表里没有 {key} —— 人看见的建议不在走前冻结的工件里。"
+            f"走中途补生成的建议按废臂条款处理,不能悄悄记进账本")
+    state, _, value = str(suggestion_seen).partition(":")
+    if state in ("agree", "agree_rejected") and value != entry["displayed_value"]:
+        raise ValueError(
+            f"{key} 展示值与冻结值不符(账本 {value!r} / 工件 "
+            f"{entry['displayed_value']!r})—— 冻结之后 TSV 被改过")
+    reader = (prov.get("readers") or {}).get(entry["tag"])
+    if not reader or not reader.get("artifact_sha256") or not reader.get("model"):
+        raise ValueError(
+            f"冻结表缺 tag {entry['tag']!r} 的工件哈希或模型 id —— "
+            f"半份溯源比没有更糟,它看起来像证据")
+    return str(reader["artifact_sha256"]), str(reader["model"])
 ```
 
-- [ ] **Step 4: 写 `scripts/suggest_provenance_freeze.py`**
+- [ ] **Step 4: 跑测试确认通过**
+
+```bash
+.venv/bin/python -m pytest tests/test_suggest_provenance.py -q
+```
+预期:`7 passed`
+
+- [ ] **Step 5: 接进 `append_adjudication`**
+
+`invoiceloop/adjudicate.py` 的 `append_adjudication` **不加任何新参数**。
+在 `manifest = json.loads(...)` 那一行之前插入:
+
+```python
+    # 建议溯源:服务端导出,不收调用方给的值。三向对账不过 = 一行都不写。
+    from .suggest_provenance import derive, load as load_provenance
+
+    provenance = derive(load_provenance(run_dir), doc_id, field, suggestion_seen)
+```
+
+在 entry 的 `if suggestion_seen is not None:` 之后追加:
+
+```python
+            if provenance is not None:
+                entry["suggestion_artifact_sha256"] = provenance[0]
+                entry["suggestion_model"] = provenance[1]
+```
+
+docstring 末尾追加:
+
+```python
+    suggestion_seen 之外的两个溯源字段(suggestion_artifact_sha256 /
+    suggestion_model)**不接受调用方传入**:它们由 suggest_provenance.derive
+    从 run 目录里走前冻结的建议表导出,并与 suggestion_seen 三向对账。
+    浏览器只能提交裁决,不能提交证据身份。
+```
+
+- [ ] **Step 6: 确认旧账本与工作台没坏**
+
+```bash
+.venv/bin/python -m pytest tests/test_adjudicate.py tests/test_workbench.py \
+  tests/test_narrow_round.py tests/test_suggest_provenance.py -q
+```
+预期:全绿。没有冻结表的 run(demo、旧轮)`derive` 返回 None,行为一字不变。
+
+- [ ] **Step 7: 提交**
+
+```bash
+git add invoiceloop/suggest_provenance.py invoiceloop/adjudicate.py \
+        tests/test_suggest_provenance.py
+git commit -m "Derive suggestion provenance server-side from the frozen display rows and refuse any ledger row that disagrees with them."
+```
+
+---
+
+### Task 7: 走前冻结建议工件
+
+**Files:**
+- Create: `scripts/suggest_provenance_freeze.py`
+- Test: `tests/test_suggest_provenance.py`(追加)
+
+**工作台不改。** 第一版打算加两个隐藏字段,现在溯源由服务端导出,
+`suggestion_seen` 的渲染逻辑一行不动 —— 少一处客户端信任面,也少一处要维护的代码。
+
+- [ ] **Step 1: 写失败的测试(追加到 `tests/test_suggest_provenance.py` 末尾)**
+
+```python
+def _run_with_suggestions(tmp_path: Path) -> Path:
+    run_dir = tmp_path / "run-0001"
+    (run_dir / "vision").mkdir(parents=True)
+    (run_dir / "vision" / "answers6.adk-invoice.tsv").write_text(
+        "doc\tfield\tvalue\tprinted_label\tnote\n"
+        "doc1\tinvoice_number\tINV-1\tNONE\tgemini-3.7-flash role=payee\n"
+        "doc2\tseller_name\tBETA\tNONE\tgemini-3.7-flash role=payee\n",
+        encoding="utf-8")
+    (run_dir / "vision" / "invoice_read.json").write_text(json.dumps({
+        "advisory": True, "source": "adk_invoice_read",
+        "model": "gemini-3.7-flash",
+        "docs": {"doc1": {"invoice_number": "INV-1", "model": "gemini-3.7-flash"},
+                 "doc2": {"seller_name": "BETA", "model": "gemini-3.7-flash"}},
+        "failed": [],
+    }), encoding="utf-8")
+    return run_dir
+
+
+def _freeze_module():
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    import suggest_provenance_freeze
+
+    return suggest_provenance_freeze
+
+
+def test_freeze_covers_every_row_the_reviewer_can_see(tmp_path):
+    """P1 的分母就是这张表。表里漏一行,那一槽的裁决会在写时被 derive 挡下,
+    但更早的失败是这里 —— 所以冻结的是 TSV 全量,不是读法全量。"""
+    run_dir = _run_with_suggestions(tmp_path)
+    _freeze_module().freeze(run_dir, tag="adk-invoice", round_name="t",
+                            frozen_at="2026-08-25T09:00:00+00:00")
+    prov = json.loads((run_dir / "vision" / suggest_provenance.FILENAME)
+                      .read_text(encoding="utf-8"))
+    assert sorted(prov["slots"]) == ["doc1|invoice_number", "doc2|seller_name"]
+    assert prov["readers"]["adk-invoice"]["model"] == "gemini-3.7-flash"
+    assert len(prov["readers"]["adk-invoice"]["artifact_sha256"]) == 64
+    assert prov["prompt_digest"] and prov["schema_digest"]
+    assert prov["slots"]["doc1|invoice_number"]["reading_sha256"] != \
+        prov["slots"]["doc2|seller_name"]["reading_sha256"]
+
+
+def test_freeze_refuses_to_overwrite(tmp_path):
+    """覆盖冻结表 = 账本里已有的哈希对不上了,而前一个 commit 已经背书过旧版。"""
+    run_dir = _run_with_suggestions(tmp_path)
+    freeze = _freeze_module().freeze
+    freeze(run_dir, tag="adk-invoice", round_name="t",
+           frozen_at="2026-08-25T09:00:00+00:00")
+    with pytest.raises(SystemExit, match="拒绝覆盖"):
+        freeze(run_dir, tag="adk-invoice", round_name="t",
+               frozen_at="2026-08-25T10:00:00+00:00")
+
+
+def test_freeze_blocks_when_a_displayed_row_has_no_reading_behind_it(tmp_path):
+    """TSV 里有一行、读法里没有对应文档 —— 人看得见,却指不出它从哪来。"""
+    run_dir = _run_with_suggestions(tmp_path)
+    with (run_dir / "vision" / "answers6.adk-invoice.tsv").open(
+            "a", encoding="utf-8") as fh:
+        fh.write("doc9\tamount_due\t$1.00\tNONE\tstray\n")
+    with pytest.raises(SystemExit, match="没有对应读法"):
+        _freeze_module().freeze(run_dir, tag="adk-invoice", round_name="t",
+                                frozen_at="2026-08-25T09:00:00+00:00")
+```
+
+- [ ] **Step 2: 跑测试确认失败**
+
+```bash
+.venv/bin/python -m pytest tests/test_suggest_provenance.py -x -q -k freeze
+```
+预期:`ModuleNotFoundError: No module named 'suggest_provenance_freeze'`
+
+- [ ] **Step 3: 写 `scripts/suggest_provenance_freeze.py`**
 
 ```python
 #!/usr/bin/env python3
-"""建议预生成之后冻结溯源文件 —— 走前跑一次,走中途不跑。
+"""建议预生成之后冻结 —— 走前跑一次,走中途不跑。
 
-读 `<run>/vision/invoice_read.json`,逐份读法算 sha256,连同全轮一份的
-prompt / schema digest 写成 `<run>/vision/suggestion_provenance.json`。
+冻结的是**人真正会看见的那些行**:vision/answers6.<tag>.tsv 的每一行,
+连同它背后那份读法的摘要。整表 sha256 作为工件哈希进账本。
 
-已存在则拒绝覆盖:溯源文件被改写过,账本里已有的哈希就对不上了 ——
+已存在则拒绝覆盖:溯源表被改写过,账本里已有的哈希就对不上了 ——
 那正是废臂条款要挡的「走中途补生成建议」。
 """
 
@@ -1185,7 +1451,7 @@ sys.path.insert(0, str(REPO))
 
 from invoiceloop import suggest_provenance  # noqa: E402
 from invoiceloop.agents.invoice_read import (  # noqa: E402
-    INVOICE_READ_SYSTEM, READ_USER_PROMPT, InvoiceReading, SUGGEST_TAG,
+    INVOICE_READ_SYSTEM, READ_USER_PROMPT, SUGGEST_TAG, InvoiceReading,
 )
 
 
@@ -1199,22 +1465,35 @@ def freeze(run_dir: Path, *, tag: str, round_name: str,
     out = run_dir / "vision" / suggest_provenance.FILENAME
     if out.exists():
         raise SystemExit(json.dumps({
-            "fatal": "溯源文件已存在,拒绝覆盖 —— 账本里已有的哈希会对不上。"
+            "fatal": "溯源表已存在,拒绝覆盖 —— 账本里已有的哈希会对不上。"
                      "要重来就换一个 run。",
             "path": str(out),
         }, ensure_ascii=False, indent=1))
+
+    tsv = run_dir / "vision" / f"answers6.{tag}.tsv"
     packed = json.loads((run_dir / "vision" / "invoice_read.json")
                         .read_text(encoding="utf-8"))
     top_model = str(packed.get("model") or "")
-    docs = {}
-    for doc_id, rec in sorted((packed.get("docs") or {}).items()):
-        docs[doc_id] = suggest_provenance.record_digest(rec)
+    readings = packed.get("docs") or {}
+
+    slots = suggest_provenance.build_slots(run_dir)
+    orphans = sorted(k for k in slots if k.split("|")[0] not in readings)
+    if orphans:
+        raise SystemExit(json.dumps({
+            "fatal": "有展示行没有对应读法 —— 人看得见,却指不出它从哪来",
+            "slots": orphans,
+        }, ensure_ascii=False, indent=1))
+    for key, slot in slots.items():
+        slot["reading_sha256"] = suggest_provenance.record_digest(
+            readings[key.split("|")[0]])
+
     if packed.get("failed"):
         print(json.dumps({
-            "warning": "有读法失败的文档 —— 它们没有工件,那些槽不会带溯源。"
-                       "结果文档必须把这件事写出来,不能当成 100% 覆盖。",
+            "warning": "有读法失败的文档 —— 它们没有工件,也不会有展示行。"
+                       "结果文档必须写出失败数,不能当成 100% 覆盖。",
             "failed": packed["failed"],
         }, ensure_ascii=False, indent=1), flush=True)
+
     payload = {
         "round": round_name,
         "frozen_at": frozen_at,
@@ -1224,11 +1503,13 @@ def freeze(run_dir: Path, *, tag: str, round_name: str,
             ensure_ascii=False, separators=(",", ":"))),
         "readers": {tag: {
             "model": top_model,
-            "artifact": "vision/invoice_read.json",
-            "artifact_sha256": hashlib.sha256(
+            "artifact": f"vision/answers6.{tag}.tsv",
+            "artifact_sha256": hashlib.sha256(tsv.read_bytes()).hexdigest(),
+            "upstream": "vision/invoice_read.json",
+            "upstream_sha256": hashlib.sha256(
                 (run_dir / "vision" / "invoice_read.json").read_bytes()).hexdigest(),
-            "docs": docs,
         }},
+        "slots": slots,
     }
     out.write_text(json.dumps(payload, ensure_ascii=False, indent=1) + "\n",
                    encoding="utf-8")
@@ -1250,7 +1531,8 @@ def main() -> None:
         "wrote": str(path),
         "tag": args.tag,
         "model": prov["readers"][args.tag]["model"],
-        "docs": len(prov["readers"][args.tag]["docs"]),
+        "frozen_slots": len(prov["slots"]),
+        "artifact_sha256": prov["readers"][args.tag]["artifact_sha256"][:16] + "…",
         "prompt_digest": prov["prompt_digest"][:16] + "…",
         "schema_digest": prov["schema_digest"][:16] + "…",
     }, ensure_ascii=False, indent=1))
@@ -1260,77 +1542,18 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 5: 跑测试确认通过**
+- [ ] **Step 4: 跑测试确认通过**
 
 ```bash
 .venv/bin/python -m pytest tests/test_suggest_provenance.py -q
 ```
 预期:`10 passed`
 
-- [ ] **Step 6: 接工作台 —— RunCtx 载入溯源表**
-
-`invoiceloop/workbench.py` 的 `RunCtx` 里,`self.invoice_read: dict[str, dict] = {}` 那一段之前(即第 1300–1306 行那块 vision 载入之后)插入:
-
-```python
-        # 建议工件溯源(ADK 行走轮)。没冻结过就是 None,老 run 照常工作。
-        from . import suggest_provenance as _sp
-
-        self.suggest_provenance = _sp.load(self.dir)
-```
-
-- [ ] **Step 7: 接工作台 —— `_decide_form` 多写两个隐藏字段**
-
-`_decide_form` 里那段 `sug_input` 的构造(`invoiceloop/workbench.py:2150-2160`)整段替换为:
-
-```python
-        sug_state, sug_value = self._vision_state(ctx, row)
-        sug_input = ""
-        if sug_state != "none":
-            seen = f"{sug_state}:{sug_value}" if sug_value is not None else sug_state
-            sug_input = (f'<input type="hidden" name="suggestion_seen" '
-                         f'value="{_esc(seen)}">')
-            # 溯源与 suggestion_seen 同一个判定点:出过声的读者 tag 就是
-            # _vision_state 看的那一批。查不到就整槽不写 —— 半份溯源看起来
-            # 像证据,而 append_adjudication 也会拒。
-            from . import suggest_provenance as _sp
-
-            readers = [m for m, _ in
-                       (ctx.vision.get((row["doc_id"], row["field"])) or [])]
-            prov = _sp.slot_provenance(
-                getattr(ctx, "suggest_provenance", None),
-                row["doc_id"], readers)
-            if prov is not None:
-                sug_input += (
-                    f'<input type="hidden" name="suggestion_artifact_sha256" '
-                    f'value="{_esc(prov[0])}">'
-                    f'<input type="hidden" name="suggestion_model" '
-                    f'value="{_esc(prov[1])}">')
-```
-
-- [ ] **Step 8: 接工作台 —— `/decide` 透传**
-
-`invoiceloop/workbench.py:3491` 那行 `suggestion_seen=...` 之后追加两行:
-
-```python
-                suggestion_artifact_sha256=form.get(
-                    "suggestion_artifact_sha256", [""])[0] or None,
-                suggestion_model=form.get("suggestion_model", [""])[0] or None,
-```
-
-- [ ] **Step 9: 跑工作台测试确认没坏**
+- [ ] **Step 5: 提交**
 
 ```bash
-.venv/bin/python -m pytest tests/test_workbench.py tests/test_adjudicate.py \
-  tests/test_suggest_provenance.py -q
-```
-预期:全绿。
-
-- [ ] **Step 10: 提交**
-
-```bash
-git add invoiceloop/suggest_provenance.py scripts/suggest_provenance_freeze.py \
-        invoiceloop/workbench.py tests/test_suggest_provenance.py
-git commit -m "Freeze suggestion artifacts before the walk and carry their digest into every slot the reviewer sees them on."
+git add scripts/suggest_provenance_freeze.py tests/test_suggest_provenance.py
+git commit -m "Freeze the display rows the reviewer will actually see, not the upstream readings they were derived from."
 ```
 
 ---
@@ -1365,14 +1588,32 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
 from invoiceloop.heldout import doc_ids_line_digest  # noqa: E402
+from invoiceloop.release_profile import parse_release_profile  # noqa: E402
 
 SALT = "invoiceloop-qual-adk-walk-v1"
 AUTO = ("auto_accept", "auto_absent")
 
 
-def eligible(routes: list[dict]) -> list[str]:
-    """人队列 ≥1 槽的文档。零触达的文档进行走集没有意义 —— 没有槽可走。"""
-    return sorted({str(r["doc_id"]) for r in routes if r["route"] not in AUTO})
+def eligible(routes: list[dict], policy: dict) -> list[str]:
+    """工作台**真的会排进队列**的槽 ≥1 的文档。
+
+    不能用「任意非 auto 路由」:HAR-0023 带 release_profile,工作台走的是
+    workbench._walk_release_profile —— 只有 gating 字段的待裁决槽和 QA 探针
+    进队列。按非 auto 抽,会抽到打开之后队列是空的文档。
+    这里复用同一个谓词,改了那边这里必须跟着改。
+    """
+    profile = parse_release_profile(policy or {})
+    gate = profile["fields"] if profile else None
+    out = set()
+    for row in routes:
+        codes = [str(c) for c in (row.get("reason_codes") or [])]
+        is_qa = any(c.startswith("QA_SAMPLE") for c in codes)
+        in_q = row.get("in_human_queue", row.get("requires_adjudication"))
+        if in_q is None:
+            in_q = row.get("route") not in AUTO
+        if is_qa or (in_q and (gate is None or row["field"] in gate)):
+            out.add(str(row["doc_id"]))
+    return sorted(out)
 
 
 def pick(doc_ids: list[str], n: int) -> list[str]:
@@ -1390,14 +1631,14 @@ def main() -> None:
     ap.add_argument("--n", type=int, default=20)
     args = ap.parse_args()
 
-    routes = json.loads(args.routing_report.read_text(encoding="utf-8"))["routes"]
-    pool = eligible(routes)
+    report = json.loads(args.routing_report.read_text(encoding="utf-8"))
+    pool = eligible(report["routes"], report.get("policy") or {})
     ids = pick(pool, args.n)
     payload = {
         "round": "qual-adk-walk",
         "n": args.n,
         "source": str(args.routing_report),
-        "eligibility": "臂 D(HAR-0023)路由下人队列 ≥1 槽",
+        "eligibility": "臂 D(HAR-0023)下 workbench._walk_release_profile 会排进队列的槽 ≥1(gating 字段待裁决 或 QA 探针)",
         "eligible_n": len(pool),
         "eligible_sha256": doc_ids_line_digest(pool),
         "sampling": f"min-hash:sha256(「{SALT}|」+ doc_id) 升序取前 {args.n}",
@@ -1418,6 +1659,58 @@ if __name__ == "__main__":
     main()
 ```
 
+加一条回归测试 `tests/test_qual_walk_plan.py`,把「抽到空队列文档」这个失败钉住:
+
+```python
+"""行走集抽样必须与工作台队列同一个谓词 —— 否则会抽到打开后无槽可走的文档。"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+
+import qual_walk_plan  # noqa: E402
+
+NARROW = {"release_profile": {"id": "payment_required_v1",
+                              "fields": ["invoice_number", "seller_name",
+                                         "amount_due"]}}
+
+
+def test_a_document_whose_only_review_slot_is_non_gating_is_not_eligible():
+    """date_due 进不了 payment_required_v1 的行走队列 —— 抽中它,
+    复核者打开会看到一个空队列。"""
+    routes = [{"doc_id": "d1", "field": "date_due", "route": "review",
+               "in_human_queue": True, "reason_codes": []}]
+    assert qual_walk_plan.eligible(routes, NARROW) == []
+
+
+def test_a_gating_review_slot_is_eligible():
+    routes = [{"doc_id": "d1", "field": "invoice_number", "route": "review",
+               "in_human_queue": True, "reason_codes": []}]
+    assert qual_walk_plan.eligible(routes, NARROW) == ["d1"]
+
+
+def test_a_qa_probe_is_eligible_even_on_a_non_gating_field():
+    """QA 探针无视闸字段集进队列(document_touch_metrics 也是这么算的)。"""
+    routes = [{"doc_id": "d1", "field": "date_due", "route": "review",
+               "in_human_queue": True, "reason_codes": ["QA_SAMPLE_ABSENT"]}]
+    assert qual_walk_plan.eligible(routes, NARROW) == ["d1"]
+
+
+def test_census_policy_keeps_every_review_slot():
+    """普查策略没有 release_profile,工作台不裁剪队列。"""
+    routes = [{"doc_id": "d1", "field": "date_due", "route": "review",
+               "in_human_queue": True, "reason_codes": []}]
+    assert qual_walk_plan.eligible(routes, {}) == ["d1"]
+```
+
+```bash
+.venv/bin/python -m pytest tests/test_qual_walk_plan.py -q
+```
+预期:`4 passed`
+
 注意 `doc_ids_sha256` 用的是 `"\n".join(ids)` 的 sha256 —— 与 `hitl_narrow_setup._load_docs` 的校验口径一致(那里也是 `"\n".join(doc_ids)`),不是 `doc_ids_line_digest`。两个口径在这里恰好同值(ids 已排序),但校验方读的是前者,所以就按前者写。
 
 - [ ] **Step 2: 抽名单**
@@ -1427,7 +1720,9 @@ if __name__ == "__main__":
   --routing-report runs/qual-narrow-2026-08-22/doctouch/arms/HAR-0023/routing_report.json \
   --out docs/qual_adk_walk_doc_list.json --n 20
 ```
-预期:一段 JSON(`eligible_n` 约 150–190、`n` 20、两个 sha256),然后 `→ docs/qual_adk_walk_doc_list.json`。
+预期:一段 JSON(`n` 20、两个 sha256),然后 `→ docs/qual_adk_walk_doc_list.json`。
+`eligible_n` 是**队列口径**的合格数,会明显小于「非 auto 路由的文档数」——
+两者相等说明谓词没生效,停下来查。
 
 - [ ] **Step 3: 写行走协议正文**
 
@@ -1451,7 +1746,9 @@ agent(Gemini,走 google-adk)以**协议内一等公民**身份参与人工行走
 ## 2. 行走集
 
 - 来源:`runs/qual-narrow-2026-08-22/doctouch/arms/HAR-0023/routing_report.json`
-- 合格条件:臂 D 路由下人队列 ≥1 槽。合格 [填] 份,`eligible_sha256` = `<抄 Step 2>`
+- 合格条件:臂 D 下 `workbench._walk_release_profile` 会排进队列的槽 ≥1 —— 
+  即 **gating 字段(invoice_number / seller_name / amount_due)的待裁决槽,或 QA 探针**。
+  用「任意非 auto 路由」会抽到打开后队列为空的文档。合格 [填] 份,`eligible_sha256` = `<抄 Step 2>`
 - 抽样:最小哈希,盐 `invoiceloop-qual-adk-walk-v1`,取 20 份。
 - 名单:`docs/qual_adk_walk_doc_list.json`,`doc_ids_sha256` = `<抄 Step 2>`
 - **顺序**:资格集零触达已在 `docs/QUALIFICATION_NARROW_RESULTS_2026-08-23.md`
@@ -1476,7 +1773,7 @@ agent(Gemini,走 google-adk)以**协议内一等公民**身份参与人工行走
 
 | # | 预测 | 依据 |
 |---|---|---|
-| P1 | 有建议工件的槽 100% 带 `suggestion_seen` + 两个溯源字段 | 「有机结合」的结构性主张,可测试 |
+| P1 | **走前冻结表**里的槽,凡裁决过的 100% 带 `suggestion_seen` + 两个溯源字段 | 「有机结合」的结构性主张,可测试。分母取自冻结表而非账本 —— 取自账本会让「整套字段丢失」自己从分母消失 |
 | P2 | agree 类建议采纳率 ≥ 60% | HITL-narrow 实测 10/13 = 77%,留回落空间 |
 | P3 | 行走槽中位耗时 ≤ 60s | narrow 30s / 普查 R1-S1 52s;建议不该拖慢行走 |
 | P4 | 模型提出异议且人采纳改值的槽 ≥ 1 | = 0 则顾问层价值主张如实登记为**未证明** |
@@ -1497,7 +1794,8 @@ agent(Gemini,走 google-adk)以**协议内一等公民**身份参与人工行走
 - [ ] **Step 4: 提交 —— 这一条 commit 必须先于任何裁决**
 
 ```bash
-git add scripts/qual_walk_plan.py docs/qual_adk_walk_doc_list.json \
+git add scripts/qual_walk_plan.py tests/test_qual_walk_plan.py \
+        docs/qual_adk_walk_doc_list.json \
         docs/QUAL_ADK_WALK_PROTOCOL_2026-08-24.md
 git commit -m "Freeze the ADK walk protocol and its 20-document set drawn from the qualification round after its routing numbers were already published."
 ```
@@ -1638,37 +1936,61 @@ if __name__ == "__main__":
 ```
 预期:一段 JSON,`docs: 20`、`harness_id: "HAR-0023"`、`touch` 里 `docs: 20`、以及两条 next 命令。
 
-- [ ] **Step 3: 预生成 20 份建议(唯一的 Gemini 花费)**
+- [ ] **Step 3: 定模型并验可用(协议冻结前必须做完)**
+
+代码默认是 `gemini-3.7-flash`(`invoiceloop/agents/runtime.py:27`),而 ATA 的
+08-07 存证用的是 `gemini-3.6-flash`。**用默认的 3.7**,理由:硬性要求只说
+Gemini 3.5+,3.7 满足;跟着代码默认走可以少一个「文档说 A、代码跑 B」的裂缝。
+定下来之后写进协议 §3,冻结后不再换(换模型 = 废臂)。
+
+先用一份文档验通,再跑全量:
+
+```bash
+set -a && . ./.env && set +a && \
+.venv/bin/python -c "
+from invoiceloop.agents.runtime import DEFAULT_GEMINI_MODEL
+print('default model =', DEFAULT_GEMINI_MODEL)
+"
+```
+预期:`default model = gemini-3.7-flash`。与协议 §3 写的不一致就停下来,先对齐再冻结。
+
+- [ ] **Step 4: 预生成 20 份建议(唯一的 Gemini 花费)**
+
+不传 `--model`,让它走 `DEFAULT_GEMINI_MODEL` —— 写死一个字符串就是再造一处会漂的真相。
 
 ```bash
 set -a && . ./.env && set +a && \
 .venv/bin/python scripts/hitl_adk_invoice_read.py \
-  --run-dir runs/qual-adk-walk/runs/run-0001 \
-  --model gemini-3.6-flash 2>&1 | tail -30
+  --run-dir runs/qual-adk-walk/runs/run-0001 2>&1 | tail -30
 ```
 预期:逐份打印 `[i/20] <doc_id>`,末尾一段 JSON 含 `"docs": 20`、`"failed": []`、`"injected"`。
 `failed` 非空则退出码为 1 —— 把失败明细带进结果文档,**不要为了凑满 20 而重跑换模型**(换模型 = 废臂)。
 
-- [ ] **Step 4: 冻结溯源工件(裁决开始之前的最后一步)**
+- [ ] **Step 5: 冻结溯源工件(裁决开始之前的最后一步)**
 
 ```bash
 .venv/bin/python scripts/suggest_provenance_freeze.py \
   --run-dir runs/qual-adk-walk/runs/run-0001 \
-  --round qual-adk-walk \
+  --round qual-adk-walk-2026-08-25 \
   --frozen-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 ```
-预期:一段 JSON,`docs: 20`、`model: "gemini-3.6-flash"`、两个 digest 前缀。
+预期:一段 JSON,`frozen_slots` 约 40–80(20 份 × 每份 1–4 个字段)、`model: "gemini-3.7-flash"`、工件哈希与两个 digest 前缀。
 
-- [ ] **Step 5: 提交冻结状态 —— 这一条 commit 必须先于第一条裁决**
+- [ ] **Step 6: 提交冻结状态 —— 这一条 commit 必须先于第一条裁决**
 
 ```bash
-git add scripts/qual_adk_walk_setup.py \
-        runs/qual-adk-walk/runs/run-0001/vision/invoice_read.json \
-        runs/qual-adk-walk/runs/run-0001/vision/suggestion_provenance.json
+.venv/bin/python scripts/freeze_evidence.py --round qual-adk-walk-2026-08-25 \
+  runs/qual-adk-walk/runs/run-0001/vision/invoice_read.json \
+  runs/qual-adk-walk/runs/run-0001/vision/suggestion_provenance.json \
+  runs/qual-adk-walk/runs/run-0001/vision/answers6.adk-invoice.tsv
+git add scripts/qual_adk_walk_setup.py docs/evidence/qual-adk-walk-2026-08-25/
 git commit -m "Pre-generate and freeze all twenty ADK readings before a single slot is adjudicated."
 ```
 
-- [ ] **Step 6: 走**
+`runs/` 是 gitignored symlink,直接 `git add runs/...` 不成立 —— 必须走 `freeze_evidence.py`
+把副本放进 `docs/evidence/`,这条 commit 才真的是「裁决前的冻结锚点」。
+
+- [ ] **Step 7: 走**
 
 ```bash
 .venv/bin/python -m invoiceloop workbench --workspace runs/qual-adk-walk --port 8793
@@ -1692,14 +2014,20 @@ for line in sys.stdin:
           '| model', e.get('suggestion_model'))
 "
 ```
-预期:有建议的槽三个字段齐全;没建议的槽三个都缺。**只缺其中一两个 = 阻断,停下来查。**
+预期:有建议的槽三个字段齐全;没建议的槽三个都缺。
+
+三个字段不会「只缺一两个」—— `append_adjudication` 的三向对账在落账那一刻就挡住了:
+表里有而账本没记、账本记了而表里没有、值对不上,三种都直接 ValueError,一行都不写。
+所以真出问题的表现是**提交被拒**,而不是账本里出现半份溯源。被拒了就停下来查,别绕过去。
 
 3. 协议不许中途改。想改 = 停下来,按废臂条款声明。
 
-- [ ] **Step 7: 提交账本**
+- [ ] **Step 8: 提交账本**
 
 ```bash
-git add runs/qual-adk-walk/runs/run-0001/adjudication_ledger.jsonl
+.venv/bin/python scripts/freeze_evidence.py --round qual-adk-walk-2026-08-25 \
+  runs/qual-adk-walk/runs/run-0001/adjudication_ledger.jsonl
+git add docs/evidence/qual-adk-walk-2026-08-25/
 git commit -m "Record the twenty-document ADK walk: every slot the agent spoke on carries its artifact digest and model id."
 ```
 
@@ -1738,35 +2066,44 @@ from invoiceloop.fields import FIELD_KINDS, normalise  # noqa: E402
 
 
 def provenance_coverage(entries: list[dict], prov: dict) -> dict:
-    """P1:有建议工件的槽,是不是 100% 带 suggestion_seen + 两个溯源字段。
+    """P1:走前冻结的建议槽,裁决过的那些是不是 100% 带完整溯源。
 
-    分母不是「全部槽」,是「文档在工件里有读法、且该槽展示过建议」的槽。
+    **分母来自冻结表,不来自账本。** 第一版是「统计已有 suggestion_seen 的
+    账本行」—— 那样一来,「该展示建议的槽,账本一个字没记」这个最该被发现的
+    故障会直接从分母里消失,覆盖率照样 100%。分母必须是外部的:
+    冻结表的槽 ∩ 实际裁决过的槽。
+
+    (append_adjudication 的三向对账已经在写时挡住了这类故障,所以这里正常
+    应当为 0 缺口。两道防线不冗余:写时挡的是新账本,这里查的是既有账本 ——
+    包括对账逻辑上线之前写的行。)
     """
-    reader_docs = set()
-    for rec in (prov.get("readers") or {}).values():
-        reader_docs |= set(rec.get("docs") or {})
-    denom = complete = seen_only = 0
+    frozen = set(prov.get("slots") or {})
+    latest: dict[str, dict] = {}
+    for entry in sorted(entries, key=lambda e: e["seq"]):
+        latest[f"{entry['doc_id']}|{entry['field']}"] = entry
+    adjudicated = set(latest)
+    denom_keys = sorted(frozen & adjudicated)
+    complete = 0
     gaps = []
-    for entry in entries:
-        if entry["doc_id"] not in reader_docs:
-            continue
-        if not entry.get("suggestion_seen"):
-            continue
-        denom += 1
-        has_sha = bool(entry.get("suggestion_artifact_sha256"))
-        has_model = bool(entry.get("suggestion_model"))
-        if has_sha and has_model:
+    for key in denom_keys:
+        entry = latest[key]
+        missing = [name for name in ("suggestion_seen",
+                                     "suggestion_artifact_sha256",
+                                     "suggestion_model")
+                   if not entry.get(name)]
+        if not missing:
             complete += 1
         else:
-            seen_only += 1
-            gaps.append({"decision_id": entry["decision_id"],
-                         "doc_id": entry["doc_id"], "field": entry["field"],
-                         "has_sha": has_sha, "has_model": has_model})
+            gaps.append({"decision_id": entry["decision_id"], "slot": key,
+                         "missing": missing})
     return {
-        "slots_with_a_shown_suggestion": denom,
+        "frozen_slots": len(frozen),
+        "adjudicated_slots": len(adjudicated),
+        "frozen_and_adjudicated": len(denom_keys),
         "with_full_provenance": complete,
-        "coverage": round(complete / denom, 4) if denom else None,
+        "coverage": round(complete / len(denom_keys), 4) if denom_keys else None,
         "gaps": gaps,
+        "adjudicated_but_never_frozen": sorted(adjudicated - frozen),
     }
 
 
@@ -1868,8 +2205,10 @@ if __name__ == "__main__":
 import json, pathlib
 a = json.loads(pathlib.Path('runs/qual-adk-walk/walk_analysis.json').read_text())
 print('P1 覆盖', a['P1_provenance']['with_full_provenance'], '/',
-      a['P1_provenance']['slots_with_a_shown_suggestion'],
-      '=', a['P1_provenance']['coverage'])
+      a['P1_provenance']['frozen_and_adjudicated'],
+      '=', a['P1_provenance']['coverage'],
+      '| 冻结槽', a['P1_provenance']['frozen_slots'],
+      '| 裁决过但没冻结', len(a['P1_provenance']['adjudicated_but_never_frozen']))
 print('P2 采纳', a['P2_adoption']['adopted'], '/',
       a['P2_adoption']['agree_slots'], '=', a['P2_adoption']['adoption_rate'])
 print('P3 中位', a['P3_timing']['median_seconds'], 's  (n_timed',
@@ -1878,7 +2217,8 @@ print('P4 模型异议被采纳', a['P4_model_dissent_adopted']['n'])
 print('P5 零权威', a['P5_authority']['clean'])
 "
 ```
-预期:五行。P1 应当是 `1.0`;P5 应当是 `True`。P2/P3/P4 是实测,好坏都照登。
+预期:五行。P1 应当是 `1.0` 且「裁决过但没冻结」为 0;P5 应当是 `True`。
+P2/P3/P4 是实测,好坏都照登。P1 不是 1.0 就把 `gaps` 明细贴进结果文档 §0,按阻断处理。
 
 - [ ] **Step 3: 写结果文档**
 
@@ -1903,7 +2243,7 @@ print('P5 零权威', a['P5_authority']['clean'])
 
 | # | 预测 | 实测 | 判定 |
 |---|---|---|---|
-| P1 | 有建议工件的槽 100% 带完整溯源 | [填] | [成立 / 不成立] |
+| P1 | 冻结建议槽 ∩ 已裁决槽 100% 带完整溯源(分母取自冻结表) | [填] | [成立 / 不成立] |
 | P2 | agree 采纳率 ≥ 60% | [填] | [成立 / 不成立] |
 | P3 | 中位耗时 ≤ 60s | [填] | [成立 / 不成立] |
 | P4 | 模型异议被采纳 ≥ 1 槽 | [填] | [成立 / 不成立] |
@@ -2060,12 +2400,23 @@ must agree, and that arithmetic between claimed values must hold. That set of
 questions applies to any document domain where the support relation is
 geometric — where "is this true?" reduces to "is this on the page, here?"
 Receipts, purchase orders, bills of lading, remittance advices, and delivery
-notes all fall inside it: each is a page with printed values whose provenance
-is a rectangle. Contracts and correspondence fall outside it, because their
-claims live in prose and their support relation is semantic, not geometric.
-The line is not "invoice vs not-invoice"; it is "can a rectangle carry the
-proof."
+notes all *appear* to fall inside it: each is a page with printed values whose
+provenance is a rectangle. Contracts and correspondence appear to fall outside
+it, because their claims live in prose and their support relation is semantic,
+not geometric. The line is not "invoice vs not-invoice"; it is "can a rectangle
+carry the proof."
+
+**NOT MEASURED.** Every domain named in this paragraph is an argument about
+where the mechanism *should* transfer, not a result. This system has been
+measured on one corpus — DocILE invoices — and on nothing else. No receipt, no
+purchase order, no bill of lading has been run through these gates. Treat the
+paragraph as a design claim to be tested, and do not cite it as evidence of
+cross-domain performance.
 ```
+
+「本项目不说工件证明不了的话」在这里的具体含义:rubric H 项要的是一段**设计主张**,
+给了;但主张里点名的领域一个都没测过,所以紧跟一段 NOT MEASURED。两者都留着,
+读的人才知道哪句是论证、哪句是结果。
 
 - [ ] **Step 5: 诚实重跑自评分**
 
@@ -2138,22 +2489,36 @@ git commit -m "Pin the release contract against machine widening, state why line
 ````markdown
 ## For judges — three commands, zero API cost
 
-Everything below reads saved artifacts from disk. No key needed, nothing billed.
+Everything below runs on the sample documents vendored in this repository.
+No API key, nothing billed, no external dataset.
 
 ```bash
 git clone https://github.com/Stahl-G/invoiceloop && cd invoiceloop
-python3 -m venv .venv && .venv/bin/pip install -e .
+python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
 
-# 1. Run the demo end to end on the vendored sample documents
-.venv/bin/python -m invoiceloop run --out runs/demo --crops
+# 1. Run the pipeline end to end on the vendored samples
+.venv/bin/python -m invoiceloop demo --out /tmp/invoiceloop-demo
 
 # 2. Open the review workbench on what it produced
-.venv/bin/python -m invoiceloop workbench --workspace runs/demo --port 8793
+.venv/bin/python -m invoiceloop workbench --workspace /tmp/invoiceloop-demo --port 8793
 
-# 3. Verify every number in this README is recomputable
+# 3. Run the test suite
 .venv/bin/python -m pytest tests/ -q
 ```
+
+**What step 3 does and does not cover.** The suite runs green on a clean clone,
+but the tests that recompute the research numbers are skipped there: they need
+the DocILE calibration archive, which is not distributed with this repository
+(see `DISCLOSURE.md`). Pytest prints those as `skipped`. The research figures in
+this README are recomputable from saved responses at zero API cost **by anyone
+holding the archive** — that is a weaker claim than "recomputable from a clean
+clone", and it is the one we make.
 ````
+
+三处与第一版不同,都是核实过的:`pip install -e .` 不装 pytest(`dev = ["pytest>=8"]`
+是 optional extra);`invoiceloop run` 属 research 路径,要 sibling 校准档案,
+`invoiceloop demo` 才是「内嵌示例语料 → 完整 run(零 API、零外部数据)」;
+`runs/demo` 落在 gitignored 的 symlink 里,换成 `/tmp`。
 
 验收:在一个干净目录里照抄跑一遍,三条都成功。用 `scripts/fresh_venv_check.sh` 复验:
 
@@ -2248,9 +2613,9 @@ git status --short
 
 | 日 | Task | 事 |
 |---|---|---|
-| 8/22 D1 | 1–4 | 抽样器 + 名单过滤 + 冻结协议 → 后台启动 400 次提取(~1.5h) |
+| 8/22 D1 | 0–4 | 证据落盘助手 + 抽样器 + 名单过滤 + 冻结协议 → 后台启动 400 次提取(~1.5h) |
 | 8/23 D2 | 5 | 四臂跑完,写资格集结果文档(P1–P5 对照) |
-| 8/24 D3 | 6–8 | 溯源字段 + 工作台 + 抽行走集 + 冻结行走协议 |
+| 8/24 D3 | 6–8 | 溯源导出与对账 + 冻结工件脚本 + 抽行走集 + 冻结行走协议 |
 | 8/25 D4 | 9 | 装配、预生成 20 份建议、冻结工件、走完 20 份 |
 | 8/26 D5 | 10 | 行走结果 P1–P5,写结果文档 |
 | 8/27 D6 | 11 | lint 回归 + 便宜分 + 诚实重跑自评 |
@@ -2268,6 +2633,10 @@ git status --short
 - 任何对外数字带 `ARCHITECTURE.md` §8 三条限定;不说工件证明不了的话。
 - 凭证只在 `.env`(gitignored):不进仓库、不进 run 目录、不进 bundle、不进日志、
   不写进任何文档。
+- **冻结要能在 git 里看见。** `runs/` 是 gitignored 的 symlink,任何「冻结先于结果」的
+  主张都必须靠 `scripts/freeze_evidence.py` 把副本落进 `docs/evidence/<round>/` 才算数。
+- **证据身份不经过浏览器。** 页面只提交裁决与 `suggestion_seen`;工件哈希与模型 id 由
+  `append_adjudication` 从冻结表导出,对不上就一行都不写。
 
 ## 风险登记
 
@@ -2281,3 +2650,5 @@ git status --short
 | 行走人时不足 | 20 份按 narrow 实测中位 30s/槽,≈ 数小时级,D4 全天可容 |
 | 材料挤压 | D7 之前所有证据已冻结;视频与表单只引用已落盘的数字,不依赖未完成的东西 |
 | 走到一半想改协议 | 停下,按废臂条款声明,把改动与影响的槽写进结果文档 §0 |
+| 走的时候提交被拒(三向对账不过) | 这是设计意图不是故障:说明冻结表与屏幕不一致。查是哪一边漂了,**不要绕过对账**;必要时按废臂条款声明后重开一个 run |
+| P1 < 1.0 | 按阻断处理,`gaps` 明细进结果文档 §0。覆盖率是结构性主张,打折的结构性主张等于没有 |
