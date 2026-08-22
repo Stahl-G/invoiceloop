@@ -849,6 +849,9 @@ cp runs/qual-narrow-2026-08-22/doc_list.json docs/qual_narrow_doc_list.json
   **`failures` 非空 = 本轮 `blocking_level: "blocking"`,结果文档头一句就写它,
   不跳过、不静默缩样本。**
 - 不做并发。串行 400 次 ≈ 70–90 分钟,没必要为此造新机制。
+- **预算要给够。** 实测 ~27 credits/次,400 次 ≈ 10,800;`cmd_extract` 的默认
+  `budget=6000` 会在第 222 次熔断(2026-08-23 实测)。给 15000。熔断本身不是故障,
+  断点续跑重发同一命令即可 —— 但它会让"一轮跑完"变成两段,记进日志。
 
 ## 4. 四臂与指标
 
@@ -943,7 +946,7 @@ git commit -m "Freeze the qualification-round protocol and its 200-document list
 set -a && . ./.env && set +a && \
 DWS_API_KEYS="$DWS_API_KEY,$DWS_API_KEYS" \
 nohup .venv/bin/python -m invoiceloop qualify extract \
-  --workspace runs/qual-narrow-2026-08-22 --budget 6000 \
+  --workspace runs/qual-narrow-2026-08-22 --budget 15000 \
   > runs/qual-narrow-2026-08-22/extract.log 2>&1 &
 echo "pid $!"
 ```
