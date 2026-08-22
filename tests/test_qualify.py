@@ -78,9 +78,26 @@ class TestQualList:
             heldout.qual_list(10, context="qual-narrow-v99")
 
 
+@pytest.fixture
+def pin_disk(monkeypatch):
+    """把「盘上已有双模式响应」钉成固定集合。
+
+    活查 doctouch_arms.discover_dual_mode 会随提取进度变:本轮 200 份一开跑,
+    重新 plan 同一把盐就会撞上自己刚存下的响应。那是**生产路径该有的行为**
+    (见下面的 leak guard 用例),但让单测跟着盘面漂就只是环境噪声。
+    """
+    import doctouch_arms
+
+    def _pin(docs):
+        monkeypatch.setattr(doctouch_arms, "discover_dual_mode",
+                            lambda: {d: Path("/raw") for d in docs})
+    return _pin
+
+
 @pytest.mark.skipif(not corpus_available(), reason="校准档案不在")
-def test_plan_writes_the_list_before_any_call(tmp_path):
+def test_plan_writes_the_list_before_any_call(tmp_path, pin_disk):
     """落盘即预注册:名单、池摘要、盐语境必须在调用之前就在盘上。"""
+    pin_disk(["z" * 24])
     ids = heldout.cmd_plan_qual(tmp_path, n=5)
     payload = json.loads((tmp_path / "doc_list.json").read_text(encoding="utf-8"))
     assert payload["doc_ids"] == ids
@@ -90,3 +107,18 @@ def test_plan_writes_the_list_before_any_call(tmp_path):
     assert payload["dual_mode_on_disk_at_freeze"], "盘上快照必须落盘,否则复算时无从判断"
     assert not set(ids) & set(payload["dual_mode_on_disk_at_freeze"])
     assert not list((tmp_path / "raw").glob("*.json")), "plan 阶段不许有任何响应"
+
+
+@pytest.mark.skipif(not corpus_available(), reason="校准档案不在")
+def test_plan_refuses_a_list_whose_documents_were_already_run(tmp_path, pin_disk):
+    """提取前的实时闸:抽中的文档若盘上已有响应,「未曝光」当场不成立。
+
+    这是名单落盘**之前**的最后一道检查,与冻结快照那条测试互补:那条查的是
+    「冻结时对不对」,这条查的是「现在还对不对」。
+    """
+    sampled = heldout.qual_list(5)
+    pin_disk([sampled[1]])
+    with pytest.raises(RuntimeError, match="「未曝光」不成立"):
+        heldout.cmd_plan_qual(tmp_path, n=5)
+    assert not (tmp_path / "doc_list.json").exists(), \
+        "闸没过就不许留下名单 —— 半份预注册会被当成完整的"
