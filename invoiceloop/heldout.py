@@ -242,6 +242,108 @@ def cmd_plan_sealed(workspace: Path, *, seed_hex: str, seed_source: str,
     return ids
 
 
+# ----------------------------------------------------------------- QUALIFY
+
+#: 资格轮抽样盐。与 SEALED 不同,这里**不需要** drand:池里没有任何一份
+#: 跑过结果,挑盐挑不出好看的样本。盐只承担确定性与第三方可复算。
+QUAL_CONTEXTS = {
+    "qual-narrow-v1": "invoiceloop-qual-narrow-v1",
+}
+DEFAULT_QUAL_CONTEXT = "qual-narrow-v1"
+
+#: SEALED-4 抽走的 100 份不在 development_exposure_manifest 里(它们是
+#: 「已抽、已跑、另行记账」的一类),但双模式响应确确实实在盘上,
+#: 不排除就等于把已知答案混进「未曝光」的头条数字。
+SEALED4_LIST = (Path(__file__).resolve().parent.parent
+                / "docs" / "sealed4_doc_list.json")
+
+
+@lru_cache(maxsize=1)
+def qual_pool() -> tuple[str, ...]:
+    """资格池:sealed_pool 再减 SEALED-4 名单,且 pdf 与词级 OCR 齐全。
+
+    OCR 齐全是硬条件不是装饰:doctouch_arms.assemble 缺 OCR 就把该份记进
+    missing 并从 doc_ids 里剔掉 —— 样本静默缩水,而报告照写 n=200。
+    """
+    sealed4 = set(json.loads(
+        SEALED4_LIST.read_text(encoding="utf-8"))["doc_ids"])
+    root = derisk_root() / "data" / "docile"
+    out = []
+    for doc in sealed_pool():
+        if doc in sealed4:
+            continue
+        if not (root / "pdfs" / f"{doc}.pdf").is_file():
+            continue
+        if not (root / "ocr" / f"{doc}.json").is_file():
+            continue
+        out.append(doc)
+    return tuple(sorted(out))
+
+
+def qual_list(n: int = 200, *,
+              context: str = DEFAULT_QUAL_CONTEXT) -> list[str]:
+    """最小哈希抽样:按 sha256(「盐|doc_id」)升序取前 n 份,再按 id 排序。
+
+    换掉 sealed 的 random.sample 只为一件事:第三方拿到池和盐就能用四行
+    脚本复算,不必信任我们的 PRNG 版本。
+    """
+    if context not in QUAL_CONTEXTS:
+        raise ValueError(f"未知资格语境:{context};允许 {sorted(QUAL_CONTEXTS)}")
+    salt = QUAL_CONTEXTS[context]
+    pool = qual_pool()
+    if len(pool) < n:
+        raise RuntimeError(f"资格池只有 {len(pool)} 份,不足 {n}")
+    ranked = sorted(pool, key=lambda d: hashlib.sha256(
+        f"{salt}|{d}".encode("utf-8")).hexdigest())
+    return sorted(ranked[:n])
+
+
+def cmd_plan_qual(workspace: Path, *, n: int = 200,
+                  context: str = DEFAULT_QUAL_CONTEXT) -> list[str]:
+    """资格集名单落盘 —— 先于任何调用,落盘即预注册。"""
+    workspace = prepare_workspace(workspace)
+    pool = qual_pool()
+    ids = qual_list(n, context=context)
+    # 冻结这一刻「盘上已有双模式响应」的快照。活查这件事只在提取之前有意义:
+    # 提取一跑完,本轮 200 份自己就有响应了,再活查就是自打嘴巴。
+    import sys as _sys
+
+    _sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    from doctouch_arms import discover_dual_mode  # noqa: E402
+
+    touched = sorted(discover_dual_mode())
+    leaked = sorted(set(ids) & set(touched))
+    if leaked:
+        raise RuntimeError(
+            f"名单里有 {len(leaked)} 份盘上已有双模式响应 —— 「未曝光」不成立:"
+            f"{leaked[:5]}")
+    payload = {
+        "n": n,
+        "pool_size": len(pool),
+        "pool_min_fields": POOL_MIN_FIELDS,
+        "exclusion": "docs/development_exposure_manifest.json 全量补集,"
+                     "再减 docs/sealed4_doc_list.json;"
+                     "并要求 pdf 与词级 OCR 齐全",
+        "sampling": f"min-hash:sha256(「{QUAL_CONTEXTS[context]}|」+ doc_id) "
+                    f"升序取前 {n}",
+        "context": context,
+        "pool_sha256": doc_ids_line_digest(pool),
+        "doc_ids_sha256": doc_ids_line_digest(ids),
+        "dual_mode_on_disk_at_freeze": touched,
+        "dual_mode_on_disk_sha256": doc_ids_line_digest(touched),
+        "doc_ids": ids,
+    }
+    (workspace / "doc_list.json").write_text(
+        json.dumps(payload, indent=1, ensure_ascii=False) + "\n",
+        encoding="utf-8")
+    print(f"pool={payload['pool_size']}  qual n={n}  context={context}")
+    print(f"冻结时盘上双模式 {len(touched)} 份,与名单交集 0")
+    print(f"pool_sha256={payload['pool_sha256']}")
+    print(f"doc_ids_sha256={payload['doc_ids_sha256']}")
+    print(f"名单已落盘:{workspace / 'doc_list.json'} —— 先提交,再调用")
+    return ids
+
+
 def _load_keys() -> list[str]:
     env = os.environ.get("DWS_API_KEYS", "")
     keys = [k.strip() for k in env.split(",") if k.strip()]

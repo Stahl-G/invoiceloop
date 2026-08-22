@@ -16,6 +16,8 @@ from . import dws
 from .heldout import DEFAULT_SEALED_CONTEXT as _DEFAULT_SEALED_CONTEXT
 from .heldout import SEALED_CONTEXTS as _SEALED_CONTEXTS
 from .heldout import SEALED_SCOPES as _SEALED_SCOPES
+from .heldout import DEFAULT_QUAL_CONTEXT as _DEFAULT_QUAL_CONTEXT
+from .heldout import QUAL_CONTEXTS as _QUAL_CONTEXTS
 
 
 def _main() -> None:
@@ -149,6 +151,20 @@ def _main() -> None:
     p_see = se_sub.add_parser("extract", help="按名单跑双模式,断点续跑,预算熔断")
     p_see.add_argument("--workspace", type=Path, required=True)
     p_see.add_argument("--budget", type=float, default=6000.0)
+
+    p_q = sub.add_parser(
+        "qualify",
+        help="资格集(未曝光确认轮;docs/QUALIFICATION_NARROW_PROTOCOL_*.md)")
+    q_sub = p_q.add_subparsers(dest="qualify_command", required=True)
+    p_qp = q_sub.add_parser("plan", help="最小哈希抽样并落盘名单(先于任何调用)")
+    p_qp.add_argument("--workspace", type=Path, required=True)
+    p_qp.add_argument("--n", type=int, default=200)
+    p_qp.add_argument("--context", default=_DEFAULT_QUAL_CONTEXT,
+                      choices=tuple(sorted(_QUAL_CONTEXTS)),
+                      help=f"抽样盐语境(默认 {_DEFAULT_QUAL_CONTEXT})")
+    p_qe = q_sub.add_parser("extract", help="按名单跑双模式,断点续跑,预算熔断")
+    p_qe.add_argument("--workspace", type=Path, required=True)
+    p_qe.add_argument("--budget", type=float, default=6000.0)
 
     # suggest 刻意**不在** improve 之下:改进控制面仍是全确定性零模型,
     # 顾问层旁挂,输出 advisory 草稿,采纳与否走人 —— 与 vision 同款位置
@@ -350,6 +366,14 @@ def _main() -> None:
             heldout.cmd_plan_sealed(args.workspace, seed_hex=args.seed,
                                     seed_source=args.seed_source, n=args.n,
                                     context=args.context, scope=args.scope)
+        else:
+            heldout.cmd_extract(args.workspace, budget=args.budget)
+    elif args.command == "qualify":
+        from . import heldout
+
+        if args.qualify_command == "plan":
+            heldout.cmd_plan_qual(args.workspace, n=args.n,
+                                  context=args.context)
         else:
             heldout.cmd_extract(args.workspace, budget=args.budget)
     elif args.command == "suggest":
