@@ -51,6 +51,8 @@ def test_only_zero_touch_gating_slots_enter_the_release_subset():
     assert result["docs_with_silent_wrong"] == 1
     assert result["silent_wrong_fields"] == {"seller_name": 1}
     assert result["docs_with_release_error_ids"] == ["d1"]
+    assert result["unscored_auto_accept_slots"] == 0
+    assert result["docs_with_unscored_auto_accept"] == 0
 
 
 def test_a_review_qa_probe_makes_the_document_touched_even_off_gate():
@@ -66,3 +68,30 @@ def test_a_review_qa_probe_makes_the_document_touched_even_off_gate():
         understand_of=lambda _d: {"invoice_number": "INV-1"})
     assert result["zero_touch_docs"] == 0
     assert result["gating_slots"] == 0
+
+
+def test_non_comparable_auto_accepts_are_explicit_not_hidden_in_arithmetic():
+    routes = [
+        {"doc_id": "d1", "field": "invoice_number", "route": "auto_accept",
+         "reason_codes": []},
+        {"doc_id": "d1", "field": "seller_name", "route": "auto_accept",
+         "reason_codes": []},
+        {"doc_id": "d1", "field": "amount_due", "route": "auto_accept",
+         "reason_codes": []},
+    ]
+    result = score_zero_touch_release(
+        routes, POLICY,
+        truth_of=lambda _d: {
+            "invoice_number": "INV-1", "seller_name": "ACME",
+            "amount_due": "$10.00",
+        },
+        understand_of=lambda _d: {
+            "invoice_number": "INV-1", "amount_due": "$10.00",
+        })
+
+    assert result["gating_slots"] == 3
+    assert result["value_hits"] == 2
+    assert result["unscored_auto_accept_slots"] == 1
+    assert result["docs_with_unscored_auto_accept"] == 1
+    assert result["docs_with_unscored_auto_accept_ids"] == ["d1"]
+    assert result["unscored_auto_accept_fields"] == {"seller_name": 1}

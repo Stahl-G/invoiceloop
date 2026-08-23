@@ -221,7 +221,7 @@ def audit(workspace: Path) -> dict[str, Any]:
     d_safety = (rescored["arms"]["HAR-0023"]["metrics"]["ALL"]
                 ["zero_touch_release_safety"])
     return {
-        "audit_version": "qual-doctouch-superseding-audit-v1",
+        "audit_version": "qual-doctouch-superseding-audit-v2",
         "complete": not drift,
         "blocking_level": "none" if not drift else "blocking",
         "blocking_reasons": [] if not drift else ["legacy_metric_drift"],
@@ -256,6 +256,8 @@ def main() -> None:
         "har_0023_zero_touch_docs": safety["zero_touch_docs"],
         "har_0023_zero_touch_gating_slots": safety["gating_slots"],
         "har_0023_zero_touch_silent_wrong": safety["silent_wrong"],
+        "har_0023_zero_touch_unscored_auto_accept":
+            safety["unscored_auto_accept_slots"],
         "har_0023_zero_touch_release_error_docs":
             safety["docs_with_release_error"],
     }, ensure_ascii=False, indent=1))

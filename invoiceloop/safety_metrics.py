@@ -216,17 +216,25 @@ def score_zero_touch_release(
 
     wrong_docs: set[str] = set()
     release_error_docs: set[str] = set()
+    unscored_docs: set[str] = set()
     wrong_fields: Counter[str] = Counter()
     absent_fields: Counter[str] = Counter()
+    unscored_fields: Counter[str] = Counter()
     for row in subset:
         doc_id = str(row["doc_id"])
         field = str(row["field"])
         tmap = truth_of(doc_id)
         umap = understand_of(doc_id) or {}
+        truth_value = tmap.get(field)
+        understand_value = umap.get(field)
         flags = score_slot(
             route=str(row["route"]), field=field,
-            truth_value=tmap.get(field), understand_value=umap.get(field),
+            truth_value=truth_value, understand_value=understand_value,
         )
+        if (row["route"] == "auto_accept"
+                and (truth_value is None or understand_value is None)):
+            unscored_docs.add(doc_id)
+            unscored_fields[field] += 1
         if flags["silent_wrong"]:
             wrong_docs.add(doc_id)
             release_error_docs.add(doc_id)
@@ -248,6 +256,10 @@ def score_zero_touch_release(
         "docs_with_release_error_ids": sorted(release_error_docs),
         "silent_wrong_fields": dict(sorted(wrong_fields.items())),
         "silent_absent_true_fields": dict(sorted(absent_fields.items())),
+        "unscored_auto_accept_slots": sum(unscored_fields.values()),
+        "docs_with_unscored_auto_accept": len(unscored_docs),
+        "docs_with_unscored_auto_accept_ids": sorted(unscored_docs),
+        "unscored_auto_accept_fields": dict(sorted(unscored_fields.items())),
     }
 
 
