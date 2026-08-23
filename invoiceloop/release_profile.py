@@ -126,7 +126,7 @@ def document_touch_metrics(
     profile = parse_release_profile(policy)
     gate = profile["fields"] if profile else frozenset(FIELDS)
     docs = sorted({str(row["doc_id"]) for row in routes})
-    touched: set[str] = set()
+    touched = set(touched_document_ids(routes, policy))
     unresolved = 0
     qa_probes = 0
     for row in routes:
@@ -136,9 +136,6 @@ def document_touch_metrics(
             qa_probes += 1
         in_review = row.get("route") not in AUTO_ROUTES
         field = str(row.get("field"))
-        doc_id = str(row["doc_id"])
-        if in_review and (field in gate or is_qa):
-            touched.add(doc_id)
         if in_review and field in gate:
             unresolved += 1
     return {
@@ -150,3 +147,34 @@ def document_touch_metrics(
         "unresolved_release_slots": unresolved,
         "qa_probe_slots": qa_probes,
     }
+
+
+def touched_document_ids(
+    routes: Sequence[Mapping[str, Any]],
+    policy: Mapping[str, Any] | None,
+) -> frozenset[str]:
+    """Documents a reviewer must open under the routing-time contract.
+
+    This is the set-valued source of truth behind ``document_touch_metrics``.
+    Safety reports use the complement; copying the predicate there would let
+    the headline zero-touch count and its error audit drift apart.
+    """
+    profile = parse_release_profile(policy)
+    gate = profile["fields"] if profile else frozenset(FIELDS)
+    touched: set[str] = set()
+    for row in routes:
+        codes = [str(c) for c in (row.get("reason_codes") or [])]
+        is_qa = any(c.startswith("QA_SAMPLE") for c in codes)
+        in_review = row.get("route") not in AUTO_ROUTES
+        if in_review and (str(row.get("field")) in gate or is_qa):
+            touched.add(str(row["doc_id"]))
+    return frozenset(touched)
+
+
+def zero_touch_document_ids(
+    routes: Sequence[Mapping[str, Any]],
+    policy: Mapping[str, Any] | None,
+) -> frozenset[str]:
+    """Documents with neither a gating review slot nor a review QA probe."""
+    docs = frozenset(str(row["doc_id"]) for row in routes)
+    return docs - touched_document_ids(routes, policy)

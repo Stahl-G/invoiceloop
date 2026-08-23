@@ -37,3 +37,28 @@ def test_no_list_means_every_dual_mode_document():
     """旧的 doctouch 复算路径不受影响。"""
     sources = {A: Path("/raw/old"), C: Path("/raw/old")}
     assert doctouch_arms.select_sources(sources, None) == sources
+
+
+def test_execution_revision_refuses_dirty_or_unknown_code(monkeypatch):
+    monkeypatch.setattr(doctouch_arms, "_code_revision", lambda _repo: None)
+    with pytest.raises(SystemExit, match="code revision"):
+        doctouch_arms.require_clean_code_revision()
+
+    monkeypatch.setattr(
+        doctouch_arms, "_code_revision", lambda _repo: "abc-dirty")
+    with pytest.raises(SystemExit, match="干净 commit"):
+        doctouch_arms.require_clean_code_revision()
+
+    monkeypatch.setattr(doctouch_arms, "_code_revision", lambda _repo: "abc")
+    assert doctouch_arms.require_clean_code_revision() == "abc"
+
+
+def test_arm_identity_binds_the_code_revision():
+    active = {
+        "harness_id": "HAR-9", "policy_digest": "p",
+        "policy_sha256": "ps", "schema_sha256": "ss",
+    }
+    one = doctouch_arms.arm_identity(active, [A], code_revision="rev-1")
+    two = doctouch_arms.arm_identity(active, [A], code_revision="rev-2")
+    assert one["code_revision"] == "rev-1"
+    assert one != two

@@ -25,7 +25,9 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "scripts"))
 
-from doctouch_arms import assemble, discover_dual_mode, select_sources  # noqa: E402
+from doctouch_arms import (  # noqa: E402
+    assemble, discover_dual_mode, require_clean_code_revision, select_sources,
+)
 from invoiceloop import pipeline  # noqa: E402
 from invoiceloop.harness import schema_digest  # noqa: E402
 from invoiceloop.release_profile import document_touch_metrics  # noqa: E402
@@ -62,6 +64,25 @@ def _load_docs() -> list[str]:
     return doc_ids
 
 
+def run_identity(active: dict, doc_ids: list[str], *, protocol_path: Path,
+                 code_revision: str) -> dict:
+    """Every input that licenses replay of the human-walk run."""
+    protocol_path = Path(protocol_path)
+    if not protocol_path.is_file():
+        raise SystemExit(f"fatal: 行走协议不存在:{protocol_path}")
+    return {
+        "harness_id": active["harness_id"],
+        "policy_digest": active["policy_digest"],
+        "policy_sha256": active["policy_sha256"],
+        "schema_sha256": active["schema_sha256"],
+        "doc_ids_sha256": hashlib.sha256(
+            "\n".join(doc_ids).encode("utf-8")).hexdigest(),
+        "protocol": str(protocol_path),
+        "protocol_sha256": hashlib.sha256(protocol_path.read_bytes()).hexdigest(),
+        "code_revision": code_revision,
+    }
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--workspace", type=Path,
@@ -92,15 +113,10 @@ def main() -> None:
 
     run_dir = ws / "runs" / "run-0001"
     active = _har0023_active()
-    identity = {
-        "harness_id": active["harness_id"],
-        "policy_digest": active["policy_digest"],
-        "policy_sha256": active["policy_sha256"],
-        "schema_sha256": active["schema_sha256"],
-        "doc_ids_sha256": hashlib.sha256(
-            "\n".join(doc_ids).encode("utf-8")).hexdigest(),
-        "protocol": PROTOCOL,
-    }
+    revision = require_clean_code_revision()
+    identity = run_identity(
+        active, doc_ids, protocol_path=REPO / PROTOCOL,
+        code_revision=revision)
     id_path = run_dir / "run_identity.json"
     if run_dir.exists():
         # 「目录在就重放」会把上一次用别的策略/名单跑出来的东西当成这一次的。
@@ -122,6 +138,15 @@ def main() -> None:
         id_path.write_text(
             json.dumps(identity, ensure_ascii=False, indent=1) + "\n",
             encoding="utf-8")
+
+    run_manifest = json.loads(
+        (run_dir / "run_manifest.json").read_text(encoding="utf-8"))
+    if run_manifest.get("code_revision") != revision:
+        raise SystemExit(json.dumps({
+            "fatal": "行走 run 的 code revision 与当前身份不同",
+            "identity": revision,
+            "run_manifest": run_manifest.get("code_revision"),
+        }, ensure_ascii=False, indent=1))
 
     (ws / "runs" / "current.json").write_text(
         json.dumps({"run": "run-0001"}) + "\n", encoding="utf-8")

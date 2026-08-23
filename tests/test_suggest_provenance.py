@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import shutil
 from pathlib import Path
 
 import pytest
@@ -91,7 +93,7 @@ class TestLoadVerifiesTheLiveArtifacts:
     """冻结表说了什么不重要,盘上此刻是什么才重要。"""
 
     @staticmethod
-    def _run(tmp_path: Path) -> Path:
+    def _run(tmp_path: Path, *, anchor: bool = True) -> Path:
         import sys
 
         sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
@@ -112,12 +114,36 @@ class TestLoadVerifiesTheLiveArtifacts:
         suggest_provenance_freeze.freeze(
             run_dir, tag="adk-invoice", round_name="t",
             frozen_at="2026-08-25T09:00:00+00:00")
+        if anchor:
+            live = run_dir / "vision" / suggest_provenance.FILENAME
+            stage = tmp_path / "docs" / "evidence" / "t" / "prewalk"
+            stage.mkdir(parents=True)
+            frozen = stage / suggest_provenance.FILENAME
+            shutil.copyfile(live, frozen)
+            (stage / "MANIFEST.sha256").write_text(
+                f"{hashlib.sha256(frozen.read_bytes()).hexdigest()}  "
+                f"{suggest_provenance.FILENAME}\n", encoding="utf-8")
         return run_dir
 
     def test_a_clean_run_loads(self, tmp_path):
         run_dir = self._run(tmp_path)
         prov = suggest_provenance.load(run_dir, repo_root=tmp_path)
         assert prov["slots"]["doc1|invoice_number"]["displayed_value"] == "INV-1"
+
+    def test_a_frozen_map_without_a_committed_prewalk_anchor_blocks(self, tmp_path):
+        """冻结表存在就说明这是正式走前工件；没有仓库锚点不能降级成开发模式。"""
+        run_dir = self._run(tmp_path, anchor=False)
+        with pytest.raises(ValueError, match="prewalk.*不存在"):
+            suggest_provenance.load(run_dir, repo_root=tmp_path)
+
+    def test_a_manifest_that_omits_the_provenance_map_blocks(self, tmp_path):
+        run_dir = self._run(tmp_path, anchor=False)
+        stage = tmp_path / "docs" / "evidence" / "t" / "prewalk"
+        stage.mkdir(parents=True)
+        (stage / "MANIFEST.sha256").write_text(
+            f"{'a' * 64}  another.json\n", encoding="utf-8")
+        with pytest.raises(ValueError, match="没有绑定"):
+            suggest_provenance.load(run_dir, repo_root=tmp_path)
 
     def test_a_second_reader_injected_after_the_freeze_blocks(self, tmp_path):
         """走中途多注入一个 tag:页面会因读者分歧显示 split,而按 slot 查表
@@ -141,15 +167,9 @@ class TestLoadVerifiesTheLiveArtifacts:
     def test_tsv_and_map_edited_together_still_blocks_against_the_repo_copy(
             self, tmp_path):
         """两边一起改就自洽了 —— 仓库里那份走前副本是唯一改不动的锚。"""
-        import hashlib
-
         run_dir = self._run(tmp_path)
         live = run_dir / "vision" / suggest_provenance.FILENAME
         stage = tmp_path / "docs" / "evidence" / "t" / "prewalk"
-        stage.mkdir(parents=True)
-        (stage / "MANIFEST.sha256").write_text(
-            f"{hashlib.sha256(live.read_bytes()).hexdigest()}  "
-            f"{suggest_provenance.FILENAME}\n", encoding="utf-8")
         tsv = run_dir / "vision" / "answers6.adk-invoice.tsv"
         new_tsv = tsv.read_text(encoding="utf-8").replace("INV-1", "INV-2")
         tsv.write_text(new_tsv, encoding="utf-8")

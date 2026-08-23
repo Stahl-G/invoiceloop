@@ -34,6 +34,8 @@ from invoiceloop.scope import classify_broadcast_ocr  # noqa: E402
 from invoiceloop.sealed_batch import _corpus_environment, frozen_harness  # noqa: E402
 from invoiceloop import truth_caliber as _caliber  # noqa: E402
 from invoiceloop.harness import schema_digest  # noqa: E402
+from invoiceloop.snapshot import _code_revision  # noqa: E402
+from invoiceloop.safety_metrics import score_zero_touch_release  # noqa: E402
 
 DERISK = Path.home() / "Developer" / "dws-derisk"
 SCHEMA = REPO / "invoiceloop" / "harnesses" / "HAR-0001" / "extraction_schema.json"
@@ -137,6 +139,31 @@ def active_for(arm: str) -> dict:
     }
 
 
+def require_clean_code_revision() -> str:
+    """Experiments may only create or reuse arms at one clean git commit."""
+    revision = _code_revision(REPO)
+    if revision is None:
+        raise SystemExit("fatal: 无法解析 code revision,实验工件没有代码身份")
+    if revision.endswith("-dirty") or revision.endswith("-unknown-worktree"):
+        raise SystemExit(
+            f"fatal: 实验必须从干净 commit 运行,当前 code revision={revision}")
+    return revision
+
+
+def arm_identity(active: dict, doc_ids: list[str], *,
+                 code_revision: str) -> dict:
+    """Every input that licenses reuse of an existing arm directory."""
+    return {
+        "harness_id": active["harness_id"],
+        "policy_digest": active["policy_digest"],
+        "policy_sha256": active["policy_sha256"],
+        "schema_sha256": active["schema_sha256"],
+        "doc_ids_sha256": hashlib.sha256(
+            "\n".join(sorted(doc_ids)).encode("utf-8")).hexdigest(),
+        "code_revision": code_revision,
+    }
+
+
 def measure(routes: list[dict], policy: dict, strength: dict[str, str],
             understand: dict) -> dict:
     """每层报预注册 §4 的四组数。"""
@@ -149,6 +176,11 @@ def measure(routes: list[dict], policy: dict, strength: dict[str, str],
         touch = document_touch_metrics(rows, policy)
         safety = score_routes(
             rows, truth_of=truth,
+            understand_of=lambda d: understand.get(d),
+            caliber_of=_caliber.caliber_dispute,
+        )
+        release_safety = score_zero_touch_release(
+            rows, policy, truth_of=truth,
             understand_of=lambda d: understand.get(d),
             caliber_of=_caliber.caliber_dispute,
         )
@@ -167,6 +199,7 @@ def measure(routes: list[dict], policy: dict, strength: dict[str, str],
             "silent_wrong": safety.get("silent_wrong"),
             "absent_hits": safety.get("absent_hits"),
             "value_hits": safety.get("value_hits"),
+            "zero_touch_release_safety": release_safety,
         }
     return out
 
@@ -216,17 +249,11 @@ def main() -> None:
                "arms": {}}
 
     routes_by_arm = {}
+    revision = require_clean_code_revision()
     for arm in ("HAR-0001", "HAR-0021", "HAR-0023"):
         arm_dir = out / "arms" / arm
         active = active_for(arm)
-        identity = {
-            "harness_id": arm,
-            "policy_digest": active["policy_digest"],
-            "policy_sha256": active["policy_sha256"],
-            "schema_sha256": active["schema_sha256"],
-            "doc_ids_sha256": hashlib.sha256(
-                "\n".join(sorted(doc_ids)).encode("utf-8")).hexdigest(),
-        }
+        identity = arm_identity(active, doc_ids, code_revision=revision)
         id_path = arm_dir / "arm_identity.json"
         if arm_dir.exists():
             # 「目录在就复用」会把上一次用别的策略/名单跑出来的东西当成这一次的。
@@ -248,6 +275,14 @@ def main() -> None:
             id_path.write_text(
                 json.dumps(identity, ensure_ascii=False, indent=1) + "\n",
                 encoding="utf-8")
+        run_manifest = json.loads(
+            (arm_dir / "run_manifest.json").read_text(encoding="utf-8"))
+        if run_manifest.get("code_revision") != revision:
+            raise SystemExit(json.dumps({
+                "fatal": "arm 的 run_manifest 与本次 code revision 不同",
+                "arm": arm, "identity": revision,
+                "run_manifest": run_manifest.get("code_revision"),
+            }, ensure_ascii=False, indent=1))
         report = json.loads((arm_dir / "routing_report.json").read_text())
         routes_by_arm[arm] = report["routes"]
         results["arms"][arm] = {

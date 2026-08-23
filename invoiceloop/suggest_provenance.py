@@ -115,15 +115,31 @@ def _verify_repo_copy(prov: Mapping[str, Any], live_path: Path,
     manifest = (Path(repo_root) / "docs" / "evidence" / round_name
                 / "prewalk" / "MANIFEST.sha256")
     if not manifest.is_file():
-        return  # 走前副本尚未提交(开发/测试路径);live 校验仍然生效
+        raise ValueError(
+            f"冻结建议表已经存在,但 prewalk 仓库锚点不存在:{manifest} —— "
+            f"先 freeze_evidence 并提交,再允许第一条裁决")
+    matches: list[str] = []
     for line in manifest.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
         digest, _, name = line.partition("  ")
-        if name.strip() == FILENAME and digest.strip() != _file_sha(live_path):
-            raise ValueError(
-                f"{FILENAME} 与 {manifest} 里的走前副本不符 —— "
-                f"冻结表在走开始之后被改过")
+        if name.strip() == FILENAME:
+            matches.append(digest.strip())
+    if len(matches) != 1:
+        raise ValueError(
+            f"{manifest} 没有绑定且只绑定一份 {FILENAME} —— "
+            f"半份 prewalk manifest 不能作为冻结锚点")
+    frozen_copy = manifest.parent / FILENAME
+    if not frozen_copy.is_file():
+        raise ValueError(f"prewalk manifest 指向的冻结副本不存在:{frozen_copy}")
+    frozen_sha = _file_sha(frozen_copy)
+    if matches[0] != frozen_sha:
+        raise ValueError(
+            f"{FILENAME} 的仓库副本与 {manifest} 自己不符 —— 锚点已损坏")
+    if frozen_sha != _file_sha(live_path):
+        raise ValueError(
+            f"{FILENAME} 与 {manifest} 里的走前副本不符 —— "
+            f"冻结表在走开始之后被改过")
 
 
 def load(run_dir: Path, *, repo_root: Path | None = None) -> dict[str, Any] | None:
