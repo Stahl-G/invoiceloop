@@ -51,6 +51,7 @@ promoted. These files are that turn, not extra lab notes.
 | [`HITL_NARROW_2026-08-14.md`](HITL_NARROW_2026-08-14.md) | Development-set result of that walk (4/20 zero-touch, 0 unresolved payment fields, 0 probe reversals), with confounders listed. Not a qualification result. Not the same measurement as the 660-document run |
 | [`DOCTOUCH_PREREG_2026-08-18.md`](DOCTOUCH_PREREG_2026-08-18.md) | Pre-registration for the 660-document zero-API touch measurement. Frozen before any result |
 | [`DOCTOUCH_RESULTS_2026-08-18.md`](DOCTOUCH_RESULTS_2026-08-18.md) | Development-set result: HAR-0023 zero-touch 10.8% (about 89% still opened). Predictions that missed are listed. Not a qualification result |
+| [`QUALIFICATION_NARROW_CONTAMINATION_2026-08-23.md`](QUALIFICATION_NARROW_CONTAMINATION_2026-08-23.md) | Revocation record for the later 200-document round. Its protocol changed after extraction began, triggering its own dirty-arm clause. The 12.5% routing observation remains exploratory; a superseding audit found 12/71 comparable payment-gate values disagreed with DocILE truth in the zero-touch subset, with four more auto-accept slots unscored |
 
 ## Measurement records
 

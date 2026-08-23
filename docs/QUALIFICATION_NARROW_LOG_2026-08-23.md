@@ -1,8 +1,8 @@
 # QUALIFICATION_NARROW_2026-08-22 运行日志
 
-协议正文:`docs/QUALIFICATION_NARROW_PROTOCOL_2026-08-22.md`,冻结于 `b45f983`,
-**逐字节未改**。本文是协议之外的运行记录 —— 照 `docs/SEALED4_AMENDMENT_BROADCAST_2026-08-10.md`
-的先例另开一份,不动冻结件。
+协议正文:`docs/QUALIFICATION_NARROW_PROTOCOL_2026-08-22.md`,冻结于 `b45f983`。
+当前文件已恢复为该 commit 的逐字节副本，但提取期间确实在 `1afe7da` 改过；这个历史
+事实触发 §7，不能被“最终字节相同”抵销。本文是协议之外的运行记录。
 
 ## 1. 提取分两段跑完(预算参数给低了)
 
@@ -44,3 +44,9 @@ git 历史里可查。
 | 2026-08-23 | 提取第一段:222/400,0 失败,预算熔断 |
 | 2026-08-23 | 协议正文被改(`1afe7da`)→ 同日还原,记录移入本文 |
 | 2026-08-23 | 提取第二段:补完 400/400 |
+
+## 4. 后续状态裁定
+
+恢复冻结字节不撤销协议 §7 已经触发的污染。后续审计据此把本轮状态正式裁定为
+`contaminated / blocking`，撤销 qualification / 产品能力晋升；原数字保留为
+探索性测量。见 `docs/QUALIFICATION_NARROW_CONTAMINATION_2026-08-23.md`。

@@ -1,0 +1,1098 @@
+{
+ "audit_version": "qual-doctouch-superseding-audit-v2",
+ "complete": true,
+ "blocking_level": "none",
+ "blocking_reasons": [],
+ "scorer_code_revision": "71afebfab167bb08908fdfe6cdbc3d4741486327",
+ "n_docs": 200,
+ "doc_list_sha256": "27fa0f9229974bef990bd8148c8bb3787db9eb4fa4a922bd5429483eda9b22b8",
+ "extract_audit_sha256": "db77c3d8acdb254e5af5ad30c1a8f6abd7c2f32ffd62f582ffa21584a9d2b00d",
+ "legacy_metrics_sha256": "ac8d9e064d1fdd78e5243379b36d1d0e91a2154ab895c02300d53fc3c56e0361",
+ "source_arms": {
+  "HAR-0001": {
+   "source_code_revision": "8cfaf6e723d435d774b2dd4930e7a26ad2bcc70a",
+   "identity_had_code_revision": false,
+   "arm_identity_sha256": "a1a196a5bab174b95a45ac97c9236514128f7ca148120c4c20c8e9a6011ebdaa",
+   "run_manifest_sha256": "4fb0627b4109daba34c2206867d242474ea47963c1711e319ef6835f3b56238d",
+   "routing_report_sha256": "36da551745c50969aa920f330d215b7da6e512e1cee5330009e6d5386c85794d",
+   "policy_digest": "395c5650351b67ca9ad20dea10873180c346ddf2ac21953a8159d26ab881cf97",
+   "policy_sha256": null,
+   "schema_sha256": "e9908c2e3daea623020c8be707faf8cc67b9df37027e313d0ee7781b512b44c2"
+  },
+  "HAR-0021": {
+   "source_code_revision": "8cfaf6e723d435d774b2dd4930e7a26ad2bcc70a",
+   "identity_had_code_revision": false,
+   "arm_identity_sha256": "60fdd72e07d1c66f5937aaa5cd2a8197f69eb946cefdf8ee3624e2bcc376a569",
+   "run_manifest_sha256": "bc8ebd8938f0ade9115bfe4304f8b6dd638120906fed0b3b4bbc5eded1a4f8e7",
+   "routing_report_sha256": "3187d62d55f93d70605218c4faa4025d8d139a35f9162a537f2787b3ff135f85",
+   "policy_digest": "25a1713278eae03d9132f0b16bee830fa716c8fb03752bffc4bf4a0dd08d8c00",
+   "policy_sha256": "bed2a20912c59fd5355873448d2d0f6c5a18545c25e64404d59ddb83b776bbc4",
+   "schema_sha256": "e9908c2e3daea623020c8be707faf8cc67b9df37027e313d0ee7781b512b44c2"
+  },
+  "HAR-0023": {
+   "source_code_revision": "8cfaf6e723d435d774b2dd4930e7a26ad2bcc70a",
+   "identity_had_code_revision": false,
+   "arm_identity_sha256": "69f252e2808512865f250b310b150f70760ee2390984b40009d06f869052d541",
+   "run_manifest_sha256": "a3d74f07bb20012b5d3f941aeec86fbaeb1b53d714d89792c28b62c95d55cd51",
+   "routing_report_sha256": "d3dfce9ee161ca972352c7c79d4364cdafa2b74b233fe623977759fd2b81c032",
+   "policy_digest": "001016d64ede819ed5889a38bd5898be95f016707317cc35be1b9de0217ff112",
+   "policy_sha256": "3bb39cb83c3d0785f5b0c487fab6d2fe28823dce76df05557069cca72fc3fbc8",
+   "schema_sha256": "e9908c2e3daea623020c8be707faf8cc67b9df37027e313d0ee7781b512b44c2"
+  }
+ },
+ "legacy_metric_drift": [],
+ "har_0023_zero_touch_release_safety": {
+  "zero_touch_docs": 25,
+  "gating_fields": [
+   "amount_due",
+   "invoice_number",
+   "seller_name"
+  ],
+  "gating_slots": 75,
+  "slots": 75,
+  "review": 0,
+  "absent_hits": 0,
+  "silent_absent": 0,
+  "value_hits": 71,
+  "silent_wrong": 12,
+  "caliber_disputes": 0,
+  "silent_absent_true": 0,
+  "docs_with_silent_wrong": 10,
+  "docs_with_release_error": 10,
+  "docs_with_silent_wrong_ids": [
+   "18cd7955d2be40dbba42025d",
+   "1b30828b99b34724bd42b261",
+   "285ddb13a49a443998666daa",
+   "5c5248eee70545b7a9fe8e1f",
+   "6305d8e507fd4baab7f837bb",
+   "b8bced44b4474b259e0444d5",
+   "b972be9db4a34333aa91e114",
+   "baa3bde8677b423a96fa8190",
+   "c6e464fec96d4c7e807121e8",
+   "f0ea313d14254c709e1467b7"
+  ],
+  "docs_with_release_error_ids": [
+   "18cd7955d2be40dbba42025d",
+   "1b30828b99b34724bd42b261",
+   "285ddb13a49a443998666daa",
+   "5c5248eee70545b7a9fe8e1f",
+   "6305d8e507fd4baab7f837bb",
+   "b8bced44b4474b259e0444d5",
+   "b972be9db4a34333aa91e114",
+   "baa3bde8677b423a96fa8190",
+   "c6e464fec96d4c7e807121e8",
+   "f0ea313d14254c709e1467b7"
+  ],
+  "silent_wrong_fields": {
+   "amount_due": 3,
+   "invoice_number": 2,
+   "seller_name": 7
+  },
+  "silent_absent_true_fields": {},
+  "unscored_auto_accept_slots": 4,
+  "docs_with_unscored_auto_accept": 4,
+  "docs_with_unscored_auto_accept_ids": [
+   "1b30828b99b34724bd42b261",
+   "61fa7c81aea946cfa2a1eb0a",
+   "c8cad71a13e34681afe2dc01",
+   "e9b520b643394a9ebb7c249e"
+  ],
+  "unscored_auto_accept_fields": {
+   "amount_due": 1,
+   "invoice_number": 2,
+   "seller_name": 1
+  }
+ },
+ "rescored": {
+  "n_docs": 200,
+  "strata": {
+   "weak": 60,
+   "strong": 106,
+   "none": 34
+  },
+  "arms": {
+   "HAR-0001": {
+    "policy_digest": "395c5650351b67ca9ad20dea10873180c346ddf2ac21953a8159d26ab881cf97",
+    "policy_sha256": null,
+    "release_profile": null,
+    "release_tier1_explicit": true,
+    "gate": "census",
+    "metrics": {
+     "strong": {
+      "docs": 106,
+      "zero_touch_docs": 0,
+      "zero_touch_pct": 0.0,
+      "unresolved_release_slots": 627,
+      "qa_probe_slots": 0,
+      "human_queue_slots": 627,
+      "slots": 1060,
+      "silent_absent_true": 0,
+      "caliber_disputes": 0,
+      "silent_wrong": 69,
+      "absent_hits": 0,
+      "value_hits": 368,
+      "zero_touch_release_safety": {
+       "zero_touch_docs": 0,
+       "gating_fields": [
+        "amount_due",
+        "buyer_name",
+        "due_date",
+        "invoice_number",
+        "issue_date",
+        "seller_name",
+        "seller_vat_id",
+        "total_gross",
+        "total_net",
+        "total_vat"
+       ],
+       "gating_slots": 0,
+       "slots": 0,
+       "review": 0,
+       "absent_hits": 0,
+       "silent_absent": 0,
+       "value_hits": 0,
+       "silent_wrong": 0,
+       "caliber_disputes": 0,
+       "silent_absent_true": 0,
+       "docs_with_silent_wrong": 0,
+       "docs_with_release_error": 0,
+       "docs_with_silent_wrong_ids": [],
+       "docs_with_release_error_ids": [],
+       "silent_wrong_fields": {},
+       "silent_absent_true_fields": {},
+       "unscored_auto_accept_slots": 0,
+       "docs_with_unscored_auto_accept": 0,
+       "docs_with_unscored_auto_accept_ids": [],
+       "unscored_auto_accept_fields": {}
+      }
+     },
+     "weak": {
+      "docs": 60,
+      "zero_touch_docs": 0,
+      "zero_touch_pct": 0.0,
+      "unresolved_release_slots": 383,
+      "qa_probe_slots": 0,
+      "human_queue_slots": 383,
+      "slots": 600,
+      "silent_absent_true": 0,
+      "caliber_disputes": 0,
+      "silent_wrong": 29,
+      "absent_hits": 0,
+      "value_hits": 195,
+      "zero_touch_release_safety": {
+       "zero_touch_docs": 0,
+       "gating_fields": [
+        "amount_due",
+        "buyer_name",
+        "due_date",
+        "invoice_number",
+        "issue_date",
+        "seller_name",
+        "seller_vat_id",
+        "total_gross",
+        "total_net",
+        "total_vat"
+       ],
+       "gating_slots": 0,
+       "slots": 0,
+       "review": 0,
+       "absent_hits": 0,
+       "silent_absent": 0,
+       "value_hits": 0,
+       "silent_wrong": 0,
+       "caliber_disputes": 0,
+       "silent_absent_true": 0,
+       "docs_with_silent_wrong": 0,
+       "docs_with_release_error": 0,
+       "docs_with_silent_wrong_ids": [],
+       "docs_with_release_error_ids": [],
+       "silent_wrong_fields": {},
+       "silent_absent_true_fields": {},
+       "unscored_auto_accept_slots": 0,
+       "docs_with_unscored_auto_accept": 0,
+       "docs_with_unscored_auto_accept_ids": [],
+       "unscored_auto_accept_fields": {}
+      }
+     },
+     "none": {
+      "docs": 34,
+      "zero_touch_docs": 0,
+      "zero_touch_pct": 0.0,
+      "unresolved_release_slots": 220,
+      "qa_probe_slots": 0,
+      "human_queue_slots": 220,
+      "slots": 340,
+      "silent_absent_true": 0,
+      "caliber_disputes": 0,
+      "silent_wrong": 13,
+      "absent_hits": 0,
+      "value_hits": 105,
+      "zero_touch_release_safety": {
+       "zero_touch_docs": 0,
+       "gating_fields": [
+        "amount_due",
+        "buyer_name",
+        "due_date",
+        "invoice_number",
+        "issue_date",
+        "seller_name",
+        "seller_vat_id",
+        "total_gross",
+        "total_net",
+        "total_vat"
+       ],
+       "gating_slots": 0,
+       "slots": 0,
+       "review": 0,
+       "absent_hits": 0,
+       "silent_absent": 0,
+       "value_hits": 0,
+       "silent_wrong": 0,
+       "caliber_disputes": 0,
+       "silent_absent_true": 0,
+       "docs_with_silent_wrong": 0,
+       "docs_with_release_error": 0,
+       "docs_with_silent_wrong_ids": [],
+       "docs_with_release_error_ids": [],
+       "silent_wrong_fields": {},
+       "silent_absent_true_fields": {},
+       "unscored_auto_accept_slots": 0,
+       "docs_with_unscored_auto_accept": 0,
+       "docs_with_unscored_auto_accept_ids": [],
+       "unscored_auto_accept_fields": {}
+      }
+     },
+     "ALL": {
+      "docs": 200,
+      "zero_touch_docs": 0,
+      "zero_touch_pct": 0.0,
+      "unresolved_release_slots": 1230,
+      "qa_probe_slots": 0,
+      "human_queue_slots": 1230,
+      "slots": 2000,
+      "silent_absent_true": 0,
+      "caliber_disputes": 0,
+      "silent_wrong": 111,
+      "absent_hits": 0,
+      "value_hits": 668,
+      "zero_touch_release_safety": {
+       "zero_touch_docs": 0,
+       "gating_fields": [
+        "amount_due",
+        "buyer_name",
+        "due_date",
+        "invoice_number",
+        "issue_date",
+        "seller_name",
+        "seller_vat_id",
+        "total_gross",
+        "total_net",
+        "total_vat"
+       ],
+       "gating_slots": 0,
+       "slots": 0,
+       "review": 0,
+       "absent_hits": 0,
+       "silent_absent": 0,
+       "value_hits": 0,
+       "silent_wrong": 0,
+       "caliber_disputes": 0,
+       "silent_absent_true": 0,
+       "docs_with_silent_wrong": 0,
+       "docs_with_release_error": 0,
+       "docs_with_silent_wrong_ids": [],
+       "docs_with_release_error_ids": [],
+       "silent_wrong_fields": {},
+       "silent_absent_true_fields": {},
+       "unscored_auto_accept_slots": 0,
+       "docs_with_unscored_auto_accept": 0,
+       "docs_with_unscored_auto_accept_ids": [],
+       "unscored_auto_accept_fields": {}
+      }
+     }
+    }
+   },
+   "HAR-0021": {
+    "policy_digest": "25a1713278eae03d9132f0b16bee830fa716c8fb03752bffc4bf4a0dd08d8c00",
+    "policy_sha256": "bed2a20912c59fd5355873448d2d0f6c5a18545c25e64404d59ddb83b776bbc4",
+    "release_profile": null,
+    "release_tier1_explicit": true,
+    "gate": "census",
+    "metrics": {
+     "strong": {
+      "docs": 106,
+      "zero_touch_docs": 2,
+      "zero_touch_pct": 1.9,
+      "unresolved_release_slots": 481,
+      "qa_probe_slots": 34,
+      "human_queue_slots": 481,
+      "slots": 1060,
+      "silent_absent_true": 0,
+      "caliber_disputes": 2,
+      "silent_wrong": 69,
+      "absent_hits": 146,
+      "value_hits": 368,
+      "zero_touch_release_safety": {
+       "zero_touch_docs": 2,
+       "gating_fields": [
+        "amount_due",
+        "buyer_name",
+        "due_date",
+        "invoice_number",
+        "issue_date",
+        "seller_name",
+        "seller_vat_id",
+        "total_gross",
+        "total_net",
+        "total_vat"
+       ],
+       "gating_slots": 20,
+       "slots": 20,
+       "review": 0,
+       "absent_hits": 5,
+       "silent_absent": 0,
+       "value_hits": 10,
+       "silent_wrong": 2,
+       "caliber_disputes": 0,
+       "silent_absent_true": 0,
+       "docs_with_silent_wrong": 2,
+       "docs_with_release_error": 2,
+       "docs_with_silent_wrong_ids": [
+        "285ddb13a49a443998666daa",
+        "c8cad71a13e34681afe2dc01"
+       ],
+       "docs_with_release_error_ids": [
+        "285ddb13a49a443998666daa",
+        "c8cad71a13e34681afe2dc01"
+       ],
+       "silent_wrong_fields": {
+        "buyer_name": 1,
+        "invoice_number": 1
+       },
+       "silent_absent_true_fields": {},
+       "unscored_auto_accept_slots": 5,
+       "docs_with_unscored_auto_accept": 2,
+       "docs_with_unscored_auto_accept_ids": [
+        "285ddb13a49a443998666daa",
+        "c8cad71a13e34681afe2dc01"
+       ],
+       "unscored_auto_accept_fields": {
+        "issue_date": 1,
+        "seller_name": 1,
+        "total_net": 2,
+        "total_vat": 1
+       }
+      }
+     },
+     "weak": {
+      "docs": 60,
+      "zero_touch_docs": 1,
+      "zero_touch_pct": 1.7,
+      "unresolved_release_slots": 318,
+      "qa_probe_slots": 11,
+      "human_queue_slots": 318,
+      "slots": 600,
+      "silent_absent_true": 0,
+      "caliber_disputes": 0,
+      "silent_wrong": 29,
+      "absent_hits": 65,
+      "value_hits": 195,
+      "zero_touch_release_safety": {
+       "zero_touch_docs": 1,
+       "gating_fields": [
+        "amount_due",
+        "buyer_name",
+        "due_date",
+        "invoice_number",
+        "issue_date",
+        "seller_name",
+        "seller_vat_id",
+        "total_gross",
+        "total_net",
+        "total_vat"
+       ],
+       "gating_slots": 10,
+       "slots": 10,
+       "review": 0,
+       "absent_hits": 4,
+       "silent_absent": 0,
+       "value_hits": 5,
+       "silent_wrong": 1,
+       "caliber_disputes": 0,
+       "silent_absent_true": 0,
+       "docs_with_silent_wrong": 1,
+       "docs_with_release_error": 1,
+       "docs_with_silent_wrong_ids": [
+        "61fa7c81aea946cfa2a1eb0a"
+       ],
+       "docs_with_release_error_ids": [
+        "61fa7c81aea946cfa2a1eb0a"
+       ],
+       "silent_wrong_fields": {
+        "buyer_name": 1
+       },
+       "silent_absent_true_fields": {},
+       "unscored_auto_accept_slots": 1,
+       "docs_with_unscored_auto_accept": 1,
+       "docs_with_unscored_auto_accept_ids": [
+        "61fa7c81aea946cfa2a1eb0a"
+       ],
+       "unscored_auto_accept_fields": {
+        "invoice_number": 1
+       }
+      }
+     },
+     "none": {
+      "docs": 34,
+      "zero_touch_docs": 1,
+      "zero_touch_pct": 2.9,
+      "unresolved_release_slots": 176,
+      "qa_probe_slots": 11,
+      "human_queue_slots": 176,
+      "slots": 340,
+      "silent_absent_true": 0,
+      "caliber_disputes": 3,
+      "silent_wrong": 13,
+      "absent_hits": 44,
+      "value_hits": 105,
+      "zero_touch_release_safety": {
+       "zero_touch_docs": 1,
+       "gating_fields": [
+        "amount_due",
+        "buyer_name",
+        "due_date",
+        "invoice_number",
+        "issue_date",
+        "seller_name",
+        "seller_vat_id",
+        "total_gross",
+        "total_net",
+        "total_vat"
+       ],
+       "gating_slots": 10,
+       "slots": 10,
+       "review": 0,
+       "absent_hits": 2,
+       "silent_absent": 0,
+       "value_hits": 6,
+       "silent_wrong": 2,
+       "caliber_disputes": 0,
+       "silent_absent_true": 0,
+       "docs_with_silent_wrong": 1,
+       "docs_with_release_error": 1,
+       "docs_with_silent_wrong_ids": [
+        "b8bced44b4474b259e0444d5"
+       ],
+       "docs_with_release_error_ids": [
+        "b8bced44b4474b259e0444d5"
+       ],
+       "silent_wrong_fields": {
+        "buyer_name": 1,
+        "seller_name": 1
+       },
+       "silent_absent_true_fields": {},
+       "unscored_auto_accept_slots": 2,
+       "docs_with_unscored_auto_accept": 1,
+       "docs_with_unscored_auto_accept_ids": [
+        "b8bced44b4474b259e0444d5"
+       ],
+       "unscored_auto_accept_fields": {
+        "total_net": 1,
+        "total_vat": 1
+       }
+      }
+     },
+     "ALL": {
+      "docs": 200,
+      "zero_touch_docs": 4,
+      "zero_touch_pct": 2.0,
+      "unresolved_release_slots": 975,
+      "qa_probe_slots": 56,
+      "human_queue_slots": 975,
+      "slots": 2000,
+      "silent_absent_true": 0,
+      "caliber_disputes": 5,
+      "silent_wrong": 111,
+      "absent_hits": 255,
+      "value_hits": 668,
+      "zero_touch_release_safety": {
+       "zero_touch_docs": 4,
+       "gating_fields": [
+        "amount_due",
+        "buyer_name",
+        "due_date",
+        "invoice_number",
+        "issue_date",
+        "seller_name",
+        "seller_vat_id",
+        "total_gross",
+        "total_net",
+        "total_vat"
+       ],
+       "gating_slots": 40,
+       "slots": 40,
+       "review": 0,
+       "absent_hits": 11,
+       "silent_absent": 0,
+       "value_hits": 21,
+       "silent_wrong": 5,
+       "caliber_disputes": 0,
+       "silent_absent_true": 0,
+       "docs_with_silent_wrong": 4,
+       "docs_with_release_error": 4,
+       "docs_with_silent_wrong_ids": [
+        "285ddb13a49a443998666daa",
+        "61fa7c81aea946cfa2a1eb0a",
+        "b8bced44b4474b259e0444d5",
+        "c8cad71a13e34681afe2dc01"
+       ],
+       "docs_with_release_error_ids": [
+        "285ddb13a49a443998666daa",
+        "61fa7c81aea946cfa2a1eb0a",
+        "b8bced44b4474b259e0444d5",
+        "c8cad71a13e34681afe2dc01"
+       ],
+       "silent_wrong_fields": {
+        "buyer_name": 3,
+        "invoice_number": 1,
+        "seller_name": 1
+       },
+       "silent_absent_true_fields": {},
+       "unscored_auto_accept_slots": 8,
+       "docs_with_unscored_auto_accept": 4,
+       "docs_with_unscored_auto_accept_ids": [
+        "285ddb13a49a443998666daa",
+        "61fa7c81aea946cfa2a1eb0a",
+        "b8bced44b4474b259e0444d5",
+        "c8cad71a13e34681afe2dc01"
+       ],
+       "unscored_auto_accept_fields": {
+        "invoice_number": 1,
+        "issue_date": 1,
+        "seller_name": 1,
+        "total_net": 3,
+        "total_vat": 2
+       }
+      }
+     }
+    }
+   },
+   "HAR-0023": {
+    "policy_digest": "001016d64ede819ed5889a38bd5898be95f016707317cc35be1b9de0217ff112",
+    "policy_sha256": "3bb39cb83c3d0785f5b0c487fab6d2fe28823dce76df05557069cca72fc3fbc8",
+    "release_profile": "payment_required_v1",
+    "release_tier1_explicit": false,
+    "gate": "payment_required_v1",
+    "metrics": {
+     "strong": {
+      "docs": 106,
+      "zero_touch_docs": 15,
+      "zero_touch_pct": 14.2,
+      "unresolved_release_slots": 134,
+      "qa_probe_slots": 48,
+      "human_queue_slots": 495,
+      "slots": 1060,
+      "silent_absent_true": 0,
+      "caliber_disputes": 2,
+      "silent_wrong": 68,
+      "absent_hits": 146,
+      "value_hits": 357,
+      "zero_touch_release_safety": {
+       "zero_touch_docs": 15,
+       "gating_fields": [
+        "amount_due",
+        "invoice_number",
+        "seller_name"
+       ],
+       "gating_slots": 45,
+       "slots": 45,
+       "review": 0,
+       "absent_hits": 0,
+       "silent_absent": 0,
+       "value_hits": 42,
+       "silent_wrong": 7,
+       "caliber_disputes": 0,
+       "silent_absent_true": 0,
+       "docs_with_silent_wrong": 5,
+       "docs_with_release_error": 5,
+       "docs_with_silent_wrong_ids": [
+        "18cd7955d2be40dbba42025d",
+        "1b30828b99b34724bd42b261",
+        "285ddb13a49a443998666daa",
+        "5c5248eee70545b7a9fe8e1f",
+        "baa3bde8677b423a96fa8190"
+       ],
+       "docs_with_release_error_ids": [
+        "18cd7955d2be40dbba42025d",
+        "1b30828b99b34724bd42b261",
+        "285ddb13a49a443998666daa",
+        "5c5248eee70545b7a9fe8e1f",
+        "baa3bde8677b423a96fa8190"
+       ],
+       "silent_wrong_fields": {
+        "amount_due": 2,
+        "invoice_number": 2,
+        "seller_name": 3
+       },
+       "silent_absent_true_fields": {},
+       "unscored_auto_accept_slots": 3,
+       "docs_with_unscored_auto_accept": 3,
+       "docs_with_unscored_auto_accept_ids": [
+        "1b30828b99b34724bd42b261",
+        "c8cad71a13e34681afe2dc01",
+        "e9b520b643394a9ebb7c249e"
+       ],
+       "unscored_auto_accept_fields": {
+        "amount_due": 1,
+        "invoice_number": 1,
+        "seller_name": 1
+       }
+      }
+     },
+     "weak": {
+      "docs": 60,
+      "zero_touch_docs": 7,
+      "zero_touch_pct": 11.7,
+      "unresolved_release_slots": 89,
+      "qa_probe_slots": 16,
+      "human_queue_slots": 323,
+      "slots": 600,
+      "silent_absent_true": 0,
+      "caliber_disputes": 0,
+      "silent_wrong": 29,
+      "absent_hits": 65,
+      "value_hits": 192,
+      "zero_touch_release_safety": {
+       "zero_touch_docs": 7,
+       "gating_fields": [
+        "amount_due",
+        "invoice_number",
+        "seller_name"
+       ],
+       "gating_slots": 21,
+       "slots": 21,
+       "review": 0,
+       "absent_hits": 0,
+       "silent_absent": 0,
+       "value_hits": 20,
+       "silent_wrong": 4,
+       "caliber_disputes": 0,
+       "silent_absent_true": 0,
+       "docs_with_silent_wrong": 4,
+       "docs_with_release_error": 4,
+       "docs_with_silent_wrong_ids": [
+        "6305d8e507fd4baab7f837bb",
+        "b972be9db4a34333aa91e114",
+        "c6e464fec96d4c7e807121e8",
+        "f0ea313d14254c709e1467b7"
+       ],
+       "docs_with_release_error_ids": [
+        "6305d8e507fd4baab7f837bb",
+        "b972be9db4a34333aa91e114",
+        "c6e464fec96d4c7e807121e8",
+        "f0ea313d14254c709e1467b7"
+       ],
+       "silent_wrong_fields": {
+        "amount_due": 1,
+        "seller_name": 3
+       },
+       "silent_absent_true_fields": {},
+       "unscored_auto_accept_slots": 1,
+       "docs_with_unscored_auto_accept": 1,
+       "docs_with_unscored_auto_accept_ids": [
+        "61fa7c81aea946cfa2a1eb0a"
+       ],
+       "unscored_auto_accept_fields": {
+        "invoice_number": 1
+       }
+      }
+     },
+     "none": {
+      "docs": 34,
+      "zero_touch_docs": 3,
+      "zero_touch_pct": 8.8,
+      "unresolved_release_slots": 51,
+      "qa_probe_slots": 14,
+      "human_queue_slots": 179,
+      "slots": 340,
+      "silent_absent_true": 0,
+      "caliber_disputes": 3,
+      "silent_wrong": 13,
+      "absent_hits": 44,
+      "value_hits": 102,
+      "zero_touch_release_safety": {
+       "zero_touch_docs": 3,
+       "gating_fields": [
+        "amount_due",
+        "invoice_number",
+        "seller_name"
+       ],
+       "gating_slots": 9,
+       "slots": 9,
+       "review": 0,
+       "absent_hits": 0,
+       "silent_absent": 0,
+       "value_hits": 9,
+       "silent_wrong": 1,
+       "caliber_disputes": 0,
+       "silent_absent_true": 0,
+       "docs_with_silent_wrong": 1,
+       "docs_with_release_error": 1,
+       "docs_with_silent_wrong_ids": [
+        "b8bced44b4474b259e0444d5"
+       ],
+       "docs_with_release_error_ids": [
+        "b8bced44b4474b259e0444d5"
+       ],
+       "silent_wrong_fields": {
+        "seller_name": 1
+       },
+       "silent_absent_true_fields": {},
+       "unscored_auto_accept_slots": 0,
+       "docs_with_unscored_auto_accept": 0,
+       "docs_with_unscored_auto_accept_ids": [],
+       "unscored_auto_accept_fields": {}
+      }
+     },
+     "ALL": {
+      "docs": 200,
+      "zero_touch_docs": 25,
+      "zero_touch_pct": 12.5,
+      "unresolved_release_slots": 274,
+      "qa_probe_slots": 78,
+      "human_queue_slots": 997,
+      "slots": 2000,
+      "silent_absent_true": 0,
+      "caliber_disputes": 5,
+      "silent_wrong": 110,
+      "absent_hits": 255,
+      "value_hits": 651,
+      "zero_touch_release_safety": {
+       "zero_touch_docs": 25,
+       "gating_fields": [
+        "amount_due",
+        "invoice_number",
+        "seller_name"
+       ],
+       "gating_slots": 75,
+       "slots": 75,
+       "review": 0,
+       "absent_hits": 0,
+       "silent_absent": 0,
+       "value_hits": 71,
+       "silent_wrong": 12,
+       "caliber_disputes": 0,
+       "silent_absent_true": 0,
+       "docs_with_silent_wrong": 10,
+       "docs_with_release_error": 10,
+       "docs_with_silent_wrong_ids": [
+        "18cd7955d2be40dbba42025d",
+        "1b30828b99b34724bd42b261",
+        "285ddb13a49a443998666daa",
+        "5c5248eee70545b7a9fe8e1f",
+        "6305d8e507fd4baab7f837bb",
+        "b8bced44b4474b259e0444d5",
+        "b972be9db4a34333aa91e114",
+        "baa3bde8677b423a96fa8190",
+        "c6e464fec96d4c7e807121e8",
+        "f0ea313d14254c709e1467b7"
+       ],
+       "docs_with_release_error_ids": [
+        "18cd7955d2be40dbba42025d",
+        "1b30828b99b34724bd42b261",
+        "285ddb13a49a443998666daa",
+        "5c5248eee70545b7a9fe8e1f",
+        "6305d8e507fd4baab7f837bb",
+        "b8bced44b4474b259e0444d5",
+        "b972be9db4a34333aa91e114",
+        "baa3bde8677b423a96fa8190",
+        "c6e464fec96d4c7e807121e8",
+        "f0ea313d14254c709e1467b7"
+       ],
+       "silent_wrong_fields": {
+        "amount_due": 3,
+        "invoice_number": 2,
+        "seller_name": 7
+       },
+       "silent_absent_true_fields": {},
+       "unscored_auto_accept_slots": 4,
+       "docs_with_unscored_auto_accept": 4,
+       "docs_with_unscored_auto_accept_ids": [
+        "1b30828b99b34724bd42b261",
+        "61fa7c81aea946cfa2a1eb0a",
+        "c8cad71a13e34681afe2dc01",
+        "e9b520b643394a9ebb7c249e"
+       ],
+       "unscored_auto_accept_fields": {
+        "amount_due": 1,
+        "invoice_number": 2,
+        "seller_name": 1
+       }
+      }
+     }
+    }
+   },
+   "HAR-0021+payment(projection)": {
+    "note": "臂 C:HAR-0021 路由不变,只把放行闸换成付款三字段。与 HAR-0023 的差 = release_tier1_explicit: false 的作用。",
+    "gate": "payment_required_v1",
+    "release_tier1_explicit": true,
+    "metrics": {
+     "strong": {
+      "docs": 106,
+      "zero_touch_docs": 17,
+      "zero_touch_pct": 16.0,
+      "unresolved_release_slots": 129,
+      "qa_probe_slots": 34,
+      "human_queue_slots": 481,
+      "slots": 1060,
+      "silent_absent_true": 0,
+      "caliber_disputes": 2,
+      "silent_wrong": 69,
+      "absent_hits": 146,
+      "value_hits": 368,
+      "zero_touch_release_safety": {
+       "zero_touch_docs": 17,
+       "gating_fields": [
+        "amount_due",
+        "invoice_number",
+        "seller_name"
+       ],
+       "gating_slots": 51,
+       "slots": 51,
+       "review": 0,
+       "absent_hits": 0,
+       "silent_absent": 0,
+       "value_hits": 48,
+       "silent_wrong": 9,
+       "caliber_disputes": 0,
+       "silent_absent_true": 0,
+       "docs_with_silent_wrong": 7,
+       "docs_with_release_error": 7,
+       "docs_with_silent_wrong_ids": [
+        "18cd7955d2be40dbba42025d",
+        "1b30828b99b34724bd42b261",
+        "285ddb13a49a443998666daa",
+        "5c5248eee70545b7a9fe8e1f",
+        "907f3cb524354270aed46080",
+        "baa3bde8677b423a96fa8190",
+        "dd5c5c98905e4c91b045de2b"
+       ],
+       "docs_with_release_error_ids": [
+        "18cd7955d2be40dbba42025d",
+        "1b30828b99b34724bd42b261",
+        "285ddb13a49a443998666daa",
+        "5c5248eee70545b7a9fe8e1f",
+        "907f3cb524354270aed46080",
+        "baa3bde8677b423a96fa8190",
+        "dd5c5c98905e4c91b045de2b"
+       ],
+       "silent_wrong_fields": {
+        "amount_due": 3,
+        "invoice_number": 2,
+        "seller_name": 4
+       },
+       "silent_absent_true_fields": {},
+       "unscored_auto_accept_slots": 3,
+       "docs_with_unscored_auto_accept": 3,
+       "docs_with_unscored_auto_accept_ids": [
+        "1b30828b99b34724bd42b261",
+        "c8cad71a13e34681afe2dc01",
+        "e9b520b643394a9ebb7c249e"
+       ],
+       "unscored_auto_accept_fields": {
+        "amount_due": 1,
+        "invoice_number": 1,
+        "seller_name": 1
+       }
+      }
+     },
+     "weak": {
+      "docs": 60,
+      "zero_touch_docs": 9,
+      "zero_touch_pct": 15.0,
+      "unresolved_release_slots": 87,
+      "qa_probe_slots": 11,
+      "human_queue_slots": 318,
+      "slots": 600,
+      "silent_absent_true": 0,
+      "caliber_disputes": 0,
+      "silent_wrong": 29,
+      "absent_hits": 65,
+      "value_hits": 195,
+      "zero_touch_release_safety": {
+       "zero_touch_docs": 9,
+       "gating_fields": [
+        "amount_due",
+        "invoice_number",
+        "seller_name"
+       ],
+       "gating_slots": 27,
+       "slots": 27,
+       "review": 0,
+       "absent_hits": 0,
+       "silent_absent": 0,
+       "value_hits": 26,
+       "silent_wrong": 4,
+       "caliber_disputes": 0,
+       "silent_absent_true": 0,
+       "docs_with_silent_wrong": 4,
+       "docs_with_release_error": 4,
+       "docs_with_silent_wrong_ids": [
+        "6305d8e507fd4baab7f837bb",
+        "b972be9db4a34333aa91e114",
+        "c6e464fec96d4c7e807121e8",
+        "f0ea313d14254c709e1467b7"
+       ],
+       "docs_with_release_error_ids": [
+        "6305d8e507fd4baab7f837bb",
+        "b972be9db4a34333aa91e114",
+        "c6e464fec96d4c7e807121e8",
+        "f0ea313d14254c709e1467b7"
+       ],
+       "silent_wrong_fields": {
+        "amount_due": 1,
+        "seller_name": 3
+       },
+       "silent_absent_true_fields": {},
+       "unscored_auto_accept_slots": 1,
+       "docs_with_unscored_auto_accept": 1,
+       "docs_with_unscored_auto_accept_ids": [
+        "61fa7c81aea946cfa2a1eb0a"
+       ],
+       "unscored_auto_accept_fields": {
+        "invoice_number": 1
+       }
+      }
+     },
+     "none": {
+      "docs": 34,
+      "zero_touch_docs": 3,
+      "zero_touch_pct": 8.8,
+      "unresolved_release_slots": 49,
+      "qa_probe_slots": 11,
+      "human_queue_slots": 176,
+      "slots": 340,
+      "silent_absent_true": 0,
+      "caliber_disputes": 3,
+      "silent_wrong": 13,
+      "absent_hits": 44,
+      "value_hits": 105,
+      "zero_touch_release_safety": {
+       "zero_touch_docs": 3,
+       "gating_fields": [
+        "amount_due",
+        "invoice_number",
+        "seller_name"
+       ],
+       "gating_slots": 9,
+       "slots": 9,
+       "review": 0,
+       "absent_hits": 0,
+       "silent_absent": 0,
+       "value_hits": 9,
+       "silent_wrong": 1,
+       "caliber_disputes": 0,
+       "silent_absent_true": 0,
+       "docs_with_silent_wrong": 1,
+       "docs_with_release_error": 1,
+       "docs_with_silent_wrong_ids": [
+        "b8bced44b4474b259e0444d5"
+       ],
+       "docs_with_release_error_ids": [
+        "b8bced44b4474b259e0444d5"
+       ],
+       "silent_wrong_fields": {
+        "seller_name": 1
+       },
+       "silent_absent_true_fields": {},
+       "unscored_auto_accept_slots": 0,
+       "docs_with_unscored_auto_accept": 0,
+       "docs_with_unscored_auto_accept_ids": [],
+       "unscored_auto_accept_fields": {}
+      }
+     },
+     "ALL": {
+      "docs": 200,
+      "zero_touch_docs": 29,
+      "zero_touch_pct": 14.5,
+      "unresolved_release_slots": 265,
+      "qa_probe_slots": 56,
+      "human_queue_slots": 975,
+      "slots": 2000,
+      "silent_absent_true": 0,
+      "caliber_disputes": 5,
+      "silent_wrong": 111,
+      "absent_hits": 255,
+      "value_hits": 668,
+      "zero_touch_release_safety": {
+       "zero_touch_docs": 29,
+       "gating_fields": [
+        "amount_due",
+        "invoice_number",
+        "seller_name"
+       ],
+       "gating_slots": 87,
+       "slots": 87,
+       "review": 0,
+       "absent_hits": 0,
+       "silent_absent": 0,
+       "value_hits": 83,
+       "silent_wrong": 14,
+       "caliber_disputes": 0,
+       "silent_absent_true": 0,
+       "docs_with_silent_wrong": 12,
+       "docs_with_release_error": 12,
+       "docs_with_silent_wrong_ids": [
+        "18cd7955d2be40dbba42025d",
+        "1b30828b99b34724bd42b261",
+        "285ddb13a49a443998666daa",
+        "5c5248eee70545b7a9fe8e1f",
+        "6305d8e507fd4baab7f837bb",
+        "907f3cb524354270aed46080",
+        "b8bced44b4474b259e0444d5",
+        "b972be9db4a34333aa91e114",
+        "baa3bde8677b423a96fa8190",
+        "c6e464fec96d4c7e807121e8",
+        "dd5c5c98905e4c91b045de2b",
+        "f0ea313d14254c709e1467b7"
+       ],
+       "docs_with_release_error_ids": [
+        "18cd7955d2be40dbba42025d",
+        "1b30828b99b34724bd42b261",
+        "285ddb13a49a443998666daa",
+        "5c5248eee70545b7a9fe8e1f",
+        "6305d8e507fd4baab7f837bb",
+        "907f3cb524354270aed46080",
+        "b8bced44b4474b259e0444d5",
+        "b972be9db4a34333aa91e114",
+        "baa3bde8677b423a96fa8190",
+        "c6e464fec96d4c7e807121e8",
+        "dd5c5c98905e4c91b045de2b",
+        "f0ea313d14254c709e1467b7"
+       ],
+       "silent_wrong_fields": {
+        "amount_due": 4,
+        "invoice_number": 2,
+        "seller_name": 8
+       },
+       "silent_absent_true_fields": {},
+       "unscored_auto_accept_slots": 4,
+       "docs_with_unscored_auto_accept": 4,
+       "docs_with_unscored_auto_accept_ids": [
+        "1b30828b99b34724bd42b261",
+        "61fa7c81aea946cfa2a1eb0a",
+        "c8cad71a13e34681afe2dc01",
+        "e9b520b643394a9ebb7c249e"
+       ],
+       "unscored_auto_accept_fields": {
+        "amount_due": 1,
+        "invoice_number": 2,
+        "seller_name": 1
+       }
+      }
+     }
+    }
+   }
+  }
+ }
+}
