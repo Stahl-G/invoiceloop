@@ -59,6 +59,17 @@ class TestQualPool:
         assert heldout.doc_ids_line_digest(v2_pool) == (
             "e7265a79aacf57fd4dd9af3d709c7b5963ab71d36a3d17ae762af202ab797fb8")
 
+    def test_frozen_v2_list_recomputes_and_stays_disjoint(self):
+        path = (REPO / "docs" / "evidence" / "qual-narrow-v2-2026-08-23"
+                / "plan" / "doc_list.json")
+        spec = json.loads(path.read_text(encoding="utf-8"))
+        ids = heldout.qual_list(200, context="qual-narrow-v2")
+        v1 = set(heldout.qual_list(200, context="qual-narrow-v1"))
+        assert spec["context"] == "qual-narrow-v2"
+        assert spec["doc_ids"] == ids
+        assert spec["doc_ids_sha256"] == heldout.doc_ids_line_digest(ids)
+        assert not set(ids) & v1
+
     def test_frozen_list_never_touched_anything_on_disk_at_freeze_time(self):
         """冻结那一刻盘上有双模式响应的文档,一份都不在名单里。
 
@@ -135,6 +146,19 @@ def test_exposure_registry_refuses_a_drifted_list(tmp_path, monkeypatch):
             heldout.qual_exposure_doc_ids("qual-narrow-v2")
     finally:
         heldout.qual_exposure_doc_ids.cache_clear()
+
+
+def test_every_exposure_registry_list_is_hash_bound():
+    registry = json.loads(
+        (REPO / "docs" / "qualification_exposure_registry.json")
+        .read_text(encoding="utf-8"))
+    assert registry["lists"]
+    for entry in registry["lists"]:
+        path = REPO / entry["path"]
+        assert path.is_file(), entry["path"]
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == entry["list_sha256"]
+        ids = json.loads(path.read_text(encoding="utf-8"))["doc_ids"]
+        assert heldout.doc_ids_line_digest(ids) == entry["doc_ids_sha256"]
 
 
 @pytest.fixture
