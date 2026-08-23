@@ -17,6 +17,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from invoiceloop.heldout import qualification_run_identity
+
 MODES = ("understand", "agentic")
 
 
@@ -29,8 +31,15 @@ def _cost(record: dict[str, Any]) -> float:
     return float((usage.get("data_extraction_credits") or {}).get("cost") or 0.0)
 
 
-def audit(workspace: Path) -> dict[str, Any]:
+def audit(
+    workspace: Path,
+    *,
+    qualification_round: str | None = None,
+    qualification_protocol: Path | None = None,
+) -> dict[str, Any]:
     workspace = Path(workspace)
+    if (qualification_round is None) != (qualification_protocol is None):
+        raise ValueError("qualification round/protocol 必须同时提供")
     list_path = workspace / "doc_list.json"
     spec = json.loads(list_path.read_text(encoding="utf-8"))
     doc_ids = spec.get("doc_ids")
@@ -90,6 +99,39 @@ def audit(workspace: Path) -> dict[str, Any]:
     if non_200:
         blocking_reasons.append(f"non_200={non_200}")
 
+    identity_path = workspace / "qualification_run_identity.json"
+    identity: dict[str, Any] | None = None
+    identity_sha: str | None = None
+    identity_error: str | None = None
+    if qualification_round is not None and qualification_protocol is not None:
+        if not identity_path.is_file():
+            blocking_reasons.append("qualification_identity_missing")
+            identity_error = f"不存在:{identity_path}"
+        else:
+            identity_sha = _sha(identity_path)
+            try:
+                candidate = json.loads(identity_path.read_text(encoding="utf-8"))
+                if not isinstance(candidate, dict):
+                    raise ValueError("top level is not object")
+                identity = candidate
+            except (OSError, json.JSONDecodeError, ValueError) as exc:
+                blocking_reasons.append("qualification_identity_malformed")
+                identity_error = str(exc)
+            if identity is not None:
+                try:
+                    expected_identity = qualification_run_identity(
+                        workspace, round_name=qualification_round,
+                        protocol_path=qualification_protocol)
+                except (OSError, RuntimeError, ValueError) as exc:
+                    expected_identity = None
+                    identity_error = str(exc)
+                    blocking_reasons.append(
+                        "qualification_identity_recompute_failed")
+                if expected_identity is not None and identity != expected_identity:
+                    blocking_reasons.append("qualification_identity_mismatch")
+                    identity_error = (
+                        f"stored={identity!r};recomputed={expected_identity!r}")
+
     prior_path = workspace / "extract_summary.json"
     prior = json.loads(prior_path.read_text(encoding="utf-8")) \
         if prior_path.is_file() else None
@@ -111,6 +153,9 @@ def audit(workspace: Path) -> dict[str, Any]:
         "binding_errors": binding_errors,
         "raw_tree_sha256": tree.hexdigest(),
         "files": files,
+        "qualification_run_identity": identity,
+        "qualification_run_identity_sha256": identity_sha,
+        "qualification_identity_error": identity_error,
         "last_invocation_summary": prior,
         "last_invocation_summary_sha256": _sha(prior_path)
         if prior_path.is_file() else None,
@@ -121,8 +166,13 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--workspace", required=True, type=Path)
     ap.add_argument("--out", type=Path, default=None)
+    ap.add_argument("--qualification-round", default=None)
+    ap.add_argument("--qualification-protocol", type=Path, default=None)
     args = ap.parse_args()
-    report = audit(args.workspace)
+    report = audit(
+        args.workspace,
+        qualification_round=args.qualification_round,
+        qualification_protocol=args.qualification_protocol)
     out = args.out or args.workspace / "extract_audit.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, ensure_ascii=False, indent=1) + "\n",

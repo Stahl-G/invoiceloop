@@ -68,3 +68,32 @@ def test_audit_fails_closed_on_missing_extra_or_misbound_records(tmp_path):
     assert extra.name in report["extra"]
     assert report["binding_errors"]
     assert report["blocking_reasons"]
+
+
+def test_qualification_audit_recomputes_the_run_identity(tmp_path, monkeypatch):
+    ws = _workspace(tmp_path)
+    identity = {
+        "identity_version": "qualification-extract-identity-v1",
+        "round": "round-v2", "code_revision": "rev-1",
+    }
+    (ws / "qualification_run_identity.json").write_text(
+        json.dumps(identity), encoding="utf-8")
+    monkeypatch.setattr(
+        qual_extract_audit, "qualification_run_identity",
+        lambda _ws, round_name, protocol_path: dict(identity))
+
+    report = qual_extract_audit.audit(
+        ws, qualification_round="round-v2",
+        qualification_protocol=tmp_path / "protocol.md")
+    assert report["complete"] is True
+    assert report["qualification_run_identity"] == identity
+    assert len(report["qualification_run_identity_sha256"]) == 64
+
+    changed = dict(identity, code_revision="rev-2")
+    (ws / "qualification_run_identity.json").write_text(
+        json.dumps(changed), encoding="utf-8")
+    report = qual_extract_audit.audit(
+        ws, qualification_round="round-v2",
+        qualification_protocol=tmp_path / "protocol.md")
+    assert report["complete"] is False
+    assert "qualification_identity_mismatch" in report["blocking_reasons"]

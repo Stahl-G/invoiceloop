@@ -165,6 +165,10 @@ def _main() -> None:
     p_qe = q_sub.add_parser("extract", help="按名单跑双模式,断点续跑,预算熔断")
     p_qe.add_argument("--workspace", type=Path, required=True)
     p_qe.add_argument("--budget", type=float, default=6000.0)
+    p_qe.add_argument("--round", required=True,
+                      help="冻结 evidence round 名(用来查 plan manifest)")
+    p_qe.add_argument("--protocol", type=Path, required=True,
+                      help="已提交且已进入 plan manifest 的冻结协议")
 
     # suggest 刻意**不在** improve 之下:改进控制面仍是全确定性零模型,
     # 顾问层旁挂,输出 advisory 草稿,采纳与否走人 —— 与 vision 同款位置
@@ -375,7 +379,10 @@ def _main() -> None:
             heldout.cmd_plan_qual(args.workspace, n=args.n,
                                   context=args.context)
         else:
-            heldout.cmd_extract(args.workspace, budget=args.budget)
+            heldout.cmd_extract(
+                args.workspace, budget=args.budget,
+                qualification_round=args.round,
+                qualification_protocol=args.protocol)
     elif args.command == "suggest":
         from . import suggest as suggest_mod
 

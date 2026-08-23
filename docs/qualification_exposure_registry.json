@@ -1,0 +1,24 @@
+{
+ "registry_version": "qualification-exposure-v1",
+ "lists": [
+  {
+   "id": "sealed4-v1",
+   "path": "docs/sealed4_doc_list.json",
+   "list_sha256": "e48b5ffae058444ab201467ade62e9f24a30cdfdaf22f568a46d586d913785a8",
+   "doc_ids_sha256": "22406591db1c1d47ecebac80a78c190dc8808e4b3a8e4fd82e3c04427273c5b5",
+   "exclude_from_contexts": [
+    "qual-narrow-v1",
+    "qual-narrow-v2"
+   ]
+  },
+  {
+   "id": "qual-narrow-v1",
+   "path": "docs/qual_narrow_doc_list.json",
+   "list_sha256": "27fa0f9229974bef990bd8148c8bb3787db9eb4fa4a922bd5429483eda9b22b8",
+   "doc_ids_sha256": "22c566997043c5c8185431cb813f84d3eef5a95ca1b2b61bf6182a381fbdb052",
+   "exclude_from_contexts": [
+    "qual-narrow-v2"
+   ]
+  }
+ ]
+}

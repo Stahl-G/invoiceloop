@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 from pathlib import Path
 
@@ -116,6 +117,96 @@ class TestExtractDriver:
         (ws / "adaptive.json").write_text('{"adaptive": true}\n')
         with pytest.raises(RuntimeError, match="adaptive.json"):
             heldout.cmd_extract(ws, budget=6000)
+
+    def test_qualification_doc_list_cannot_bypass_identity_options(
+            self, tmp_path, monkeypatch):
+        ws = _workspace(tmp_path, docs=("d1",))
+        spec = json.loads((ws / "doc_list.json").read_text(encoding="utf-8"))
+        spec["context"] = "qual-narrow-v2"
+        (ws / "doc_list.json").write_text(json.dumps(spec), encoding="utf-8")
+        monkeypatch.setenv("DWS_API_KEYS", "k1")
+        with pytest.raises(RuntimeError, match="必须提供.*round.*protocol"):
+            heldout.cmd_extract(ws, budget=6000)
+
+
+def _qualification_anchor(tmp_path: Path) -> tuple[Path, Path, Path]:
+    repo = tmp_path / "repo"
+    ws = tmp_path / "ws"
+    stage = repo / "docs" / "evidence" / "round-v2" / "plan"
+    stage.mkdir(parents=True)
+    (ws / "raw").mkdir(parents=True)
+    doc_ids = ["a" * 24]
+    doc_list = json.dumps({
+        "n": 1,
+        "context": "qual-narrow-v2",
+        "pool_sha256": heldout.doc_ids_line_digest(doc_ids),
+        "doc_ids_sha256": heldout.doc_ids_line_digest(doc_ids),
+        "doc_ids": doc_ids,
+    }, indent=1) + "\n"
+    protocol = "# frozen protocol\n"
+    (ws / "doc_list.json").write_text(doc_list, encoding="utf-8")
+    (repo / "docs" / "protocol.md").write_text(protocol, encoding="utf-8")
+    (stage / "doc_list.json").write_text(doc_list, encoding="utf-8")
+    (stage / "protocol.md").write_text(protocol, encoding="utf-8")
+    (stage / "MANIFEST.sha256").write_text(
+        f"{hashlib.sha256(doc_list.encode()).hexdigest()}  doc_list.json\n"
+        f"{hashlib.sha256(protocol.encode()).hexdigest()}  protocol.md\n",
+        encoding="utf-8")
+    return repo, ws, repo / "docs" / "protocol.md"
+
+
+def test_qualification_identity_binds_committed_plan_protocol_and_code(
+        tmp_path, monkeypatch):
+    repo, ws, protocol = _qualification_anchor(tmp_path)
+    monkeypatch.setattr(heldout, "QUAL_REPO_ROOT", repo)
+    monkeypatch.setattr(heldout, "_code_revision", lambda _repo: "rev-1")
+    monkeypatch.setattr(heldout, "_git_path_is_at_head", lambda _repo, _path: True)
+    monkeypatch.setattr(heldout, "qual_list", lambda _n, context: ["a" * 24])
+    monkeypatch.setattr(
+        heldout, "qual_pool", lambda context: ("a" * 24,))
+
+    identity = heldout.qualification_run_identity(
+        ws, round_name="round-v2", protocol_path=protocol)
+
+    assert identity["code_revision"] == "rev-1"
+    assert identity["context"] == "qual-narrow-v2"
+    assert identity["protocol_sha256"] == hashlib.sha256(
+        protocol.read_bytes()).hexdigest()
+    assert identity["plan_manifest_sha256"] == hashlib.sha256(
+        (repo / "docs/evidence/round-v2/plan/MANIFEST.sha256").read_bytes()
+    ).hexdigest()
+
+
+def test_qualification_identity_refuses_dirty_or_drifted_inputs(
+        tmp_path, monkeypatch):
+    repo, ws, protocol = _qualification_anchor(tmp_path)
+    monkeypatch.setattr(heldout, "QUAL_REPO_ROOT", repo)
+    monkeypatch.setattr(heldout, "_git_path_is_at_head", lambda _repo, _path: True)
+    monkeypatch.setattr(heldout, "qual_list", lambda _n, context: ["a" * 24])
+    monkeypatch.setattr(
+        heldout, "qual_pool", lambda context: ("a" * 24,))
+    monkeypatch.setattr(heldout, "_code_revision", lambda _repo: "rev-dirty")
+    with pytest.raises(RuntimeError, match="干净 commit"):
+        heldout.qualification_run_identity(
+            ws, round_name="round-v2", protocol_path=protocol)
+
+    monkeypatch.setattr(heldout, "_code_revision", lambda _repo: "rev-1")
+    protocol.write_text("changed\n", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="冻结副本不符"):
+        heldout.qualification_run_identity(
+            ws, round_name="round-v2", protocol_path=protocol)
+
+
+def test_qualification_run_identity_is_write_once(tmp_path):
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    identity = {"code_revision": "rev-1", "round": "round-v2"}
+    path = heldout.bind_qualification_run_identity(ws, identity)
+    assert json.loads(path.read_text(encoding="utf-8")) == identity
+    assert heldout.bind_qualification_run_identity(ws, identity) == path
+    with pytest.raises(RuntimeError, match="身份不同"):
+        heldout.bind_qualification_run_identity(
+            ws, {"code_revision": "rev-2", "round": "round-v2"})
 
 
 @pytest.mark.skipif(not corpus_available(), reason="校准档案不在")
