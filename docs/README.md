@@ -52,6 +52,7 @@ promoted. These files are that turn, not extra lab notes.
 | [`DOCTOUCH_PREREG_2026-08-18.md`](DOCTOUCH_PREREG_2026-08-18.md) | Pre-registration for the 660-document zero-API touch measurement. Frozen before any result |
 | [`DOCTOUCH_RESULTS_2026-08-18.md`](DOCTOUCH_RESULTS_2026-08-18.md) | Development-set result: HAR-0023 zero-touch 10.8% (about 89% still opened). Predictions that missed are listed. Not a qualification result |
 | [`QUALIFICATION_NARROW_CONTAMINATION_2026-08-23.md`](QUALIFICATION_NARROW_CONTAMINATION_2026-08-23.md) | Revocation record for the later 200-document round. Its protocol changed after extraction began, triggering its own dirty-arm clause. The 12.5% routing observation remains exploratory; a superseding audit found 12/71 comparable payment-gate values disagreed with DocILE truth in the zero-touch subset, with four more auto-accept slots unscored |
+| [`QUALIFICATION_NARROW_V2_RESULTS_2026-08-23.md`](QUALIFICATION_NARROW_V2_RESULTS_2026-08-23.md) | Clean 200-document recovery round. Workflow effect reproduced: HAR-0023 zero-touch was 10.5% (95% CI 7.0–15.5). Safety qualification **failed**: the zero-touch payment subset contained six wrong comparable values and three unscored auto-accept slots. Promotion was deterministically denied |
 
 ## Measurement records
 

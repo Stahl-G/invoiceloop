@@ -133,6 +133,15 @@ a qualification result), HAR-0023 left **10.8%** of documents untouched; about
 capability. Record:
 [`docs/DOCTOUCH_RESULTS_2026-08-18.md`](docs/DOCTOUCH_RESULTS_2026-08-18.md).
 
+A clean recovery qualification then used 200 newly sampled, registry-excluded
+DocILE documents. HAR-0023 reproduced the workflow effect at **10.5%** routing-time
+zero-touch (95% Wilson CI 7.0–15.5), but safety qualification **failed**: among
+the 63 payment-gate slots on the 21 unopened documents, six comparable values
+were wrong and three auto-accept slots could not be scored. The deterministic
+decision denied promotion; the default remains census. This is not an extraction
+accuracy or human-time-savings claim. Record:
+[`docs/QUALIFICATION_NARROW_V2_RESULTS_2026-08-23.md`](docs/QUALIFICATION_NARROW_V2_RESULTS_2026-08-23.md).
+
 HITL round 1 tested the older census walk — AI pre-read plus a ten-field queue —
 on a development set of 20 documents. All 20 opened; median time 52 seconds per
 slot; the pre-registered time estimate was off by about five times. The round
