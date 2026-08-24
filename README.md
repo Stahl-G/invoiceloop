@@ -37,9 +37,11 @@ review / block, append-only human adjudication, and a document-level approval
 the machine may never perform. Automation stops at `ready_for_approval`. Only a
 signed human approval reaches `approved_for_export`.
 
-An optional [Google ADK](docs/ADK_INTEGRATION.md) loop may propose a tighter
-routing policy from review history. It assigns no IDs, writes no ledger, and
-cannot promote itself.
+An optional AI advisory loop may propose a tighter routing policy from review
+history. The Workbench exposes one **Ask AI** action and shows the exact model it
+will call. The configured backend may be an Anthropic Messages-compatible API
+(including a compatible MiMo endpoint) or [Google ADK](docs/ADK_INTEGRATION.md).
+Both assign no IDs, write no ledger, and cannot promote themselves.
 
 Support relations on an invoice are geometric — a bounding box against a page
 region, verifiable word by word with independent OCR. That argument does not
@@ -70,8 +72,27 @@ as a silent pass.
 System dependency: poppler (`brew install poppler`). tesseract is optional —
 without it, scanned pages block rather than pass silently.
 
-`pip install -e ".[dev,gemini]"` is only for the optional agent tests and the
-ADK improvement loop.
+The AI button is backend-configurable; it is not a separate MiMo or Gemini
+workflow. Put one of these shapes in the workspace/project `.env`:
+
+```dotenv
+# Anthropic Messages-compatible endpoint (core install; MiMo is one example)
+INVOICELOOP_AI_PROVIDER=anthropic
+INVOICELOOP_AI_MODEL=<exact-model-name>
+ANTHROPIC_BASE_URL=<messages-compatible-base-url>
+ANTHROPIC_API_KEY=<key>
+
+# Or Google ADK
+INVOICELOOP_AI_PROVIDER=gemini
+INVOICELOOP_AI_MODEL=gemini-3.7-flash
+GEMINI_API_KEY=<key>
+```
+
+`INVOICELOOP_AI_PROVIDER=auto` (the default) chooses a configured
+Anthropic-compatible backend first, then Gemini. The model shown beside the
+button is the model passed to the API and recorded in the advisory artifact.
+`pip install -e ".[dev,gemini]"` is needed only for the optional Google ADK
+backend and its tests.
 
 ## Who this is for, and what a wrong field costs
 

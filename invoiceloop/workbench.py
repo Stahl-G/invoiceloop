@@ -118,7 +118,7 @@ _T = {
                               "gate (an empty candidate list is a legal "
                               "result).",
         "imp_model": "Model draft (advisory — a human decides)",
-        "imp_model_none": "No model draft yet. Click “Ask Gemini” below "
+        "imp_model_none": "No model draft yet. Click “Ask AI” below "
                           "(API call). Mining does not draft proposals.",
         "imp_model_none_unmined": "No draft yet — mine first (the button "
                                   "above). Mining does not call a model.",
@@ -143,20 +143,24 @@ _T = {
         "imp_closeout_stats": "This run’s closeout: {n} decisions · median "
                               "{sec} s/slot · suggestion adoption "
                               "{adopted}/{agree}.",
-        "imp_adk_hint": "Gemini (ADK) reads the mined notes and writes an "
-                        "advisory report. API call. It does not change the "
-                        "active harness. If a proposal matches a mined "
-                        "cohort, Python may write a pending candidate — "
+        "imp_adk_hint": "AI backend: {provider} · model: {model}. It reads "
+                        "the mined notes and writes advisory proposals. "
+                        "This API call does not change the active harness; "
                         "promotion still needs your signature.",
-        "imp_adk_btn": "Ask Gemini",
-        "imp_adk_btn_again": "Ask Gemini again",
-        "imp_adk_unavailable": "This workbench cannot ask Gemini. The "
-                               "advisory layer is not installed in the "
-                               "Python that is running it — not a missing "
-                               "API key.",
-        "imp_adk_sub": "Gemini ({model}) proposed {m} changes; {n} are "
+        "imp_adk_btn": "Ask AI · {model}",
+        "imp_adk_btn_again": "Ask AI again · {model}",
+        "imp_adk_unavailable": "Current AI backend is unavailable: "
+                               "{provider} · {model}. {reason}",
+        "imp_ai_reason_missing_credentials": "No credential is configured.",
+        "imp_ai_reason_missing_model": "No model is configured.",
+        "imp_ai_reason_missing_extra": "Its optional runtime is not installed "
+                                       "in the Python running this workbench.",
+        "imp_ai_reason_unknown_provider": "The configured provider is unknown.",
+        "imp_ai_reason_not_ready": "The backend is not ready.",
+        "imp_ai_call_failed": "AI call failed ({provider} · {model}): {error}",
+        "imp_adk_sub": "AI ({model}) proposed {m} changes; {n} are "
                        "flagged for you to look at. Advisory only.",
-        "imp_adk_none": "Gemini has run. No proposal (a legal result).",
+        "imp_adk_none": "AI has run. No proposal (a legal result).",
         "imp_adk_review": "look at this",
         "imp_adk_skip": "not recommended now",
         "imp_adk_blocking": "{n} evaluation(s) blocked — still advice, "
@@ -169,7 +173,8 @@ _T = {
                           "review. This is the most important kind of record "
                           "— it means a rule is too loose.",
         "imp_sug_h": "The AI read your notes and proposed this",
-        "imp_sug_sub": "Read {n} notes you wrote, proposed {m} changes. The "
+        "imp_sug_sub": "AI ({model}) read {n} notes you wrote and proposed "
+                       "{m} changes. The "
                        "AI decides nothing; every proposal must name which "
                        "of your notes it rests on.",
         "imp_ai": "AI proposal",
@@ -440,7 +445,7 @@ _T = {
                            "promotion is in the ledger.",
         "notice_mined": "Mined. Notes and cohorts are below. Nothing is in "
                         "effect.",
-        "notice_adk": "Gemini finished. The report is below. Nothing is in "
+        "notice_adk": "AI finished. The proposals are below. Nothing is in "
                       "effect until you promote.",
         "snapshot": "review_snapshot_id",
         "back": "← back to queue",
@@ -512,7 +517,7 @@ _T = {
         "imp_no_notes_mined": "挖掘已跑过。没有带复核意见的 cohort 过审"
                               "(无候选是合法结果)。",
         "imp_model": "模型草稿(顾问性质,人决定)",
-        "imp_model_none": "还没有模型草稿。点下面的「让 Gemini 出建议」"
+        "imp_model_none": "还没有模型草稿。点下面的「让 AI 出建议」"
                           "(会调 API)。挖掘本身不出提案。",
         "imp_model_none_unmined": "还没有草稿。先点上面的「关账并挖掘」"
                                   "(零 API,不调模型)。",
@@ -532,17 +537,23 @@ _T = {
         "imp_mine_btn_again": "重新挖掘",
         "imp_closeout_stats": "本 run 关账:{n} 条裁决 · 中位 {sec} 秒/槽 · "
                               "建议采纳 {adopted}/{agree}。",
-        "imp_adk_hint": "Gemini(ADK)读已挖掘的意见,写一份顾问报告。会调"
-                        "API,不改当前规则。若提案对得上挖掘出的 cohort,"
-                        "Python 可能写出待定候选 —— 要不要生效仍要你署名晋升。",
-        "imp_adk_btn": "让 Gemini 出建议",
-        "imp_adk_btn_again": "再跑一轮 Gemini",
-        "imp_adk_unavailable": "这一台工作台现在出不了 Gemini 建议。"
-                               "顾问层没有装进正在运行它的 Python，"
-                               "不是密钥没配。",
-        "imp_adk_sub": "Gemini({model})提了 {m} 条,其中 {n} 条建议你看。"
+        "imp_adk_hint": "AI 后端:{provider} · 模型:{model}。它会读取已挖掘"
+                        "的意见并写出顾问建议。此处会调 API,但不改当前规则;"
+                        "要不要生效仍要你署名晋升。",
+        "imp_adk_btn": "让 AI 出建议 · {model}",
+        "imp_adk_btn_again": "再让 AI 出建议 · {model}",
+        "imp_adk_unavailable": "当前 AI 后端不可用:{provider} · {model}。"
+                               "{reason}",
+        "imp_ai_reason_missing_credentials": "尚未配置该后端的凭证。",
+        "imp_ai_reason_missing_model": "尚未配置要调用的模型。",
+        "imp_ai_reason_missing_extra": "它的可选运行组件没有装进正在运行"
+                                       "工作台的 Python。",
+        "imp_ai_reason_unknown_provider": "配置的 provider 不在支持列表中。",
+        "imp_ai_reason_not_ready": "后端尚未就绪。",
+        "imp_ai_call_failed": "AI 调用失败({provider} · {model}):{error}",
+        "imp_adk_sub": "AI({model})提了 {m} 条,其中 {n} 条建议你看。"
                        "顾问意见,不是放行。",
-        "imp_adk_none": "Gemini 已跑过。没有提案(合法结果)。",
+        "imp_adk_none": "AI 已跑过。没有提案(合法结果)。",
         "imp_adk_review": "建议你看",
         "imp_adk_skip": "不建议现在改",
         "imp_adk_blocking": "{n} 条评测被阻断 —— 下面仍是顾问意见,没有生效。",
@@ -552,7 +563,7 @@ _T = {
                           "而你复核时改掉或驳回了的。这类记录最要紧 —— "
                           "它说明规则放得太松了。",
         "imp_sug_h": "AI 读完你的意见,提了这些建议",
-        "imp_sug_sub": "读了你写的 {n} 条意见,提出 {m} 条建议。"
+        "imp_sug_sub": "AI({model})读了你写的 {n} 条意见,提出 {m} 条建议。"
                        "AI 没有决定权,它只能提;每条都必须说出依据的是你哪句话。",
         "imp_ai": "AI 建议",
         "imp_conf": "把握",
@@ -779,7 +790,7 @@ _T = {
         "notice_evaluated": "评测完成。数字在下面,包括它可能伤害了什么。",
         "notice_promoted": "已晋升。之后的 run 会用新 harness;晋升记录已入账本。",
         "notice_mined": "已挖掘。意见和候选在下面。当前规则没有改。",
-        "notice_adk": "Gemini 跑完了。报告在下面。没晋升之前当前规则不变。",
+        "notice_adk": "AI 已完成。建议在下面。没晋升之前当前规则不变。",
         "snapshot": "review_snapshot_id",
         "back": "← 回到复核队列",
         "error_title": "阻断",
@@ -880,11 +891,18 @@ def _hitl_round_analyze(run_dir: Path) -> dict:
     return _HRA.analyze(Path(run_dir))
 
 
-def _run_adk_loop(workspace: Path) -> dict:
-    """同一份 `agents.improve_loop.run_improve_loop`。测试可打补丁,避免真调 Gemini。"""
-    from .agents.improve_loop import run_improve_loop
+def _advisory_backend(workspace: Path):
+    """解析工作台唯一 AI 入口的 provider/model,不读取或返回凭证。"""
+    from .advisory import resolve_backend
 
-    return run_improve_loop(workspace)
+    return resolve_backend(workspace)
+
+
+def _run_advisory(workspace: Path, backend) -> dict:
+    """运行已经解析好的后端,保证页面所示 model 与实际调用一致。"""
+    from .advisory import run_backend
+
+    return run_backend(workspace, backend)
 
 
 def _adk_importable() -> bool:
@@ -895,6 +913,27 @@ def _adk_importable() -> bool:
         return True
     except ImportError:
         return False
+
+
+def _advisory_unavailable_reason(backend) -> str | None:
+    """返回机器可判定的不可用原因;None 表示按钮可以安全呈现。"""
+    if not backend.ready:
+        return backend.reason or "not_ready"
+    if backend.provider == "gemini-adk" and not _adk_importable():
+        return "missing_extra"
+    return None
+
+
+def _advisory_unavailable_text(lang: str, backend, *, reason: str | None = None) -> str:
+    reason = reason or _advisory_unavailable_reason(backend) or "not_ready"
+    reason_key = f"imp_ai_reason_{reason}"
+    if reason_key not in _T.get(lang, {}):
+        reason_key = "imp_ai_reason_not_ready"
+    return _t(lang, "imp_adk_unavailable").format(
+        provider=backend.label or "—",
+        model=backend.model or "—",
+        reason=_t(lang, reason_key),
+    )
 
 
 _JS = r"""
@@ -2531,23 +2570,28 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
 
         # ---- 二、AI 读了你的话,提出这些建议
         drafts, dropped = [], []
+        sug = {}
         if sug_path.exists():
             sug = _json.loads(sug_path.read_text(encoding="utf-8"))
             drafts = sug.get("suggestions") or []
             dropped = sug.get("dropped") or []
+        sug_model = sug.get("model") or "—"
         note_total = sum(len(c.get("notes") or [])
                          for c in report.get("cohorts") or [])
         parts.append(f'<h3 class="wb-imp-h">{_esc(_t(lang, "imp_sug_h"))}</h3>')
         if mined:
-            parts.append(self._adk_panel_html(
-                lang, ctx, ran=adk is not None))
+            backend = _advisory_backend(ws)
+            ran = ((backend.artifact == "suggestions.json" and sug_path.exists())
+                   or (backend.artifact == "adk_loop_report.json"
+                       and adk is not None))
+            parts.append(self._ai_panel_html(
+                lang, ctx, backend=backend, ran=ran))
         if adk:
             parts.append(self._adk_report_html(lang, adk))
         if drafts:
-            parts.append(
-                f'<p class="wb-imp-sub">'
-                f'{_esc(_t(lang, "imp_sug_sub").format(n=note_total, m=len(drafts)))}'
-                f'</p>')
+            sug_sub = _t(lang, "imp_sug_sub").format(
+                n=note_total, m=len(drafts), model=sug_model)
+            parts.append(f'<p class="wb-imp-sub">{_esc(sug_sub)}</p>')
             for i, s in enumerate(drafts):
                 parts.append(self._suggestion_html(lang, ctx, i, s))
         elif not adk:
@@ -2604,23 +2648,24 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
             f'<button class="wb-btn" type="submit">{_esc(btn)}</button>'
             f'</form></section>')
 
-    def _adk_panel_html(self, lang: str, ctx: RunCtx, *, ran: bool) -> str:
-        """Gemini/ADK:人点才调 API。没装进本解释器就不给可点的按钮。"""
-        if not _adk_importable():
-            import sys
-
+    def _ai_panel_html(self, lang: str, ctx: RunCtx, *, backend,
+                       ran: bool) -> str:
+        """唯一 AI 建议入口:provider 是配置,不是另一套用户工作流。"""
+        if _advisory_unavailable_reason(backend):
             return (
                 f'<section class="wb-imp-sug">'
                 f'<p class="wb-imp-empty">'
-                f'{_esc(_t(lang, "imp_adk_unavailable"))}</p>'
-                f'<details class="wb-imp-tech"><summary>'
-                f'{_esc(_t(lang, "imp_tech"))}</summary>'
-                f'<code>{_esc(sys.executable)}</code></details>'
+                f'{_esc(_advisory_unavailable_text(lang, backend))}</p>'
                 f'</section>')
-        btn = _t(lang, "imp_adk_btn_again" if ran else "imp_adk_btn")
+        model = backend.model or "—"
+        btn = _t(
+            lang, "imp_adk_btn_again" if ran else "imp_adk_btn"
+        ).format(model=model)
+        hint = _t(lang, "imp_adk_hint").format(
+            provider=backend.label or "—", model=model)
         return (
             f'<section class="wb-imp-sug">'
-            f'<p class="wb-imp-sub">{_esc(_t(lang, "imp_adk_hint"))}</p>'
+            f'<p class="wb-imp-sub">{_esc(hint)}</p>'
             f'<form method="post" action="/improve/adk" class="wb-imp-form">'
             f'<input type="hidden" name="run" value="{_esc(ctx.name)}">'
             f'<input type="hidden" name="lang" value="{_esc(lang)}">'
@@ -3675,7 +3720,8 @@ class _Handler(BaseHTTPRequestHandler):
     # ---- 改进循环的写操作
     #
     # mine:投影账本,不改 active,给人一个按钮(GET 不许偷偷跑)。
-    # adk:Gemini 顾问报告,人点才调 API;不写 suggestions.json,不改 active。
+    # adk:保留的兼容路由名。它是唯一 AI 建议入口,按配置选择后端;
+    # 各 producer 只写自己的建议工件,都不改 active。
     # adopt / evaluate:写的是候选,对 active harness 零影响。
     # promote:改变之后每一张发票的路由,署名 + 理由 + 时间,
     # 并且只有 improve.gate_verdict 判定通过才渲染表单。
@@ -3705,26 +3751,43 @@ class _Handler(BaseHTTPRequestHandler):
         self._imp_back(run.name, lang, "mined")
 
     def _imp_adk(self, lang: str) -> None:
-        """Gemini ADK 改进循环。顾问报告;不改 active;不写 suggestions.json。
+        """统一 AI 建议入口(历史路由名 `/improve/adk`)。
 
-        顾问层是可选 extra。`agents.runtime` 模块级导入 pydantic,core
-        解释器没有 `[gemini]` 时这里绝不能先 import —— 否则缺 extra 的
-        POST 会 500,而不是 400。
+        provider/model 只从服务器配置解析,不信表单值。这样按钮显示的模型
+        就是实际调用的模型,调用者也不能通过 POST 偷换后端。两个 producer
+        继续分别写 suggestions.json / adk_loop_report.json,都不改 active。
         """
         form = self._form()
         run, lang = self._imp_form_run(form)
         if not (self.bench.ws / "improve" / "mine_report.json").exists():
             raise _HttpError(400, "还没有挖掘报告 —— 先点「关账并挖掘」")
-        if not _adk_importable():
-            raise _HttpError(400, _t(lang, "imp_adk_unavailable"))
+        backend = _advisory_backend(self.bench.ws)
+        if _advisory_unavailable_reason(backend):
+            raise _HttpError(
+                400, _advisory_unavailable_text(lang, backend))
         try:
-            _run_adk_loop(self.bench.ws)
+            _run_advisory(self.bench.ws, backend)
         except ImportError as exc:
-            raise _HttpError(400, _t(lang, "imp_adk_unavailable")) from exc
-        except (RuntimeError, OSError) as exc:
-            if type(exc).__name__ in (
-                    "GeminiCredentialMissing", "ReplayRecordingMissing"):
-                raise _HttpError(400, str(exc)) from exc
+            raise _HttpError(
+                400, _advisory_unavailable_text(
+                    lang, backend, reason="missing_extra")) from exc
+        except (RuntimeError, ValueError) as exc:
+            message = _t(lang, "imp_ai_call_failed").format(
+                provider=backend.label or "—",
+                model=backend.model or "—",
+                error=str(exc),
+            )
+            raise _HttpError(400, message) from exc
+        except Exception as exc:  # requests 的网络/HTTP 错误不是 RuntimeError
+            import requests
+
+            if isinstance(exc, requests.RequestException):
+                message = _t(lang, "imp_ai_call_failed").format(
+                    provider=backend.label or "—",
+                    model=backend.model or "—",
+                    error=str(exc),
+                )
+                raise _HttpError(400, message) from exc
             raise
         self._imp_back(run.name, lang, "adk")
 
@@ -3963,10 +4026,11 @@ def cmd_workbench(
         scope = server.bench.review_scope
         mode += f",限定复核 {len(scope.slots)} 槽({scope.source.name})"
     print(f"InvoiceLoop 工作台:{url}({mode},Ctrl-C 停止)")
-    if not _adk_importable():
+    backend = _advisory_backend(workspace)
+    if _advisory_unavailable_reason(backend):
         import sys
-        print(f"Gemini 顾问层未装进 {sys.executable} —— 改进页不会给出可点的按钮",
-              file=sys.stderr)
+
+        print(_advisory_unavailable_text("zh", backend), file=sys.stderr)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
