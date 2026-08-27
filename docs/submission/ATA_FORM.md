@@ -1,8 +1,10 @@
 # All Things Agentic submission draft
 
-> **Draft.** Replace the video placeholder and complete the human ADK walk before
-> submitting. This document records the current evidence boundary; it does not
-> turn planned work into a result.
+> **Draft.** Replace the video placeholder before submitting. A 20-document
+> ADK×HITL human walk record now exists
+> ([`HITL_ADK_OAUTH_20_2026-08-27.md`](../HITL_ADK_OAUTH_20_2026-08-27.md)) —
+> exploratory, development set, not qualification evidence; this document does
+> not turn planned work into a result.
 
 ## Project
 
@@ -90,12 +92,13 @@ For a clean-clone installation and product-path check, use
 The critic's judgment quality has one corrected run on one review-history corpus;
 the artifacts do not establish general agent quality or safe policy promotion.
 Nothing in the agent layer changes the negative v2 qualification result. The
-planned 20-document ADK×HITL human walk is not yet completed and must not be
-listed as completed evidence in the final form.
+20-document ADK×HITL walk record (2026-08-27) is exploratory evidence on a
+previously-exposed development set: list it with that caveat or not at all.
 
 ## Final checklist
 
-- [ ] Complete the human 20-document ADK×HITL walk and write its result document.
+- [x] Complete a human 20-document ADK×HITL walk and write its result document
+      (2026-08-27, exploratory — see the walk record's limitations section).
 - [ ] Replace the video placeholder with the uploaded ATA demo.
 - [ ] Re-run `scripts/fresh_venv_check.sh` from the submitted commit.
 - [ ] Confirm every claim still points to a committed artifact and not to this

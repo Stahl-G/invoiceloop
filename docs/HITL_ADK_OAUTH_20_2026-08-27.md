@@ -263,6 +263,7 @@ C2: 1,125.00 != 956.25
 | `run_manifest.json` | `3c5073e4639a9b8868a5264999dfc94fbed4b4d608883ccbcf03b9f85222cca5` |
 | `input_manifest.json` | `8604337e9db917ec36c4079d2b9ec9b24ea56f5a24f35ce5932915ba89fe361a` |
 | `oauth_run_metadata.json` | `247851a7dc8ae965b8654d9eab1cc26cf1cbf80063d572004cae88e538a34163` |
+| `vision/invoice_read.json` | `e4d009b3ed682d59bfbe471a2ce9cd2f14da916bfe565714936d461d6d96c09d` |
 | `adjudication_ledger.jsonl` | `76046cbcb0991681f6a85d2f3c386f6d1e47cb20683195cbcf5cb7797c3b55f0` |
 | `approve_ledger.jsonl` | `d221a6a5058f31c37089d3cb51d85685d6a2d72d588fc27c813596bead93bfd0` |
 | `support_matrix.json` | `f7b24e88dc02fa82279b910e02dd5c90cfa9c1db255aba7dfe7e5aede0f958d2` |
