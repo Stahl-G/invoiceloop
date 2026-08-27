@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import sys
 
 import pytest
 
@@ -13,6 +14,7 @@ FIXTURE_PDF = __import__("pathlib").Path(__file__).parent / "fixtures" / "mini-i
 POPPLER = shutil.which("pdftoppm") is not None
 
 DOC = "acme-001"
+MODEL = "deepseek-v4-flash-vision-exp"
 
 
 @pytest.fixture
@@ -63,9 +65,12 @@ class TestCmdVision:
     def test_writes_spec_shaped_tsv_and_resumes(self, ws):
         post, calls = _post_with("total_gross\t100.00\tTotal\t\n"
                                  "invoice_number\tABSTAIN\t\t糊了\n")
-        summary = cmd_vision(ws, api_key="k", _post=post)
+        summary = cmd_vision(ws, model=MODEL, api_key="k", _post=post)
         assert summary["read"] == 1 and len(calls) == 1
-        tsv = (ws / "vision" / "answers6.D.tsv").read_text()
+        assert calls[0]["json"]["model"] == MODEL
+        assert summary["model"] == MODEL
+        assert summary["tag"] == MODEL
+        tsv = (ws / "vision" / f"answers6.{MODEL}.tsv").read_text()
         lines = tsv.splitlines()
         assert lines[0] == "doc\tfield\tvalue\tprinted_label\tnote"
         assert len(lines) == 11, "表头 + 10 字段行"
@@ -74,7 +79,7 @@ class TestCmdVision:
         assert summary["abstained_fields"] == 9, "1 个 ABSTAIN + 8 个空值"
 
         # 断点续跑:已有该文档的行 → 不再调 API
-        summary2 = cmd_vision(ws, api_key="k", _post=post)
+        summary2 = cmd_vision(ws, model=MODEL, api_key="k", _post=post)
         assert summary2["skipped"] == 1 and len(calls) == 1
 
         # 与 dws.load_vision_answers 的读取契约对得上
@@ -84,9 +89,51 @@ class TestCmdVision:
         os.environ["INVOICELOOP_CORPUS"] = str(ws)
         try:
             answers = dws.load_vision_answers()
-            assert answers["kimi-k3"][(DOC, "total_gross")]["value"] == "100.00"
+            assert answers[MODEL][(DOC, "total_gross")]["value"] == "100.00"
         finally:
             del os.environ["INVOICELOOP_CORPUS"]
+
+    def test_configured_model_is_both_called_and_used_as_default_tag(
+            self, ws, monkeypatch):
+        monkeypatch.setenv("ANTHROPIC_MODEL", MODEL)
+        post, calls = _post_with("total_gross\t100.00\tTotal\t\n")
+
+        summary = cmd_vision(ws, api_key="k", _post=post)
+
+        assert calls[0]["json"]["model"] == MODEL
+        assert summary["model"] == MODEL
+        assert summary["tag"] == MODEL
+        assert (ws / "vision" / f"answers6.{MODEL}.tsv").exists()
+        assert not (ws / "vision" / "answers6.D.tsv").exists()
+
+    def test_missing_model_is_typed_unavailable(self, ws, monkeypatch):
+        from invoiceloop import env as env_mod
+
+        for name in env_mod.ALIASES["anthropic_model"]:
+            monkeypatch.delenv(name, raising=False)
+
+        with pytest.raises(SystemExit, match="模型|model"):
+            cmd_vision(ws, api_key="k", _post=lambda *a, **k: None)
+
+    def test_explicit_tag_cannot_mislabel_the_called_model(self, ws):
+        with pytest.raises(SystemExit, match="tag.*模型|模型.*tag"):
+            cmd_vision(ws, tag="kimi-k3", model=MODEL, api_key="k",
+                       _post=lambda *a, **k: None)
+
+    def test_model_id_is_reversibly_encoded_in_the_artifact_name(self, ws):
+        """供应商/模型形式的 ID 不能变成路径,回读时仍显示完整真名。"""
+        from invoiceloop.dws import load_vision_answers
+
+        model = "vendor/deepseek.v4"
+        post, _ = _post_with("total_gross\t100.00\tTotal\t\n")
+
+        cmd_vision(ws, model=model, api_key="k", _post=post)
+
+        assert (ws / "vision" /
+                "answers6.vendor%2Fdeepseek.v4.tsv").exists()
+        answers = load_vision_answers(vision_dir=ws / "vision")
+        assert model in answers
+        assert answers[model][(DOC, "total_gross")]["value"] == "100.00"
 
     def test_missing_key_is_typed_unavailable(self, ws, monkeypatch):
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
@@ -104,17 +151,38 @@ class TestCmdVision:
         def boom(url, **kw):
             raise RuntimeError("connection reset")
 
-        summary = cmd_vision(ws, api_key="k", _post=boom)
+        summary = cmd_vision(ws, model=MODEL, api_key="k", _post=boom)
         assert summary["read"] == 0 and len(summary["failed"]) == 1
 
     def test_prompt_keeps_the_five_disciplines(self, ws):
         post, calls = _post_with("total_gross\t1\tT\t")
-        cmd_vision(ws, api_key="k", _post=post)
+        cmd_vision(ws, model=MODEL, api_key="k", _post=post)
         prompt = calls[0]["json"]["messages"][0]["content"][-1]["text"]
         for needle in ("抄,不要算,不要推", "ABSTAIN", "不要联网检索",
                        "printed_label", "合计"):
             assert needle in prompt
         assert "1 页" in prompt
+
+
+def test_cli_does_not_inject_a_model_or_display_tag(monkeypatch, tmp_path):
+    """CLI 只转发用户输入;最终模型由 vision_ingest 的统一解析决定。"""
+    from invoiceloop.__main__ import _main
+
+    seen = {}
+
+    def fake_cmd(workspace, **kwargs):
+        seen.update(workspace=workspace, **kwargs)
+
+    monkeypatch.setattr("invoiceloop.vision_ingest.cmd_vision", fake_cmd)
+    monkeypatch.setattr(sys, "argv", [
+        "invoiceloop", "vision", "--workspace", str(tmp_path),
+    ])
+
+    _main()
+
+    assert seen["workspace"] == tmp_path
+    assert seen["model"] is None
+    assert seen["tag"] is None
 
 
 # ---- 整页 PNG 的读回:前缀相撞与页序(PR #1 review)

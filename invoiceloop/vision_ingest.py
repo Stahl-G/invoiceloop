@@ -21,12 +21,11 @@ import base64
 import json
 import os
 from pathlib import Path
+from urllib.parse import quote
 
 from .fields import FIELD_KINDS
 from .ingest import discover
 
-#: 默认读者与显示名(tag D ≡ kimi-k3;自定义模型请换 --tag,别让显示名撒谎)
-DEFAULT_MODEL = "kimi-k3"
 API_VERSION = "2023-06-01"
 
 #: 本地凭证文件(0600,永不进仓库):env 缺省时从这里补,三行 KEY=VALUE
@@ -35,7 +34,7 @@ VISION_ENV = Path("~/.config/invoiceloop/vision.env").expanduser()
 _FIELDS = sorted(FIELD_KINDS)
 
 
-def _credentials() -> tuple[str | None, str, str]:
+def _credentials() -> tuple[str | None, str, str | None]:
     """(api_key, base_url, model)。取值统一走 `env` 模块:
     进程环境 → 项目 `.env` → 旧 `~/.config/invoiceloop/vision.env`。
     2026-08-06 之前这里自带一份解析逻辑,与 DWS/seal 各找各的 —— 已合并。"""
@@ -44,7 +43,7 @@ def _credentials() -> tuple[str | None, str, str]:
     key = env_mod.credential("anthropic")
     base = (env_mod.credential("anthropic_base")
             or "https://api.anthropic.com").rstrip("/")
-    model = env_mod.credential("anthropic_model") or DEFAULT_MODEL
+    model = env_mod.credential("anthropic_model")
     return key, base, model
 
 #: prompt:第六轮 READER_DOC 的五条纪律逐字保留(那是被测过的部分),
@@ -94,7 +93,25 @@ field<TAB>value<TAB>printed_label<TAB>note
 
 
 def _tsv_path(workspace: Path, tag: str) -> Path:
-    return Path(workspace) / "vision" / f"answers6.{tag}.tsv"
+    # 模型 id 常含 `/`。文件名使用可逆编码,页面回读时由 dws 解码;
+    # 不能拿一个手写短 tag 替代真实模型名,否则溯源会从这里开始撒谎。
+    encoded = quote(tag, safe="._-~")
+    return Path(workspace) / "vision" / f"answers6.{encoded}.tsv"
+
+
+def _resolve_reader_tag(model: str, tag: str | None) -> str:
+    """最终调用模型 → 工件读者标识;显式 tag 不得冒充别的模型。"""
+    if tag is None:
+        return model
+    from .dws import VISION_READERS
+
+    displayed_model = VISION_READERS.get(tag, tag)
+    if displayed_model != model:
+        raise SystemExit(
+            f"读者 tag {tag!r} 显示为 {displayed_model!r},"
+            f"但实际调用模型是 {model!r} —— tag 与模型不一致,拒绝调用"
+        )
+    return tag
 
 
 def _answered_docs(path: Path) -> set[str]:
@@ -152,19 +169,26 @@ def read_doc(doc_id: str, pages: list[Path], *, model: str, api_key: str,
                    for block in resp.json().get("content", []))
 
 
-def cmd_vision(workspace: Path, *, tag: str = "D", model: str | None = None,
+def cmd_vision(workspace: Path, *, tag: str | None = None,
+               model: str | None = None,
                api_key: str | None = None, _post=None) -> dict:
     """workspace 的全部文档 → 读图作答 tsv。缺 key = typed unavailable,不藏。"""
     workspace = Path(workspace)
     cred_key, base_url, cred_model = _credentials()
     key = api_key or cred_key
-    model = model or cred_model
     if not key:
         raise SystemExit(
             "读图需要 ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN(或写进 "
             f"{VISION_ENV})—— 没有它读图步不可用,"
             "按宪章四这是「跑不了」,不是「跳过」"
         )
+    model = (model or cred_model or "").strip()
+    if not model:
+        raise SystemExit(
+            "读图需要明确模型:传 --model 或配置 ANTHROPIC_MODEL —— "
+            "系统不会替你选择某个默认模型"
+        )
+    tag = _resolve_reader_tag(model, tag)
     docs = discover(workspace)
     if not docs:
         raise SystemExit(f"输入契约:{workspace}/input/pdfs/ 里没有 .pdf 文件")
@@ -175,7 +199,8 @@ def cmd_vision(workspace: Path, *, tag: str = "D", model: str | None = None,
     tsv.parent.mkdir(parents=True, exist_ok=True)
     done = _answered_docs(tsv)
     pages_dir = workspace / "vision" / "pages"
-    summary = {"docs": len(docs), "read": 0, "skipped": 0,
+    summary = {"model": model, "tag": tag,
+               "docs": len(docs), "read": 0, "skipped": 0,
                "abstained_fields": 0, "failed": []}
     new_lines: list[str] = []
     for doc_id, pdf in docs.items():

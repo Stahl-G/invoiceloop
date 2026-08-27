@@ -64,6 +64,37 @@ class TestValidate:
         kept, _ = suggest.validate(_raw(confidence="certain"), NOTES)
         assert kept[0]["confidence"] == "low"
 
+    def test_rule_already_active_is_recorded_as_dropped(self):
+        active = {"absent_expected_cohorts": [{
+            "id": "AE-invoice-seller_vat_id",
+            "doc_class": "invoice",
+            "field": "seller_vat_id",
+        }]}
+
+        kept, dropped = suggest.validate(
+            _raw(), NOTES, active_policy=active)
+
+        assert kept == []
+        assert "AE-invoice-seller_vat_id 已在生效政策" in dropped[0]
+
+    def test_broader_active_rule_also_drops_a_narrower_noop(self):
+        raw = {"suggestions": [{
+            "action": "auto_accept",
+            "cohort": {"field": "total_gross", "tier": "TIER1",
+                       "strength": "corroborated"},
+            "finding": "f", "prediction": "p", "confidence": "medium",
+            "cites": [1],
+        }]}
+        active = {"auto_accept_cohorts": [{
+            "id": "AA-broad", "field": "total_gross", "tier": "TIER1",
+        }]}
+
+        kept, dropped = suggest.validate(
+            raw, NOTES, active_policy=active)
+
+        assert kept == []
+        assert "AA-broad 已在生效政策" in dropped[0]
+
 
 class TestSchemaSuggestions:
     """schema_description:模型能提改字段描述,但约束比 cohort 更紧。"""
@@ -159,6 +190,21 @@ class TestPacket:
         assert any(n["rationale"] == "EIN 不是 VAT" for n in notes), \
             "推翻的原话也要可引用 —— 它是最该被读到的一条"
 
+    def test_active_policy_is_shown_without_rule_ids(self):
+        text, _ = suggest._packet(
+            {"cohorts": []},
+            policy={"absent_expected_cohorts": [{
+                "id": "AE-invoice-seller_vat_id",
+                "doc_class": "invoice",
+                "field": "seller_vat_id",
+            }]},
+        )
+
+        assert "当前已生效的路由规则" in text
+        assert "seller_vat_id" in text
+        assert "AE-invoice-seller_vat_id" not in text, \
+            "模型只看去重语义,Python 分配的控制面 ID 不进草稿输入"
+
 
 class TestProvenance:
     """工件必须如实记录**真正被调用的**模型 —— 顾问层的溯源就靠这一行。"""
@@ -192,6 +238,44 @@ class TestProvenance:
         assert seen["model"] == "actually-called"
         assert out["model"] == seen["model"], \
             "记录的模型必须就是被调用的那个,不许各算各的"
+
+    def test_missing_model_blocks_before_the_api_call(self, tmp_path,
+                                                       monkeypatch):
+        ws = self._ws(tmp_path)
+        monkeypatch.setattr("invoiceloop.vision_ingest._credentials",
+                            lambda: ("k", "https://x", None))
+        monkeypatch.delenv("INVOICELOOP_SUGGEST_MODEL", raising=False)
+        called = False
+
+        def fake_ask(*args, **kwargs):
+            nonlocal called
+            called = True
+
+        monkeypatch.setattr(suggest, "_ask", fake_ask)
+
+        with pytest.raises(RuntimeError, match="模型|model"):
+            suggest.suggest(ws)
+        assert called is False
+
+    def test_suggest_filters_a_rule_already_in_active_policy(
+            self, tmp_path, monkeypatch):
+        ws = self._ws(tmp_path)
+        monkeypatch.setattr("invoiceloop.harness.load_active", lambda _ws: {
+            "schema": {},
+            "policy": {"absent_expected_cohorts": [{
+                "id": "AE-invoice-seller_vat_id",
+                "doc_class": "invoice",
+                "field": "seller_vat_id",
+            }]},
+        })
+        monkeypatch.setattr("invoiceloop.vision_ingest._credentials",
+                            lambda: ("k", "https://x", "m"))
+        monkeypatch.setattr(suggest, "_ask", lambda *a, **k: _raw())
+
+        out = suggest.suggest(ws)
+
+        assert out["suggestions"] == []
+        assert out["dropped"] and "已在生效政策" in out["dropped"][0]
 
 
 class TestBudget:

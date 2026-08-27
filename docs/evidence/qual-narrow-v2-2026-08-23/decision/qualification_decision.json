@@ -1,0 +1,171 @@
+{
+ "decision_version": "qual-narrow-v2-decision-v1",
+ "round": "qual-narrow-v2-2026-08-23",
+ "protocol": "docs/QUALIFICATION_NARROW_V2_PROTOCOL_2026-08-23.md",
+ "protocol_sha256": "08a540b61e7eb8ab9aad0c2d534d48f289d63919831efcd2d18314a2587243dd",
+ "integrity": {
+  "passed": true,
+  "blocking_reasons": [],
+  "extract_calls": 400,
+  "http_200": 400,
+  "total_credits": 10374.0,
+  "raw_tree_sha256": "204727aacb50952123b85729c55cabc85f05da4a4ca0cf507c5fc5089e16d74f",
+  "source_arm_code_revision": "897a47a1f18bba024ef89b14885abd3561e1f0ee",
+  "decision_code_revision": "569794fc1be53be294075d816055bd75183f4bab",
+  "source_hashes": {
+   "plan_manifest_sha256": "2e6607ab2765cd0aee36baadcb7e3fff0c49dfcd510655cda0cf6f18bced2abf",
+   "extract_audit_sha256": "af8a5aa09ab6d68162b300f9fb9714861e5e5df5b4c5f369eecae9c6504e5f51",
+   "doctouch_metrics_sha256": "bb7791009767b0f18ce815a26cf6dbb376d22551e7a263b290b5a5ac37105b28",
+   "doctouch_audit_sha256": "9087e83248472289b7ade9ab4ae07ae174452bc50e4092e8def8d0e7c68e1e95",
+   "har_0023_routing_report_sha256": "d31b3c2ccf6747857c74ed2b7fb7c6b0e1fa50717a7a78084e0a2362819b7a25"
+  }
+ },
+ "predictions": {
+  "P1": {
+   "expected": "A zero-touch = 0/200",
+   "actual": 0,
+   "passed": true
+  },
+  "P2": {
+   "expected": "D zero-touch in [5%, 20%]",
+   "actual": {
+    "docs": 21,
+    "n": 200,
+    "pct": 10.5,
+    "wilson95_pct": [
+     7.0,
+     15.5
+    ]
+   },
+   "passed": true
+  },
+  "P3": {
+   "expected": "C zero-touch >= D zero-touch",
+   "actual": {
+    "C": 23,
+    "D": 21
+   },
+   "passed": true
+  },
+  "P4": {
+   "expected": "D all-arm silent_wrong <= B",
+   "actual": {
+    "D": 113,
+    "B": 116
+   },
+   "passed": true
+  },
+  "P5": {
+   "expected": "D zero-touch silent_wrong in [8,18] and error docs in [6,14]",
+   "actual": {
+    "silent_wrong": 6,
+    "error_docs": 6
+   },
+   "passed": false
+  },
+  "P6": {
+   "expected": "D zero-touch unscored auto-accept slots in [0,6]",
+   "actual": 3,
+   "passed": true
+  },
+  "P7": {
+   "expected": "three payment gates all automatic in [15%,19%]",
+   "actual": {
+    "docs": 32,
+    "n": 200,
+    "pct": 16.0
+   },
+   "passed": true
+  }
+ },
+ "workflow_effect": {
+  "passed": true,
+  "zero_touch_docs": 21,
+  "n_docs": 200,
+  "zero_touch_pct": 10.5,
+  "wilson95_pct": [
+   7.0,
+   15.5
+  ]
+ },
+ "safety_product_capability": {
+  "passed": false,
+  "zero_touch_docs": 21,
+  "gating_slots": 63,
+  "docs_with_release_error": 6,
+  "criteria": {
+   "silent_absent_true": {
+    "required": 0,
+    "actual": 0,
+    "passed": true
+   },
+   "silent_wrong": {
+    "required": 0,
+    "actual": 6,
+    "passed": false
+   },
+   "unscored_auto_accept_slots": {
+    "required": 0,
+    "actual": 3,
+    "passed": false
+   }
+  }
+ },
+ "qualification": {
+  "passed": false,
+  "status": "fail",
+  "promotion": "denied",
+  "reason_codes": [
+   "zero_touch_silent_wrong_nonzero",
+   "zero_touch_unscored_auto_accept_nonzero"
+  ]
+ },
+ "three_gate_all_automatic_doc_ids": [
+  "127ca2be5308414db7d17d9a",
+  "1467883c30b04f4087293a96",
+  "21568717ba05490a8691fe87",
+  "34f9282e038b475c81d77f58",
+  "40d19384fe324fc68581f0ad",
+  "4e94897b930a4ff3a83e6369",
+  "4fe4f482209f40fd9b560c48",
+  "5558bf1f08b741428ecebc5a",
+  "5d6ac22121224d35bac05c89",
+  "5fbae2c7ba1e416da1df40ca",
+  "685f7be21127477583114af0",
+  "72b3b037245140d18f803118",
+  "748f6a70f81747679053bca0",
+  "7771b78cd6154a41b3be45fe",
+  "78bbc6875d104cc6b4754396",
+  "86560d5eb0394830bfe65963",
+  "8767f5aa4fa349e7ace413b0",
+  "8aa16892c74b425d8465fc59",
+  "8e65f66855a542b58bac4459",
+  "a2b78e17d776409095f977e7",
+  "a78e57f031674b01ab3695db",
+  "a92b96a02ca24a76ab74b8e7",
+  "b717f1bb1adc4855b756baa8",
+  "c418c2d38e1f4a7599d314c9",
+  "d42992c3cb6e4d17a6bbe516",
+  "e11fbeacdc7c4c5c9a4c3fb7",
+  "e2b3b58beec5445e917fea58",
+  "e33052382533449ba3af7192",
+  "f08b5e49182747d890af21e4",
+  "f107076533c64a4baa8527e4",
+  "f1f38c408b254df58fbcc382",
+  "fba03542fc794843bed0da6e"
+ ],
+ "public_claim_boundary": {
+  "allowed": "On this unseen DocILE round, HAR-0023 measured 10.5% routing-time zero-touch.",
+  "forbidden": [
+   "safe zero-touch product capability",
+   "extraction accuracy improvement",
+   "10.5% human-time savings",
+   "promotion of HAR-0023"
+  ],
+  "qualifiers": [
+   "single corpus: DocILE",
+   "single provider: Nutrient DWS",
+   "single truth caliber: DocILE annotations plus truth-caliber-v1"
+  ]
+ }
+}

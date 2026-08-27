@@ -49,8 +49,11 @@ promoted. These files are that turn, not extra lab notes.
 | [`HITL_R1_TERMINATION_2026-08-14.md`](HITL_R1_TERMINATION_2026-08-14.md) | HITL R1 pre-registered termination after S1 falsified the census-walk hypothesis (20/20 opened, median 52s/slot). S2–S5 were not spliced onto the S1 curve |
 | [`HITL_NARROW_PROTOCOL_2026-08-14.md`](HITL_NARROW_PROTOCOL_2026-08-14.md) | Protocol for the follow-up payment-contract walk |
 | [`HITL_NARROW_2026-08-14.md`](HITL_NARROW_2026-08-14.md) | Development-set result of that walk (4/20 zero-touch, 0 unresolved payment fields, 0 probe reversals), with confounders listed. Not a qualification result. Not the same measurement as the 660-document run |
+| [`HITL_ADK_OAUTH_20_2026-08-27.md`](HITL_ADK_OAUTH_20_2026-08-27.md) | Exploratory ADK OAuth walk on the same 20-document pool: 32 human decisions, the arithmetic-gate / label-convention mismatch (7/7 accepted as printed), and a thousands-separator binding false positive that rejected three true amounts; evidence frozen under `evidence/hitl-clean-2026-08-27/`; not a qualification result |
 | [`DOCTOUCH_PREREG_2026-08-18.md`](DOCTOUCH_PREREG_2026-08-18.md) | Pre-registration for the 660-document zero-API touch measurement. Frozen before any result |
 | [`DOCTOUCH_RESULTS_2026-08-18.md`](DOCTOUCH_RESULTS_2026-08-18.md) | Development-set result: HAR-0023 zero-touch 10.8% (about 89% still opened). Predictions that missed are listed. Not a qualification result |
+| [`QUALIFICATION_NARROW_CONTAMINATION_2026-08-23.md`](QUALIFICATION_NARROW_CONTAMINATION_2026-08-23.md) | Revocation record for the later 200-document round. Its protocol changed after extraction began, triggering its own dirty-arm clause. The 12.5% routing observation remains exploratory; a superseding audit found 12/71 comparable payment-gate values disagreed with DocILE truth in the zero-touch subset, with four more auto-accept slots unscored |
+| [`QUALIFICATION_NARROW_V2_RESULTS_2026-08-23.md`](QUALIFICATION_NARROW_V2_RESULTS_2026-08-23.md) | Clean 200-document recovery round. Workflow effect reproduced: HAR-0023 zero-touch was 10.5% (95% CI 7.0–15.5). Safety qualification **failed**: the zero-touch payment subset contained six wrong comparable values and three unscored auto-accept slots. Promotion was deterministically denied |
 
 ## Measurement records
 
@@ -84,3 +87,23 @@ promoted. These files are that turn, not extra lab notes.
 | `RUBRIC_V01_SCORE_2026-08-0[56].md` | Self-scoring against the rubric, twice |
 | `STATUS_2026-08-05.md` | Full status ledger prepared for external adjudication |
 | `DATASETS.md`, `DWS_SIGN_AND_VIEWER_PLAN.md` | Dataset evaluation; signing and viewer plan |
+
+## Submission drafts
+
+These are editable English form drafts for the two submission windows. They are
+not submitted materials; video links and the human ADK walk status remain explicit
+placeholders until completed.
+
+| File | What it is |
+|---|---|
+| [`submission/NUTRIENT_FORM.md`](submission/NUTRIENT_FORM.md) | Nutrient DWS challenge copy, judge quickstart, DWS heavy-lifting statement, evidence links, and claims boundary |
+| [`submission/ATA_FORM.md`](submission/ATA_FORM.md) | All Things Agentic copy, ADK authority boundary, replay/setup instructions, Google Cloud evidence, and remaining human-work checklist |
+
+## Agent scaffolding
+
+Implementation plans written by and for the coding agent. Not part of the
+deliverable; kept for build-provenance.
+
+| File | What it is |
+|---|---|
+| [`agent-scaffolding/2026-08-22-hackathon-sprint.md`](agent-scaffolding/2026-08-22-hackathon-sprint.md) | Detailed implementation plan for the 2026-08 hackathon sprint; retained as agent build provenance, not reader-facing product evidence |

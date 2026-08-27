@@ -9,6 +9,7 @@ gates the lab/production boundary — without truth the metrics are marked
 from __future__ import annotations
 
 import json
+from collections import Counter
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -181,6 +182,85 @@ def score_routes(
             else:
                 counts["silent_absent_true"] += 1
     return counts
+
+
+def score_zero_touch_release(
+    routes: Sequence[Mapping[str, Any]],
+    policy: Mapping[str, Any] | None,
+    *,
+    truth_of: Callable[[str], Mapping[str, str]] | None = None,
+    understand_of: Callable[[str], Mapping[str, Any] | None] | None = None,
+    caliber_of: Callable[[str, str, Mapping[str, str]], str | None] | None = None,
+) -> dict[str, Any]:
+    """Score only release-gating slots on documents nobody has to open.
+
+    ``silent_wrong`` over an entire arm answers an aggregate routing question;
+    it can hide concentration inside the exact documents named by a zero-touch
+    claim.  This projection uses the same truth and normalisation functions as
+    ``score_routes`` but fixes both the document and field denominator to the
+    released subset.
+    """
+    from .release_profile import gating_fields, zero_touch_document_ids
+
+    truth_of = truth_of or truth
+    understand_of = understand_of or (lambda _doc: None)
+    zero_docs = zero_touch_document_ids(routes, policy)
+    gate = gating_fields(policy)
+    subset = [row for row in routes
+              if str(row["doc_id"]) in zero_docs
+              and str(row["field"]) in gate]
+    counts = score_routes(
+        subset, truth_of=truth_of, understand_of=understand_of,
+        caliber_of=caliber_of,
+    )
+
+    wrong_docs: set[str] = set()
+    release_error_docs: set[str] = set()
+    unscored_docs: set[str] = set()
+    wrong_fields: Counter[str] = Counter()
+    absent_fields: Counter[str] = Counter()
+    unscored_fields: Counter[str] = Counter()
+    for row in subset:
+        doc_id = str(row["doc_id"])
+        field = str(row["field"])
+        tmap = truth_of(doc_id)
+        umap = understand_of(doc_id) or {}
+        truth_value = tmap.get(field)
+        understand_value = umap.get(field)
+        flags = score_slot(
+            route=str(row["route"]), field=field,
+            truth_value=truth_value, understand_value=understand_value,
+        )
+        if (row["route"] == "auto_accept"
+                and (truth_value is None or understand_value is None)):
+            unscored_docs.add(doc_id)
+            unscored_fields[field] += 1
+        if flags["silent_wrong"]:
+            wrong_docs.add(doc_id)
+            release_error_docs.add(doc_id)
+            wrong_fields[field] += 1
+        if flags["silent_absent"]:
+            dispute = caliber_of(doc_id, field, tmap) if caliber_of else None
+            if not dispute:
+                release_error_docs.add(doc_id)
+                absent_fields[field] += 1
+
+    return {
+        "zero_touch_docs": len(zero_docs),
+        "gating_fields": sorted(gate),
+        "gating_slots": len(subset),
+        **counts,
+        "docs_with_silent_wrong": len(wrong_docs),
+        "docs_with_release_error": len(release_error_docs),
+        "docs_with_silent_wrong_ids": sorted(wrong_docs),
+        "docs_with_release_error_ids": sorted(release_error_docs),
+        "silent_wrong_fields": dict(sorted(wrong_fields.items())),
+        "silent_absent_true_fields": dict(sorted(absent_fields.items())),
+        "unscored_auto_accept_slots": sum(unscored_fields.values()),
+        "docs_with_unscored_auto_accept": len(unscored_docs),
+        "docs_with_unscored_auto_accept_ids": sorted(unscored_docs),
+        "unscored_auto_accept_fields": dict(sorted(unscored_fields.items())),
+    }
 
 
 def write_annotation_stub(root: Path, doc_id: str,

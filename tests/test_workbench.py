@@ -829,6 +829,22 @@ class TestQuickPathCarriesReasonCode:
 class TestImprovePage:
     """改进循环页:投影 mine_report;关账挖掘是人点的写入口。"""
 
+    @staticmethod
+    def _backend(provider="anthropic", model="mimo-v2.5", *, ready=True,
+                 reason=None):
+        from invoiceloop.advisory import AdvisoryBackend
+
+        return AdvisoryBackend(
+            provider=provider,
+            protocol=("anthropic-messages" if provider == "anthropic"
+                      else "google-adk"),
+            model=model,
+            artifact=("suggestions.json" if provider == "anthropic"
+                      else "adk_loop_report.json"),
+            ready=ready,
+            reason=reason,
+        )
+
     def _mine(self, workspace):
         from invoiceloop import improve
         return improve.mine(workspace)
@@ -883,24 +899,24 @@ class TestImprovePage:
         assert "页面右下角还有一个小写的 total" in text, \
             "复核者原话必须出现在改进页上 —— 这一页就是为了让人读它"
 
-    def test_page_writes_nothing(self, workspace, server):
+    def test_page_writes_nothing(self, workspace, server, monkeypatch):
         """唯一写 active 的入口是 improve promote —— 网页上不许有按钮
         能改策略。mine 只投影,不改规则。"""
-        from invoiceloop.workbench import _adk_importable
+        monkeypatch.setattr(
+            "invoiceloop.workbench._advisory_backend",
+            lambda _ws: self._backend())
 
         self._mine(workspace)
         _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
         assert 'action="/improve"' not in text
         assert 'action="/improve/mine"' in text
         assert "挖掘已跑过" in text
-        if _adk_importable():
-            assert 'action="/improve/adk"' in text
-            assert "让 Gemini 出建议" in text
-        else:
-            assert 'action="/improve/adk"' not in text
-            assert "这一台工作台现在出不了 Gemini 建议" in text
+        assert 'action="/improve/adk"' in text
+        assert "让 AI 出建议" in text
+        assert "mimo-v2.5" in text
+        assert "Gemini" not in text
         assert not (workspace / "improve" / "adk_loop_report.json").exists(), \
-            "GET /improve 不许偷偷调 Gemini"
+            "GET /improve 不许偷偷调 AI"
 
     def test_adk_button_absent_until_mined(self, workspace, server):
         _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
@@ -916,7 +932,9 @@ class TestImprovePage:
     def test_post_adk_projects_the_report(self, workspace, server, monkeypatch):
         self._mine(workspace)
 
-        def fake_loop(ws):
+        def fake_loop(ws, backend):
+            assert backend.provider == "gemini-adk"
+            assert backend.model == "gemini-3.6-flash"
             payload = {
                 "advisory": True,
                 "source": "Gemini_Multi_Agent_Improve_Loop",
@@ -944,9 +962,13 @@ class TestImprovePage:
                             encoding="utf-8")
             return payload
 
+        monkeypatch.setattr(
+            "invoiceloop.workbench._advisory_backend",
+            lambda _ws: self._backend(
+                provider="gemini-adk", model="gemini-3.6-flash"))
         monkeypatch.setattr("invoiceloop.workbench._adk_importable",
                             lambda: True)
-        monkeypatch.setattr("invoiceloop.workbench._run_adk_loop", fake_loop)
+        monkeypatch.setattr("invoiceloop.workbench._run_advisory", fake_loop)
         status, headers, _ = _imp_post(
             server, "/improve/adk", {"run": RUN, "lang": "zh"})
         assert status == 303 and "notice=adk" in headers["location"]
@@ -955,23 +977,93 @@ class TestImprovePage:
         _, _, text = _req(server, "GET", headers["location"])
         assert "多方印证的含税额从没被改过" in text
         assert "建议你看" in text
-        assert "再跑一轮 Gemini" in text
-        assert "Gemini 跑完了" in text
+        assert "再让 AI 出建议" in text
+        assert "gemini-3.6-flash" in text
+        assert "AI 已完成" in text
+
+    def test_same_ai_entry_can_run_anthropic_compatible_backend(
+            self, workspace, server, monkeypatch):
+        self._mine(workspace)
+
+        def fake_loop(ws, backend):
+            assert backend.provider == "anthropic"
+            assert backend.model == "mimo-v2.5"
+            payload = {
+                "advisory": True,
+                "model": "mimo-v2.5",
+                "note_count": 1,
+                "suggestions": [{
+                    "kind": "cohort",
+                    "action": "auto_accept",
+                    "cohort": {"field": "total_gross", "tier": "TIER1",
+                               "strength": "corroborated"},
+                    "finding": "模型读到了重复复核",
+                    "prediction": "少一次复核，但可能放过错值",
+                    "confidence": "medium",
+                    "cites": [0],
+                    "cited_notes": [{"rationale": "合成意见"}],
+                }],
+                "dropped": [],
+            }
+            path = workspace / "improve" / "suggestions.json"
+            path.write_text(json.dumps(payload, ensure_ascii=False),
+                            encoding="utf-8")
+            return payload
+
+        monkeypatch.setattr(
+            "invoiceloop.workbench._advisory_backend",
+            lambda _ws: self._backend(model="mimo-v2.5"))
+        monkeypatch.setattr("invoiceloop.workbench._run_advisory", fake_loop)
+        status, headers, _ = _imp_post(
+            server, "/improve/adk", {"run": RUN, "lang": "zh"})
+
+        assert status == 303 and "notice=adk" in headers["location"]
+        assert not (workspace / "improve" / "adk_loop_report.json").exists(), \
+            "Anthropic-compatible 后端不许写 ADK 的工件"
+        _, _, text = _req(server, "GET", headers["location"])
+        assert "模型读到了重复复核" in text
+        assert "mimo-v2.5" in text
+        assert "再让 AI 出建议" in text
+        assert "AI 已完成" in text
 
     def test_adk_missing_extra_does_not_offer_a_clickable_button(
             self, workspace, server, monkeypatch):
         """顾问层没装进本解释器:页面要说清,不许给可点按钮,不许甩 pip。"""
+        monkeypatch.setattr(
+            "invoiceloop.workbench._advisory_backend",
+            lambda _ws: self._backend(
+                provider="gemini-adk", model="gemini-3.7-flash"))
         monkeypatch.setattr("invoiceloop.workbench._adk_importable", lambda: False)
         self._mine(workspace)
         _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
-        assert "这一台工作台现在出不了 Gemini 建议" in text
+        assert "当前 AI 后端不可用" in text
+        assert "gemini-3.7-flash" in text
         assert 'action="/improve/adk"' not in text
         assert "pip install" not in text
         status, _, body = _imp_post(
             server, "/improve/adk", {"run": RUN, "lang": "zh"})
         assert status == 400
-        assert "这一台工作台现在出不了 Gemini 建议" in body
+        assert "当前 AI 后端不可用" in body
+        assert "gemini-3.7-flash" in body
         assert "pip install" not in body
+
+    def test_anthropic_missing_model_is_explicitly_unavailable(
+            self, workspace, server, monkeypatch):
+        """有 key 没模型不能偷选默认值,页面与 POST 都要说清缺什么。"""
+        self._mine(workspace)
+        monkeypatch.setattr(
+            "invoiceloop.workbench._advisory_backend",
+            lambda _ws: self._backend(
+                model="", ready=False, reason="missing_model"))
+
+        _, _, text = _req(server, "GET", f"/improve?run={RUN}&lang=zh")
+        assert "尚未配置要调用的模型" in text
+        assert 'action="/improve/adk"' not in text
+
+        status, _, body = _imp_post(
+            server, "/improve/adk", {"run": RUN, "lang": "zh"})
+        assert status == 400
+        assert "尚未配置要调用的模型" in body
 
     def test_model_draft_is_marked_advisory_with_its_citations(
             self, workspace, server):

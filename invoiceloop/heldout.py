@@ -24,6 +24,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
+import subprocess
 import sys
 import time
 from functools import lru_cache
@@ -32,6 +34,7 @@ from typing import Sequence
 
 from .ocr import derisk_root
 from .scope import BROADCAST_SCOPE_PROTOCOL, classify_broadcast_ocr
+from .snapshot import _code_revision
 
 HELDOUT_N = 100
 POOL_MIN_FIELDS = 4  # 与 run_batch.sample 同门槛:标注够多才值得一次调用
@@ -242,6 +245,338 @@ def cmd_plan_sealed(workspace: Path, *, seed_hex: str, seed_source: str,
     return ids
 
 
+# ----------------------------------------------------------------- QUALIFY
+
+#: 资格轮抽样盐。与 SEALED 不同,这里**不需要** drand:池里没有任何一份
+#: 跑过结果,挑盐挑不出好看的样本。盐只承担确定性与第三方可复算。
+QUAL_CONTEXTS = {
+    "qual-narrow-v1": "invoiceloop-qual-narrow-v1",
+    "qual-narrow-v2": "invoiceloop-qual-narrow-v2",
+}
+DEFAULT_QUAL_CONTEXT = "qual-narrow-v1"
+
+QUAL_REPO_ROOT = Path(__file__).resolve().parent.parent
+QUAL_EXPOSURE_REGISTRY = (QUAL_REPO_ROOT / "docs"
+                          / "qualification_exposure_registry.json")
+#: 兼容旧调用；资格池的权威排除关系在 registry，不再由这个常量决定。
+SEALED4_LIST = QUAL_REPO_ROOT / "docs" / "sealed4_doc_list.json"
+
+
+def _qual_exposure(context: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Return (spent doc ids, source paths), verifying every frozen list."""
+    if context not in QUAL_CONTEXTS:
+        raise ValueError(f"未知资格语境:{context};允许 {sorted(QUAL_CONTEXTS)}")
+    try:
+        registry = json.loads(
+            QUAL_EXPOSURE_REGISTRY.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"资格曝光 registry 不可读:{exc}") from exc
+    if registry.get("registry_version") != "qualification-exposure-v1":
+        raise ValueError("资格曝光 registry_version 不受支持")
+    entries = registry.get("lists")
+    if not isinstance(entries, list):
+        raise ValueError("资格曝光 registry.lists 必须是 array")
+
+    root = QUAL_REPO_ROOT.resolve()
+    doc_ids: set[str] = set()
+    paths: list[str] = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise ValueError("资格曝光 registry 每项必须是 object")
+        contexts = entry.get("exclude_from_contexts")
+        if not isinstance(contexts, list) or not all(
+                isinstance(item, str) for item in contexts):
+            raise ValueError("exclude_from_contexts 必须是字符串数组")
+        if context not in contexts:
+            continue
+        rel = entry.get("path")
+        if not isinstance(rel, str) or Path(rel).is_absolute():
+            raise ValueError(f"资格曝光 path 必须是仓库相对路径:{rel!r}")
+        path = (root / rel).resolve()
+        if not path.is_relative_to(root) or not path.is_file():
+            raise ValueError(f"资格曝光名单不存在或逃出仓库:{rel}")
+        actual_sha = hashlib.sha256(path.read_bytes()).hexdigest()
+        if actual_sha != entry.get("list_sha256"):
+            raise ValueError(
+                f"{rel} list_sha256 漂移:expected={entry.get('list_sha256')},"
+                f"actual={actual_sha}")
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        ids = payload.get("doc_ids") if isinstance(payload, dict) else None
+        if not isinstance(ids, list) or not all(
+                isinstance(doc_id, str) and doc_id for doc_id in ids):
+            raise ValueError(f"资格曝光名单 doc_ids 非字符串数组:{rel}")
+        if len(ids) != len(set(ids)):
+            raise ValueError(f"资格曝光名单有重复 doc_id:{rel}")
+        digest = doc_ids_line_digest(ids)
+        if digest != entry.get("doc_ids_sha256"):
+            raise ValueError(
+                f"{rel} doc_ids_sha256 漂移:"
+                f"expected={entry.get('doc_ids_sha256')},actual={digest}")
+        doc_ids.update(ids)
+        paths.append(rel)
+    if not paths:
+        raise ValueError(f"资格语境 {context} 没有任何曝光排除名单")
+    return tuple(sorted(doc_ids)), tuple(sorted(paths))
+
+
+@lru_cache(maxsize=None)
+def qual_exposure_doc_ids(context: str) -> tuple[str, ...]:
+    return _qual_exposure(context)[0]
+
+
+@lru_cache(maxsize=None)
+def qual_exposure_paths(context: str) -> tuple[str, ...]:
+    return _qual_exposure(context)[1]
+
+
+@lru_cache(maxsize=None)
+def qual_pool(*, context: str = DEFAULT_QUAL_CONTEXT) -> tuple[str, ...]:
+    """资格池:sealed_pool 再减该语境已花掉的名单,且 pdf/OCR 齐全。
+
+    OCR 齐全是硬条件不是装饰:doctouch_arms.assemble 缺 OCR 就把该份记进
+    missing 并从 doc_ids 里剔掉 —— 样本静默缩水,而报告照写 n=200。
+    """
+    excluded = set(qual_exposure_doc_ids(context))
+    root = derisk_root() / "data" / "docile"
+    out = []
+    for doc in sealed_pool():
+        if doc in excluded:
+            continue
+        if not (root / "pdfs" / f"{doc}.pdf").is_file():
+            continue
+        if not (root / "ocr" / f"{doc}.json").is_file():
+            continue
+        out.append(doc)
+    return tuple(sorted(out))
+
+
+def qual_list(n: int = 200, *,
+              context: str = DEFAULT_QUAL_CONTEXT) -> list[str]:
+    """最小哈希抽样:按 sha256(「盐|doc_id」)升序取前 n 份,再按 id 排序。
+
+    换掉 sealed 的 random.sample 只为一件事:第三方拿到池和盐就能用四行
+    脚本复算,不必信任我们的 PRNG 版本。
+    """
+    if context not in QUAL_CONTEXTS:
+        raise ValueError(f"未知资格语境:{context};允许 {sorted(QUAL_CONTEXTS)}")
+    salt = QUAL_CONTEXTS[context]
+    pool = qual_pool(context=context)
+    if len(pool) < n:
+        raise RuntimeError(f"资格池只有 {len(pool)} 份,不足 {n}")
+    ranked = sorted(pool, key=lambda d: hashlib.sha256(
+        f"{salt}|{d}".encode("utf-8")).hexdigest())
+    return sorted(ranked[:n])
+
+
+def cmd_plan_qual(workspace: Path, *, n: int = 200,
+                  context: str = DEFAULT_QUAL_CONTEXT) -> list[str]:
+    """资格集名单落盘 —— 先于任何调用,落盘即预注册。"""
+    workspace = prepare_workspace(workspace)
+    pool = qual_pool(context=context)
+    ids = qual_list(n, context=context)
+    # 冻结这一刻「盘上已有双模式响应」的快照。活查这件事只在提取之前有意义:
+    # 提取一跑完,本轮 200 份自己就有响应了,再活查就是自打嘴巴。
+    import sys as _sys
+
+    _sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    from doctouch_arms import discover_dual_mode  # noqa: E402
+
+    touched = sorted(discover_dual_mode())
+    leaked = sorted(set(ids) & set(touched))
+    if leaked:
+        raise RuntimeError(
+            f"名单里有 {len(leaked)} 份盘上已有双模式响应 —— 「未曝光」不成立:"
+            f"{leaked[:5]}")
+    payload = {
+        "n": n,
+        "pool_size": len(pool),
+        "pool_min_fields": POOL_MIN_FIELDS,
+        "exclusion": "docs/development_exposure_manifest.json 全量补集,"
+                     "再减 qualification_exposure_registry 中该 context 的名单;"
+                     "并要求 pdf 与词级 OCR 齐全",
+        "exclusion_registry": "docs/qualification_exposure_registry.json",
+        "exclusion_lists": list(qual_exposure_paths(context)),
+        "sampling": f"min-hash:sha256(「{QUAL_CONTEXTS[context]}|」+ doc_id) "
+                    f"升序取前 {n}",
+        "context": context,
+        "pool_sha256": doc_ids_line_digest(pool),
+        "doc_ids_sha256": doc_ids_line_digest(ids),
+        "dual_mode_on_disk_at_freeze": touched,
+        "dual_mode_on_disk_sha256": doc_ids_line_digest(touched),
+        "doc_ids": ids,
+    }
+    (workspace / "doc_list.json").write_text(
+        json.dumps(payload, indent=1, ensure_ascii=False) + "\n",
+        encoding="utf-8")
+    print(f"pool={payload['pool_size']}  qual n={n}  context={context}")
+    print(f"冻结时盘上双模式 {len(touched)} 份,与名单交集 0")
+    print(f"pool_sha256={payload['pool_sha256']}")
+    print(f"doc_ids_sha256={payload['doc_ids_sha256']}")
+    print(f"名单已落盘:{workspace / 'doc_list.json'} —— 先提交,再调用")
+    return ids
+
+
+_QUAL_ROUND_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+
+
+def _git_path_is_at_head(repo: Path, path: Path) -> bool:
+    """The path is tracked and its index/worktree bytes equal current HEAD."""
+    repo = Path(repo).resolve()
+    path = Path(path).resolve()
+    if not path.is_relative_to(repo):
+        return False
+    rel = str(path.relative_to(repo))
+    try:
+        tracked = subprocess.run(
+            ["git", "-C", str(repo), "ls-files", "--error-unmatch", "--", rel],
+            capture_output=True, timeout=5,
+        )
+        clean = subprocess.run(
+            ["git", "-C", str(repo), "diff", "--quiet", "HEAD", "--", rel],
+            capture_output=True, timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return tracked.returncode == 0 and clean.returncode == 0
+
+
+def _manifest_files(stage: Path) -> dict[str, str]:
+    manifest = stage / "MANIFEST.sha256"
+    if not manifest.is_file():
+        raise RuntimeError(f"资格 plan manifest 不存在:{manifest}")
+    entries: dict[str, str] = {}
+    for line in manifest.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        digest, sep, name = line.partition("  ")
+        name = name.strip()
+        if (not sep or len(digest) != 64
+                or any(c not in "0123456789abcdef" for c in digest)
+                or not name or Path(name).name != name):
+            raise RuntimeError(f"资格 plan manifest 非法行:{line!r}")
+        if name in entries:
+            raise RuntimeError(f"资格 plan manifest 重复文件:{name}")
+        entries[name] = digest
+    if not entries:
+        raise RuntimeError("资格 plan manifest 为空")
+    for name, digest in entries.items():
+        path = stage / name
+        if not path.is_file():
+            raise RuntimeError(f"资格 plan 冻结工件不存在:{path}")
+        actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        if actual != digest:
+            raise RuntimeError(
+                f"资格 plan 冻结工件与 manifest 不符:{name}:"
+                f"expected={digest},actual={actual}")
+    return entries
+
+
+def qualification_run_identity(
+    workspace: Path,
+    *,
+    round_name: str,
+    protocol_path: Path,
+) -> dict[str, object]:
+    """Bind a qualification extraction to committed plan/protocol/code bytes."""
+    if not _QUAL_ROUND_RE.fullmatch(round_name):
+        raise RuntimeError(f"非法 qualification round:{round_name!r}")
+    repo = QUAL_REPO_ROOT.resolve()
+    workspace = Path(workspace)
+    protocol = Path(protocol_path)
+    protocol = (repo / protocol).resolve() if not protocol.is_absolute() \
+        else protocol.resolve()
+    if not protocol.is_relative_to(repo) or not protocol.is_file():
+        raise RuntimeError(f"qualification protocol 不在仓库或不存在:{protocol}")
+    protocol_rel = str(protocol.relative_to(repo))
+    stage = repo / "docs" / "evidence" / round_name / "plan"
+    manifest = stage / "MANIFEST.sha256"
+    entries = _manifest_files(stage)
+    required = {"doc_list.json", protocol.name}
+    missing = sorted(required - set(entries))
+    if missing:
+        raise RuntimeError(f"资格 plan manifest 缺冻结工件:{missing}")
+
+    tracked = [manifest, protocol, *(stage / name for name in entries)]
+    not_at_head = [str(path.relative_to(repo)) for path in tracked
+                   if not _git_path_is_at_head(repo, path)]
+    if not_at_head:
+        raise RuntimeError(
+            f"资格 plan/protocol 必须已提交且等于 HEAD:{not_at_head}")
+
+    revision = _code_revision(repo)
+    if revision is None or revision.endswith(("-dirty", "-unknown-worktree")):
+        raise RuntimeError(
+            f"资格抽取必须从干净 commit 运行,当前 code revision={revision}")
+
+    frozen_protocol = stage / protocol.name
+    if frozen_protocol.read_bytes() != protocol.read_bytes():
+        raise RuntimeError("live protocol 与 plan 冻结副本不符")
+    live_list = workspace / "doc_list.json"
+    frozen_list = stage / "doc_list.json"
+    if not live_list.is_file() or live_list.read_bytes() != frozen_list.read_bytes():
+        raise RuntimeError("workspace doc_list 与 plan 冻结副本不符")
+    try:
+        spec = json.loads(live_list.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"qualification doc_list 不可读:{exc}") from exc
+    context = spec.get("context") if isinstance(spec, dict) else None
+    doc_ids = spec.get("doc_ids") if isinstance(spec, dict) else None
+    if context not in QUAL_CONTEXTS:
+        raise RuntimeError(f"qualification doc_list context 非法:{context!r}")
+    if not isinstance(doc_ids, list) or not all(
+            isinstance(doc_id, str) and doc_id for doc_id in doc_ids):
+        raise RuntimeError("qualification doc_list.doc_ids 非字符串数组")
+    if len(doc_ids) != len(set(doc_ids)) or spec.get("n") != len(doc_ids):
+        raise RuntimeError("qualification doc_list 数量/唯一性不符")
+    digest = doc_ids_line_digest(doc_ids)
+    if spec.get("doc_ids_sha256") != digest:
+        raise RuntimeError("qualification doc_ids_sha256 与名单不符")
+    recomputed = qual_list(len(doc_ids), context=str(context))
+    if doc_ids != recomputed:
+        raise RuntimeError("qualification doc_list 不能由当前冻结 context/pool 复算")
+    pool_digest = doc_ids_line_digest(qual_pool(context=str(context)))
+    if spec.get("pool_sha256") != pool_digest:
+        raise RuntimeError("qualification pool_sha256 与当前冻结池不符")
+
+    return {
+        "identity_version": "qualification-extract-identity-v1",
+        "round": round_name,
+        "context": context,
+        "n_docs": len(doc_ids),
+        "doc_ids_sha256": digest,
+        "doc_list_sha256": hashlib.sha256(live_list.read_bytes()).hexdigest(),
+        "protocol": protocol_rel,
+        "protocol_sha256": hashlib.sha256(protocol.read_bytes()).hexdigest(),
+        "plan_manifest": str(manifest.relative_to(repo)),
+        "plan_manifest_sha256": hashlib.sha256(manifest.read_bytes()).hexdigest(),
+        "code_revision": revision,
+    }
+
+
+def bind_qualification_run_identity(
+    workspace: Path, identity: dict[str, object]
+) -> Path:
+    """Write once before API use; resume only under the exact same identity."""
+    workspace = Path(workspace)
+    path = workspace / "qualification_run_identity.json"
+    if path.is_file():
+        try:
+            prior = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"qualification run identity 损坏:{exc}") from exc
+        if prior != identity:
+            raise RuntimeError(
+                "qualification run 已存在,但代码/协议/名单身份不同 —— 禁止续跑")
+        return path
+    raw = workspace / "raw"
+    if raw.is_dir() and any(raw.glob("*.json")):
+        raise RuntimeError(
+            "qualification raw 已存在却没有 run identity —— 禁止事后补身份")
+    path.write_text(json.dumps(identity, ensure_ascii=False, indent=1) + "\n",
+                    encoding="utf-8")
+    return path
+
+
 def _load_keys() -> list[str]:
     env = os.environ.get("DWS_API_KEYS", "")
     keys = [k.strip() for k in env.split(",") if k.strip()]
@@ -259,7 +594,13 @@ def _cost_of(record: dict) -> float:
     return float((usage.get("data_extraction_credits") or {}).get("cost") or 0.0)
 
 
-def cmd_extract(workspace: Path, *, budget: float = 6000.0) -> dict:
+def cmd_extract(
+    workspace: Path,
+    *,
+    budget: float = 6000.0,
+    qualification_round: str | None = None,
+    qualification_protocol: Path | None = None,
+) -> dict:
     """按名单跑 understand + agentic,断点续跑,余额换 key,预算熔断。"""
     workspace = Path(workspace)
     from .adaptive import is_workspace_adaptive
@@ -270,7 +611,27 @@ def cmd_extract(workspace: Path, *, budget: float = 6000.0) -> dict:
             f"删掉 adaptive.json(及 attempts/)后再 extract;"
             f"见 docs/L1_ADAPTIVE_MEASURED_2026-08-06.md"
         )
-    doc_ids = json.loads((workspace / "doc_list.json").read_text())["doc_ids"]
+    try:
+        doc_spec = json.loads(
+            (workspace / "doc_list.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"doc_list 不可读:{exc}") from exc
+    context = doc_spec.get("context") if isinstance(doc_spec, dict) else None
+    is_qualification = context in QUAL_CONTEXTS
+    if (qualification_round is None) != (qualification_protocol is None):
+        raise RuntimeError("qualification round/protocol 必须同时提供")
+    if is_qualification and qualification_round is None:
+        raise RuntimeError(
+            "资格 context 抽取必须提供 qualification round 与 protocol 身份")
+    if not is_qualification and qualification_round is not None:
+        raise RuntimeError("非资格 doc_list 不接受 qualification round/protocol")
+    qualification_identity = None
+    if qualification_round is not None and qualification_protocol is not None:
+        qualification_identity = qualification_run_identity(
+            workspace, round_name=qualification_round,
+            protocol_path=qualification_protocol)
+        bind_qualification_run_identity(workspace, qualification_identity)
+    doc_ids = doc_spec["doc_ids"]
     _, derisk_schema, dws_extract = _derisk_imports()
     dws_extract.RAW_DIR = workspace / "raw"  # 新响应进工作区,不污染校准档案
     schema = derisk_schema.extraction_schema()
@@ -285,6 +646,13 @@ def cmd_extract(workspace: Path, *, budget: float = 6000.0) -> dict:
 
     tasks = [(d, m) for d in doc_ids for m in ("understand", "agentic")]
     for doc_id, mode in tasks:
+        if qualification_identity is not None:
+            current = qualification_run_identity(
+                workspace, round_name=str(qualification_round),
+                protocol_path=Path(qualification_protocol))
+            if current != qualification_identity:
+                raise RuntimeError(
+                    "qualification 身份在抽取期间变化 —— 立即阻断,不得续跑")
         target = workspace / "raw" / f"{doc_id}.{mode}.json"
         if target.exists():
             try:

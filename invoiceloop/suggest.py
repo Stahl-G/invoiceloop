@@ -108,6 +108,8 @@ auto_accept / revoke 用 field / tier / strength 描述;
      主语是「系统」或「你」,量词是「张发票」;
    - 每段两三句话说完。
    (JSON 里的 action / field / cohort 仍用英文内部名 —— 那是给程序读的。)
+6. 「当前已生效的路由规则」只用于去重。已经生效的规则不要再提一次;
+   重复提案不是改进。
 
 按这个 JSON 结构回答,不要有别的文字:
 {"suggestions": [
@@ -120,7 +122,8 @@ auto_accept / revoke 用 field / tier / strength 描述;
 """
 
 
-def _packet(report: dict, schema: dict | None = None) -> tuple[str, list[dict]]:
+def _packet(report: dict, schema: dict | None = None,
+            policy: dict | None = None) -> tuple[str, list[dict]]:
     """mine_report(+ 当前抽取 schema)→ (给模型的文本, 笔记表)。笔记表是
     引用的锚,模型给的 cites 下标必须落在它里面,否则该条建议丢弃。
 
@@ -134,6 +137,24 @@ def _packet(report: dict, schema: dict | None = None) -> tuple[str, list[dict]]:
         for name, spec in sorted((schema.get("properties") or {}).items()):
             lines.append(f"- {name}(中文名「{_pw.field(name)}」): "
                          f"{spec.get('description', '')!r}")
+        lines.append("")
+    if policy:
+        # 模型只看用于去重的语义特征,不看 Python 分配的规则 ID。即使模型
+        # 无视这一节,validate 与 improve.propose 仍会确定性挡住重复项。
+        auto = [
+            {k: c[k] for k in ("field", "tier", "strength") if k in c}
+            for c in policy.get("auto_accept_cohorts") or []
+            if isinstance(c, dict)
+        ]
+        absent = [
+            {k: c[k] for k in ("doc_class", "field") if k in c}
+            for c in policy.get("absent_expected_cohorts") or []
+            if isinstance(c, dict)
+        ]
+        lines.append("## 当前已生效的路由规则(只用于去重,不要重复提案)\n")
+        lines.append(f"- auto_accept:{json.dumps(auto, ensure_ascii=False)}")
+        lines.append(
+            f"- absent_expected:{json.dumps(absent, ensure_ascii=False)}")
         lines.append("")
     lines.append("## cohort 统计\n")
     for c in report.get("cohorts", []):
@@ -172,7 +193,28 @@ def _packet(report: dict, schema: dict | None = None) -> tuple[str, list[dict]]:
     return "\n".join(lines), notes
 
 
-def validate(raw: dict, notes: list[dict]) -> tuple[list[dict], list[str]]:
+def _active_rule_id(action: str, entry: dict,
+                    active_policy: dict | None) -> str | None:
+    """返回语义相同的 active 规则 ID;模型的草稿没有 ID 也能确定去重。"""
+    if not active_policy or entry.get("kind") != "cohort":
+        return None
+    wanted = entry.get("cohort") or {}
+    if action == "absent_expected":
+        section = "absent_expected_cohorts"
+    elif action == "auto_accept":
+        section = "auto_accept_cohorts"
+    else:
+        return None
+    from .improve import find_active_covering_rule
+
+    rule = find_active_covering_rule(active_policy, section, wanted)
+    if rule is None:
+        return None
+    return str(rule.get("id") or "(无 ID 的历史规则)")
+
+
+def validate(raw: dict, notes: list[dict], *,
+             active_policy: dict | None = None) -> tuple[list[dict], list[str]]:
     """草稿 → (可用建议, 丢弃理由)。**纯函数,可单测,不碰网络。**
 
     两类建议共用「必须给出处」这一条;各自的形状约束分开查。
@@ -260,6 +302,11 @@ def validate(raw: dict, notes: list[dict]) -> tuple[list[dict], list[str]]:
         if not cites:
             dropped.append(f"{label}:引用为空或越界 —— 没出处的建议不收")
             continue
+        active_id = _active_rule_id(action, entry, active_policy)
+        if active_id:
+            dropped.append(
+                f"{label}:{active_id} 已在生效政策里 —— 重复提案不是改进")
+            continue
         kept.append({
             **entry,
             "action": action,
@@ -286,12 +333,16 @@ def suggest(workspace: Path, *, model: str | None = None,
         raise FileNotFoundError(
             f"没有 {report_path} —— 先跑 improve mine")
     report = json.loads(report_path.read_text(encoding="utf-8"))
+    active_policy = None
     try:
         from .harness import load_active
-        active_schema = load_active(workspace).get("schema")
+
+        active = load_active(workspace)
+        active_schema = active.get("schema")
+        active_policy = active.get("policy")
     except Exception:  # noqa: BLE001 —— 拿不到 schema 就只提 cohort,不中断
         active_schema = None
-    packet, notes = _packet(report, active_schema)
+    packet, notes = _packet(report, active_schema, active_policy)
     if not notes:
         out = {"advisory": True, "model": model or "", "suggestions": [],
                "dropped": [], "note_count": 0,
@@ -312,9 +363,14 @@ def suggest(workspace: Path, *, model: str | None = None,
     # 于是 suggestions.json 会写着一个根本没被调用过的模型名 ——
     # 顾问层的工件对「谁写的这份草稿」说了假话,溯源就断在这里(宪章六)。
     chosen = (model or os.environ.get("INVOICELOOP_SUGGEST_MODEL")
-              or default_model)
+              or default_model or "").strip()
+    if not chosen:
+        raise RuntimeError(
+            "缺 AI 模型:传 --model 或配置 INVOICELOOP_AI_MODEL / "
+            "INVOICELOOP_SUGGEST_MODEL / ANTHROPIC_MODEL —— "
+            "系统不会替你选择默认模型")
     raw = _ask(packet, key=key, base_url=base_url, model=chosen)
-    kept, dropped = validate(raw, notes)
+    kept, dropped = validate(raw, notes, active_policy=active_policy)
     out = {
         "advisory": True,
         "model": chosen,

@@ -6,8 +6,8 @@ vision_ingest.read_doc(整页渲染 + 第六轮五律 prompt)→ 解析行过滤
 → suggest_inject 以 **run-dir 展示型** 注入。展示型 = 不进输入指纹、不成草稿,
 队列构成与未带该读者的阶段保持可比;agent 预读的 kimi tag 走同一条路。
 
-凭证与模型走 env 模块(与 vision-ingest 同源);tag 默认就是模型名 ——
-显示名不许撒谎(vision_ingest.DEFAULT_MODEL 的注释纪律)。
+凭证与模型走 env 模块(与 vision-ingest 同源);tag 默认就是模型名,
+显式 tag 也必须与真实模型一致 —— 显示名不许撒谎。
 """
 
 from __future__ import annotations
@@ -64,8 +64,12 @@ def main() -> None:
     if not key:
         raise SystemExit("缺 anthropic 凭证(env 模块)—— 跑不了,不是跳过")
     base = env_mod.credential("anthropic_base")
-    model = args.model or env_mod.credential("anthropic_model") or vi.DEFAULT_MODEL
-    tag = args.tag or model
+    model = (args.model or env_mod.credential("anthropic_model") or "").strip()
+    if not model:
+        raise SystemExit(
+            "缺读图模型:传 --model 或配置 ANTHROPIC_MODEL —— "
+            "系统不会替你选择默认模型")
+    tag = vi._resolve_reader_tag(model, args.tag)
 
     ws = run_dir.parent.parent  # runs/<round>/runs/<run> → runs/<round>
     slots = queue_slots(run_dir)

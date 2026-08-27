@@ -23,8 +23,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from invoiceloop import env
-
-DEFAULT_GEMINI_MODEL = "gemini-3.7-flash"
+from invoiceloop.ai_config import DEFAULT_GEMINI_MODEL
 
 
 class ReplayRecordingMissing(FileNotFoundError):

@@ -34,6 +34,8 @@ from invoiceloop.scope import classify_broadcast_ocr  # noqa: E402
 from invoiceloop.sealed_batch import _corpus_environment, frozen_harness  # noqa: E402
 from invoiceloop import truth_caliber as _caliber  # noqa: E402
 from invoiceloop.harness import schema_digest  # noqa: E402
+from invoiceloop.snapshot import _code_revision  # noqa: E402
+from invoiceloop.safety_metrics import score_zero_touch_release  # noqa: E402
 
 DERISK = Path.home() / "Developer" / "dws-derisk"
 SCHEMA = REPO / "invoiceloop" / "harnesses" / "HAR-0001" / "extraction_schema.json"
@@ -61,6 +63,28 @@ def discover_dual_mode() -> dict[str, Path]:
                 modes[m.group(1)].add(m.group(2))
                 where.setdefault(m.group(1), root)
     return {doc: where[doc] for doc, ms in modes.items() if len(ms) == 2}
+
+
+def select_sources(sources: dict[str, Path],
+                   requested: list[str] | None) -> dict[str, Path]:
+    """按名单过滤双模式来源。缺件 = 阻断,不静默缩样本。
+
+    资格轮必须带名单:discover_dual_mode 扫的是**盘上全部** raw 目录,
+    资格集的响应一落盘,旧的 660 份已曝光文档就会跟着一起进臂 —— 报告
+    会把 860 份的混合数字写成「未曝光」的结果。
+    """
+    if requested is None:
+        return sources
+    missing = [d for d in requested if d not in sources]
+    if missing:
+        raise SystemExit(json.dumps({
+            "fatal": "名单里的文档缺双模式响应 —— 静默缩样本会让报告写着 "
+                     "n=名单长度、实际测得更少",
+            "requested": len(requested),
+            "have": len(requested) - len(missing),
+            "missing": sorted(missing),
+        }, ensure_ascii=False, indent=1))
+    return {d: sources[d] for d in requested}
 
 
 def strata(doc_ids: list[str]) -> dict[str, str]:
@@ -115,6 +139,31 @@ def active_for(arm: str) -> dict:
     }
 
 
+def require_clean_code_revision() -> str:
+    """Experiments may only create or reuse arms at one clean git commit."""
+    revision = _code_revision(REPO)
+    if revision is None:
+        raise SystemExit("fatal: 无法解析 code revision,实验工件没有代码身份")
+    if revision.endswith("-dirty") or revision.endswith("-unknown-worktree"):
+        raise SystemExit(
+            f"fatal: 实验必须从干净 commit 运行,当前 code revision={revision}")
+    return revision
+
+
+def arm_identity(active: dict, doc_ids: list[str], *,
+                 code_revision: str) -> dict:
+    """Every input that licenses reuse of an existing arm directory."""
+    return {
+        "harness_id": active["harness_id"],
+        "policy_digest": active["policy_digest"],
+        "policy_sha256": active["policy_sha256"],
+        "schema_sha256": active["schema_sha256"],
+        "doc_ids_sha256": hashlib.sha256(
+            "\n".join(sorted(doc_ids)).encode("utf-8")).hexdigest(),
+        "code_revision": code_revision,
+    }
+
+
 def measure(routes: list[dict], policy: dict, strength: dict[str, str],
             understand: dict) -> dict:
     """每层报预注册 §4 的四组数。"""
@@ -127,6 +176,11 @@ def measure(routes: list[dict], policy: dict, strength: dict[str, str],
         touch = document_touch_metrics(rows, policy)
         safety = score_routes(
             rows, truth_of=truth,
+            understand_of=lambda d: understand.get(d),
+            caliber_of=_caliber.caliber_dispute,
+        )
+        release_safety = score_zero_touch_release(
+            rows, policy, truth_of=truth,
             understand_of=lambda d: understand.get(d),
             caliber_of=_caliber.caliber_dispute,
         )
@@ -145,6 +199,7 @@ def measure(routes: list[dict], policy: dict, strength: dict[str, str],
             "silent_wrong": safety.get("silent_wrong"),
             "absent_hits": safety.get("absent_hits"),
             "value_hits": safety.get("value_hits"),
+            "zero_touch_release_safety": release_safety,
         }
     return out
 
@@ -152,13 +207,21 @@ def measure(routes: list[dict], policy: dict, strength: dict[str, str],
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", required=True, type=Path)
+    ap.add_argument("--doc-list", type=Path, default=None,
+                    help="只测这份名单里的文档(资格轮:"
+                         "runs/qual-narrow-<冻结日>/doc_list.json);"
+                         "缺省 = 盘上全部双模式文档(旧 doctouch 复算路径)")
     args = ap.parse_args()
     out = args.out
     out.mkdir(parents=True, exist_ok=True)
 
-    sources = discover_dual_mode()
+    requested = (sorted(json.loads(
+        args.doc_list.read_text(encoding="utf-8"))["doc_ids"])
+        if args.doc_list else None)
+    sources = select_sources(discover_dual_mode(), requested)
     doc_ids = sorted(sources)
-    print(f"双模式齐全 {len(doc_ids)} 份", flush=True)
+    print(f"双模式齐全 {len(doc_ids)} 份"
+          + (f"(名单 {args.doc_list})" if requested else ""), flush=True)
     strength = strata(doc_ids)
     print("  分层 " + json.dumps(dict(collections.Counter(strength.values())),
                                  ensure_ascii=False), flush=True)
@@ -167,6 +230,10 @@ def main() -> None:
     print("装配语料…", flush=True)
     stats = assemble(ws, sources)
     print(f"  装齐 {stats['docs']};缺件 {len(stats['missing'])}", flush=True)
+    if requested is not None and stats["missing"]:
+        raise SystemExit(json.dumps({
+            "fatal": "名单里的文档缺 pdf/ocr,装配不齐",
+            "missing": stats["missing"]}, ensure_ascii=False, indent=1))
     doc_ids = [d for d in doc_ids if d not in set(stats["missing"])]
 
     understand = {}
@@ -182,14 +249,40 @@ def main() -> None:
                "arms": {}}
 
     routes_by_arm = {}
+    revision = require_clean_code_revision()
     for arm in ("HAR-0001", "HAR-0021", "HAR-0023"):
         arm_dir = out / "arms" / arm
         active = active_for(arm)
-        if not arm_dir.exists():
+        identity = arm_identity(active, doc_ids, code_revision=revision)
+        id_path = arm_dir / "arm_identity.json"
+        if arm_dir.exists():
+            # 「目录在就复用」会把上一次用别的策略/名单跑出来的东西当成这一次的。
+            prior = json.loads(id_path.read_text(encoding="utf-8")) \
+                if id_path.is_file() else None
+            if prior != identity:
+                raise SystemExit(json.dumps({
+                    "fatal": "臂目录已存在,但策略/schema/名单与本次不同 —— "
+                             "复用它会把上一次的结果当成这一次的",
+                    "arm": arm, "dir": str(arm_dir),
+                    "prior": prior, "now": identity,
+                }, ensure_ascii=False, indent=1))
+            print(f"复用 {arm}(身份一致)", flush=True)
+        else:
             print(f"跑 {arm}…", flush=True)
             with _corpus_environment(ws), frozen_harness(active):
                 pipeline.run(doc_ids, arm_dir, render_crops=False,
                              include_vision=False, out_of_calibration=True)
+            id_path.write_text(
+                json.dumps(identity, ensure_ascii=False, indent=1) + "\n",
+                encoding="utf-8")
+        run_manifest = json.loads(
+            (arm_dir / "run_manifest.json").read_text(encoding="utf-8"))
+        if run_manifest.get("code_revision") != revision:
+            raise SystemExit(json.dumps({
+                "fatal": "arm 的 run_manifest 与本次 code revision 不同",
+                "arm": arm, "identity": revision,
+                "run_manifest": run_manifest.get("code_revision"),
+            }, ensure_ascii=False, indent=1))
         report = json.loads((arm_dir / "routing_report.json").read_text())
         routes_by_arm[arm] = report["routes"]
         results["arms"][arm] = {

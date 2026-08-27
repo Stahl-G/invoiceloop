@@ -710,6 +710,60 @@ class TestAbsentExpectedLoop:
                             kind="absent_expected")
 
 
+class TestActiveRuleDeduplication:
+    """所有 producer 的最终入口都必须拒绝已生效规则,不能只靠 prompt。"""
+
+    def test_absent_expected_rule_already_active_is_refused(
+            self, tmp_path, monkeypatch):
+        monkeypatch.setattr("invoiceloop.harness.load_active", lambda _ws: {
+            "policy": {"absent_expected_cohorts": [{
+                "id": "AE-invoice-seller_vat_id",
+                "doc_class": "invoice",
+                "field": "seller_vat_id",
+            }]},
+        })
+
+        with pytest.raises(ValueError, match="已在生效政策"):
+            improve.propose(
+                tmp_path,
+                cohort={"doc_class": "invoice", "field": "seller_vat_id"},
+                finding="重复建议", prediction="不会改变策略",
+                kind="absent_expected",
+            )
+
+    def test_auto_accept_semantic_duplicate_is_refused_even_with_new_id(
+            self, tmp_path, monkeypatch):
+        monkeypatch.setattr("invoiceloop.harness.load_active", lambda _ws: {
+            "policy": {"auto_accept_cohorts": [{
+                "id": "AA-existing",
+                "field": "total_gross",
+                "tier": "TIER1",
+            }]},
+        })
+
+        with pytest.raises(ValueError, match="AA-existing 已在生效政策"):
+            improve.propose(
+                tmp_path,
+                cohort={"id": "AA-new-name", "field": "total_gross",
+                        "tier": "TIER1", "strength": "corroborated"},
+                finding="重复建议", prediction="不会改变策略",
+                kind="auto_accept",
+            )
+
+    def test_narrow_active_rule_does_not_cover_a_broader_proposal(self):
+        active = {"auto_accept_cohorts": [{
+            "id": "AA-narrow", "field": "total_gross", "tier": "TIER1",
+            "strength": "corroborated",
+        }]}
+        proposed = {
+            "id": "AA-broad", "field": "total_gross", "tier": "TIER1",
+        }
+
+        assert improve.find_active_covering_rule(
+            active, "auto_accept_cohorts", proposed) is None, \
+            "去掉 strength 会扩大覆盖面,不是空转候选"
+
+
 class TestAbsentEvidencedLoop:
     """页面证据缺席规则的完整闭环(2026-08-09)。
 

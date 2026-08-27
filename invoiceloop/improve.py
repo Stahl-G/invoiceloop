@@ -222,6 +222,61 @@ def refusal_text(violations: list[str], *, subject: str = "这个候选") -> str
     return f"{subject}没能通过审查,有 {len(violations)} 处:\n{body}"
 
 
+def find_active_covering_rule(parent: dict, section: str,
+                              cohort: dict) -> dict | None:
+    """找出已覆盖 proposed cohort 的 active 规则(含 ID 碰撞)。
+
+    routing 的 cohort 特征缺省表示通配。因此 active `{field, tier}` 已经
+    覆盖 proposed `{field, tier, strength}`;只做 dict 相等会漏掉这个空转。
+    反向不成立:active 带 strength、proposed 不带时,后者会扩大覆盖面,仍是
+    一条有行为差异的候选。这里与最终路由的匹配方向保持一致。
+    """
+    if section not in {
+            "auto_accept_cohorts", "absent_expected_cohorts",
+            "absent_evidenced_cohorts"}:
+        raise ValueError(f"未知 active cohort section {section!r}")
+    proposed_id = cohort.get("id")
+    for active in parent.get(section) or []:
+        if not isinstance(active, dict):
+            continue
+        same_id = proposed_id and active.get("id") == proposed_id
+        if section == "auto_accept_cohorts":
+            # `_matches_cohort`:三个特征缺省都是通配。
+            covered = all(
+                not active.get(key) or active.get(key) == cohort.get(key)
+                for key in ("field", "tier", "strength")
+            )
+        elif section == "absent_expected_cohorts":
+            # `match_absent_expected`:field 必须相等;历史无 doc_class 才是通配。
+            covered = (
+                active.get("field") == cohort.get("field")
+                and (active.get("doc_class") is None
+                     or active.get("doc_class") == cohort.get("doc_class"))
+            )
+        else:
+            # `match_absent_evidenced`:只有 field,且必须相等。
+            covered = active.get("field") == cohort.get("field")
+        if same_id or covered:
+            return active
+    return None
+
+
+def _refuse_active_duplicate(parent: dict, section: str,
+                             cohort: dict) -> None:
+    """最终写候选前挡住 active 规则的 ID 碰撞或语义重复。
+
+    这是 control-plane 约束,不能只由某个模型 adapter 或页面实现。不同
+    producer 都汇入 `propose`,所以最后一道去重门只能放在这里。
+    """
+    active = find_active_covering_rule(parent, section, cohort)
+    if active is not None:
+        active_id = active.get("id") or "(无 ID 的历史规则)"
+        raise ValueError(refusal_text([
+            f"{active_id} 已在生效政策里且已覆盖这条规则 —— "
+            "再提一次不是改进,是空转"
+        ]))
+
+
 def lint_policy(parent: dict, candidate: dict) -> list[str]:
     """候选策略 diff 审查。返回违规列表(空 = 通过)。只允许给
     auto_accept_cohorts / absent_expected_cohorts 加条目,
@@ -497,6 +552,7 @@ def propose(workspace: Path, *, cohort: dict, finding: str,
                 f"预期缺失 cohort field {field_name!r} 不是受评字段"]))
         cohort = {"id": f"AE-{doc_class}-{field_name}",
                   "doc_class": doc_class, "field": field_name}
+        _refuse_active_duplicate(parent, "absent_expected_cohorts", cohort)
         candidate = {**parent,
                      "absent_expected_cohorts":
                      parent.get("absent_expected_cohorts", []) + [cohort]}
@@ -525,6 +581,7 @@ def propose(workspace: Path, *, cohort: dict, finding: str,
                 "页面上没有可判别的标签,就没有「页面证明了缺席」这回事;"
                 f"当前有词表的字段:{_names(sorted(LABEL_LEXICON))}"]))
         cohort = {"id": f"AV-{field_name}", "field": field_name}
+        _refuse_active_duplicate(parent, "absent_evidenced_cohorts", cohort)
         candidate = {**parent,
                      "absent_evidenced_cohorts":
                      parent.get("absent_evidenced_cohorts", []) + [cohort]}
@@ -535,6 +592,7 @@ def propose(workspace: Path, *, cohort: dict, finding: str,
         qa["sampler_version"] = 2
         candidate["qa"] = qa
     elif kind == "auto_accept":
+        _refuse_active_duplicate(parent, "auto_accept_cohorts", cohort)
         candidate = {**parent,
                      "auto_accept_cohorts": parent.get("auto_accept_cohorts", [])
                      + [cohort]}

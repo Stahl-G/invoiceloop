@@ -12,7 +12,9 @@ license = { text = "MIT" }
 dependencies = ["requests>=2.31"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+# The provenance-freeze tests hash the invoice-reading schema without calling
+# Gemini, so the judge-facing dev suite needs Pydantic but not the full SDK.
+dev = ["pytest>=8", "pydantic>=2.0"]
 gemini = ["google-genai>=1.0", "google-adk>=2.0", "pydantic>=2.0"]
 # 研究路径(heldout 驱动、校准复算、run --out 读 dws-derisk 存盘证据)
 # 没有额外 PyPI 依赖,但需要 sibling 校准档案 ~/Developer/dws-derisk(见 README)。
@@ -33,3 +35,8 @@ invoiceloop = ["samples/*.md", "samples/pdfs/*.pdf", "samples/raw/*.json",
 
 [tool.setuptools.dynamic]
 version = { attr = "invoiceloop.__version__" }
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: opt-in checks that create isolated environments or take minutes",
+]

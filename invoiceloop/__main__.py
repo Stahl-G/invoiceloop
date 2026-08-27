@@ -16,6 +16,8 @@ from . import dws
 from .heldout import DEFAULT_SEALED_CONTEXT as _DEFAULT_SEALED_CONTEXT
 from .heldout import SEALED_CONTEXTS as _SEALED_CONTEXTS
 from .heldout import SEALED_SCOPES as _SEALED_SCOPES
+from .heldout import DEFAULT_QUAL_CONTEXT as _DEFAULT_QUAL_CONTEXT
+from .heldout import QUAL_CONTEXTS as _QUAL_CONTEXTS
 
 
 def _main() -> None:
@@ -112,8 +114,14 @@ def _main() -> None:
 
     p_vis = sub.add_parser("vision", help="读图 ingest:整页渲染 → 读图模型作答 → vision/answers6 tsv")
     p_vis.add_argument("--workspace", type=Path, required=True)
-    p_vis.add_argument("--tag", default="D", help="读者 tag(显示名映射见 dws.VISION_READERS)")
-    p_vis.add_argument("--model", default=None, help="读图模型(默认 claude-sonnet-5)")
+    p_vis.add_argument(
+        "--tag", default=None,
+        help="兼容旧工件的读者 tag;缺省使用最终调用的真实模型名",
+    )
+    p_vis.add_argument(
+        "--model", default=None,
+        help="读图模型;缺省读取 ANTHROPIC_MODEL,未配置则明确失败",
+    )
     p_vis.add_argument("--api-key", default=None, help="默认读 ANTHROPIC_API_KEY")
 
     sub.add_parser("doctor", help="环境自检:poppler/tesseract/requests/研究数据")
@@ -149,6 +157,24 @@ def _main() -> None:
     p_see = se_sub.add_parser("extract", help="按名单跑双模式,断点续跑,预算熔断")
     p_see.add_argument("--workspace", type=Path, required=True)
     p_see.add_argument("--budget", type=float, default=6000.0)
+
+    p_q = sub.add_parser(
+        "qualify",
+        help="资格集(未曝光确认轮;docs/QUALIFICATION_NARROW_PROTOCOL_*.md)")
+    q_sub = p_q.add_subparsers(dest="qualify_command", required=True)
+    p_qp = q_sub.add_parser("plan", help="最小哈希抽样并落盘名单(先于任何调用)")
+    p_qp.add_argument("--workspace", type=Path, required=True)
+    p_qp.add_argument("--n", type=int, default=200)
+    p_qp.add_argument("--context", default=_DEFAULT_QUAL_CONTEXT,
+                      choices=tuple(sorted(_QUAL_CONTEXTS)),
+                      help=f"抽样盐语境(默认 {_DEFAULT_QUAL_CONTEXT})")
+    p_qe = q_sub.add_parser("extract", help="按名单跑双模式,断点续跑,预算熔断")
+    p_qe.add_argument("--workspace", type=Path, required=True)
+    p_qe.add_argument("--budget", type=float, default=6000.0)
+    p_qe.add_argument("--round", required=True,
+                      help="冻结 evidence round 名(用来查 plan manifest)")
+    p_qe.add_argument("--protocol", type=Path, required=True,
+                      help="已提交且已进入 plan manifest 的冻结协议")
 
     # suggest 刻意**不在** improve 之下:改进控制面仍是全确定性零模型,
     # 顾问层旁挂,输出 advisory 草稿,采纳与否走人 —— 与 vision 同款位置
@@ -332,10 +358,10 @@ def _main() -> None:
 
         cmd_demo(args.out)
     elif args.command == "vision":
-        from .vision_ingest import DEFAULT_MODEL, cmd_vision
+        from .vision_ingest import cmd_vision
 
         cmd_vision(args.workspace, tag=args.tag,
-                   model=args.model or DEFAULT_MODEL, api_key=args.api_key)
+                   model=args.model, api_key=args.api_key)
     elif args.command == "heldout":
         from . import heldout
 
@@ -352,6 +378,17 @@ def _main() -> None:
                                     context=args.context, scope=args.scope)
         else:
             heldout.cmd_extract(args.workspace, budget=args.budget)
+    elif args.command == "qualify":
+        from . import heldout
+
+        if args.qualify_command == "plan":
+            heldout.cmd_plan_qual(args.workspace, n=args.n,
+                                  context=args.context)
+        else:
+            heldout.cmd_extract(
+                args.workspace, budget=args.budget,
+                qualification_round=args.round,
+                qualification_protocol=args.protocol)
     elif args.command == "suggest":
         from . import suggest as suggest_mod
 

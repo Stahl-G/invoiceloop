@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import unquote
 
 from .ocr import raw_dir, derisk_root
 
@@ -112,7 +113,8 @@ def load_vision_answers(
     """
     out: dict[str, dict[tuple[str, str], dict]] = {}
     for path in vision_answer_paths(vision_dir):
-        tag = path.name.split(".")[1]
+        encoded_tag = path.name[len("answers6."):-len(".tsv")]
+        tag = unquote(encoded_tag)
         model = VISION_READERS.get(tag, tag)
         rows: dict[tuple[str, str], dict] = {}
         for line in path.read_text(encoding="utf-8").splitlines()[1:]:

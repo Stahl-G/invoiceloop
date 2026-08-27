@@ -1,0 +1,268 @@
+{
+ "n_docs": 200,
+ "strata": {
+  "weak": 60,
+  "strong": 106,
+  "none": 34
+ },
+ "arms": {
+  "HAR-0001": {
+   "policy_digest": "395c5650351b67ca9ad20dea10873180c346ddf2ac21953a8159d26ab881cf97",
+   "policy_sha256": null,
+   "release_profile": null,
+   "release_tier1_explicit": true,
+   "gate": "census",
+   "metrics": {
+    "strong": {
+     "docs": 106,
+     "zero_touch_docs": 0,
+     "zero_touch_pct": 0.0,
+     "unresolved_release_slots": 627,
+     "qa_probe_slots": 0,
+     "human_queue_slots": 627,
+     "slots": 1060,
+     "silent_absent_true": 0,
+     "caliber_disputes": 0,
+     "silent_wrong": 69,
+     "absent_hits": 0,
+     "value_hits": 368
+    },
+    "weak": {
+     "docs": 60,
+     "zero_touch_docs": 0,
+     "zero_touch_pct": 0.0,
+     "unresolved_release_slots": 383,
+     "qa_probe_slots": 0,
+     "human_queue_slots": 383,
+     "slots": 600,
+     "silent_absent_true": 0,
+     "caliber_disputes": 0,
+     "silent_wrong": 29,
+     "absent_hits": 0,
+     "value_hits": 195
+    },
+    "none": {
+     "docs": 34,
+     "zero_touch_docs": 0,
+     "zero_touch_pct": 0.0,
+     "unresolved_release_slots": 220,
+     "qa_probe_slots": 0,
+     "human_queue_slots": 220,
+     "slots": 340,
+     "silent_absent_true": 0,
+     "caliber_disputes": 0,
+     "silent_wrong": 13,
+     "absent_hits": 0,
+     "value_hits": 105
+    },
+    "ALL": {
+     "docs": 200,
+     "zero_touch_docs": 0,
+     "zero_touch_pct": 0.0,
+     "unresolved_release_slots": 1230,
+     "qa_probe_slots": 0,
+     "human_queue_slots": 1230,
+     "slots": 2000,
+     "silent_absent_true": 0,
+     "caliber_disputes": 0,
+     "silent_wrong": 111,
+     "absent_hits": 0,
+     "value_hits": 668
+    }
+   }
+  },
+  "HAR-0021": {
+   "policy_digest": "25a1713278eae03d9132f0b16bee830fa716c8fb03752bffc4bf4a0dd08d8c00",
+   "policy_sha256": "bed2a20912c59fd5355873448d2d0f6c5a18545c25e64404d59ddb83b776bbc4",
+   "release_profile": null,
+   "release_tier1_explicit": true,
+   "gate": "census",
+   "metrics": {
+    "strong": {
+     "docs": 106,
+     "zero_touch_docs": 2,
+     "zero_touch_pct": 1.9,
+     "unresolved_release_slots": 481,
+     "qa_probe_slots": 34,
+     "human_queue_slots": 481,
+     "slots": 1060,
+     "silent_absent_true": 0,
+     "caliber_disputes": 2,
+     "silent_wrong": 69,
+     "absent_hits": 146,
+     "value_hits": 368
+    },
+    "weak": {
+     "docs": 60,
+     "zero_touch_docs": 1,
+     "zero_touch_pct": 1.7,
+     "unresolved_release_slots": 318,
+     "qa_probe_slots": 11,
+     "human_queue_slots": 318,
+     "slots": 600,
+     "silent_absent_true": 0,
+     "caliber_disputes": 0,
+     "silent_wrong": 29,
+     "absent_hits": 65,
+     "value_hits": 195
+    },
+    "none": {
+     "docs": 34,
+     "zero_touch_docs": 1,
+     "zero_touch_pct": 2.9,
+     "unresolved_release_slots": 176,
+     "qa_probe_slots": 11,
+     "human_queue_slots": 176,
+     "slots": 340,
+     "silent_absent_true": 0,
+     "caliber_disputes": 3,
+     "silent_wrong": 13,
+     "absent_hits": 44,
+     "value_hits": 105
+    },
+    "ALL": {
+     "docs": 200,
+     "zero_touch_docs": 4,
+     "zero_touch_pct": 2.0,
+     "unresolved_release_slots": 975,
+     "qa_probe_slots": 56,
+     "human_queue_slots": 975,
+     "slots": 2000,
+     "silent_absent_true": 0,
+     "caliber_disputes": 5,
+     "silent_wrong": 111,
+     "absent_hits": 255,
+     "value_hits": 668
+    }
+   }
+  },
+  "HAR-0023": {
+   "policy_digest": "001016d64ede819ed5889a38bd5898be95f016707317cc35be1b9de0217ff112",
+   "policy_sha256": "3bb39cb83c3d0785f5b0c487fab6d2fe28823dce76df05557069cca72fc3fbc8",
+   "release_profile": "payment_required_v1",
+   "release_tier1_explicit": false,
+   "gate": "payment_required_v1",
+   "metrics": {
+    "strong": {
+     "docs": 106,
+     "zero_touch_docs": 15,
+     "zero_touch_pct": 14.2,
+     "unresolved_release_slots": 134,
+     "qa_probe_slots": 48,
+     "human_queue_slots": 495,
+     "slots": 1060,
+     "silent_absent_true": 0,
+     "caliber_disputes": 2,
+     "silent_wrong": 68,
+     "absent_hits": 146,
+     "value_hits": 357
+    },
+    "weak": {
+     "docs": 60,
+     "zero_touch_docs": 7,
+     "zero_touch_pct": 11.7,
+     "unresolved_release_slots": 89,
+     "qa_probe_slots": 16,
+     "human_queue_slots": 323,
+     "slots": 600,
+     "silent_absent_true": 0,
+     "caliber_disputes": 0,
+     "silent_wrong": 29,
+     "absent_hits": 65,
+     "value_hits": 192
+    },
+    "none": {
+     "docs": 34,
+     "zero_touch_docs": 3,
+     "zero_touch_pct": 8.8,
+     "unresolved_release_slots": 51,
+     "qa_probe_slots": 14,
+     "human_queue_slots": 179,
+     "slots": 340,
+     "silent_absent_true": 0,
+     "caliber_disputes": 3,
+     "silent_wrong": 13,
+     "absent_hits": 44,
+     "value_hits": 102
+    },
+    "ALL": {
+     "docs": 200,
+     "zero_touch_docs": 25,
+     "zero_touch_pct": 12.5,
+     "unresolved_release_slots": 274,
+     "qa_probe_slots": 78,
+     "human_queue_slots": 997,
+     "slots": 2000,
+     "silent_absent_true": 0,
+     "caliber_disputes": 5,
+     "silent_wrong": 110,
+     "absent_hits": 255,
+     "value_hits": 651
+    }
+   }
+  },
+  "HAR-0021+payment(projection)": {
+   "note": "臂 C:HAR-0021 路由不变,只把放行闸换成付款三字段。与 HAR-0023 的差 = release_tier1_explicit: false 的作用。",
+   "gate": "payment_required_v1",
+   "release_tier1_explicit": true,
+   "metrics": {
+    "strong": {
+     "docs": 106,
+     "zero_touch_docs": 17,
+     "zero_touch_pct": 16.0,
+     "unresolved_release_slots": 129,
+     "qa_probe_slots": 34,
+     "human_queue_slots": 481,
+     "slots": 1060,
+     "silent_absent_true": 0,
+     "caliber_disputes": 2,
+     "silent_wrong": 69,
+     "absent_hits": 146,
+     "value_hits": 368
+    },
+    "weak": {
+     "docs": 60,
+     "zero_touch_docs": 9,
+     "zero_touch_pct": 15.0,
+     "unresolved_release_slots": 87,
+     "qa_probe_slots": 11,
+     "human_queue_slots": 318,
+     "slots": 600,
+     "silent_absent_true": 0,
+     "caliber_disputes": 0,
+     "silent_wrong": 29,
+     "absent_hits": 65,
+     "value_hits": 195
+    },
+    "none": {
+     "docs": 34,
+     "zero_touch_docs": 3,
+     "zero_touch_pct": 8.8,
+     "unresolved_release_slots": 49,
+     "qa_probe_slots": 11,
+     "human_queue_slots": 176,
+     "slots": 340,
+     "silent_absent_true": 0,
+     "caliber_disputes": 3,
+     "silent_wrong": 13,
+     "absent_hits": 44,
+     "value_hits": 105
+    },
+    "ALL": {
+     "docs": 200,
+     "zero_touch_docs": 29,
+     "zero_touch_pct": 14.5,
+     "unresolved_release_slots": 265,
+     "qa_probe_slots": 56,
+     "human_queue_slots": 975,
+     "slots": 2000,
+     "silent_absent_true": 0,
+     "caliber_disputes": 5,
+     "silent_wrong": 111,
+     "absent_hits": 255,
+     "value_hits": 668
+    }
+   }
+  }
+ }
+}

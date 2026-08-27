@@ -1,0 +1,8 @@
+{
+ "harness_id": "HAR-0021",
+ "policy_digest": "25a1713278eae03d9132f0b16bee830fa716c8fb03752bffc4bf4a0dd08d8c00",
+ "policy_sha256": "bed2a20912c59fd5355873448d2d0f6c5a18545c25e64404d59ddb83b776bbc4",
+ "schema_sha256": "e9908c2e3daea623020c8be707faf8cc67b9df37027e313d0ee7781b512b44c2",
+ "doc_ids_sha256": "50be4e8f4554055c8e0a83cc19ecc20b31319728879dbf6f663218d8b82df853",
+ "code_revision": "897a47a1f18bba024ef89b14885abd3561e1f0ee"
+}

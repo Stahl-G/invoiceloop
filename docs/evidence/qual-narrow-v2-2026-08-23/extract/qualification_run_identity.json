@@ -1,0 +1,13 @@
+{
+ "identity_version": "qualification-extract-identity-v1",
+ "round": "qual-narrow-v2-2026-08-23",
+ "context": "qual-narrow-v2",
+ "n_docs": 200,
+ "doc_ids_sha256": "50be4e8f4554055c8e0a83cc19ecc20b31319728879dbf6f663218d8b82df853",
+ "doc_list_sha256": "c533ba47d720ae0912425158b8b69fafac8d8b0470dc9475ff1eaee7ab36d614",
+ "protocol": "docs/QUALIFICATION_NARROW_V2_PROTOCOL_2026-08-23.md",
+ "protocol_sha256": "08a540b61e7eb8ab9aad0c2d534d48f289d63919831efcd2d18314a2587243dd",
+ "plan_manifest": "docs/evidence/qual-narrow-v2-2026-08-23/plan/MANIFEST.sha256",
+ "plan_manifest_sha256": "2e6607ab2765cd0aee36baadcb7e3fff0c49dfcd510655cda0cf6f18bced2abf",
+ "code_revision": "34bb17e676bd5eb5dfe227cdabf761891f79955b"
+}
