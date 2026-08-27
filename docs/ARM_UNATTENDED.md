@@ -95,25 +95,28 @@ approver `appr_*` 前缀)。
 
 ## P0 验收记录(2026-08-27,三轮 live,demo 三张)
 
-证据:`docs/evidence/arm-u-2026-08-27/acceptance/`(第三轮工件 + MANIFEST)。
+证据:[`evidence/arm-u-2026-08-27/acceptance/`](evidence/arm-u-2026-08-27/acceptance/)(第三轮工件 + MANIFEST)。
 模型 `gemini-3.7-flash`(Vertex AI global,内存态 gcloud OAuth)。
 
 | 轮 | 结果 | 学到什么 |
 |---|---|---|
 | 1(v1 策略) | 0 批准。critic 当场抓住 clerk 假 net(Powell);ISO 日期/裸金额被 R5 误判;两角色同漏 Taxpayer ID;TIER1 印证槽不在队列 | → v2:R5 格式等价、R10 EIN 反缺席、队列扩到挡账槽 |
 | 2(v2) | 中途崩:无冻结声明的槽上 clerk 选 accept,单槽炸整臂;429 配额 | → binder 逐槽隔离记 binding_failures;clerk 补充 claim 语义事实;退避 3s/6s/9s |
-| 3(v2,验收轮) | **26/26 落账,0 失败;三张全部到 ready_for_approval;策略拦下全部三张,0 批准** | 见下 |
+| 3(v2,验收轮) | **26/26 落账,0 失败;三张全部到达可批状态(2 ready + 1 ready_with_caveats);策略拦下全部三张,0 批准** | 见下 |
 
-第三轮每张单据的拦截原因(每张恰好一类):
+第三轮每张单据的拦截原因(照 `unattended_run.json` 原文,不归并):
 
-- **UMI**:R8 一条 —— clerk 把日期修正为日历日(对),但页面没印
+- **UMI**(1 条):R8 —— clerk 把日期修正为日历日(对),但页面没印
   "Due Date" 标签,缺席探针说 label-absent。R8 为抓假 net 而设,
   对"无标签但印着日期"的单据偏严 —— **v3 的已知候选改动,未改**:
   放宽它是对真实风险的取舍,不当夜拍板。
-- **Powell**:R4 一条 —— clerk 与 critic 在 total_net(gold 无此槽)
+- **Powell**(1 条):R4 —— clerk 与 critic 在 total_net(gold 无此槽)
   分歧。双角色共识门**按设计工作**:有分歧就不放,这是特性不是缺陷。
-- **Cumulus**:OCR 受阻单,独立 OCR 无词 → R5 逐槽全挂。宪章四的
-  正确表现:机检查不了的单一律不放。
+- **Cumulus**(7 条):OCR 受阻单。5 个被 clerk 修正的槽 R5 全挂
+  (独立 OCR 无词,机检判不了),另有 total_gross/total_net 两条 R4
+  (critic 改判 confirm_absent)。终态是
+  `ready_for_approval_with_caveats`(independent_ocr),策略不放。
+  宪章四的正确表现:机检查不了的单一律不放。
 
 **三轮零不安全放行;每一个"没批"都有具名规则与真实原因。** 对照计划书
 §6 的验收:UMI 差一条 R8;Powell 走了合法终态②(分歧即阻断);
