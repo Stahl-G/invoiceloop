@@ -149,12 +149,17 @@ later. reviewer_confidence: high, medium or low.
 """
 
 
-def make_adk_judge(*, model: str, workspace: Path):
+def make_adk_judge(*, model: str, workspace: Path,
+                   extra_instruction: str = ""):
     """→ judge(pack, images) -> AdjudicationDraft,经真 ADK(LlmAgent + Runner)。
 
     录放走 `adk_replay.replay_callbacks`:它的请求身份把 `contents` 整份
     (含内联图像字节)哈希进摘要,所以图换了就是另一次调用,重放不会
     张冠李戴。Agent 与 Runner 只建一次,200 槽复用。
+
+    extra_instruction:Arm U 这类后设调用方补充的**事实性**约束(如
+    「accept 只对有冻结声明的槽合法」)。只许加信息,不许加期望的答案
+    —— TA 臂对照测量的措辞纪律同样适用于这里。
     """
     import asyncio
 
@@ -170,7 +175,7 @@ def make_adk_judge(*, model: str, workspace: Path):
     before, after = replay_callbacks(workspace)
     agent = LlmAgent(
         name="adjudicator", model=model,
-        instruction=ADJUDICATOR_SYSTEM,
+        instruction=ADJUDICATOR_SYSTEM + extra_instruction,
         output_schema=AdjudicationDraft,
         output_key="adjudication",
         before_model_callback=before, after_model_callback=after,

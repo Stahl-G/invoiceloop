@@ -236,6 +236,41 @@ def call_gemini_structured(
     }
 
 
+def is_transient(exc: BaseException) -> bool:
+    """Live 模型调用的瞬时故障判别(2026-08-27 实测:gemini-3.7-flash 偶发
+    503/overloaded,重试即过)。判据是错误文本特征 —— google-genai 把状态码
+    包在 ClientError 字符串里,按类型抓会漏。
+
+    非瞬时(配额、鉴权、FAILED_PRECONDITION 区域封锁)返回 False:
+    这类重试没有意义,该失败就失败(宪章四)。
+    """
+    text = f"{type(exc).__name__}: {exc}".lower()
+    return any(mark in text for mark in (
+        "503", "502", "504", "429", "unavailable", "overloaded",
+        "temporarily", "temporary", "timeout", "timed out", "try again",
+        "connection reset", "rate limit",
+    ))
+
+
+def retry_transient(fn, *, attempts: int = 3, base_delay: float = 2.0):
+    """重试瞬时故障;耗尽即抛原异常 —— 调用方记 failure,绝不静默当通过。
+
+    attempts 必须 ≥1(0 次重试没有"重试"语义,是配置错误)。
+    """
+    import time
+
+    if attempts < 1:
+        raise ValueError("attempts 必须 ≥1")
+    for attempt in range(1, attempts + 1):
+        try:
+            return fn()
+        except Exception as exc:  # noqa: BLE001 — 只重试瞬时,其余直抛
+            if not is_transient(exc) or attempt == attempts:
+                raise
+            time.sleep(base_delay * attempt)
+    raise RuntimeError("unreachable")  # pragma: no cover
+
+
 def _http_proxy_url() -> str | None:
     for key in ("HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"):
         value = os.environ.get(key)
@@ -270,8 +305,10 @@ def export_credential_for_adk(workspace: Path | str | None = None) -> str | None
     而不是我们这条会提到 `INVOICELOOP_REPLAY=1` 的。
 
     重放模式下不需要凭据,直接返回 None —— 那条路一个请求都不发。
+    INVOICELOOP_GCLOUD_OAUTH=1(vertex_oauth.activate 已在进程内装好
+    短时 OAuth)同样直接返回 —— 那条路不读 API key。
     """
-    if is_replay_mode(workspace):
+    if is_replay_mode(workspace) or os.environ.get("INVOICELOOP_GCLOUD_OAUTH"):
         return None
     api_key = env.credential("gemini", workspace=workspace)
     if not api_key:

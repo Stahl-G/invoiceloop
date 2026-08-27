@@ -92,7 +92,20 @@ invoiceloop/safety_metrics.py        invoiceloop/eval_norm.py
 invoiceloop/crossdoc.py              invoiceloop/deliver.py
 invoiceloop/doctype.py               invoiceloop/subject_direction.py
 invoiceloop/env.py                   invoiceloop/seal.py
+invoiceloop/release_profile.py       invoiceloop/suggest_provenance.py
+invoiceloop/truth_caliber.py         invoiceloop/amount_triad.py
+invoiceloop/party_caliber.py         invoiceloop/round_status.py
+invoiceloop/agents/adjudicator.py    invoiceloop/agents/invoice_read.py
+invoiceloop/unattended_policy.py     invoiceloop/agents/unattended.py
+invoiceloop/agents/critic.py         invoiceloop/agents/approver.py
+invoiceloop/agents/vertex_oauth.py
 ```
+
+The 2026-08-27 unattended arm (`docs/ARM_UNATTENDED.md` — clerk/critic
+adjudication plus policy-gated agent approval, entered only via an explicit
+`unattended` subcommand) was likewise written inside the submission windows;
+its approvals carry their own policy digest and an `agent:critic:` signature
+and are never presented as human review.
 
 Plus 24 new test files, including every test covering the agent layer, the routing
 policy, the improvement loop, the document-type evidence gate and the Cloud Run

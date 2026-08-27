@@ -1,0 +1,149 @@
+{
+ "arm": "unattended",
+ "advisory": false,
+ "run_dir": "/tmp/arm-u-demo3/runs/run-0001",
+ "model": "gemini-3.7-flash",
+ "decided_at": "2026-08-27T15:55:08Z",
+ "policy_id": "unattended-policy-v2",
+ "policy_digest": "85894ea6adcab34bfdb50b24c60a2c87e25c432edeff973e5e1f1c1604305d77",
+ "queue_slots": 26,
+ "clerk_written": 26,
+ "clerk_failures": [],
+ "clerk_binding_failures": [],
+ "critic_overrides": [
+  {
+   "slot": "003cc91637994b7d9566ac41|total_net",
+   "decision_id": "HD-0027",
+   "decision": "confirm_absent",
+   "release_veto": false
+  },
+  {
+   "slot": "046e0c4924044de09f6d9e7b|total_gross",
+   "decision_id": "HD-0028",
+   "decision": "confirm_absent",
+   "release_veto": false
+  },
+  {
+   "slot": "046e0c4924044de09f6d9e7b|total_net",
+   "decision_id": "HD-0029",
+   "decision": "confirm_absent",
+   "release_veto": false
+  }
+ ],
+ "critic_failures": [],
+ "critic_binding_failures": [],
+ "gate": {
+  "002e3cf97973428f905671b3": {
+   "doc_id": "002e3cf97973428f905671b3",
+   "ready": false,
+   "status": "ready_for_approval",
+   "queue_slots": 8,
+   "violations": [
+    {
+     "rule": "R8",
+     "code": "correct_on_label_absent_field",
+     "slot": "002e3cf97973428f905671b3|due_date",
+     "field": "due_date"
+    }
+   ],
+   "policy_id": "unattended-policy-v2",
+   "policy_digest": "85894ea6adcab34bfdb50b24c60a2c87e25c432edeff973e5e1f1c1604305d77"
+  },
+  "003cc91637994b7d9566ac41": {
+   "doc_id": "003cc91637994b7d9566ac41",
+   "ready": false,
+   "status": "ready_for_approval",
+   "queue_slots": 8,
+   "violations": [
+    {
+     "rule": "R4",
+     "code": "tier1_clerk_critic_disagreement",
+     "slot": "003cc91637994b7d9566ac41|total_net",
+     "clerk": "correct",
+     "critic": "confirm_absent"
+    }
+   ],
+   "policy_id": "unattended-policy-v2",
+   "policy_digest": "85894ea6adcab34bfdb50b24c60a2c87e25c432edeff973e5e1f1c1604305d77"
+  },
+  "046e0c4924044de09f6d9e7b": {
+   "doc_id": "046e0c4924044de09f6d9e7b",
+   "ready": false,
+   "status": "ready_for_approval_with_caveats",
+   "queue_slots": 10,
+   "violations": [
+    {
+     "rule": "R5",
+     "code": "corrected_value_not_on_page",
+     "slot": "046e0c4924044de09f6d9e7b|amount_due",
+     "corrected_value": "$120.00",
+     "error": "ocr_unavailable"
+    },
+    {
+     "rule": "R5",
+     "code": "corrected_value_not_on_page",
+     "slot": "046e0c4924044de09f6d9e7b|buyer_name",
+     "corrected_value": "SHIYA IFA",
+     "error": "ocr_unavailable"
+    },
+    {
+     "rule": "R5",
+     "code": "corrected_value_not_on_page",
+     "slot": "046e0c4924044de09f6d9e7b|invoice_number",
+     "corrected_value": "494804",
+     "error": "ocr_unavailable"
+    },
+    {
+     "rule": "R5",
+     "code": "corrected_value_not_on_page",
+     "slot": "046e0c4924044de09f6d9e7b|issue_date",
+     "corrected_value": "07/31/18",
+     "error": "ocr_unavailable"
+    },
+    {
+     "rule": "R5",
+     "code": "corrected_value_not_on_page",
+     "slot": "046e0c4924044de09f6d9e7b|seller_name",
+     "corrected_value": "CUMULUS MUSKEGON",
+     "error": "ocr_unavailable"
+    },
+    {
+     "rule": "R4",
+     "code": "tier1_clerk_critic_disagreement",
+     "slot": "046e0c4924044de09f6d9e7b|total_gross",
+     "clerk": "correct",
+     "critic": "confirm_absent"
+    },
+    {
+     "rule": "R4",
+     "code": "tier1_clerk_critic_disagreement",
+     "slot": "046e0c4924044de09f6d9e7b|total_net",
+     "clerk": "correct",
+     "critic": "confirm_absent"
+    }
+   ],
+   "policy_id": "unattended-policy-v2",
+   "policy_digest": "85894ea6adcab34bfdb50b24c60a2c87e25c432edeff973e5e1f1c1604305d77"
+  }
+ },
+ "gate_ready_docs": [],
+ "approver_decisions": {},
+ "approver_failures": [],
+ "approvals": [],
+ "approval_refusals": [],
+ "adk": {
+  "executed": true,
+  "runner": "google.adk.runners.Runner",
+  "pipeline": "SequentialAgent(unattended_pipeline)",
+  "event_authors": [
+   "clerk",
+   "binder",
+   "critic",
+   "binder2",
+   "gate",
+   "approver",
+   "binder3"
+  ]
+ },
+ "note": "实验臂,非产品默认:clerk=agent:<model>,改判=agent:critic:<model>,批准=unattended-policy-v2+agent:critic:<model>;默认路径的批准仍只有人能签"
+}
