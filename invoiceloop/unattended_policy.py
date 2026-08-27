@@ -34,11 +34,12 @@ from pathlib import Path
 from typing import Mapping
 
 #: 稳定策略身份。规则文本进摘要:改规则不改 id = 自欺。
-#: v2(2026-08-27 第二轮 live 验收后):R5 加金额/日期格式等价(第一轮
-#: 把 ISO 日期与千分位金额误判为不在页上);新增 R10(页上印着 EIN 而
-#: seller_vat_id 判缺席 = 假缺席 —— Powell 上两个模型角色同漏,只有
-#: 确定性规则能补)。
-POLICY_ID = "unattended-policy-v2"
+#: v2(2026-08-27 第二轮 live 验收后):R5 加金额/日期格式等价;新增 R10。
+#: v3(2026-08-28 PR 审查后):R4 把「任一角色草稿缺失」记为无共识
+#:(此前缺失静默通过,单角色读过的 TIER1 槽可能放行);R3 对 critic
+#: 改判的 confirm_absent 只认页面探针 —— 一个角色不能为自己改判出的
+#: 缺席作证(非 TIER1 字段此前存在自我背书路径)。
+POLICY_ID = "unattended-policy-v3"
 
 _RULES = (
     "R1 every posting-blocking slot of the document carries an adjudication "
@@ -48,7 +49,9 @@ _RULES = (
     "R3 every confirm_absent tip carries absence evidence: the page label is "
     "corroborated absent (matrix absence probe) or the critic's "
     "absence_evidence is label_absent/value_absent; cannot_tell and not_absent "
-    "count as no evidence",
+    "count as no evidence. A tip the critic itself overrode into "
+    "confirm_absent accepts ONLY page-probe corroboration — a role may not "
+    "vouch for its own override",
     "R4 clerk and critic decisions agree on every TIER1 slot (same decision, "
     "same corrected value after strip)",
     "R5 every corrected_value is printed on the page under the frozen binding "
@@ -233,11 +236,18 @@ def audit_document(
             probe = probes.get(field) or {}
             page_corroborated = probe.get("status") == "absent_corroborated"
             critic_ev = (critic_by_slot.get(slot) or {}).get("absence_evidence")
-            if not (page_corroborated or critic_ev in _ABSENCE_EVIDENCE_OK):
+            # v3:critic 自己改判出来的 confirm_absent,证据只认页面探针
+            # —— 一个角色不许为自己改判出的缺席作证(PR 审查的自我背书洞)
+            override_tip = str(tip.get("adjudicator", "")).startswith(
+                "agent:critic:")
+            evidence_ok = page_corroborated or (
+                critic_ev in _ABSENCE_EVIDENCE_OK and not override_tip)
+            if not evidence_ok:
                 violation("R3", {
                     "slot": key,
                     "page_probe": probe.get("status"),
                     "critic_absence_evidence": critic_ev,
+                    "override_tip": override_tip,
                 })
             # ---- R10:页上印着 EIN/TIN,seller_vat_id 的缺席就是假缺席
             if field == "seller_vat_id" and page["has_ein"]:
@@ -245,19 +255,22 @@ def audit_document(
                                   "page": "ein_shaped_token_printed"})
 
         # ---- R4:TIER1 上两角色必须一致
+        # 缺任何一方的草稿也记违规 —— 「只有一个角色读过」不是共识
+        # (缺失 = 该槽没人复核第二遍,恰恰是最该停的单角色放行形态)
         if field in TIER1:
             clerk_d = clerk_by_slot.get(slot) or {}
             critic_d = critic_by_slot.get(slot) or {}
             same = (
                 clerk_d.get("decision") == critic_d.get("decision")
+                and clerk_d and critic_d
                 and (clerk_d.get("corrected_value") or "").strip()
                 == (critic_d.get("corrected_value") or "").strip()
             )
-            if clerk_d and critic_d and not same:
+            if not same:
                 violation("R4", {
                     "slot": key,
-                    "clerk": clerk_d.get("decision"),
-                    "critic": critic_d.get("decision"),
+                    "clerk": clerk_d.get("decision") or "missing",
+                    "critic": critic_d.get("decision") or "missing",
                 })
 
         # ---- R5-R8:修正值的页面根据

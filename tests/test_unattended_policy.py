@@ -162,6 +162,42 @@ def _audit(run_dir, **kw):
     return up.audit_document(run_dir, "doc-a", **kw)
 
 
+def test_tier1_critic_missing_is_no_consensus(run_dir):
+    """R4(v3):TIER1 槽上 critic 草稿缺失 = 没有共识,不是「无分歧」。
+    此前缺失静默通过,单角色读过的 TIER1 槽可能放行(PR 审查 P1)。"""
+    _write(run_dir, "amount_due", "accept")
+    result = _audit(run_dir, clerk_by_slot={
+        ("doc-a", "amount_due"): {"decision": "accept"}},
+        critic_by_slot={})  # critic 调用失败,一个草稿都没有
+    codes = [v["code"] for v in result["violations"]]
+    assert "tier1_clerk_critic_disagreement" in codes, result["violations"]
+
+
+def test_critic_override_absence_cannot_self_vouch(run_dir):
+    """R3(v3):critic 改判出的 confirm_absent,自己的 absence_evidence
+    不算证据 —— 只认页面探针(PR 审查的自我背书洞)。"""
+    _write(run_dir, "due_date", "confirm_absent",
+           adjudicator="agent:critic:stub-model")
+    result = _audit(run_dir, clerk_by_slot={
+        ("doc-a", "due_date"): {"decision": "correct"}},
+        critic_by_slot={("doc-a", "due_date"): {
+            "decision": "confirm_absent",
+            "absence_evidence": "label_absent"}})
+    codes = [v["code"] for v in result["violations"]]
+    assert "absence_without_evidence" in codes, result["violations"]
+
+
+def test_policy_digest_is_validated(run_dir):
+    """approve.py:非 64 位十六进制的 policy_digest 一行都不写。"""
+    from invoiceloop.approve import append_approval
+
+    with pytest.raises(ValueError, match="policy_digest"):
+        append_approval(
+            run_dir, doc_id="doc-a", approved_by="unattended-policy-v3+x",
+            rationale="x", approved_at="2026-08-28T00:00:00Z",
+            policy_digest="not-a-real-digest")
+
+
 def test_policy_digest_is_stable_and_binds_rule_text():
     assert up.policy_digest() == up.policy_digest()
     assert len(up.policy_digest()) == 64
@@ -181,6 +217,8 @@ def test_all_agree_with_evidence_is_ready(run_dir):
             ("total_net", "confirm_absent"),
             ("due_date", "confirm_absent"))},
         critic_by_slot={
+            ("doc-a", "invoice_number"): {"decision": "accept"},
+            ("doc-a", "amount_due"): {"decision": "accept"},
             ("doc-a", "seller_vat_id"): {"decision": "confirm_absent",
                                          "absence_evidence": "label_absent"},
             ("doc-a", "total_net"): {"decision": "confirm_absent",

@@ -117,6 +117,14 @@ def append_approval(
     approved_by = str(approved_by).strip()
     rationale = str(rationale).strip()
     approved_at = str(approved_at).strip()
+    if policy_digest is not None:
+        import re
+
+        if not re.fullmatch(r"[0-9a-f]{64}", str(policy_digest)):
+            raise ValueError(
+                f"policy_digest {policy_digest!r} 不是 64 位十六进制 —— "
+                f"实验臂的批准必须钉在真实的策略内容摘要上,"
+                f"账本不收无法对账的摘要")
 
     from datetime import datetime
 

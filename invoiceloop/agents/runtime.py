@@ -247,25 +247,28 @@ def is_transient(exc: BaseException) -> bool:
     text = f"{type(exc).__name__}: {exc}".lower()
     return any(mark in text for mark in (
         "503", "502", "504", "429", "unavailable", "overloaded",
-        "temporarily", "timeout", "timed out", "try again",
+        "temporarily", "temporary", "timeout", "timed out", "try again",
         "connection reset", "rate limit",
     ))
 
 
 def retry_transient(fn, *, attempts: int = 3, base_delay: float = 2.0):
-    """重试瞬时故障;耗尽即抛原异常 —— 调用方记 failure,绝不静默当通过。"""
+    """重试瞬时故障;耗尽即抛原异常 —— 调用方记 failure,绝不静默当通过。
+
+    attempts 必须 ≥1(0 次重试没有"重试"语义,是配置错误)。
+    """
     import time
 
-    last: BaseException | None = None
+    if attempts < 1:
+        raise ValueError("attempts 必须 ≥1")
     for attempt in range(1, attempts + 1):
         try:
             return fn()
         except Exception as exc:  # noqa: BLE001 — 只重试瞬时,其余直抛
             if not is_transient(exc) or attempt == attempts:
                 raise
-            last = exc
             time.sleep(base_delay * attempt)
-    raise last  # pragma: no cover — 循环内必 return 或 raise
+    raise RuntimeError("unreachable")  # pragma: no cover
 
 
 def _http_proxy_url() -> str | None:

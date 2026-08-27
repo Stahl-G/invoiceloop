@@ -38,12 +38,13 @@ EvaluatorNode 同一论证)。
 ## 批准的署名与摘要
 
 ```text
-approved_by   = unattended-policy-v2+agent:critic:<model>
+approved_by   = unattended-policy-v3+agent:critic:<model>
 policy_digest = sha256(POLICY_ID + R1..R10 规则文本)
 ```
 
-改规则 = 新 policy id + 新 digest,旧批准不携带新语义(v1→v2 就是这么
-升的:第一轮 live 验收后 R5 补了金额/日期格式等价、新增 R10)。批准时间
+改规则 = 新 policy id + 新 digest,旧批准不携带新语义(v1→v2:第一轮 live
+验收后 R5 补格式等价、新增 R10;v2→v3:PR 审查后 R4 把任一角色草稿缺失
+记为无共识、R3 禁止 critic 为自己改判出的缺席作证)。批准时间
 由操作者经 `--decided-at` 注入(未来 Cloud Run Job 由触发器注入),
 工件不读墙钟。人类批准不传 `policy_digest`(缺省 None),行为不变。
 
@@ -53,8 +54,8 @@ policy_digest = sha256(POLICY_ID + R1..R10 规则文本)
 |---|---|
 | R1 挡账槽全有 tip(含 census 的 pending/pending_tier1) | 「队列空了就签」;第一轮验收还暴露了只走 review 槽会让 TIER1 印证槽永远 pending |
 | R2 交付投影可批 | blocked/pending 单据到不了 approver |
-| R3 缺席要有证据 | 假缺席(gold 就是页上印着的 Taxpayer ID) |
-| R4 TIER1 两角色一致 | 单模型自检自己的判断 |
+| R3 缺席要有证据(改判 tip 只认页面探针) | 假缺席;以及一个角色为自己改判出的缺席自我作证 |
+| R4 TIER1 两角色一致(草稿缺失=无共识) | 单模型自检自己的判断;单角色读过的 TIER1 槽放行 |
 | R5 修正值印在页上(含格式等价) | 发明的数字;以及 ISO 日期/无符号金额被误判为不在页上(§4.4 同族) |
 | R6 EIN≠发票号 | `58-0391492` 是税号 |
 | R7 条款≠日期 | `Due on Receipt` |
@@ -62,7 +63,7 @@ policy_digest = sha256(POLICY_ID + R1..R10 规则文本)
 | R9 approver 还要独立 yes | 策略通过 ≠ 获得批准 |
 | R10 页上印着 EIN 而 seller_vat_id 判缺席 | 假缺席 —— 第一轮 live 验收里 clerk 与 critic **同漏** Taxpayer ID,只有确定性规则能补 |
 
-策略是纯 Python(`invoiceloop/unattended_policy.py`),夹具测试
+策略是纯 Python(`invoiceloop/unattended_policy.py`,当前 **v3**),夹具测试
 `tests/test_unattended_policy.py` 每条失败一个反例,零 API。
 
 ## 权限边界(实现不许做的事)

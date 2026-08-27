@@ -58,6 +58,18 @@ def _call_with_retry(fn, *args):
 
     return retry_transient(lambda: fn(*args), base_delay=3.0)
 
+
+def _err(exc: BaseException) -> str:
+    """失败记录里的异常文本:截断并抹掉凭据形状(PR 审查:某些客户端
+    库会把 Authorization 头原样嵌进异常消息)。"""
+    import re
+
+    text = f"{type(exc).__name__}: {exc}"
+    text = re.sub(r"ya29\.[A-Za-z0-9._-]+", "ya29.<redacted>", text)
+    text = re.sub(r"Bearer\s+[A-Za-z0-9._\-]+", "Bearer <redacted>", text)
+    text = re.sub(r"AIza[A-Za-z0-9_\-]+", "AIza<redacted>", text)
+    return text[:200]
+
 ReasonMapper = Callable[[str], str]
 
 #: Arm U 给 clerk 的事实性补充:accept 的写者语义。不含任何期望答案。
@@ -157,9 +169,8 @@ def build_unattended_pipeline(
                     record_draft(run_dir, key, AdjudicationDraft.model_validate(
                         payload), model=model, decided_at=decided_at)
                     written += 1
-                except ValueError as exc:
-                    failures.append({"slot": key,
-                                     "error": f"ValueError: {exc}"})
+                except Exception as exc:  # noqa: BLE001 — 逐槽隔离,报告必须写得出
+                    failures.append({"slot": key, "error": _err(exc)})
             yield Event(author=self.name, invocation_id=ctx.invocation_id,
                         actions=EventActions(state_delta={
                             "clerk_written": written,
@@ -203,19 +214,22 @@ def build_unattended_pipeline(
 
             state = ctx.session.state
             tips = _slot_tips(run_dir)
+            rows_by_slot = {(r["doc_id"], r["field"]): r
+                            for r in matrix["rows"]}
             overrides: list[dict] = []
             failures: list[dict] = []
             for key, payload in state["critic_drafts"].items():
-                draft = CriticDraft.model_validate(payload)
-                if draft.agree and not draft.release_veto:
-                    continue
-                doc_id, field = key.split("|", 1)
-                row = next(r for r in matrix["rows"]
-                           if r["doc_id"] == doc_id and r["field"] == field)
-                claim_id = (None if draft.decision in _NO_CLAIM_DECISIONS
-                            else row.get("claim_id"))
-                tip = tips.get((doc_id, field))
                 try:
+                    draft = CriticDraft.model_validate(payload)
+                    if draft.agree and not draft.release_veto:
+                        continue
+                    doc_id, field = key.split("|", 1)
+                    row = rows_by_slot.get((doc_id, field))
+                    if row is None:
+                        raise KeyError(f"槽位不在矩阵:{key}")
+                    claim_id = (None if draft.decision in _NO_CLAIM_DECISIONS
+                                else row.get("claim_id"))
+                    tip = tips.get((doc_id, field))
                     entry = append_adjudication(
                         run_dir, claim_id=claim_id, doc_id=doc_id, field=field,
                         decision=draft.decision, rationale=draft.rationale,
@@ -225,9 +239,8 @@ def build_unattended_pipeline(
                         reason_code=critic_reason_code(draft.decision),
                         reviewer_confidence="medium",
                     )
-                except ValueError as exc:
-                    failures.append({"slot": key,
-                                     "error": f"ValueError: {exc}"})
+                except Exception as exc:  # noqa: BLE001 — 逐槽隔离
+                    failures.append({"slot": key, "error": _err(exc)})
                     continue
                 overrides.append({"slot": key,
                                   "decision_id": entry["decision_id"],
@@ -250,22 +263,42 @@ def build_unattended_pipeline(
             from ..deliver import write_deliverable
 
             state = ctx.session.state
-            write_deliverable(run_dir)
+            try:
+                write_deliverable(run_dir)
+            except Exception as exc:  # noqa: BLE001 — 交付投影写不出 = 全部不可批
+                state["gate_error"] = _err(exc)
+                yield Event(author=self.name, invocation_id=ctx.invocation_id,
+                            actions=EventActions(state_delta={
+                                "gate": {}, "gate_ready_docs": [],
+                                "gate_error": _err(exc)}))
+                return
             deliverable = json.loads(
                 (run_dir / "deliverable.json").read_text(encoding="utf-8"))
             audits = {}
             ready = []
             for doc_id, entry in sorted(deliverable["docs"].items()):
-                audit = unattended_policy.audit_document(
-                    run_dir, doc_id,
-                    queue_keys=state["queue"],
-                    clerk_by_slot={tuple(k.split("|", 1)): v for k, v
-                                   in state["clerk_drafts"].items()},
-                    critic_by_slot={tuple(k.split("|", 1)): v for k, v
-                                    in state["critic_drafts"].items()},
-                    deliverable_status=entry["status"],
-                    approvable_statuses=APPROVABLE,
-                )
+                try:
+                    audit = unattended_policy.audit_document(
+                        run_dir, doc_id,
+                        queue_keys=state["queue"],
+                        clerk_by_slot={tuple(k.split("|", 1)): v for k, v
+                                       in state["clerk_drafts"].items()},
+                        critic_by_slot={tuple(k.split("|", 1)): v for k, v
+                                        in state["critic_drafts"].items()},
+                        deliverable_status=entry["status"],
+                        approvable_statuses=APPROVABLE,
+                    )
+                except Exception as exc:  # noqa: BLE001 — 单据审计炸 ≠ 整臂死
+                    audit = {
+                        "doc_id": doc_id, "ready": False,
+                        "status": "gate_error",
+                        "queue_slots": 0,
+                        "violations": [{"rule": "R2",
+                                        "code": "document_not_approvable",
+                                        "error": _err(exc)}],
+                        "policy_id": unattended_policy.POLICY_ID,
+                        "policy_digest": unattended_policy.policy_digest(),
+                    }
                 audits[doc_id] = audit
                 if audit["ready"]:
                     ready.append(doc_id)
@@ -322,36 +355,49 @@ def build_unattended_pipeline(
             refusals: list[dict] = []
             for doc_id, payload in state["approver_decisions"].items():
                 decision = ReleaseDecision.model_validate(payload)
-                audit = unattended_policy.audit_document(
-                    run_dir, doc_id,
-                    queue_keys=state["queue"],
-                    clerk_by_slot={tuple(k.split("|", 1)): v for k, v
-                                   in state["clerk_drafts"].items()},
-                    critic_by_slot={tuple(k.split("|", 1)): v for k, v
-                                    in state["critic_drafts"].items()},
-                    deliverable_status=state["gate"][doc_id]["status"],
-                    approvable_statuses=APPROVABLE,
-                    approver_release=decision.release,
-                )
-                if not (decision.release and audit["ready"]):
+                try:
+                    audit = unattended_policy.audit_document(
+                        run_dir, doc_id,
+                        queue_keys=state["queue"],
+                        clerk_by_slot={tuple(k.split("|", 1)): v for k, v
+                                       in state["clerk_drafts"].items()},
+                        critic_by_slot={tuple(k.split("|", 1)): v for k, v
+                                        in state["critic_drafts"].items()},
+                        deliverable_status=(state.get("gate", {})
+                                            .get(doc_id, {}).get("status")),
+                        approvable_statuses=APPROVABLE,
+                        approver_release=decision.release,
+                    )
+                    if not (decision.release and audit["ready"]):
+                        refusals.append({
+                            "doc_id": doc_id,
+                            "approver_release": decision.release,
+                            "rationale": decision.rationale,
+                            "policy_violations": audit["violations"],
+                        })
+                        continue
+                    entry = append_approval(
+                        run_dir, doc_id=doc_id,
+                        approved_by=(f"{state['policy_id']}"
+                                     f"+{critic_id(state['model'])}"),
+                        rationale=decision.rationale,
+                        approved_at=state["decided_at"],
+                        policy_digest=state["policy_digest"],
+                    )
+                except Exception as exc:  # noqa: BLE001 — 批准写不进 = 该单不放,如实记
                     refusals.append({
                         "doc_id": doc_id,
                         "approver_release": decision.release,
                         "rationale": decision.rationale,
-                        "policy_violations": audit["violations"],
+                        "approval_error": _err(exc),
                     })
                     continue
-                entry = append_approval(
-                    run_dir, doc_id=doc_id,
-                    approved_by=(f"{state['policy_id']}"
-                                 f"+{critic_id(state['model'])}"),
-                    rationale=decision.rationale,
-                    approved_at=state["decided_at"],
-                    policy_digest=state["policy_digest"],
-                )
                 approvals.append({"doc_id": doc_id,
                                   "approval_id": entry["approval_id"]})
-            write_deliverable(run_dir)
+            try:
+                write_deliverable(run_dir)
+            except Exception as exc:  # noqa: BLE001 — 批准后投影失败要留痕
+                state["deliverable_error"] = _err(exc)
             yield Event(author=self.name, invocation_id=ctx.invocation_id,
                         actions=EventActions(state_delta={
                             "approvals": approvals,
@@ -418,10 +464,13 @@ def run_unattended(
     workspace = run_dir.parent.parent
     # OCR/绑定按全局 derisk_root() 路由 —— 这条臂的一切页面判断必须读
     # **本 run 工作区**的证据,不许滑到校准档案(pipeline --workspace 同款
-    # 行为)。显式配了 INVOICELOOP_CORPUS 的调用方不被覆盖。
+    # 行为)。只在形状吻合 <ws>/runs/run-NNNN 时覆盖(PR 审查:--out 直写
+    # 目录或嵌套路径下 parent.parent 不是工作区,盖了反而读错根);
+    # 显式配了 INVOICELOOP_CORPUS 的调用方同样不被覆盖。
     import os
 
-    if not os.environ.get("INVOICELOOP_CORPUS"):
+    if (run_dir.parent.name == "runs"
+            and not os.environ.get("INVOICELOOP_CORPUS")):
         os.environ["INVOICELOOP_DWS_DERISK"] = str(workspace)
     matrix = json.loads(
         (run_dir / "support_matrix.json").read_text(encoding="utf-8"))
@@ -457,13 +506,20 @@ def run_unattended(
     pipeline = build_unattended_pipeline(
         run_dir, clerk=clerk, critic=critic, approver=approver,
         model=model, decided_at=decided_at)
-    state, authors = asyncio.run(_drive(pipeline, {
-        "queue": queue,
-        "model": model,
-        "decided_at": decided_at,
-        "policy_id": unattended_policy.POLICY_ID,
-        "policy_digest": unattended_policy.policy_digest(),
-    }))
+    # PR 审查:任何节点炸都不许让报告写不出 —— 账本里已有的行是事实,
+    # unattended_run.json 是它们唯一的机器侧对照,必须无条件落盘。
+    drive_fatal: str | None = None
+    try:
+        state, authors = asyncio.run(_drive(pipeline, {
+            "queue": queue,
+            "model": model,
+            "decided_at": decided_at,
+            "policy_id": unattended_policy.POLICY_ID,
+            "policy_digest": unattended_policy.policy_digest(),
+        }))
+    except Exception as exc:  # noqa: BLE001 — 报告必须写得出
+        drive_fatal = _err(exc)
+        state, authors = {}, []
 
     report = {
         "arm": "unattended",
@@ -471,6 +527,9 @@ def run_unattended(
         "run_dir": str(run_dir),
         "model": model,
         "decided_at": decided_at,
+        "drive_fatal": drive_fatal,
+        "gate_error": state.get("gate_error"),
+        "deliverable_error": state.get("deliverable_error"),
         "policy_id": unattended_policy.POLICY_ID,
         "policy_digest": unattended_policy.policy_digest(),
         "queue_slots": len(queue),

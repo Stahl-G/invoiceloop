@@ -196,7 +196,7 @@ class TestThePipelineRuns:
         entry = json.loads(
             (run_dir / "approve_ledger.jsonl").read_text())
         assert entry["approved_by"] == \
-            "unattended-policy-v2+agent:critic:stub-model"
+            "unattended-policy-v3+agent:critic:stub-model"
         assert entry["policy_digest"] == \
             __import__("invoiceloop.unattended_policy",
                        fromlist=["policy_digest"]).policy_digest()
