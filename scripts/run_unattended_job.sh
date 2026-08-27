@@ -47,7 +47,8 @@ import json, sys, time
 from pathlib import Path
 import requests
 
-run_dir, bucket = sys.argv[1], sys.argv[2].removeprefix("gs://")
+from pathlib import Path as _P
+run_dir, bucket = _P(sys.argv[1]), sys.argv[2].removeprefix("gs://")
 unattended_rc = int(sys.argv[3])
 # Cloud Run 的 SA token 从元数据服务器来;本地 docker 验证时可 GOOGLE_OAUTH_ACCESS_TOKEN 注入
 token = None
