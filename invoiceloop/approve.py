@@ -94,8 +94,14 @@ def append_approval(
     approved_by: str,
     rationale: str,
     approved_at: str,
+    policy_digest: str | None = None,
 ) -> dict:
-    """追加一条文档级批准并 fsync。校验失败 → ValueError,一行都不写。"""
+    """追加一条文档级批准并 fsync。校验失败 → ValueError,一行都不写。
+
+    policy_digest 可选,只有实验臂(Arm U 的无人值守批准)传:它把批准钉在
+    **批准那一刻的策略内容**上 —— 策略改了,旧批准不携带新语义。人类的
+    批准不传(缺省 None),账本行为一字不变。
+    """
     from .deliver import build_deliverable
 
     run_dir = Path(run_dir)
@@ -183,6 +189,8 @@ def append_approval(
                 "approved_by": approved_by,
                 "rationale": rationale,
                 "approved_at": approved_at,
+                **({"policy_digest": policy_digest}
+                   if policy_digest is not None else {}),
             }
             with (run_dir / LEDGER_NAME).open("a", encoding="utf-8") as fh:
                 fh.write(json.dumps(entry, ensure_ascii=False) + "\n")

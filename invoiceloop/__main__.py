@@ -182,6 +182,22 @@ def _main() -> None:
     p_sg.add_argument("--workspace", type=Path, required=True)
     p_sg.add_argument("--model", default=None)
 
+    p_un = sub.add_parser(
+        "unattended",
+        help="Arm U 实验臂:clerk→critic→策略闸→approver 无人裁决+批准"
+             "(显式可选,非产品默认;默认路径的批准仍只有人能签)")
+    p_un.add_argument("--run", type=Path, required=True,
+                      help="既有 run 目录(裁决与批准追加进它的账本)")
+    p_un.add_argument("--model", default=None,
+                      help="缺省 gemini-3.7-flash;INVOICELOOP_REPLAY=1 走录音")
+    p_un.add_argument("--decided-at", required=True,
+                      help="ISO 时间,由操作者/作业触发器注入 —— 工件不读墙钟")
+    p_un.add_argument("--docs", nargs="*", default=None,
+                      help="只处理这些 doc_id(缺省 run 内全部复核槽)")
+    p_un.add_argument("--gcloud-oauth-project", default=None,
+                      help="走内存态 gcloud OAuth + Vertex AI 端点(演示/验收"
+                           "用凭据通路;token 不落盘,详见 agents/vertex_oauth.py)")
+
     p_ag = sub.add_parser(
         "agents", help="ADK 层:改进循环由 Runner 执行(纯建议,不写账本)")
     ag_sub = p_ag.add_subparsers(dest="agents_command", required=True)
@@ -400,6 +416,42 @@ def _main() -> None:
                           "file": str(args.workspace / "improve"
                                       / "suggestions.json")},
                          ensure_ascii=False, indent=1))
+    elif args.command == "unattended":
+        from .agents.runtime import DEFAULT_GEMINI_MODEL
+        from .agents.unattended import run_unattended
+
+        oauth_meta = None
+        if args.gcloud_oauth_project:
+            from .agents.vertex_oauth import activate
+
+            oauth_meta = activate(args.gcloud_oauth_project)
+        report = run_unattended(
+            args.run, model=args.model or DEFAULT_GEMINI_MODEL,
+            decided_at=args.decided_at, docs=args.docs)
+        if oauth_meta is not None:
+            import pathlib
+
+            meta_path = pathlib.Path(args.run) / "oauth_run_metadata.json"
+            meta_path.write_text(
+                json.dumps(oauth_meta, ensure_ascii=False, indent=1) + "\n",
+                encoding="utf-8")
+        print(json.dumps({
+            "arm": report["arm"],
+            "model": report["model"],
+            "queue_slots": report["queue_slots"],
+            "clerk_written": report["clerk_written"],
+            "clerk_failed": len(report["clerk_failures"]),
+            "critic_overrides": len(report["critic_overrides"]),
+            "critic_failed": len(report["critic_failures"]),
+            "gate_ready_docs": report["gate_ready_docs"],
+            "approvals": report["approvals"],
+            "approval_refusals": report["approval_refusals"],
+            "adk_executed": report["adk"]["executed"],
+            "stages": report["adk"]["event_authors"],
+            "file": str(Path(args.run) / "unattended_run.json"),
+            "note": "实验臂,非产品默认 —— 批准署名 "
+                    + report["policy_id"] + "+agent:critic:" + report["model"],
+        }, ensure_ascii=False, indent=1))
     elif args.command == "agents":
         from .agents.improve_loop import run_improve_loop
 
