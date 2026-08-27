@@ -10,6 +10,36 @@ authority with a named human.
 
 **The deliverable is a support matrix, not a verdict.**
 
+## For judges — three commands, zero API cost
+
+Everything below runs on the sample documents vendored in this repository.
+No API key, nothing billed, no external dataset.
+
+```bash
+git clone https://github.com/Stahl-G/invoiceloop && cd invoiceloop
+python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
+
+# 1. Run the pipeline end to end on the vendored samples
+.venv/bin/python -m invoiceloop demo --out /tmp/invoiceloop-demo
+
+# 2. Open the review workbench on what it produced
+.venv/bin/python -m invoiceloop workbench --workspace /tmp/invoiceloop-demo --port 8793
+
+# 3. Run the test suite
+.venv/bin/python -m pytest tests/ -q
+```
+
+Step 2 is interactive: review the result in the browser, then stop it with
+Ctrl-C before step 3 (or run step 3 in a second terminal).
+
+**What step 3 does and does not cover.** The suite runs green on a clean clone,
+but the tests that recompute the research numbers are skipped there: they need
+the DocILE calibration archive, which is not distributed with this repository
+(see `DISCLOSURE.md`). Pytest prints those as `skipped`. The research figures in
+this README are recomputable from saved responses at zero API cost **by anyone
+holding the archive** — that is a weaker claim than "recomputable from a clean
+clone", and it is the one we make.
+
 <p align="center">
   <a href="docs/architecture.html">Architecture diagram</a> ·
   <a href="DISCLOSURE.md">Pre-existing work disclosure</a> ·

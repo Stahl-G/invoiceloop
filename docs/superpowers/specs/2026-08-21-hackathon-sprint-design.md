@@ -164,7 +164,10 @@ reject / 改任何闸)。修掉 HITL-narrow 自认混淆中的两条(中途注�
 ### 3.4 全程纪律
 
 - 提取失败 = blocking 记录,不跳过。
-- 所有新代码带测试:抽样器确定性、建议工件冻结、lint 规则、溯源字段。
+- 会静默影响产品或证据结论的路径带回归测试：抽样器确定性、建议工件冻结、
+  lint 规则、溯源字段。一次性研究编排脚本不统一承诺专门单测；例如
+  `qual_walk_analyze.py` 没有专门测试，而 `suggest_provenance_freeze.py` 的冻结与
+  核验路径由 `tests/test_suggest_provenance.py` 直接覆盖。
 - 协议文本冻结后不改;改了 = 臂不干净,照登。
 - 任何对外数字带 ARCHITECTURE §8 三条限定;不说工件证明不了的话。
 
