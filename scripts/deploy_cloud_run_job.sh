@@ -36,16 +36,22 @@ gcloud projects add-iam-policy-binding "${PROJECT}" \
   --condition=None --quiet >/dev/null || \
   echo "warn: aiplatform.user 授予失败 —— 若 SA 已有权限可忽略,否则 Job 内模型调用会 403" >&2
 
+# jobs create 不认 --source(service deploy 的旗标):先 Cloud Build 打镜像进
+# 既有 cloud-run-source-deploy 仓库(2026-08-07 只读服务部署时自动建过),再 --image 建 Job。
+IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/cloud-run-source-deploy/${JOB}:latest"
+gcloud builds submit "${ROOT}" --project="${PROJECT}" --region="${REGION}" \
+  --tag "${IMAGE}" --quiet
+
 # Job 与公开服务同镜像、不同命令;IAM 私有(不带 --allow-unauthenticated,Job 本就无 URL)
 if gcloud run jobs describe "${JOB}" --project="${PROJECT}" --region="${REGION}" >/dev/null 2>&1; then
   gcloud run jobs update "${JOB}" --project="${PROJECT}" --region="${REGION}" \
-    --source="${ROOT}" --command=bash --args=scripts/run_unattended_job.sh \
+    --image="${IMAGE}" --command=bash --args=scripts/run_unattended_job.sh \
     --memory=2Gi --cpu=1 --task-timeout=30m \
     --set-env-vars="GOOGLE_GENAI_USE_VERTEXAI=true,GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_LOCATION=global,BUCKET=${BUCKET}" \
     --quiet
 else
   gcloud run jobs create "${JOB}" --project="${PROJECT}" --region="${REGION}" \
-    --source="${ROOT}" --command=bash --args=scripts/run_unattended_job.sh \
+    --image="${IMAGE}" --command=bash --args=scripts/run_unattended_job.sh \
     --memory=2Gi --cpu=1 --task-timeout=30m \
     --set-env-vars="GOOGLE_GENAI_USE_VERTEXAI=true,GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_LOCATION=global,BUCKET=${BUCKET}" \
     --quiet
