@@ -90,3 +90,27 @@ timestamp, remote smoke output, and a console screenshot, under
 the Google Cloud requirement is satisfied.
 
 See [`evidence/cloud_run_2026-08-07/`](evidence/cloud_run_2026-08-07/README.md).
+
+## Cloud Run Job(Arm U 无人值守臂,P2,2026-08-28)
+
+公开 `.run.app` 服务与 Job 是**同一镜像、两个入口**:
+
+| | 只读工作台(2026-08-07 起) | Job `invoiceloop-unattended` |
+|---|---|---|
+| 入口 | `/cloud_entrypoint.sh` → `workbench --read-only` | `bash scripts/run_unattended_job.sh` |
+| 暴露面 | 公网 URL,九条写路由全 403 | **无 URL**;IAM 私有,只有项目内能触发 |
+| 凭据 | 无(零 API demo) | Job SA 的 ADC(Vertex AI),不装任何 key |
+| 工件 | 烤进镜像,实例回收即失 | 进程结束前上传 GCS;上传失败 = 退出码 1(阻断) |
+| 证明的是 | 部署 | **一次真实的无人值守运行落了桶** |
+
+Job 语义(见 `scripts/run_unattended_job.sh` 头注):退出码 0 的含义是
+「这一趟完整跑完且证据已落桶」,**不是**「单据被放行」—— 批准与否由
+unattended-policy 与 approver 决定。部署/执行/取证一条命令:
+
+```bash
+./scripts/deploy_cloud_run_job.sh
+# 证据落 docs/evidence/cloud_run_job_<date>/(job/execution 配置、日志、GCS 清单)
+```
+
+需要的 IAM:Job 的默认 SA 拿 `roles/storage.objectAdmin`(仅限工件桶)与
+`roles/aiplatform.user`;授予失败脚本会警告,Vertex 403 会在执行日志里显式出现。
