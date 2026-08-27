@@ -1,0 +1,1791 @@
+{
+ "harness_id": "HAR-0023",
+ "policy_digest": "001016d64ede819ed5889a38bd5898be95f016707317cc35be1b9de0217ff112",
+ "policy": {
+  "harness_id": "HAR-0023",
+  "version": 23,
+  "release_tier1_explicit": false,
+  "auto_accept_cohorts": [],
+  "qa": {
+   "seed": "invoiceloop-qa-v1",
+   "policy_accepted_tier1_rate": 0.05,
+   "cohort_relax_rate": 0.2,
+   "note": "HAR-0023 = HAR-0021 缺席规则 + 付款三字段放行契约。release_tier1_explicit=false:CLEAN TIER1 走 policy_accepted,5% QA 探针进队列。不改 HAR-0021,不拼接 R1 曲线。",
+   "absent_expected_rate": 0.2,
+   "sampler_version": 2,
+   "absent_evidenced_rate": 0.2
+  },
+  "absent_expected_cohorts": [
+   {
+    "id": "AE-purchase_order-seller_vat_id",
+    "doc_class": "purchase_order",
+    "field": "seller_vat_id"
+   },
+   {
+    "id": "AE-purchase_order-due_date",
+    "doc_class": "purchase_order",
+    "field": "due_date"
+   },
+   {
+    "id": "AE-confirmation-seller_vat_id",
+    "doc_class": "confirmation",
+    "field": "seller_vat_id"
+   },
+   {
+    "id": "AE-confirmation-total_vat",
+    "doc_class": "confirmation",
+    "field": "total_vat"
+   },
+   {
+    "id": "AE-confirmation-due_date",
+    "doc_class": "confirmation",
+    "field": "due_date"
+   },
+   {
+    "id": "AE-credit_note-seller_vat_id",
+    "doc_class": "credit_note",
+    "field": "seller_vat_id"
+   },
+   {
+    "id": "AE-purchase_order-total_vat",
+    "doc_class": "purchase_order",
+    "field": "total_vat"
+   },
+   {
+    "id": "AE-contract-seller_vat_id",
+    "doc_class": "contract",
+    "field": "seller_vat_id"
+   },
+   {
+    "id": "AE-contract-due_date",
+    "doc_class": "contract",
+    "field": "due_date"
+   },
+   {
+    "id": "AE-receipt-seller_vat_id",
+    "doc_class": "receipt",
+    "field": "seller_vat_id"
+   },
+   {
+    "id": "AE-credit_note-total_vat",
+    "doc_class": "credit_note",
+    "field": "total_vat"
+   },
+   {
+    "id": "AE-estimate-due_date",
+    "doc_class": "estimate",
+    "field": "due_date"
+   },
+   {
+    "id": "AE-estimate-seller_vat_id",
+    "doc_class": "estimate",
+    "field": "seller_vat_id"
+   },
+   {
+    "id": "AE-purchase_order-total_net",
+    "doc_class": "purchase_order",
+    "field": "total_net"
+   },
+   {
+    "id": "AE-estimate-total_net",
+    "doc_class": "estimate",
+    "field": "total_net"
+   },
+   {
+    "id": "AE-estimate-total_vat",
+    "doc_class": "estimate",
+    "field": "total_vat"
+   }
+  ],
+  "absent_evidenced_cohorts": [
+   {
+    "id": "AV-total_vat",
+    "field": "total_vat"
+   },
+   {
+    "id": "AV-seller_vat_id",
+    "field": "seller_vat_id"
+   },
+   {
+    "id": "AV-total_net",
+    "field": "total_net"
+   },
+   {
+    "id": "AV-due_date",
+    "field": "due_date"
+   }
+  ],
+  "release_profile": {
+   "id": "payment_required_v1"
+  }
+ },
+ "routes": [
+  {
+   "doc_id": "075d4722d308410da3d8e3dd",
+   "field": "invoice_number",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "075d4722d308410da3d8e3dd",
+   "field": "total_gross",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "075d4722d308410da3d8e3dd",
+   "field": "total_net",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "075d4722d308410da3d8e3dd",
+   "field": "total_vat",
+   "route": "auto_absent",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-total_vat"
+   ],
+   "applicability_rule_id": "AV-total_vat"
+  },
+  {
+   "doc_id": "075d4722d308410da3d8e3dd",
+   "field": "amount_due",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "075d4722d308410da3d8e3dd",
+   "field": "seller_vat_id",
+   "route": "auto_absent",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-seller_vat_id"
+   ],
+   "applicability_rule_id": "AV-seller_vat_id"
+  },
+  {
+   "doc_id": "075d4722d308410da3d8e3dd",
+   "field": "seller_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "075d4722d308410da3d8e3dd",
+   "field": "buyer_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "075d4722d308410da3d8e3dd",
+   "field": "issue_date",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "075d4722d308410da3d8e3dd",
+   "field": "due_date",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "0c7df66268614502b65f4a3f",
+   "field": "invoice_number",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "0c7df66268614502b65f4a3f",
+   "field": "total_gross",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:arithmetic_consistency",
+    "GATE_FAIL:cross_mode_agreement"
+   ]
+  },
+  {
+   "doc_id": "0c7df66268614502b65f4a3f",
+   "field": "total_net",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:arithmetic_consistency"
+   ]
+  },
+  {
+   "doc_id": "0c7df66268614502b65f4a3f",
+   "field": "total_vat",
+   "route": "review",
+   "reason_codes": [
+    "UNSUPPORTED"
+   ],
+   "applicability_rule_id": "AV-total_vat"
+  },
+  {
+   "doc_id": "0c7df66268614502b65f4a3f",
+   "field": "amount_due",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:arithmetic_consistency"
+   ]
+  },
+  {
+   "doc_id": "0c7df66268614502b65f4a3f",
+   "field": "seller_vat_id",
+   "route": "review",
+   "reason_codes": [
+    "SLOT_BLOCKING"
+   ]
+  },
+  {
+   "doc_id": "0c7df66268614502b65f4a3f",
+   "field": "seller_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "0c7df66268614502b65f4a3f",
+   "field": "buyer_name",
+   "route": "review",
+   "reason_codes": [
+    "SLOT_BLOCKING"
+   ]
+  },
+  {
+   "doc_id": "0c7df66268614502b65f4a3f",
+   "field": "issue_date",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "0c7df66268614502b65f4a3f",
+   "field": "due_date",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:field_wellformed"
+   ]
+  },
+  {
+   "doc_id": "31f273adc7384e8f96c36ea6",
+   "field": "invoice_number",
+   "route": "review",
+   "reason_codes": [
+    "UNSUPPORTED"
+   ]
+  },
+  {
+   "doc_id": "31f273adc7384e8f96c36ea6",
+   "field": "total_gross",
+   "route": "review",
+   "reason_codes": [
+    "SLOT_BLOCKING"
+   ]
+  },
+  {
+   "doc_id": "31f273adc7384e8f96c36ea6",
+   "field": "total_net",
+   "route": "auto_absent",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-total_net"
+   ],
+   "applicability_rule_id": "AV-total_net"
+  },
+  {
+   "doc_id": "31f273adc7384e8f96c36ea6",
+   "field": "total_vat",
+   "route": "auto_absent",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-total_vat"
+   ],
+   "applicability_rule_id": "AV-total_vat"
+  },
+  {
+   "doc_id": "31f273adc7384e8f96c36ea6",
+   "field": "amount_due",
+   "route": "review",
+   "reason_codes": [
+    "SLOT_BLOCKING"
+   ]
+  },
+  {
+   "doc_id": "31f273adc7384e8f96c36ea6",
+   "field": "seller_vat_id",
+   "route": "auto_absent",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-seller_vat_id"
+   ],
+   "applicability_rule_id": "AV-seller_vat_id"
+  },
+  {
+   "doc_id": "31f273adc7384e8f96c36ea6",
+   "field": "seller_name",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:cross_mode_agreement"
+   ]
+  },
+  {
+   "doc_id": "31f273adc7384e8f96c36ea6",
+   "field": "buyer_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "31f273adc7384e8f96c36ea6",
+   "field": "issue_date",
+   "route": "review",
+   "reason_codes": [
+    "UNSUPPORTED"
+   ]
+  },
+  {
+   "doc_id": "31f273adc7384e8f96c36ea6",
+   "field": "due_date",
+   "route": "auto_absent",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-due_date"
+   ],
+   "applicability_rule_id": "AV-due_date"
+  },
+  {
+   "doc_id": "50bbaa7c37374cc584cb06d3",
+   "field": "invoice_number",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "50bbaa7c37374cc584cb06d3",
+   "field": "total_gross",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "50bbaa7c37374cc584cb06d3",
+   "field": "total_net",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "50bbaa7c37374cc584cb06d3",
+   "field": "total_vat",
+   "route": "review",
+   "reason_codes": [
+    "UNSUPPORTED"
+   ],
+   "applicability_rule_id": "AV-total_vat"
+  },
+  {
+   "doc_id": "50bbaa7c37374cc584cb06d3",
+   "field": "amount_due",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "50bbaa7c37374cc584cb06d3",
+   "field": "seller_vat_id",
+   "route": "auto_absent",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-seller_vat_id"
+   ],
+   "applicability_rule_id": "AV-seller_vat_id"
+  },
+  {
+   "doc_id": "50bbaa7c37374cc584cb06d3",
+   "field": "seller_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "50bbaa7c37374cc584cb06d3",
+   "field": "buyer_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "50bbaa7c37374cc584cb06d3",
+   "field": "issue_date",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "50bbaa7c37374cc584cb06d3",
+   "field": "due_date",
+   "route": "auto_absent",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-due_date"
+   ],
+   "applicability_rule_id": "AV-due_date"
+  },
+  {
+   "doc_id": "5458ffd5b2654b2f964337d0",
+   "field": "invoice_number",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:cross_mode_agreement"
+   ]
+  },
+  {
+   "doc_id": "5458ffd5b2654b2f964337d0",
+   "field": "total_gross",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:citation_holds"
+   ]
+  },
+  {
+   "doc_id": "5458ffd5b2654b2f964337d0",
+   "field": "total_net",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:citation_holds"
+   ]
+  },
+  {
+   "doc_id": "5458ffd5b2654b2f964337d0",
+   "field": "total_vat",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:citation_holds"
+   ],
+   "applicability_rule_id": "AV-total_vat"
+  },
+  {
+   "doc_id": "5458ffd5b2654b2f964337d0",
+   "field": "amount_due",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:citation_holds"
+   ]
+  },
+  {
+   "doc_id": "5458ffd5b2654b2f964337d0",
+   "field": "seller_vat_id",
+   "route": "auto_absent",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-seller_vat_id"
+   ],
+   "applicability_rule_id": "AV-seller_vat_id"
+  },
+  {
+   "doc_id": "5458ffd5b2654b2f964337d0",
+   "field": "seller_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "5458ffd5b2654b2f964337d0",
+   "field": "buyer_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "5458ffd5b2654b2f964337d0",
+   "field": "issue_date",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "5458ffd5b2654b2f964337d0",
+   "field": "due_date",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "5a8c7ec3518c4daa978b4eb9",
+   "field": "invoice_number",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "5a8c7ec3518c4daa978b4eb9",
+   "field": "total_gross",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:arithmetic_consistency"
+   ]
+  },
+  {
+   "doc_id": "5a8c7ec3518c4daa978b4eb9",
+   "field": "total_net",
+   "route": "review",
+   "reason_codes": [
+    "LABEL_CONVENTION_DISPUTED"
+   ]
+  },
+  {
+   "doc_id": "5a8c7ec3518c4daa978b4eb9",
+   "field": "total_vat",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:cross_mode_agreement"
+   ],
+   "applicability_rule_id": "AV-total_vat"
+  },
+  {
+   "doc_id": "5a8c7ec3518c4daa978b4eb9",
+   "field": "amount_due",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:arithmetic_consistency"
+   ]
+  },
+  {
+   "doc_id": "5a8c7ec3518c4daa978b4eb9",
+   "field": "seller_vat_id",
+   "route": "auto_absent",
+   "reason_codes": [
+    "EXPECTED_ABSENT:AE-contract-seller_vat_id"
+   ],
+   "applicability_rule_id": "AE-contract-seller_vat_id"
+  },
+  {
+   "doc_id": "5a8c7ec3518c4daa978b4eb9",
+   "field": "seller_name",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:cross_mode_agreement"
+   ]
+  },
+  {
+   "doc_id": "5a8c7ec3518c4daa978b4eb9",
+   "field": "buyer_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "5a8c7ec3518c4daa978b4eb9",
+   "field": "issue_date",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "5a8c7ec3518c4daa978b4eb9",
+   "field": "due_date",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:cross_mode_agreement",
+    "GATE_FAIL:field_wellformed"
+   ],
+   "applicability_rule_id": "AE-contract-due_date"
+  },
+  {
+   "doc_id": "5c1c7960b46f4dfc9a5a44db",
+   "field": "invoice_number",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "5c1c7960b46f4dfc9a5a44db",
+   "field": "total_gross",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:arithmetic_consistency"
+   ]
+  },
+  {
+   "doc_id": "5c1c7960b46f4dfc9a5a44db",
+   "field": "total_net",
+   "route": "review",
+   "reason_codes": [
+    "LABEL_CONVENTION_DISPUTED"
+   ]
+  },
+  {
+   "doc_id": "5c1c7960b46f4dfc9a5a44db",
+   "field": "total_vat",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ],
+   "applicability_rule_id": "AV-total_vat"
+  },
+  {
+   "doc_id": "5c1c7960b46f4dfc9a5a44db",
+   "field": "amount_due",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:arithmetic_consistency"
+   ]
+  },
+  {
+   "doc_id": "5c1c7960b46f4dfc9a5a44db",
+   "field": "seller_vat_id",
+   "route": "auto_absent",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-seller_vat_id"
+   ],
+   "applicability_rule_id": "AV-seller_vat_id"
+  },
+  {
+   "doc_id": "5c1c7960b46f4dfc9a5a44db",
+   "field": "seller_name",
+   "route": "review",
+   "reason_codes": [
+    "UNSUPPORTED"
+   ]
+  },
+  {
+   "doc_id": "5c1c7960b46f4dfc9a5a44db",
+   "field": "buyer_name",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:cross_mode_agreement"
+   ]
+  },
+  {
+   "doc_id": "5c1c7960b46f4dfc9a5a44db",
+   "field": "issue_date",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:arithmetic_consistency"
+   ]
+  },
+  {
+   "doc_id": "5c1c7960b46f4dfc9a5a44db",
+   "field": "due_date",
+   "route": "review",
+   "reason_codes": [
+    "UNSUPPORTED"
+   ]
+  },
+  {
+   "doc_id": "64e423ac8ca2434eb859632e",
+   "field": "invoice_number",
+   "route": "review",
+   "reason_codes": [
+    "UNSUPPORTED"
+   ]
+  },
+  {
+   "doc_id": "64e423ac8ca2434eb859632e",
+   "field": "total_gross",
+   "route": "review",
+   "reason_codes": [
+    "SLOT_BLOCKING"
+   ]
+  },
+  {
+   "doc_id": "64e423ac8ca2434eb859632e",
+   "field": "total_net",
+   "route": "review",
+   "reason_codes": [
+    "SLOT_BLOCKING"
+   ]
+  },
+  {
+   "doc_id": "64e423ac8ca2434eb859632e",
+   "field": "total_vat",
+   "route": "auto_absent",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-total_vat"
+   ],
+   "applicability_rule_id": "AV-total_vat"
+  },
+  {
+   "doc_id": "64e423ac8ca2434eb859632e",
+   "field": "amount_due",
+   "route": "review",
+   "reason_codes": [
+    "SLOT_BLOCKING"
+   ]
+  },
+  {
+   "doc_id": "64e423ac8ca2434eb859632e",
+   "field": "seller_vat_id",
+   "route": "auto_absent",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-seller_vat_id"
+   ],
+   "applicability_rule_id": "AV-seller_vat_id"
+  },
+  {
+   "doc_id": "64e423ac8ca2434eb859632e",
+   "field": "seller_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "64e423ac8ca2434eb859632e",
+   "field": "buyer_name",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:cross_mode_agreement"
+   ]
+  },
+  {
+   "doc_id": "64e423ac8ca2434eb859632e",
+   "field": "issue_date",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "64e423ac8ca2434eb859632e",
+   "field": "due_date",
+   "route": "review",
+   "reason_codes": [
+    "SLOT_BLOCKING"
+   ]
+  },
+  {
+   "doc_id": "6decf48ff2bc4b94bf2c04e7",
+   "field": "invoice_number",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "6decf48ff2bc4b94bf2c04e7",
+   "field": "total_gross",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:citation_holds"
+   ]
+  },
+  {
+   "doc_id": "6decf48ff2bc4b94bf2c04e7",
+   "field": "total_net",
+   "route": "review",
+   "reason_codes": [
+    "UNSUPPORTED"
+   ],
+   "applicability_rule_id": "AV-total_net"
+  },
+  {
+   "doc_id": "6decf48ff2bc4b94bf2c04e7",
+   "field": "total_vat",
+   "route": "review",
+   "reason_codes": [
+    "UNSUPPORTED"
+   ],
+   "applicability_rule_id": "AV-total_vat"
+  },
+  {
+   "doc_id": "6decf48ff2bc4b94bf2c04e7",
+   "field": "amount_due",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:citation_holds"
+   ]
+  },
+  {
+   "doc_id": "6decf48ff2bc4b94bf2c04e7",
+   "field": "seller_vat_id",
+   "route": "auto_absent",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-seller_vat_id"
+   ],
+   "applicability_rule_id": "AV-seller_vat_id"
+  },
+  {
+   "doc_id": "6decf48ff2bc4b94bf2c04e7",
+   "field": "seller_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "6decf48ff2bc4b94bf2c04e7",
+   "field": "buyer_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "6decf48ff2bc4b94bf2c04e7",
+   "field": "issue_date",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "6decf48ff2bc4b94bf2c04e7",
+   "field": "due_date",
+   "route": "review",
+   "reason_codes": [
+    "UNSUPPORTED"
+   ],
+   "applicability_rule_id": "AV-due_date"
+  },
+  {
+   "doc_id": "848916b2c5264818be60e1f1",
+   "field": "invoice_number",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "848916b2c5264818be60e1f1",
+   "field": "total_gross",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "848916b2c5264818be60e1f1",
+   "field": "total_net",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ],
+   "applicability_rule_id": "AV-total_net"
+  },
+  {
+   "doc_id": "848916b2c5264818be60e1f1",
+   "field": "total_vat",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:cross_mode_agreement"
+   ],
+   "applicability_rule_id": "AV-total_vat"
+  },
+  {
+   "doc_id": "848916b2c5264818be60e1f1",
+   "field": "amount_due",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "848916b2c5264818be60e1f1",
+   "field": "seller_vat_id",
+   "route": "auto_absent",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-seller_vat_id"
+   ],
+   "applicability_rule_id": "AV-seller_vat_id"
+  },
+  {
+   "doc_id": "848916b2c5264818be60e1f1",
+   "field": "seller_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "848916b2c5264818be60e1f1",
+   "field": "buyer_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "848916b2c5264818be60e1f1",
+   "field": "issue_date",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "848916b2c5264818be60e1f1",
+   "field": "due_date",
+   "route": "review",
+   "reason_codes": [
+    "SLOT_BLOCKING"
+   ]
+  },
+  {
+   "doc_id": "96e0f58a0ef6435daa4852ce",
+   "field": "invoice_number",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "96e0f58a0ef6435daa4852ce",
+   "field": "total_gross",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "96e0f58a0ef6435daa4852ce",
+   "field": "total_net",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ],
+   "applicability_rule_id": "AE-purchase_order-total_net"
+  },
+  {
+   "doc_id": "96e0f58a0ef6435daa4852ce",
+   "field": "total_vat",
+   "route": "review",
+   "reason_codes": [
+    "CLEAN",
+    "QA_SAMPLE:policy_accepted_tier1"
+   ],
+   "applicability_rule_id": "AE-purchase_order-total_vat"
+  },
+  {
+   "doc_id": "96e0f58a0ef6435daa4852ce",
+   "field": "amount_due",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "96e0f58a0ef6435daa4852ce",
+   "field": "seller_vat_id",
+   "route": "auto_absent",
+   "reason_codes": [
+    "EXPECTED_ABSENT:AE-purchase_order-seller_vat_id"
+   ],
+   "applicability_rule_id": "AE-purchase_order-seller_vat_id"
+  },
+  {
+   "doc_id": "96e0f58a0ef6435daa4852ce",
+   "field": "seller_name",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:cross_mode_agreement"
+   ]
+  },
+  {
+   "doc_id": "96e0f58a0ef6435daa4852ce",
+   "field": "buyer_name",
+   "route": "review",
+   "reason_codes": [
+    "SLOT_BLOCKING"
+   ]
+  },
+  {
+   "doc_id": "96e0f58a0ef6435daa4852ce",
+   "field": "issue_date",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "96e0f58a0ef6435daa4852ce",
+   "field": "due_date",
+   "route": "auto_absent",
+   "reason_codes": [
+    "EXPECTED_ABSENT:AE-purchase_order-due_date"
+   ],
+   "applicability_rule_id": "AE-purchase_order-due_date"
+  },
+  {
+   "doc_id": "9a359ef4cc4644ae9b5caaa4",
+   "field": "invoice_number",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "9a359ef4cc4644ae9b5caaa4",
+   "field": "total_gross",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:arithmetic_consistency"
+   ]
+  },
+  {
+   "doc_id": "9a359ef4cc4644ae9b5caaa4",
+   "field": "total_net",
+   "route": "review",
+   "reason_codes": [
+    "LABEL_CONVENTION_DISPUTED"
+   ],
+   "applicability_rule_id": "AE-estimate-total_net"
+  },
+  {
+   "doc_id": "9a359ef4cc4644ae9b5caaa4",
+   "field": "total_vat",
+   "route": "review",
+   "reason_codes": [
+    "UNSUPPORTED"
+   ],
+   "applicability_rule_id": "AE-estimate-total_vat"
+  },
+  {
+   "doc_id": "9a359ef4cc4644ae9b5caaa4",
+   "field": "amount_due",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:arithmetic_consistency",
+    "GATE_FAIL:cross_mode_agreement"
+   ]
+  },
+  {
+   "doc_id": "9a359ef4cc4644ae9b5caaa4",
+   "field": "seller_vat_id",
+   "route": "review",
+   "reason_codes": [
+    "EXPECTED_ABSENT:AE-estimate-seller_vat_id",
+    "QA_SAMPLE:AE-estimate-seller_vat_id"
+   ],
+   "applicability_rule_id": "AE-estimate-seller_vat_id"
+  },
+  {
+   "doc_id": "9a359ef4cc4644ae9b5caaa4",
+   "field": "seller_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "9a359ef4cc4644ae9b5caaa4",
+   "field": "buyer_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "9a359ef4cc4644ae9b5caaa4",
+   "field": "issue_date",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "9a359ef4cc4644ae9b5caaa4",
+   "field": "due_date",
+   "route": "review",
+   "reason_codes": [
+    "EXPECTED_ABSENT:AE-estimate-due_date",
+    "QA_SAMPLE:AE-estimate-due_date"
+   ],
+   "applicability_rule_id": "AE-estimate-due_date"
+  },
+  {
+   "doc_id": "a39706cb2762474cb3e155b4",
+   "field": "invoice_number",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "a39706cb2762474cb3e155b4",
+   "field": "total_gross",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:arithmetic_consistency"
+   ]
+  },
+  {
+   "doc_id": "a39706cb2762474cb3e155b4",
+   "field": "total_net",
+   "route": "review",
+   "reason_codes": [
+    "LABEL_CONVENTION_DISPUTED"
+   ]
+  },
+  {
+   "doc_id": "a39706cb2762474cb3e155b4",
+   "field": "total_vat",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "a39706cb2762474cb3e155b4",
+   "field": "amount_due",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:arithmetic_consistency",
+    "GATE_FAIL:cross_mode_agreement"
+   ]
+  },
+  {
+   "doc_id": "a39706cb2762474cb3e155b4",
+   "field": "seller_vat_id",
+   "route": "review",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-seller_vat_id",
+    "QA_SAMPLE:AV-seller_vat_id"
+   ],
+   "applicability_rule_id": "AV-seller_vat_id"
+  },
+  {
+   "doc_id": "a39706cb2762474cb3e155b4",
+   "field": "seller_name",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:cross_mode_agreement"
+   ]
+  },
+  {
+   "doc_id": "a39706cb2762474cb3e155b4",
+   "field": "buyer_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "a39706cb2762474cb3e155b4",
+   "field": "issue_date",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "a39706cb2762474cb3e155b4",
+   "field": "due_date",
+   "route": "review",
+   "reason_codes": [
+    "SLOT_BLOCKING"
+   ]
+  },
+  {
+   "doc_id": "b0557da98934425180c4f16a",
+   "field": "invoice_number",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "b0557da98934425180c4f16a",
+   "field": "total_gross",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "b0557da98934425180c4f16a",
+   "field": "total_net",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ],
+   "applicability_rule_id": "AV-total_net"
+  },
+  {
+   "doc_id": "b0557da98934425180c4f16a",
+   "field": "total_vat",
+   "route": "review",
+   "reason_codes": [
+    "UNSUPPORTED"
+   ],
+   "applicability_rule_id": "AV-total_vat"
+  },
+  {
+   "doc_id": "b0557da98934425180c4f16a",
+   "field": "amount_due",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "b0557da98934425180c4f16a",
+   "field": "seller_vat_id",
+   "route": "auto_absent",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-seller_vat_id"
+   ],
+   "applicability_rule_id": "AV-seller_vat_id"
+  },
+  {
+   "doc_id": "b0557da98934425180c4f16a",
+   "field": "seller_name",
+   "route": "review",
+   "reason_codes": [
+    "UNSUPPORTED"
+   ]
+  },
+  {
+   "doc_id": "b0557da98934425180c4f16a",
+   "field": "buyer_name",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:cross_mode_agreement"
+   ]
+  },
+  {
+   "doc_id": "b0557da98934425180c4f16a",
+   "field": "issue_date",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "b0557da98934425180c4f16a",
+   "field": "due_date",
+   "route": "review",
+   "reason_codes": [
+    "SLOT_BLOCKING"
+   ]
+  },
+  {
+   "doc_id": "ba388b327d254ed384f97624",
+   "field": "invoice_number",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:citation_holds"
+   ]
+  },
+  {
+   "doc_id": "ba388b327d254ed384f97624",
+   "field": "total_gross",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:arithmetic_consistency"
+   ]
+  },
+  {
+   "doc_id": "ba388b327d254ed384f97624",
+   "field": "total_net",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:arithmetic_consistency"
+   ]
+  },
+  {
+   "doc_id": "ba388b327d254ed384f97624",
+   "field": "total_vat",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:arithmetic_consistency",
+    "GATE_FAIL:citation_holds",
+    "GATE_FAIL:cross_mode_agreement"
+   ],
+   "applicability_rule_id": "AV-total_vat"
+  },
+  {
+   "doc_id": "ba388b327d254ed384f97624",
+   "field": "amount_due",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:arithmetic_consistency",
+    "GATE_FAIL:cross_mode_agreement"
+   ]
+  },
+  {
+   "doc_id": "ba388b327d254ed384f97624",
+   "field": "seller_vat_id",
+   "route": "auto_absent",
+   "reason_codes": [
+    "EXPECTED_ABSENT:AE-contract-seller_vat_id"
+   ],
+   "applicability_rule_id": "AE-contract-seller_vat_id"
+  },
+  {
+   "doc_id": "ba388b327d254ed384f97624",
+   "field": "seller_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "ba388b327d254ed384f97624",
+   "field": "buyer_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "ba388b327d254ed384f97624",
+   "field": "issue_date",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "ba388b327d254ed384f97624",
+   "field": "due_date",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:field_wellformed"
+   ],
+   "applicability_rule_id": "AE-contract-due_date"
+  },
+  {
+   "doc_id": "bd8da882c0d945e7974c3878",
+   "field": "invoice_number",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "bd8da882c0d945e7974c3878",
+   "field": "total_gross",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "bd8da882c0d945e7974c3878",
+   "field": "total_net",
+   "route": "review",
+   "reason_codes": [
+    "CLEAN",
+    "QA_SAMPLE:policy_accepted_tier1"
+   ]
+  },
+  {
+   "doc_id": "bd8da882c0d945e7974c3878",
+   "field": "total_vat",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ],
+   "applicability_rule_id": "AV-total_vat"
+  },
+  {
+   "doc_id": "bd8da882c0d945e7974c3878",
+   "field": "amount_due",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "bd8da882c0d945e7974c3878",
+   "field": "seller_vat_id",
+   "route": "review",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-seller_vat_id",
+    "QA_SAMPLE:AV-seller_vat_id"
+   ],
+   "applicability_rule_id": "AV-seller_vat_id"
+  },
+  {
+   "doc_id": "bd8da882c0d945e7974c3878",
+   "field": "seller_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "bd8da882c0d945e7974c3878",
+   "field": "buyer_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "bd8da882c0d945e7974c3878",
+   "field": "issue_date",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "bd8da882c0d945e7974c3878",
+   "field": "due_date",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "d264eaf836b642c6aae03d8b",
+   "field": "invoice_number",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "d264eaf836b642c6aae03d8b",
+   "field": "total_gross",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "d264eaf836b642c6aae03d8b",
+   "field": "total_net",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "d264eaf836b642c6aae03d8b",
+   "field": "total_vat",
+   "route": "auto_absent",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-total_vat"
+   ],
+   "applicability_rule_id": "AV-total_vat"
+  },
+  {
+   "doc_id": "d264eaf836b642c6aae03d8b",
+   "field": "amount_due",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "d264eaf836b642c6aae03d8b",
+   "field": "seller_vat_id",
+   "route": "auto_absent",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-seller_vat_id"
+   ],
+   "applicability_rule_id": "AV-seller_vat_id"
+  },
+  {
+   "doc_id": "d264eaf836b642c6aae03d8b",
+   "field": "seller_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "d264eaf836b642c6aae03d8b",
+   "field": "buyer_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "d264eaf836b642c6aae03d8b",
+   "field": "issue_date",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "d264eaf836b642c6aae03d8b",
+   "field": "due_date",
+   "route": "review",
+   "reason_codes": [
+    "SLOT_BLOCKING"
+   ]
+  },
+  {
+   "doc_id": "db60e02cb0074cd5baf3cf01",
+   "field": "invoice_number",
+   "route": "review",
+   "reason_codes": [
+    "UNSUPPORTED"
+   ]
+  },
+  {
+   "doc_id": "db60e02cb0074cd5baf3cf01",
+   "field": "total_gross",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:arithmetic_consistency"
+   ]
+  },
+  {
+   "doc_id": "db60e02cb0074cd5baf3cf01",
+   "field": "total_net",
+   "route": "review",
+   "reason_codes": [
+    "LABEL_CONVENTION_DISPUTED"
+   ]
+  },
+  {
+   "doc_id": "db60e02cb0074cd5baf3cf01",
+   "field": "total_vat",
+   "route": "review",
+   "reason_codes": [
+    "UNSUPPORTED"
+   ],
+   "applicability_rule_id": "AV-total_vat"
+  },
+  {
+   "doc_id": "db60e02cb0074cd5baf3cf01",
+   "field": "amount_due",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:arithmetic_consistency"
+   ]
+  },
+  {
+   "doc_id": "db60e02cb0074cd5baf3cf01",
+   "field": "seller_vat_id",
+   "route": "review",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-seller_vat_id",
+    "QA_SAMPLE:AV-seller_vat_id"
+   ],
+   "applicability_rule_id": "AV-seller_vat_id"
+  },
+  {
+   "doc_id": "db60e02cb0074cd5baf3cf01",
+   "field": "seller_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "db60e02cb0074cd5baf3cf01",
+   "field": "buyer_name",
+   "route": "review",
+   "reason_codes": [
+    "SLOT_BLOCKING"
+   ]
+  },
+  {
+   "doc_id": "db60e02cb0074cd5baf3cf01",
+   "field": "issue_date",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "db60e02cb0074cd5baf3cf01",
+   "field": "due_date",
+   "route": "review",
+   "reason_codes": [
+    "SLOT_BLOCKING"
+   ]
+  },
+  {
+   "doc_id": "f47b8ee00eae416c94a083ca",
+   "field": "invoice_number",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "f47b8ee00eae416c94a083ca",
+   "field": "total_gross",
+   "route": "review",
+   "reason_codes": [
+    "UNSUPPORTED"
+   ]
+  },
+  {
+   "doc_id": "f47b8ee00eae416c94a083ca",
+   "field": "total_net",
+   "route": "review",
+   "reason_codes": [
+    "UNSUPPORTED"
+   ]
+  },
+  {
+   "doc_id": "f47b8ee00eae416c94a083ca",
+   "field": "total_vat",
+   "route": "auto_absent",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-total_vat"
+   ],
+   "applicability_rule_id": "AV-total_vat"
+  },
+  {
+   "doc_id": "f47b8ee00eae416c94a083ca",
+   "field": "amount_due",
+   "route": "review",
+   "reason_codes": [
+    "UNSUPPORTED"
+   ]
+  },
+  {
+   "doc_id": "f47b8ee00eae416c94a083ca",
+   "field": "seller_vat_id",
+   "route": "review",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-seller_vat_id",
+    "QA_SAMPLE:AV-seller_vat_id"
+   ],
+   "applicability_rule_id": "AV-seller_vat_id"
+  },
+  {
+   "doc_id": "f47b8ee00eae416c94a083ca",
+   "field": "seller_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "f47b8ee00eae416c94a083ca",
+   "field": "buyer_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "f47b8ee00eae416c94a083ca",
+   "field": "issue_date",
+   "route": "review",
+   "reason_codes": [
+    "UNSUPPORTED"
+   ]
+  },
+  {
+   "doc_id": "f47b8ee00eae416c94a083ca",
+   "field": "due_date",
+   "route": "review",
+   "reason_codes": [
+    "SLOT_BLOCKING"
+   ]
+  },
+  {
+   "doc_id": "f87af344f9254256bdfaabfb",
+   "field": "invoice_number",
+   "route": "review",
+   "reason_codes": [
+    "GATE_FAIL:cross_mode_agreement"
+   ]
+  },
+  {
+   "doc_id": "f87af344f9254256bdfaabfb",
+   "field": "total_gross",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "f87af344f9254256bdfaabfb",
+   "field": "total_net",
+   "route": "auto_absent",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-total_net"
+   ],
+   "applicability_rule_id": "AV-total_net"
+  },
+  {
+   "doc_id": "f87af344f9254256bdfaabfb",
+   "field": "total_vat",
+   "route": "auto_absent",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-total_vat"
+   ],
+   "applicability_rule_id": "AV-total_vat"
+  },
+  {
+   "doc_id": "f87af344f9254256bdfaabfb",
+   "field": "amount_due",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "f87af344f9254256bdfaabfb",
+   "field": "seller_vat_id",
+   "route": "auto_absent",
+   "reason_codes": [
+    "ABSENT_EVIDENCED:AV-seller_vat_id"
+   ],
+   "applicability_rule_id": "AV-seller_vat_id"
+  },
+  {
+   "doc_id": "f87af344f9254256bdfaabfb",
+   "field": "seller_name",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "f87af344f9254256bdfaabfb",
+   "field": "buyer_name",
+   "route": "review",
+   "reason_codes": [
+    "SLOT_BLOCKING"
+   ]
+  },
+  {
+   "doc_id": "f87af344f9254256bdfaabfb",
+   "field": "issue_date",
+   "route": "auto_accept",
+   "reason_codes": [
+    "CLEAN"
+   ]
+  },
+  {
+   "doc_id": "f87af344f9254256bdfaabfb",
+   "field": "due_date",
+   "route": "review",
+   "reason_codes": [
+    "SLOT_BLOCKING"
+   ]
+  }
+ ]
+}

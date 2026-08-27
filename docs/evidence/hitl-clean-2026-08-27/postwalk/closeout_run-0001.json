@@ -1,0 +1,48 @@
+{
+ "run": "/private/tmp/invoiceloop-adk-oauth-20.jqyavx/hitl-clean/runs/run-0001",
+ "ledger_sha256": "76046cbcb0991681f6a85d2f3c386f6d1e47cb20683195cbcf5cb7797c3b55f0",
+ "n_decisions": 32,
+ "timing": {
+  "n_timed": 29,
+  "median_seconds": 112.0,
+  "by_decision": {
+   "accept": {
+    "n": 12,
+    "median_seconds": 78.5
+   },
+   "confirm_absent": {
+    "n": 6,
+    "median_seconds": 157.5
+   },
+   "correct": {
+    "n": 10,
+    "median_seconds": 167.5
+   },
+   "reject": {
+    "n": 1,
+    "median_seconds": 119.0
+   }
+  },
+  "excluded_gaps": 2
+ },
+ "suggestions": {
+  "agree_slots": 15,
+  "adopted": 14,
+  "adoption_rate": 0.9333,
+  "by_state": {
+   "agree": 15,
+   "agree_rejected": 3,
+   "split": 1
+  },
+  "misses": [
+   {
+    "doc_id": "db60e02cb0074cd5baf3cf01",
+    "field": "invoice_number",
+    "suggested": "9999999",
+    "decision": "correct",
+    "final": "99999999"
+   }
+  ]
+ },
+ "qualifier": "开发集测量,不带资格语义;人时含学习效应混淆(协议 §4)"
+}

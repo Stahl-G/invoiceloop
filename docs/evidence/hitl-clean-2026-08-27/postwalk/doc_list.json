@@ -1,0 +1,38 @@
+{
+  "protocol": "docs/HITL_NARROW_PROTOCOL_2026-08-14.md",
+  "round": "hitl-narrow",
+  "n": 20,
+  "pool": "docs/hitl_r2_doc_list.json",
+  "pool_n": 100,
+  "seed_context": "invoiceloop-hitl-narrow-2026-08-14",
+  "seed_sha256": "71e0d71f8cba7202ce46d869867fa236b0a999fcc6911fdac4af6966ed52ce47",
+  "sampling": "random.Random(int(sha256(seed_context)[:16], 16)).sample(r2, 20), then sorted",
+  "exclusions": [
+    "hitl-r1 100 (seen)",
+    "sealed4-100",
+    "R1 remainder not sampled stays unused"
+  ],
+  "doc_ids_sha256": "2e3ed7ed8aec8c1c2849aeec96251c6f240ba3f602ef7616db9a53a91c035037",
+  "doc_ids": [
+    "075d4722d308410da3d8e3dd",
+    "0c7df66268614502b65f4a3f",
+    "31f273adc7384e8f96c36ea6",
+    "50bbaa7c37374cc584cb06d3",
+    "5458ffd5b2654b2f964337d0",
+    "5a8c7ec3518c4daa978b4eb9",
+    "5c1c7960b46f4dfc9a5a44db",
+    "64e423ac8ca2434eb859632e",
+    "6decf48ff2bc4b94bf2c04e7",
+    "848916b2c5264818be60e1f1",
+    "96e0f58a0ef6435daa4852ce",
+    "9a359ef4cc4644ae9b5caaa4",
+    "a39706cb2762474cb3e155b4",
+    "b0557da98934425180c4f16a",
+    "ba388b327d254ed384f97624",
+    "bd8da882c0d945e7974c3878",
+    "d264eaf836b642c6aae03d8b",
+    "db60e02cb0074cd5baf3cf01",
+    "f47b8ee00eae416c94a083ca",
+    "f87af344f9254256bdfaabfb"
+  ]
+}

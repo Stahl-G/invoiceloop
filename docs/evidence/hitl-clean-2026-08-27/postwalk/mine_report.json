@@ -1,0 +1,225 @@
+{
+ "warning": "选择偏差警告:本报告只说明「这些复核没产生修正」,不说「这些复核没价值」—— 没被抽查不等于没有错(v0.2 §9.4)。任何 cohort 放宽都必须经过 evaluate 的反事实比较与人工 promote,本报告本身不授权任何改动。",
+ "events": 32,
+ "buckets": {
+  "all_events": 32,
+  "actionable": 26,
+  "superseded": 0,
+  "random_qa": 8,
+  "qualified_for_mining": 19,
+  "not_actionable_reasons": {
+   "no_reason_code": 6,
+   "low_confidence": 0,
+   "abstain": 0
+  }
+ },
+ "cohorts": [
+  {
+   "field": "amount_due",
+   "tier": "TIER1",
+   "support_strength": "corroborated",
+   "route": "review",
+   "reviewed": 4,
+   "accepted": 3,
+   "corrected": 1,
+   "rejected": 0,
+   "confirmed_absent": 0,
+   "not_applicable": 0,
+   "abstained": 0,
+   "notes": [
+    {
+     "doc_id": "a39706cb2762474cb3e155b4",
+     "decision": "accept",
+     "reason_code": "OTHER",
+     "rationale": "确认读图建议"
+    },
+    {
+     "doc_id": "0c7df66268614502b65f4a3f",
+     "decision": "accept",
+     "reason_code": "ROUTING_FALSE_POSITIVE",
+     "rationale": "确认读图建议"
+    },
+    {
+     "doc_id": "5a8c7ec3518c4daa978b4eb9",
+     "decision": "accept",
+     "reason_code": "ROUTING_FALSE_POSITIVE",
+     "rationale": "与页面一致"
+    },
+    {
+     "doc_id": "6decf48ff2bc4b94bf2c04e7",
+     "decision": "correct",
+     "reason_code": "WRONG_FIELD_MAPPING",
+     "rationale": "确认读图建议"
+    }
+   ]
+  },
+  {
+   "field": "seller_name",
+   "tier": "TIER2",
+   "support_strength": "corroborated",
+   "route": "review",
+   "reviewed": 4,
+   "accepted": 1,
+   "corrected": 3,
+   "rejected": 0,
+   "confirmed_absent": 0,
+   "not_applicable": 0,
+   "abstained": 0,
+   "notes": [
+    {
+     "doc_id": "31f273adc7384e8f96c36ea6",
+     "decision": "correct",
+     "reason_code": "WRONG_VALUE",
+     "rationale": "确认读图建议"
+    },
+    {
+     "doc_id": "a39706cb2762474cb3e155b4",
+     "decision": "correct",
+     "reason_code": "WRONG_FIELD_MAPPING",
+     "rationale": "确认读图建议"
+    },
+    {
+     "doc_id": "5a8c7ec3518c4daa978b4eb9",
+     "decision": "accept",
+     "reason_code": "ROUTING_FALSE_POSITIVE",
+     "rationale": "与页面一致"
+    },
+    {
+     "doc_id": "96e0f58a0ef6435daa4852ce",
+     "decision": "correct",
+     "reason_code": "BAD_SOURCE_BINDING",
+     "rationale": "位置不对"
+    }
+   ]
+  },
+  {
+   "field": "amount_due",
+   "tier": "TIER1",
+   "support_strength": "unsupported",
+   "route": "review",
+   "reviewed": 3,
+   "accepted": 0,
+   "corrected": 2,
+   "rejected": 0,
+   "confirmed_absent": 1,
+   "not_applicable": 0,
+   "abstained": 0,
+   "notes": [
+    {
+     "doc_id": "31f273adc7384e8f96c36ea6",
+     "decision": "confirm_absent",
+     "reason_code": "CONFIRMED_ABSENT",
+     "rationale": "页面上没有"
+    },
+    {
+     "doc_id": "64e423ac8ca2434eb859632e",
+     "decision": "correct",
+     "reason_code": "WRONG_VALUE",
+     "rationale": "确认读图建议"
+    },
+    {
+     "doc_id": "f47b8ee00eae416c94a083ca",
+     "decision": "correct",
+     "reason_code": "OTHER",
+     "rationale": "其他"
+    }
+   ]
+  },
+  {
+   "field": "invoice_number",
+   "tier": "TIER1",
+   "support_strength": "unsupported",
+   "route": "review",
+   "reviewed": 3,
+   "accepted": 0,
+   "corrected": 3,
+   "rejected": 0,
+   "confirmed_absent": 0,
+   "not_applicable": 0,
+   "abstained": 0,
+   "notes": [
+    {
+     "doc_id": "31f273adc7384e8f96c36ea6",
+     "decision": "correct",
+     "reason_code": "WRONG_VALUE",
+     "rationale": "确认读图建议"
+    },
+    {
+     "doc_id": "64e423ac8ca2434eb859632e",
+     "decision": "correct",
+     "reason_code": "WRONG_FIELD_MAPPING",
+     "rationale": "确认读图建议; 位置不对"
+    },
+    {
+     "doc_id": "db60e02cb0074cd5baf3cf01",
+     "decision": "correct",
+     "reason_code": "BAD_SOURCE_BINDING",
+     "rationale": "页面上确认被拒草稿的值正确(绑定失败,人证成立)"
+    }
+   ]
+  },
+  {
+   "field": "invoice_number",
+   "tier": "TIER1",
+   "support_strength": "corroborated",
+   "route": "review",
+   "reviewed": 3,
+   "accepted": 2,
+   "corrected": 0,
+   "rejected": 1,
+   "confirmed_absent": 0,
+   "not_applicable": 0,
+   "abstained": 0,
+   "notes": [
+    {
+     "doc_id": "5458ffd5b2654b2f964337d0",
+     "decision": "accept",
+     "reason_code": "ROUTING_FALSE_POSITIVE",
+     "rationale": "确认读图建议"
+    },
+    {
+     "doc_id": "ba388b327d254ed384f97624",
+     "decision": "reject",
+     "reason_code": "OTHER",
+     "rationale": "页面上没有"
+    },
+    {
+     "doc_id": "f87af344f9254256bdfaabfb",
+     "decision": "accept",
+     "reason_code": "ROUTING_FALSE_POSITIVE",
+     "rationale": "与页面一致"
+    }
+   ]
+  },
+  {
+   "field": "seller_name",
+   "tier": "TIER2",
+   "support_strength": "unsupported",
+   "route": "review",
+   "reviewed": 2,
+   "accepted": 0,
+   "corrected": 2,
+   "rejected": 0,
+   "confirmed_absent": 0,
+   "not_applicable": 0,
+   "abstained": 0,
+   "notes": [
+    {
+     "doc_id": "5c1c7960b46f4dfc9a5a44db",
+     "decision": "correct",
+     "reason_code": "WRONG_FIELD_MAPPING",
+     "rationale": "确认读图建议"
+    },
+    {
+     "doc_id": "b0557da98934425180c4f16a",
+     "decision": "correct",
+     "reason_code": "BAD_SOURCE_BINDING",
+     "rationale": "页面上确认被拒草稿的值正确(绑定失败,人证成立)"
+    }
+   ]
+  }
+ ],
+ "overturned_auto_accepts": [],
+ "low_yield_candidates": [],
+ "absence_candidates": []
+}

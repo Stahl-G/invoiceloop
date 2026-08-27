@@ -1,0 +1,17 @@
+{
+ "auth": "gcloud short-lived OAuth access token (in-memory)",
+ "vertexai": true,
+ "endpoint_family": "aiplatform.googleapis.com",
+ "project": "gen-lang-client-0330946425",
+ "location": "global",
+ "model": "gemini-3.7-flash",
+ "n_docs": 20,
+ "source_run": "runs/hitl-narrow/runs/run-0001",
+ "execution": "parallel",
+ "parallel_workers": 4,
+ "prior_success": 8,
+ "pending_processed": 12,
+ "docs_succeeded_this_pass": 12,
+ "docs_failed_this_pass": 0,
+ "workbench_ready_copy": true
+}
