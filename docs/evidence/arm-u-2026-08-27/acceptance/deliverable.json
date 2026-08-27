@@ -1,0 +1,281 @@
+{
+ "run": "run-0001",
+ "review_snapshot_id": "f90a3e9851220458c27b26f9f942f8894266cc85adb58872392a73473eaa3f40",
+ "harness_id": "HAR-0001",
+ "docs": {
+  "002e3cf97973428f905671b3": {
+   "status": "ready_for_approval",
+   "fields": {
+    "buyer_name": {
+     "value": "SME/RJR",
+     "status": "corrected",
+     "source": "HD-0002"
+    },
+    "due_date": {
+     "value": "1999-12-19",
+     "status": "corrected",
+     "source": "HD-0003"
+    },
+    "seller_vat_id": {
+     "value": null,
+     "status": "confirmed_absent",
+     "source": "HD-0005"
+    },
+    "total_net": {
+     "value": "250000.00",
+     "status": "corrected",
+     "source": "HD-0007"
+    },
+    "total_vat": {
+     "value": "0.00",
+     "status": "corrected",
+     "source": "HD-0008"
+    },
+    "invoice_number": {
+     "value": "096084",
+     "status": "corrected",
+     "source": "HD-0004"
+    },
+    "amount_due": {
+     "value": "250000.00",
+     "status": "accepted",
+     "source": "HD-0001"
+    },
+    "issue_date": {
+     "value": "12/09/99",
+     "status": "unreviewed_corroborated",
+     "source": "policy:HAR-0001"
+    },
+    "seller_name": {
+     "value": "UMI PUBLICATIONS, INC",
+     "status": "unreviewed_corroborated",
+     "source": "policy:HAR-0001"
+    },
+    "total_gross": {
+     "value": "250000.00",
+     "status": "corrected",
+     "source": "HD-0006"
+    }
+   },
+   "blocking_reasons": [],
+   "derived_fields": {
+    "calculated_due_date": {
+     "field": "calculated_due_date",
+     "status": "not_computable",
+     "value": null,
+     "rule_id": "due-date-relative-term-v3",
+     "formula": null,
+     "inputs": {
+      "issue_date": null,
+      "receipt_date": null,
+      "term_text": null
+     },
+     "source_refs": {
+      "issue_date": null,
+      "receipt_date": null,
+      "payment_term": null
+     },
+     "limitations": [
+      "no explicit relative payment term found"
+     ]
+    }
+   },
+   "type_trust": "no_claim",
+   "doc_class": null,
+   "policy_disposed_fields": [
+    "issue_date",
+    "seller_name"
+   ],
+   "tier1_policy_disposed_fields": []
+  },
+  "003cc91637994b7d9566ac41": {
+   "status": "ready_for_approval",
+   "fields": {
+    "buyer_name": {
+     "value": null,
+     "status": "confirmed_absent",
+     "source": "HD-0010"
+    },
+    "due_date": {
+     "value": null,
+     "status": "confirmed_absent",
+     "source": "HD-0011"
+    },
+    "seller_vat_id": {
+     "value": null,
+     "status": "confirmed_absent",
+     "source": "HD-0013"
+    },
+    "total_net": {
+     "value": null,
+     "status": "confirmed_absent",
+     "source": "HD-0027"
+    },
+    "total_vat": {
+     "value": null,
+     "status": "confirmed_absent",
+     "source": "HD-0016"
+    },
+    "invoice_number": {
+     "value": null,
+     "status": "confirmed_absent",
+     "source": "HD-0012"
+    },
+    "amount_due": {
+     "value": "$119,517.21",
+     "status": "accepted",
+     "source": "HD-0009"
+    },
+    "issue_date": {
+     "value": "September 24, 1999",
+     "status": "unreviewed_corroborated",
+     "source": "policy:HAR-0001"
+    },
+    "seller_name": {
+     "value": "POWELL, GOLDSTEIN, FRAZER @ MURPHY LLP",
+     "status": "unreviewed_corroborated",
+     "source": "policy:HAR-0001"
+    },
+    "total_gross": {
+     "value": "$119,517.21",
+     "status": "accepted",
+     "source": "HD-0014"
+    }
+   },
+   "blocking_reasons": [],
+   "derived_fields": {
+    "calculated_due_date": {
+     "field": "calculated_due_date",
+     "status": "not_computable",
+     "value": null,
+     "rule_id": "due-date-relative-term-v3",
+     "formula": null,
+     "inputs": {
+      "issue_date": null,
+      "receipt_date": null,
+      "term_text": null
+     },
+     "source_refs": {
+      "issue_date": null,
+      "receipt_date": null,
+      "payment_term": null
+     },
+     "limitations": [
+      "no explicit relative payment term found"
+     ]
+    }
+   },
+   "type_trust": "no_claim",
+   "doc_class": null,
+   "policy_disposed_fields": [
+    "issue_date",
+    "seller_name"
+   ],
+   "tier1_policy_disposed_fields": []
+  },
+  "046e0c4924044de09f6d9e7b": {
+   "status": "ready_for_approval_with_caveats",
+   "fields": {
+    "amount_due": {
+     "value": "$120.00",
+     "status": "corrected",
+     "source": "HD-0017"
+    },
+    "buyer_name": {
+     "value": "SHIYA IFA",
+     "status": "corrected",
+     "source": "HD-0018"
+    },
+    "due_date": {
+     "value": null,
+     "status": "confirmed_absent",
+     "source": "HD-0019"
+    },
+    "invoice_number": {
+     "value": "494804",
+     "status": "corrected",
+     "source": "HD-0020"
+    },
+    "issue_date": {
+     "value": "07/31/18",
+     "status": "corrected",
+     "source": "HD-0021"
+    },
+    "seller_name": {
+     "value": "CUMULUS MUSKEGON",
+     "status": "corrected",
+     "source": "HD-0022"
+    },
+    "seller_vat_id": {
+     "value": null,
+     "status": "confirmed_absent",
+     "source": "HD-0023"
+    },
+    "total_gross": {
+     "value": null,
+     "status": "confirmed_absent",
+     "source": "HD-0028"
+    },
+    "total_net": {
+     "value": null,
+     "status": "confirmed_absent",
+     "source": "HD-0029"
+    },
+    "total_vat": {
+     "value": null,
+     "status": "confirmed_absent",
+     "source": "HD-0026"
+    }
+   },
+   "blocking_reasons": [],
+   "derived_fields": {
+    "calculated_due_date": {
+     "field": "calculated_due_date",
+     "status": "not_computable",
+     "value": null,
+     "rule_id": "due-date-relative-term-v3",
+     "formula": null,
+     "inputs": {
+      "issue_date": null,
+      "receipt_date": null,
+      "term_text": null
+     },
+     "source_refs": {
+      "issue_date": null,
+      "receipt_date": null,
+      "payment_term": null
+     },
+     "limitations": [
+      "independent OCR unavailable"
+     ]
+    }
+   },
+   "type_trust": "no_claim",
+   "doc_class": null,
+   "release_caveats": [
+    "independent_ocr"
+   ],
+   "policy_disposed_fields": [],
+   "tier1_policy_disposed_fields": []
+  }
+ },
+ "summary": {
+  "docs": 3,
+  "by_status": {
+   "ready_for_approval": 2,
+   "ready_for_approval_with_caveats": 1
+  },
+  "slots": 30,
+  "decision_load_for_release": 0.8666666666666667,
+  "policy_disposed_slots": 4,
+  "documents_awaiting_approval": 3,
+  "documents_approved_for_export": 0,
+  "fields_in_human_queue_histogram": {
+   "6": 2,
+   "10": 1
+  },
+  "median_fields_in_human_queue": 6,
+  "mean_fields_in_human_queue": 7.333333333333333
+ },
+ "note": "harness_id 是产生本次路由的策略;冻结账本由 review_snapshot_id 绑定,不在此重记。纯投影:最终值只来自 field_ledger 与裁决账本(support_matrix 不参与取值);unreviewed_corroborated = 多方印证但未逐个人看的 TIER2 槽,由 harness 处置,source 指回该策略;残余风险见 panel 校准限定;字段级人工队列用 in_human_queue(不含 auto_absent),勿把文档级 pending 当成「机器一点忙没帮上」。**只有 approved_for_export 可以外发**:ready_for_approval 是自动化能到的终点,机器不批准单据。decision_load_for_release = 非策略处置槽占比,与本文件的 fields 状态同源复算"
+}

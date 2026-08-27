@@ -1,0 +1,7 @@
+{
+ "auth": "gcloud short-lived OAuth access token (in-memory)",
+ "vertexai": true,
+ "endpoint_family": "aiplatform.googleapis.com",
+ "project": "gen-lang-client-0330946425",
+ "location": "global"
+}
