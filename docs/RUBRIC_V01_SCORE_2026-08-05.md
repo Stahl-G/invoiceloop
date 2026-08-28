@@ -140,7 +140,7 @@ Round proxy: Overall (A+B+C) 23/30; Sponsor (D+E+F+G+H) 61/63; Submission 2/3.
   gap. The DocILE-caliber wording is correct — the official evaluator was not used, and it has
   never claimed an official benchmark score.
 
-**Pareto determination**: the rubric's first condition holds — at the same human budget,
+**Pareto determination**: the rubric's condition 1 holds — at the same human budget,
 silent error/recall are better; SEALED-1's preregistered paired CI has lower bound > 0 in the
 20–40% budget band (+23.8 / +22.2 / +28.4pp). The dominance relation does not hold (coverage
 58.6% vs confidence 91.6%), and the project does not claim it either. **The 11/20 cap is not
