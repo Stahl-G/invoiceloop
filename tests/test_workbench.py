@@ -756,7 +756,7 @@ class TestDecideFormRunBinding:
             body=urlencode(body).encode(),
             headers={"Content-Type": "application/x-www-form-urlencoded"})
         assert status == 400
-        assert "不许回落到 current" in text
+        assert "no falling back to current" in text
         assert _ledger(workspace, RUN) == []
         assert _ledger(workspace, "run-0002") == []
 
@@ -926,7 +926,7 @@ class TestImprovePage:
         status, _, text = _imp_post(
             server, "/improve/adk", {"run": RUN, "lang": "zh"})
         assert status == 400
-        assert "挖掘报告" in text
+        assert "no mining report yet" in text
         assert not (workspace / "improve" / "adk_loop_report.json").exists()
 
     def test_post_adk_projects_the_report(self, workspace, server, monkeypatch):
@@ -1854,7 +1854,7 @@ class TestImproveLoopPage:
         但没给类别就必须当场拒:不带类别的缺席规则对所有单据生效。"""
         status, _, body = self._adopt(server, c_doc_class="")
         assert status == 400
-        assert "哪一类单据" in body
+        assert "must name the document class" in body
 
     def test_adopt_refuses_a_cohort_with_no_features(self, workspace, server):
         status, _, _ = self._adopt(server, c_field="")
@@ -2180,15 +2180,15 @@ class TestComboErrorSpeaksInterfaceWords:
         assert "['confirm_absent']" not in text
 
     def test_core_error_text_is_untouched(self, workspace):
-        """API 调用方与日志看的那句话一个字不改。"""
+        """API 调用方与日志看的那句话一字不改(2026-08-28 起为英文)。"""
         with pytest.raises(ValueError) as exc:
             adjudicate.append_adjudication(
                 workspace / "runs" / RUN, claim_id=None, doc_id=DOC,
                 field="total_gross", decision="abstain", rationale="r",
                 adjudicator="a", decided_at="2026-08-08T00:00:00+00:00",
                 reason_code="CONFIRMED_ABSENT")
-        assert "reason_code CONFIRMED_ABSENT 只能搭配 ['confirm_absent']" \
-            in str(exc.value)
+        assert ("reason_code CONFIRMED_ABSENT may only combine with "
+                "['confirm_absent']") in str(exc.value)
 
 
 class TestFeedbackLabelsStateTheConsequence:

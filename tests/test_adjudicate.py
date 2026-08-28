@@ -125,7 +125,7 @@ class TestValidation:
 
     def test_blank_rationale_is_refused_without_writing(self, run_dir):
         for rationale in ("", " \t\n"):
-            with pytest.raises(ValueError, match="rationale.*改进循环"):
+            with pytest.raises(ValueError, match="rationale must not be empty.*improvement loop"):
                 _append(run_dir, rationale=rationale)
         assert not (run_dir / "adjudication_ledger.jsonl").exists(), \
             "校验失败不能留下裁决账本"
@@ -135,15 +135,15 @@ class TestValidation:
             _append(run_dir, decision="correct")
 
     def test_non_correct_forbids_corrected_value(self, run_dir):
-        with pytest.raises(ValueError, match="禁止携带"):
+        with pytest.raises(ValueError, match="must not carry corrected_value"):
             _append(run_dir, decision="accept", corrected_value="100.00")
 
     def test_unknown_field_is_refused(self, run_dir):
-        with pytest.raises(ValueError, match="受评字段"):
+        with pytest.raises(ValueError, match="not a scored field"):
             _append(run_dir, field="address")
 
     def test_doc_outside_run_is_refused(self, run_dir):
-        with pytest.raises(ValueError, match="文档集合"):
+        with pytest.raises(ValueError, match="run.s document set"):
             _append(run_dir, claim_id=None, doc_id="doc-b", decision="abstain")
 
     def test_empty_decided_at_is_refused(self, run_dir):
@@ -151,11 +151,11 @@ class TestValidation:
             _append(run_dir, decided_at=" ")
 
     def test_unknown_claim_id_is_refused(self, run_dir):
-        with pytest.raises(ValueError, match="不在已冻结账本"):
+        with pytest.raises(ValueError, match="not in the frozen ledger"):
             _append(run_dir, claim_id="FC-9999")
 
     def test_claim_doc_field_triple_must_match(self, run_dir):
-        with pytest.raises(ValueError, match="精确一致"):
+        with pytest.raises(ValueError, match="must match exactly"):
             _append(run_dir, claim_id="FC-0001", field="total_net")
 
 
@@ -175,7 +175,7 @@ class TestSupersession:
         assert len(slot["history"]) == 2 and not slot["conflict"]
 
     def test_supersedes_on_fresh_slot_is_refused(self, run_dir):
-        with pytest.raises(ValueError, match="必须为 null"):
+        with pytest.raises(ValueError, match="must be null"):
             _append(run_dir, supersedes_decision_id="HD-0001")
 
     def test_conflicted_chain_blocks_new_decisions(self, run_dir):
@@ -190,7 +190,7 @@ class TestSupersession:
                 "rationale": "r", "adjudicator": "y", "decided_at": DECIDED,
                 "supersedes_decision_id": None}))
         (run_dir / "adjudication_ledger.jsonl").write_text("\n".join(lines) + "\n")
-        with pytest.raises(ValueError, match="冲突"):
+        with pytest.raises(ValueError, match="chain conflict"):
             _append(run_dir, decision="abstain", rationale="r")
 
 
@@ -204,11 +204,11 @@ class TestRenderProjection:
         assert result["decision_recorded"] is True
         assert result["panel_refreshed"] is True
         html = (run_dir / "support_panel.html").read_text(encoding="utf-8")
-        assert "人工修正" in html and "21000.00" in html
+        assert "human-corrected" in html and "21000.00" in html
         assert "HD-0001" in html and "alice" in html
         assert "printed total 与独立 OCR 一致" in html
         assert "100.00" in html, "原 DWS 值必须留在原处,不许被修正值替换"
-        assert "已人工裁决" in html
+        assert "human-adjudicated" in html
 
     def test_render_failure_does_not_rollback_decision(self, run_dir, monkeypatch):
         import invoiceloop.panel
@@ -232,7 +232,7 @@ class TestRenderProjection:
         _append(run_dir, decision="abstain", rationale="吃不准")
         render_panel_from_run(run_dir)
         html = (run_dir / "support_panel.html").read_text(encoding="utf-8")
-        assert "人工弃权" in html and "review_snapshot_id=" in html
+        assert "human-abstained" in html and "review_snapshot_id=" in html
 
 
 class TestBundle:
@@ -466,7 +466,7 @@ class TestSnapshotConsistency:
     def test_append_blocks_when_run_artifacts_were_altered(self, run_dir):
         _append(run_dir)  # 第一条在一致状态下落盘
         (run_dir / "gate_report.json").write_text(json.dumps({"findings": [{"x": 1}]}))
-        with pytest.raises(ValueError, match="被改动过"):
+        with pytest.raises(ValueError, match="modified after the run"):
             _append(run_dir, claim_id=None, field="total_vat",
                     decision="abstain", rationale="r")
 
@@ -491,7 +491,7 @@ class TestOrphans:
         assert project_run(run_dir) == {}, "orphan 不进链,不许错投到这个 run 的槽位"
         _render(run_dir)
         html = (run_dir / "support_panel.html").read_text(encoding="utf-8")
-        assert "未投影" in html and "HD-0001" in html, "历史不藏:orphan 要显式标出"
+        assert "not projected" in html and "HD-0001" in html, "历史不藏:orphan 要显式标出"
 
 
 class TestUpstreamIntegrity:

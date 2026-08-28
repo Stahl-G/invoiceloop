@@ -25,15 +25,16 @@ def cmd_doctor() -> int:
 
         check("requests", True, True, requests.__version__)
     except ImportError:
-        check("requests", False, True, "缺:pip install requests(或 pip install .)")
+        check("requests", False, True, "missing: pip install requests (or pip install .)")
     for tool, why in (
-        ("pdftotext", "文字层独立 OCR 与 bbox 坐标(brew install poppler)"),
-        ("pdftoppm", "证据裁剪与整页渲染(同上)"),
-        ("pdfinfo", "裁剪坐标换算的页尺寸来源(同上)"),
+        ("pdftotext", "text-layer independent OCR and bbox coordinates (brew install poppler)"),
+        ("pdftoppm", "evidence crops and full-page rendering (same)"),
+        ("pdfinfo", "page dimensions for crop-coordinate math (same)"),
     ):
         check(f"poppler:{tool}", shutil.which(tool) is not None, True, why)
     check("tesseract", shutil.which("tesseract") is not None, False,
-          "扫描件退路(无文字层的 PDF);没有它,扫描件按宪章四阻断而不是静默跳过")
+          "fallback for scanned PDFs (no text layer); without it, scans block per "
+          "charter rule four instead of silently passing")
 
     # 凭证:只报有没有与来自哪里,**永不回显值**。全缺不阻断 ——
     # 产品路径的 demo 零 API,评委不需要任何 key 就能跑通
@@ -42,36 +43,38 @@ def cmd_doctor() -> int:
     env_info = env_status()
     creds = env_info["credentials"]
     check("credentials:.env", env_info["env_file"] is not None, False,
-          f"{env_info['env_file'] or '未找到项目 .env(cp .env.example .env)'}"
+          f"{env_info['env_file'] or 'no project .env found (cp .env.example .env)'}"
           + (f" mode={env_info['env_file_mode']}"
              if env_info["env_file_mode"] else ""))
     if env_info["env_file_mode"] and env_info["env_file_mode"] not in ("0o600", "0o400"):
-        check("credentials:.env 权限", False, False,
-              f"{env_info['env_file_mode']} —— 建议 chmod 600(不阻断)")
+        check("credentials:.env permissions", False, False,
+              f"{env_info['env_file_mode']} — chmod 600 recommended (non-blocking)")
     for purpose, why in (
-        ("dws", "DWS 抽取(ingest --do-extract / 工作台抽取)"),
-        ("nutrient", "签名封缄 invoiceloop seal(缺则回退 DWS_API_KEY)"),
-        ("anthropic", "读图 vision 与顾问层 suggest"),
-        ("gemini", "Gemini API 与 ADK Agent 编排层"),
+        ("dws", "DWS extraction (ingest --do-extract / workbench extraction)"),
+        ("nutrient", "countersigning for invoiceloop seal (falls back to DWS_API_KEY)"),
+        ("anthropic", "vision reading and the advisory suggest layer"),
+        ("gemini", "Gemini API and the ADK agent layer"),
     ):
         source = creds.get(purpose)
         check(f"credentials:{purpose}", source is not None, False,
-              f"{why} —— " + (f"已配置(来源:{source})" if source else "未配置"))
+              f"{why} — " + (f"configured (source: {source})" if source else "not configured"))
 
     try:
         import google.adk  # noqa: F401
         import google.genai  # noqa: F401
         check("optional:google-adk", True, False,
-              f"顾问层已装进 {sys.executable}")
+              f"advisory layer installed in {sys.executable}")
     except ImportError:
         check("optional:google-adk", False, False,
-              f"顾问层未装进 {sys.executable} —— 工作台改进页不会给出"
-              f"可点的 Gemini 按钮(不阻断产品路径)")
+              f"advisory layer not installed in {sys.executable} — the workbench "
+              f"improve page will not offer a clickable Gemini button (does not "
+              f"block the product path)")
 
     from .ocr import corpus_available, derisk_root
 
-    check("research:dws-derisk 存盘证据", corpus_available(), False,
-          f"{derisk_root()} —— heldout/校准复算/run --out 需要;产品路径(workspace)不需要")
+    check("research:dws-derisk stored evidence", corpus_available(), False,
+          f"{derisk_root()} — needed by heldout/calibration recompute/run --out; "
+          f"not needed by the product path (workspace)")
 
     report = {"ok": all(c["ok"] for c in checks if c["required"]), "checks": checks}
     print(json.dumps(report, ensure_ascii=False, indent=1))

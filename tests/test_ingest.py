@@ -118,7 +118,7 @@ class TestWorkspaceContract:
         paths = run([doc_id], ws / "output", include_vision=False,
                     out_of_calibration=True)
         panel = paths["panel"].read_text(encoding="utf-8")
-        assert "输入不在校准集内" in panel, "§12.3:非校准集输入必须声明"
+        assert "outside the calibration set" in panel, "§12.3:非校准集输入必须声明"
         ledger = json.loads(paths["ledger"].read_text())
         claims = {(c["doc_id"], c["field"]) for c in ledger["claims"]}
         assert (doc_id, "invoice_number") in claims, "INV-42 应当能绑进账本"

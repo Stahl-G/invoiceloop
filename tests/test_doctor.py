@@ -13,7 +13,7 @@ def test_report_shape_and_research_is_informational(capsys):
     report = json.loads(capsys.readouterr().out)
     assert report["ok"] is True
     by_name = {c["check"]: c for c in report["checks"]}
-    research = by_name["research:dws-derisk 存盘证据"]
+    research = by_name["research:dws-derisk stored evidence"]
     assert research["required"] is False, "研究数据永远不许阻断产品路径"
     adk = by_name["optional:google-adk"]
     assert adk["required"] is False, "顾问层 extra 不许阻断产品路径"

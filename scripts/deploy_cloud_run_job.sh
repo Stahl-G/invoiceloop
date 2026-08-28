@@ -15,7 +15,7 @@ JOB="${JOB:-invoiceloop-unattended}"
 BUCKET="${BUCKET:-invoiceloop-${PROJECT}-arm-u}"
 
 if [[ -z "${PROJECT}" || "${PROJECT}" == "(unset)" ]]; then
-  echo "需要 PROJECT=… 或 gcloud config set project" >&2
+  echo "PROJECT=... or gcloud config set project is required" >&2
   exit 1
 fi
 echo "job: project=${PROJECT} region=${REGION} job=${JOB} bucket=${BUCKET}"
@@ -34,7 +34,7 @@ gcloud storage buckets add-iam-policy-binding "gs://${BUCKET}" \
 gcloud projects add-iam-policy-binding "${PROJECT}" \
   --member="serviceAccount:${SA}" --role="roles/aiplatform.user" \
   --condition=None --quiet >/dev/null || \
-  echo "warn: aiplatform.user 授予失败 —— 若 SA 已有权限可忽略,否则 Job 内模型调用会 403" >&2
+  echo "warn: failed to grant aiplatform.user — ignore if the SA already has it, otherwise model calls inside the Job will 403" >&2
 
 # jobs create 不认 --source(service deploy 的旗标):先 Cloud Build 打镜像进
 # 既有 cloud-run-source-deploy 仓库(2026-08-07 只读服务部署时自动建过),再 --image 建 Job。
@@ -71,4 +71,4 @@ gcloud logging read "resource.type=cloud_run_job AND resource.labels.job_name=${
   --project="${PROJECT}" --limit=200 --format='value(textPayload)' > "${EV}/execution_log.txt" || true
 gcloud storage ls "gs://${BUCKET}/arm-u-runs/**" > "${EV}/gcs_listing.txt" || true
 
-echo "job: evidence under ${EV}/ —— 核对 execution.json 的 succeeded 条数与 gcs_listing 的工件"
+echo "job: evidence under ${EV}/ — check execution.json succeeded counts against the gcs_listing artifacts"

@@ -172,6 +172,23 @@ def _run(run_dir, **kw):
         **kw)
 
 
+class TestExitSemantics:
+    def test_policy_refusals_are_not_execution_failures(self):
+        """approval_refusals 是业务结果;只有 *_failures/drive_fatal 才算失败
+        (Cloud Run Job 的退出码据此区分「没批」与「没跑」)。"""
+        from invoiceloop.agents.unattended import failed
+
+        assert failed({"approval_refusals": [{"doc_id": "x"}]}) is False
+
+    def test_any_failure_field_fails_the_run(self):
+        from invoiceloop.agents.unattended import _FAILURE_FIELDS, failed
+
+        for field in _FAILURE_FIELDS:
+            assert failed({field: [{"slot": "x"}]}) is True, field
+            assert failed({field: "boom"}) is True, field
+        assert failed({}) is False
+
+
 class TestThePipelineRuns:
     def test_all_seven_stages_executed_under_a_real_runner(self, run_dir):
         report = _run(run_dir)

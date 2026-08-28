@@ -189,5 +189,5 @@ class TestPipelineIntegration:
         flagged = [r for r in matrix["rows"] if r["field"] == "invoice_number"]
         assert all(r["requires_adjudication"] for r in flagged)
         panel = (out / "support_panel.html").read_text()
-        assert "跨文档查重" in panel and "同号不同内容" in panel, \
+        assert "Cross-document duplicate check" in panel and "same number, different content" in panel, \
             "panel 必须有并排对照一节 —— 人要看的就是这两份摆在一起"

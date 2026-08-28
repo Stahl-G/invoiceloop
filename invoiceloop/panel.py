@@ -21,44 +21,53 @@ import json
 from pathlib import Path
 
 _STRENGTH_LABEL = {
-    "unsupported": "无支持",
-    "single_source": "单一来源",
-    "corroborated": "多方印证",
+    "unsupported": "unsupported",
+    "single_source": "single source",
+    "corroborated": "corroborated",
 }
 _TIER_LABEL = {
-    "dws_extraction": "DWS 抽取",
-    "independent_ocr": "独立 OCR",
-    "vision_reading": "整页读图",
-    "arithmetic": "算术恒等",
+    "dws_extraction": "DWS extraction",
+    "independent_ocr": "independent OCR",
+    "vision_reading": "full-page vision",
+    "arithmetic": "arithmetic identity",
 }
-_VERDICT_LABEL = {"pass": "过", "warning": "警", "fail": "拒", "unavailable": "—"}
+_VERDICT_LABEL = {"pass": "pass", "warning": "warn", "fail": "fail", "unavailable": "—"}
 _DECISION_LABEL = {
-    "accept": "人工接受",
-    "reject": "人工拒绝",
-    "correct": "人工修正",
-    "abstain": "人工弃权",
+    "accept": "human-accepted",
+    "reject": "human-rejected",
+    "correct": "human-corrected",
+    "abstain": "human-abstained",
 }
 _GATE_SHORT = {
-    "arithmetic_consistency": "算术",
-    "field_wellformed": "形态",
-    "extraction_present": "在场",
-    "citation_holds": "引用",
-    "cross_mode_agreement": "双模式",
-    "visual_corroboration": "读图",
+    "arithmetic_consistency": "arith",
+    "field_wellformed": "form",
+    "extraction_present": "present",
+    "citation_holds": "citation",
+    "cross_mode_agreement": "dual-mode",
+    "visual_corroboration": "vision",
 }
 
 _QUALIFIERS = [
-    "门禁是看过第一轮数据之后设计的(THRESHOLDS.md §6c B-4 自陈),带乐观偏差;"
-    "留出集确认已于 2026-08-02 执行(100 份,判据预注册,H1–H6 全过,lift 3.04×),详见 docs/HELDOUT.md。",
-    "DocILE 标注本身有争议 —— 第四轮逐份读图,14 例中 8 例是标注错。",
-    "校准集全为美国广播广告发票;留出集在 DocILE 全类型内复现了分诊集中度,DocILE 之外的表现仍未知。",
+    "The gates were designed after seeing round-one data (self-declared in "
+    "THRESHOLDS.md §6c B-4), an optimistic bias; held-out confirmation ran "
+    "2026-08-02 (100 documents, pre-registered criteria, H1–H6 all passed, "
+    "lift 3.04×) — see docs/HELDOUT.md.",
+    "DocILE annotations are themselves disputed — round-four per-document "
+    "vision reading found 8 of 14 cases were annotation errors.",
+    "The calibration set is all US broadcast-advertising invoices; the held-out "
+    "set reproduced triage concentration across DocILE types, but behavior "
+    "outside DocILE remains unknown.",
 ]
 
 _NON_CLAIMS = [
-    "不主张 DWS 可信,不主张抽取质量提升 —— 六轮预注册实验说的恰恰相反。",
-    "不主张语义正确性 —— 输出是支持矩阵,不是「这个值是对的」。",
-    "不主张可无人值守 —— 无支持项按设计就要人看。",
-    "不主张适用于生产 —— 160 份、英文、单一供应商、单一时间点。",
+    "No claim that DWS is trustworthy or that extraction quality improved — six "
+    "pre-registered rounds say the opposite.",
+    "No claim of semantic correctness — the output is a support matrix, not "
+    "a verdict that any value is right.",
+    "No claim of unattended operation — unsupported rows are designed to be "
+    "seen by a human.",
+    "No claim of production readiness — 160 documents, English, one vendor, "
+    "one point in time.",
 ]
 
 
@@ -70,7 +79,7 @@ def _chips(verdicts: dict) -> str:
     from .gateinfo import tooltip
 
     return "".join(
-        f'<span class="gate {v}" title="{_esc(tooltip(g, v, "zh"))}">{_esc(_GATE_SHORT.get(g, g))}:{_VERDICT_LABEL.get(v, v)}</span>'
+        f'<span class="gate {v}" title="{_esc(tooltip(g, v, "en"))}">{_esc(_GATE_SHORT.get(g, g))}:{_VERDICT_LABEL.get(v, v)}</span>'
         for g, v in sorted(verdicts.items())
     )
 
@@ -83,7 +92,7 @@ def _span_html(span: dict, run_dir: Path) -> str:
                 f'alt="{_esc(span["span_id"])}"></a>')
     return (
         f'<div class="span">{crop}<div class="span-meta">'
-        f'<b>{_esc(span["span_id"])}</b> p{span["page"]} · 标签:<i>{_esc(span["printed_label"])}</i><br>'
+        f'<b>{_esc(span["span_id"])}</b> p{span["page"]} · label: <i>{_esc(span["printed_label"])}</i><br>'
         f'<span class="ocr">OCR: {_esc(span["ocr_text"][:160])}</span></div></div>'
     )
 
@@ -97,31 +106,32 @@ def _overlay_html(slot: dict | None) -> str:
     if not slot:
         return ""
     if slot["conflict"]:
-        return ('<div class="human conflict"><b>裁决链冲突:</b>'
-                '多条 tip —— 先人工整理 adjudication_ledger.jsonl,系统不猜哪条算数</div>')
+        return ('<div class="human conflict"><b>Adjudication chain conflict:</b> '
+                'multiple tips — fix adjudication_ledger.jsonl by hand; the system '
+                'will not guess which one counts</div>')
     tip = slot["tip"]
     # label 也要转义:v1/手编账本的 decision 字段没经过枚举校验,不能信
     label = _esc(_DECISION_LABEL.get(tip["decision"], tip["decision"]))
     corrected = (f' → “{_esc(tip["corrected_value"])}”'
                  if tip["decision"] == "correct" else "")
-    supersedes = (f' · 取代 {_esc(tip["supersedes_decision_id"])}'
+    supersedes = (f' · supersedes {_esc(tip["supersedes_decision_id"])}'
                   if tip.get("supersedes_decision_id") else "")
-    legacy = ' · <span title="v1 格式,加载时确定性串链">v1 条目</span>' if tip.get("legacy") else ""
+    legacy = ' · <span title="v1 format, chained deterministically at load">v1 entry</span>' if tip.get("legacy") else ""
     n = len(slot["history"])
-    history = f' · <a href="adjudication_ledger.jsonl">历史 {n} 条</a>' if n > 1 else ""
+    history = f' · <a href="adjudication_ledger.jsonl">{n} in history</a>' if n > 1 else ""
     return (f'<div class="human"><b>{label}{corrected}</b>'
             f'({_esc(tip["decision_id"])} · {_esc(tip["adjudicator"])} · '
             f'{_esc(tip["decided_at"])}{supersedes}{legacy})<br>'
-            f'<i>理由:{_esc(tip["rationale"])}</i>{history}</div>')
+            f'<i>rationale: {_esc(tip["rationale"])}</i>{history}</div>')
 
 
 def _row_html(row: dict, spans_by_id: dict, run_dir: Path, overlay: dict | None = None) -> str:
     strength = row["support_strength"]
     tiers = " ".join(
         f'<span class="tier">{_esc(_TIER_LABEL.get(t, t))}</span>' for t in row["source_tiers"]
-    ) or '<span class="tier none">无</span>'
+    ) or '<span class="tier none">none</span>'
     applicability = (
-        '<span class="disputed">口径争议</span>'
+        '<span class="disputed">convention dispute</span>'
         if row["applicability"] == "label_convention_disputed" else ""
     )
     limitations = "".join(f"<li>{_esc(x)}</li>" for x in row["limitations"])
@@ -130,11 +140,11 @@ def _row_html(row: dict, spans_by_id: dict, run_dir: Path, overlay: dict | None 
     cited = [spans_by_id[s] for s in row.get("cited_span_ids", []) if s in spans_by_id]
     cited_only = [s for s in cited if s["span_id"] not in set(row["span_ids"])]
     if containing:
-        evidence.append('<div class="evlabel">值落在这里(印证):</div>')
+        evidence.append('<div class="evlabel">value falls here (corroboration):</div>')
         evidence.extend(_span_html(s, run_dir) for s in containing)
     if cited_only:
         # 被拒/未落在引用区的行:这里才是复核者裁决"值到底在不在页上"的依据
-        evidence.append('<div class="evlabel">DWS 指向这里(复核用):</div>')
+        evidence.append('<div class="evlabel">DWS points here (for review):</div>')
         evidence.extend(_span_html(s, run_dir) for s in cited_only)
     if not containing and not cited_only:
         # 没有任何引用(DWS 没返回值时总是如此)—— 复核者需要整页自己找
@@ -144,7 +154,7 @@ def _row_html(row: dict, spans_by_id: dict, run_dir: Path, overlay: dict | None 
             links = " ".join(
                 f'<a href="pages/{p.name}" target="_blank">p{i + 1}</a>'
                 for i, p in enumerate(pages))
-            evidence.append(f'<div class="evlabel">无引用区,看整页:{links}</div>')
+            evidence.append(f'<div class="evlabel">no cited region — see the full page: {links}</div>')
     rejected = ""
     if row["rejections"]:
         items = "".join(
@@ -153,15 +163,15 @@ def _row_html(row: dict, spans_by_id: dict, run_dir: Path, overlay: dict | None 
             + "</li>"
             for r in row["rejections"]
         )
-        rejected = f'<div class="rejected"><b>冻结时被拒:</b><ul>{items}</ul></div>'
+        rejected = f'<div class="rejected"><b>rejected at freeze:</b><ul>{items}</ul></div>'
     blocking = ""
     if row["blocking_findings"]:
-        blocking = f'<div class="blocking">阻断发现: {_esc(", ".join(row["blocking_findings"]))}</div>'
+        blocking = f'<div class="blocking">blocking findings: {_esc(", ".join(row["blocking_findings"]))}</div>'
     human = _overlay_html(overlay)
     return f"""<tr class="row {strength}">
 <td class="doc" title="{_esc(row['doc_id'])}">{_esc(row['doc_id'][:8])}</td>
 <td class="field">{_esc(row['field'])}</td>
-<td class="value">{_esc(row['value'])}{' <span class="novalue">(无值)</span>' if row['value'] in (None, '') else ''}</td>
+<td class="value">{_esc(row['value'])}{' <span class="novalue">(no value)</span>' if row['value'] in (None, '') else ''}</td>
 <td><span class="badge {strength}">{_STRENGTH_LABEL[strength]}</span>{applicability}</td>
 <td>{tiers}</td>
 <td class="gates">{_chips(row['gate_verdicts'])}</td>
@@ -198,13 +208,13 @@ def render_panel(
     slots = project(decisions)
     # 账本自报的 sha256 必须自己重算比对 —— 只打印文件里写着的哈希,
     # 等于让被改过的账本自己证明自己没改过(评审 P1)
-    ledger_check = "与声明一致"
+    ledger_check = "matches the declared digest"
     recomputed = hashlib.sha256(
         json.dumps({"claims": ledger["claims"]}, sort_keys=True,
                    ensure_ascii=False).encode()
     ).hexdigest()
     if recomputed != ledger["sha256"]:
-        ledger_check = "⚠ 与文件自报不符 —— 账本被改过"
+        ledger_check = "⚠ does not match the declared digest — the ledger was modified"
     orphans = [e for e in decisions if e.get("orphan")]
     rows_html = "\n".join(
         _row_html(r, spans_by_id, run_dir,
@@ -232,7 +242,7 @@ def render_panel(
     dup_groups = duplicate_groups(ledger["claims"])
     dup_section = ""
     if dup_groups:
-        kind_label = {"content_conflict": "同号不同内容", "resubmission": "疑似重复提交"}
+        kind_label = {"content_conflict": "same number, different content", "resubmission": "suspected resubmission"}
         group_html = ""
         for g in dup_groups:
             rows_g = "".join(
@@ -243,40 +253,46 @@ def render_panel(
             )
             group_html += (
                 f"<table><tr><th colspan='5' style='text-align:left'>"
-                f"{_esc(kind_label[g['kind']])} —— 发票号 {_esc(g['invoice_number'])}"
+                f"{_esc(kind_label[g['kind']])} — invoice number {_esc(g['invoice_number'])}"
                 f"</th></tr>"
-                f"<tr><th>文档</th><th>票号</th><th>卖家</th><th>总额</th><th>开票日期</th></tr>"
+                f"<tr><th>document</th><th>number</th><th>seller</th><th>gross</th><th>issue date</th></tr>"
                 f"{rows_g}</table>"
             )
         dup_section = (
-            f"<h2>跨文档查重({len(dup_groups)} 组)</h2>"
-            "<p>同号同卖家的发票出现在本批文档集里。这不是判决 —— 内容冲突与"
-            "重复提交都必须人把两份并排看;已记入复核队列,不进错误率。</p>"
+            f"<h2>Cross-document duplicate check ({len(dup_groups)} groups)</h2>"
+            "<p>Invoices sharing a number and seller appear in this document set. "
+            "This is not a verdict — content conflicts and resubmissions both "
+            "require a human to view the two side by side; they are already in "
+            "the review queue and enter no error rate.</p>"
             f"{group_html}"
         )
     qualifiers = "".join(f"<li>{_esc(q)}</li>" for q in _QUALIFIERS)
     non_claims = "".join(f"<li>{_esc(c)}</li>" for c in _NON_CLAIMS)
-    decided_stat = (f'<div class="stat"><b>{len(decisions)}</b>已人工裁决'
-                    f'(current state 按 supersession 链)</div>' if decisions else "")
+    decided_stat = (f'<div class="stat"><b>{len(decisions)}</b>human-adjudicated '
+                    f'(current state by supersession chain)</div>' if decisions else "")
     orphan_banner = ""
     if orphans:
-        shown = "、".join(_esc(e["decision_id"]) for e in orphans[:8])
+        shown = ", ".join(_esc(e["decision_id"]) for e in orphans[:8])
         orphan_banner = (
-            f'<div class="caveats"><b>⚠ {len(orphans)} 条裁决绑定到其他 review_snapshot'
-            f'({shown}),未投影到本 panel。</b>它们仍在 adjudication_ledger.jsonl 里 —— '
-            f'典型来源是从另一个 run 复制了账本。历史不藏,但也不许错投到这个 run 的槽位上。</div>'
+            f'<div class="caveats"><b>⚠ {len(orphans)} adjudications are bound to a '
+            f'different review_snapshot ({shown}) and are not projected onto this '
+            f'panel.</b> They remain in adjudication_ledger.jsonl — typically a '
+            f'ledger copied from another run. History is not hidden, but it may not '
+            f'be misattributed onto the slots of this run.</div>'
         )
     ooc_banner = (
-        '<div class="caveats"><b>输入不在校准集内(§12 输入契约)。</b>'
-        "这些文档未参与任何校准与留出验证:panel 上的校准数字(4.2×、78%)"
-        "不直接适用于它们(§8 限定三)。逐文档的机械核对 —— 绑定、门禁、"
-        "冻结、裁决 —— 不需要校准,照常成立。</div>"
+        '<div class="caveats"><b>Input is outside the calibration set (§12 input '
+        'contract).</b> These documents took part in no calibration or held-out '
+        'validation: the calibration figures on this panel (4.2×, 78%) do not '
+        'directly apply to them (§8 qualifier three). The per-document mechanical '
+        'checks — binding, gates, freezing, adjudication — need no calibration '
+        'and hold as usual.</div>'
         if out_of_calibration else ""
     )
 
     page = f"""<!DOCTYPE html>
-<html lang="zh"><head><meta charset="utf-8">
-<title>InvoiceLoop 支持矩阵</title><style>
+<html lang="en"><head><meta charset="utf-8">
+<title>InvoiceLoop support matrix</title><style>
 :root {{ --bad:#b3261e; --warn:#8f5b00; --ok:#1a6b3c; --mute:#666; --line:#ddd; }}
 body {{ font: 14px/1.5 -apple-system, "PingFang SC", sans-serif; margin: 2rem auto; max-width: 1440px; color:#222; }}
 h1 {{ font-size: 1.5rem; }} h2 {{ margin-top: 2.2rem; border-bottom: 2px solid #444; padding-bottom:.2rem; }}
@@ -312,63 +328,69 @@ tr.blk td {{ background:#fdecea; }}
 .novalue {{ color:var(--mute); }}
 .footer {{ margin-top:2rem; font-size:.8em; color:var(--mute); border-top:1px solid var(--line); padding-top:.6rem; word-break:break-all; }}
 </style></head><body>
-<h1>InvoiceLoop —— 支持矩阵</h1>
-<div class="thesis"><b>抽取的正确性不可信,支持关系可验证。</b><br>
-本 panel 交付的是每个字段可机械验证的支持关系:证据片段、来源层级、六个门禁裁决、
-以及哪里说不准。它<b>不</b>说「这个值是对的」。复核队列按支持强度升序 ——
-排在最前的就是系统明确表示自己不知道、或证据互相打架的地方。</div>
+<h1>InvoiceLoop — support matrix</h1>
+<div class="thesis"><b>Extraction correctness is untrustworthy; support is verifiable.</b><br>
+This panel delivers a mechanically verifiable support relation for every field: evidence
+spans, source tiers, six deterministic gate verdicts, and where the system cannot say.
+It does <b>not</b> say "this value is right". The review queue is sorted by ascending
+support strength — the top rows are exactly where the system says it does not know,
+or where the evidence disagrees with itself.</div>
 {ooc_banner}
 {orphan_banner}
 
-<h2>这是什么、不主张什么</h2>
+<h2>What this is, and what it does not claim</h2>
 <ul>{non_claims}</ul>
 
-<h2>总览(全部可从存盘证据重算)</h2>
+<h2>Overview (every number recomputes from stored evidence)</h2>
 <div class="grid">
-<div class="stat"><b>{s['docs']}</b>文档</div>
-<div class="stat"><b>{s['slots']}</b>字段槽</div>
-<div class="stat"><b style="color:var(--bad)">{s['by_strength']['unsupported']}</b>无支持</div>
-<div class="stat"><b style="color:var(--warn)">{s['by_strength']['single_source']}</b>单一来源</div>
-<div class="stat"><b style="color:var(--ok)">{s['by_strength']['corroborated']}</b>多方印证</div>
-<div class="stat"><b>{s.get('human_queue', s['requires_adjudication'])}</b>待人工</div>
-<div class="stat"><b>{s.get('machine_decided', '—')}</b>机器已定</div>
-<div class="stat"><b>{s.get('machine_absent', '—')}</b>政策确认缺席</div>
-<div class="stat"><b>{s['applicability_disputed']}</b>口径争议(不进错误率)</div>
-<div class="stat"><b>{s['blocking_findings']}</b>阻断发现</div>
-<div class="stat"><b>{s['drafts_rejected']}</b>草稿被冻结事务拒绝</div>
+<div class="stat"><b>{s['docs']}</b>documents</div>
+<div class="stat"><b>{s['slots']}</b>field slots</div>
+<div class="stat"><b style="color:var(--bad)">{s['by_strength']['unsupported']}</b>unsupported</div>
+<div class="stat"><b style="color:var(--warn)">{s['by_strength']['single_source']}</b>single source</div>
+<div class="stat"><b style="color:var(--ok)">{s['by_strength']['corroborated']}</b>corroborated</div>
+<div class="stat"><b>{s.get('human_queue', s['requires_adjudication'])}</b>awaiting human</div>
+<div class="stat"><b>{s.get('machine_decided', '—')}</b>machine-decided</div>
+<div class="stat"><b>{s.get('machine_absent', '—')}</b>policy-confirmed absent</div>
+<div class="stat"><b>{s['applicability_disputed']}</b>convention disputes (outside any error rate)</div>
+<div class="stat"><b>{s['blocking_findings']}</b>blocking findings</div>
+<div class="stat"><b>{s['drafts_rejected']}</b>drafts rejected at freeze</div>
 {decided_stat}
 </div>
-<p>分诊排序的校准证据(每个数字都可重算):六轮校准(dws-derisk,R-D 路由投影)
-偏差率 50.0% vs 11.8%,集中度 4.2×;本仓投影在 160 份预注册校准文档上复测
-<b>4.10×</b>(test_triage_concentration.py 钉死),100 份留出集复测 <b>3.04×</b>
-(docs/HELDOUT.md,预注册线 1.5×)—— 看 46% 的字段覆盖 78% 的偏差。
-分诊不要求任何一档「可信」,只要求排序优于随机。</p>
+<p>Calibration evidence for the triage ordering (every number recomputes):
+six calibration rounds (dws-derisk, R-D routing projection) measured deviation
+rates of 50.0% vs 11.8% with a concentration of 4.2×; this repository's
+projection re-measured <b>4.10×</b> on 160 pre-registered calibration documents
+(pinned by test_triage_concentration.py), and <b>3.04×</b> on a 100-document
+held-out set (docs/HELDOUT.md, pre-registered floor 1.5×) — reviewing 46% of
+fields covers 78% of the deviation. Triage does not require any tier to be
+"trustworthy"; it only requires the ordering to beat random.</p>
 
-<h2>校准的三条限定(ARCHITECTURE.md §8,宪章六要求同屏展示)</h2>
+<h2>The three calibration qualifiers (ARCHITECTURE.md §8; charter rule six requires them on screen)</h2>
 <div class="caveats"><ol>{qualifiers}</ol></div>
 
-<h2>冻结事务拦下的草稿(按来源)</h2>
-<table><tr><th>来源</th><th>拒绝数</th></tr>{rejected_rows}</table>
-<p style="font-size:.85em;color:var(--mute)">拒绝理由都是文档级绑定:值不在该发票的独立 OCR 里
-(token 匹配 &lt;80%)。GPT 5.6 SOL 那 118 行是第六轮真实错位事故 —— 当时靠事后 OCR 考古发现,
-现在当场被拒。</p>
+<h2>Drafts stopped by the freeze transaction (by drafter)</h2>
+<table><tr><th>drafter</th><th>rejected</th></tr>{rejected_rows}</table>
+<p style="font-size:.85em;color:var(--mute)">Every rejection reason is document-level
+binding: the value is absent from that invoice's independent OCR (token match
+&lt;80%). The 118 GPT 5.6 SOL rows are the round-six real misbinding incident —
+discovered by after-the-fact OCR archaeology then, rejected on the spot now.</p>
 
 {dup_section}
 
-<h2>复核队列(支持强度升序 = 先看最上面的)</h2>
-<table><thead><tr><th>doc</th><th>字段</th><th>值</th><th>支持强度</th><th>来源层级</th><th>门禁</th><th>证据与限制</th></tr></thead>
+<h2>Review queue (ascending support strength = look at the top first)</h2>
+<table><thead><tr><th>doc</th><th>field</th><th>value</th><th>support</th><th>source tiers</th><th>gates</th><th>evidence &amp; limitations</th></tr></thead>
 <tbody>{rows_html}</tbody></table>
 
-<h2>门禁发现({len(findings)} 条,其中阻断 {len(blocking)} 条)</h2>
-<table><thead><tr><th>ID</th><th>门禁</th><th>doc</th><th>字段</th><th>严重度</th><th>修复路由</th><th>建议</th></tr></thead>
+<h2>Gate findings ({len(findings)} total, {len(blocking)} blocking)</h2>
+<table><thead><tr><th>ID</th><th>gate</th><th>doc</th><th>field</th><th>severity</th><th>repair route</th><th>recommendation</th></tr></thead>
 <tbody>{findings_html}</tbody></table>
 
 <div class="footer">
-输入签名(§5.3):artifact_digest={artifact_digest}<br>
-field_ledger sha256={ledger['sha256']}({ledger_check})<br>
-review_snapshot_id={snapshot_id}(人工裁决绑定的完整快照,不只是账本)<br>
-渲染时裁决账本 {len(decisions)} 条 —— 此数与账本文件行数不符的话,panel 是旧的,跑 render 重建<br>
-本 panel 由 Python 从冻结工件渲染;上面每个数字都可用同一份存盘证据零 API 重算。
+Input signature (§5.3): artifact_digest={artifact_digest}<br>
+field_ledger sha256={ledger['sha256']} ({ledger_check})<br>
+review_snapshot_id={snapshot_id} (the full snapshot human adjudications bind to, not just the ledger)<br>
+Adjudication ledger had {len(decisions)} entries at render time — if this differs from the file's line count, the panel is stale; run render to rebuild<br>
+This panel was rendered by Python from frozen artifacts; every number on it recomputes from the same stored evidence with zero API calls.
 </div>
 </body></html>"""
     out = run_dir / "support_panel.html"

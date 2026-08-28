@@ -95,6 +95,22 @@ def critic_reason_code(decision: str) -> str:
     }[decision]
 
 
+#: 执行失败字段:任一非空 → CLI 退出码 1(Cloud Run Job 据此报失败)。
+#: **approval_refusals 不在其中** —— 策略/approver 拒绝是正常业务结果,
+#: 不是执行失败;"没批"永远不许被当成"没跑"。
+_FAILURE_FIELDS = (
+    "drive_fatal", "gate_error", "deliverable_error",
+    "clerk_failures", "clerk_binding_failures",
+    "critic_failures", "critic_binding_failures",
+    "approver_failures",
+)
+
+
+def failed(report: dict) -> bool:
+    """unattended_run 报告里有没有执行失败(宪章四:跑不了 ≠ 通过)。"""
+    return any(report.get(field) for field in _FAILURE_FIELDS)
+
+
 def build_unattended_pipeline(
     run_dir: Path,
     *,

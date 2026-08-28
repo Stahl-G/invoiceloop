@@ -242,17 +242,18 @@ def run_gates(
         if doc_id in ocr_blocked:
             acc.add(Finding(
                 "independent_ocr", doc_id, None, "high", "blocking",
-                "human", "独立 OCR 缺失/不可读 —— 绑定与引用机检跑不了,"
-                "这份文档全靠人工复核(宪章四)",
-                f"ocr:{doc_id}", "独立 OCR 不可用",
+                "human", "independent OCR missing/unreadable — binding and "
+                "citation machine-checks cannot run; this document is entirely "
+                "on human review (charter rule four)",
+                f"ocr:{doc_id}", "independent OCR unavailable",
             ))
 
         # ---- 响应缺失:不是"所有字段失败",是门禁基础设施跑不了 —— 文档级阻断
         if u is None:
             acc.add(Finding(
                 "extraction_present", doc_id, None, "high", "blocking",
-                "re_extract", "understand 响应缺失或 HTTP 非 200,重跑抽取",
-                f"raw/{doc_id}.understand.json", "DWS understand 响应不可用",
+                "re_extract", "understand response missing or HTTP != 200; re-run extraction",
+                f"raw/{doc_id}.understand.json", "DWS understand response unavailable",
             ))
             for f in FIELDS:
                 per_field[f] = {g: UNAVAILABLE for g in GATE_IDS}
@@ -291,7 +292,7 @@ def run_gates(
             # 宪章四:一个门禁崩在一份文档上,不许带垮整批,也不许假装评过
             acc.add(Finding(
                 "gate_error", doc_id, None, "high", "blocking",
-                "human", f"门禁执行异常,查这份文档的存盘响应:{exc!r}",
+                "human", f"gate execution error; inspect this document's stored response: {exc!r}",
                 f"doc:{doc_id}", f"gate_error: {exc!r}",
             ))
             for f in FIELDS:
@@ -313,20 +314,21 @@ def run_gates(
                 acc.add(Finding(
                     "cross_document_duplicate", doc_id, "invoice_number",
                     "high", "non-blocking", "human",
-                    "与对端文档并排核对后人工裁决;不进错误率",
+                    "compare side by side with the other document, then adjudicate; enters no error rate",
                     f"docs:{','.join(others)}",
-                    f"发票号 {group['invoice_number']} 与 {'、'.join(others)} "
-                    f"同号同卖家但内容不同(gross/日期不一致)—— "
-                    f"同号冲突不是判决,是必须人看",
+                    f"invoice number {group['invoice_number']} shared with {', '.join(others)} "
+                    f"with the same seller but different content (gross/date mismatch) — "
+                    f"a same-number conflict is not a verdict; a human must look",
                 ))
             else:
                 acc.add(Finding(
                     "cross_document_duplicate", doc_id, "invoice_number",
                     "medium", "non-blocking", "human",
-                    "确认是否重复提交/重复报销;不进错误率",
+                    "confirm whether this is a duplicate submission/claim; enters no error rate",
                     f"docs:{','.join(others)}",
-                    f"发票号 {group['invoice_number']} 与 {'、'.join(others)} "
-                    f"同号同卖家同内容 —— 疑似重复提交,人确认",
+                    f"invoice number {group['invoice_number']} shared with {', '.join(others)} "
+                    f"with the same seller and identical content — suspected "
+                    f"resubmission; human confirms",
                 ))
 
     # ---- 单据类型字面证据(文档级):不进 evaluations 字段层(heldout_metrics
@@ -340,11 +342,12 @@ def run_gates(
             acc.add(Finding(
                 "doctype_evidence", doc_id, None, "medium", "non-blocking",
                 "human",
-                "类型声明在页面上找不到字面证据 —— 不许用类型级放宽;"
-                "与类型无关的字段照常路由(阶段 B typedep 粒度)",
+                "the declared type has no literal evidence on the page — no "
+                "type-level relaxation; type-independent fields route as usual "
+                "(stage-B per-type granularity)",
                 f"doctype:{doc_id}:{check.get('doc_class')}",
                 f"invoice_type={check.get('raw_type')!r} → "
-                f"{check.get('doc_class')} 无 OCR 字面支撑",
+                f"{check.get('doc_class')} lacks literal OCR support",
             ))
         elif check["status"] == "ocr_unavailable":
             # 独立 OCR 缺失时文档级阻断已由 independent_ocr 记过;
@@ -352,7 +355,7 @@ def run_gates(
             acc.add(Finding(
                 "doctype_evidence", doc_id, None, "medium", "non-blocking",
                 "human",
-                "类型字面证据检查因 OCR 不可用而未跑完",
+                "the type literal-evidence check did not finish (OCR unavailable)",
                 f"doctype:{doc_id}",
                 "doctype_evidence: ocr_unavailable",
             ))
@@ -386,8 +389,8 @@ def _evaluate_doc(
     if a is None and not agentic_optional:
         acc.add(Finding(
             "cross_mode_agreement", doc_id, None, "high", "blocking",
-            "re_extract", "agentic 响应缺失或 HTTP 非 200,重跑抽取",
-            f"raw/{doc_id}.agentic.json", "DWS agentic 响应不可用,双模式门禁跑不了",
+            "re_extract", "agentic response missing or HTTP != 200; re-run extraction",
+            f"raw/{doc_id}.agentic.json", "DWS agentic response unavailable; the dual-mode gate cannot run",
         ))
     elif a is None and agentic_optional:
         # L1 adaptive 故意跳过:不阻断;字段级 cross_mode 仍记 unavailable
@@ -397,8 +400,8 @@ def _evaluate_doc(
     for check_id, fields_hit in failed_checks.items():
         acc.add(Finding(
             "arithmetic_consistency", doc_id, None, "medium", "non_blocking",
-            "human", f"{check_id} 恒等式不成立;feeding 字段全部进复核,不猜哪个错",
-            f"doc:{doc_id}", f"{check_id} 失败,涉及 {sorted(fields_hit)}",
+            "human", f"{check_id} identity does not hold; all feeding fields go to review — no guessing which one is wrong",
+            f"doc:{doc_id}", f"{check_id} failed, involving {sorted(fields_hit)}",
         ))
 
     for field_name in FIELDS:
@@ -416,19 +419,19 @@ def _evaluate_doc(
             verdicts["extraction_present"] = "expected_absent"
             acc.add(Finding(
                 "extraction_present", doc_id, field_name, "info", "non_blocking",
-                "none", "策略声明的预期缺失字段(如美国发票无 VAT);"
-                        "QA 抽检盯着这批缺席是否真的成立",
+                "none", "a policy-declared expected-absent field (e.g. no VAT on US invoices); "
+                        "QA sampling watches whether these absences actually hold",
                 (f"policy:{rule_id}" if rule_id
                  else f"doc:{doc_id}/field:{field_name}"),
-                ("DWS 未返回该字段的值(策略:预期缺失"
+                (f"DWS returned no value for this field (policy: expected absent"
                  f"{f' {rule_id}' if rule_id else ''})"),
             ))
         else:
             verdicts["extraction_present"] = FAIL
             acc.add(Finding(
                 "extraction_present", doc_id, field_name, "high", "blocking",
-                "vision_reread", "DWS 未返回值;整页读图在页面别处找,或人工补",
-                f"doc:{doc_id}/field:{field_name}", "DWS 未返回该字段的值",
+                "vision_reread", "DWS returned no value; full-page vision may find it elsewhere, or a human supplies it",
+                f"doc:{doc_id}/field:{field_name}", "DWS returned no value for this field",
             ))
 
         # ---- field_wellformed(C4/C5/C6)
@@ -442,7 +445,7 @@ def _evaluate_doc(
                 verdicts["field_wellformed"] = FAIL
                 acc.add(Finding(
                     "field_wellformed", doc_id, field_name, "medium", "non_blocking",
-                    "re_extract", f"{bad} 不通过:值 '{value}' 不符合该字段形态",
+                    "re_extract", f"{bad} failed: value '{value}' does not fit the field's expected shape",
                     f"doc:{doc_id}/field:{field_name}", f"{bad}: {value!r}",
                 ))
 
@@ -476,7 +479,7 @@ def _evaluate_doc(
             verdicts["citation_holds"] = UNAVAILABLE
             acc.add(Finding(
                 "citation_holds", doc_id, field_name, "high", "blocking",
-                "human", "独立 OCR 缺失,citation 门禁跑不了",
+                "human", "independent OCR missing; the citation gate cannot run",
                 f"doc:{doc_id}/field:{field_name}", "OcrUnavailable",
             ))
         else:
@@ -486,8 +489,8 @@ def _evaluate_doc(
                 verdicts["citation_holds"] = FAIL
                 acc.add(Finding(
                     "citation_holds", doc_id, field_name, "high", "non_blocking",
-                    "vision_reread", "值不在 DWS 自称的引用区(独立 OCR 判定)",
-                    f"doc:{doc_id}/field:{field_name}", f"citation 不成立: {value!r}",
+                    "vision_reread", "value is not inside the region DWS cites (independent-OCR determination)",
+                    f"doc:{doc_id}/field:{field_name}", f"citation does not hold: {value!r}",
                 ))
             else:
                 verdicts["citation_holds"] = UNAVAILABLE
@@ -501,7 +504,7 @@ def _evaluate_doc(
             verdicts["cross_mode_agreement"] = FAIL
             acc.add(Finding(
                 "cross_mode_agreement", doc_id, field_name, "medium", "non_blocking",
-                "human", "两模式规范化后不一致,进人工裁决",
+                "human", "the two modes disagree after normalisation; goes to human adjudication",
                 f"doc:{doc_id}/field:{field_name}",
                 f"understand={value!r} vs agentic={a.data.get(field_name)!r}",
             ))
@@ -535,7 +538,7 @@ def _evaluate_doc(
                     acc.add(Finding(
                         "visual_corroboration", doc_id, field_name, "medium", "non_blocking",
                         "human",
-                        f"整页读图不支持该值(尝试了 {len(attempted)} 位读者)",
+                        f"full-page vision does not support this value ({len(attempted)} readers attempted)",
                         f"doc:{doc_id}/field:{field_name}",
                         f"dws={value!r}; vision={[f'{m}:{v}' for m, v in attempted]}",
                     ))

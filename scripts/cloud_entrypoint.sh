@@ -14,7 +14,7 @@ if [ ! -f "${WS}/runs/current.json" ]; then
   echo "cloud_entrypoint: baking demo workspace at ${WS}"
   # demo 要求目录不存在或为空
   if [ -d "$WS" ] && [ -n "$(ls -A "$WS" 2>/dev/null || true)" ]; then
-    echo "cloud_entrypoint: ${WS} 非空且无 current.json —— 拒绝覆盖" >&2
+    echo "cloud_entrypoint: ${WS} is non-empty without current.json — refusing to overwrite" >&2
     exit 1
   fi
   python3 -m invoiceloop demo --out "$WS"

@@ -89,14 +89,15 @@ def run(
     out_dir = Path(out_dir)
     if out_dir.exists() and any(out_dir.iterdir()):
         raise RunExistsError(
-            f"运行目录 {out_dir} 已存在且非空 —— 运行不可变,没有 --force。"
-            f"--out 请换一个目录;--workspace 会自动分配 runs/run-NNNN"
+            f"run directory {out_dir} already exists and is not empty — runs are "
+            f"immutable, there is no --force. Pick another --out directory; "
+            f"--workspace allocates runs/run-NNNN automatically"
         )
     doc_ids = sorted(doc_ids)
     active_for_scope = harness.load_active(derisk_root())
     domain_scope = active_for_scope["policy"].get("domain_scope")
     if domain_scope is not None and not isinstance(domain_scope, dict):
-        raise ValueError("harness 的 domain_scope 必须是 JSON object")
+        raise ValueError("the harness domain_scope must be a JSON object")
     from .scope import require_workspace_scope
 
     workspace_scope = require_workspace_scope(
@@ -116,8 +117,9 @@ def run(
         (out_dir / "run_manifest.json").open("x").close()
     except FileExistsError:
         raise RunExistsError(
-            f"运行目录 {out_dir} 已被另一个进程占用(run_manifest.json 已存在)—— "
-            f"运行不可变,没有 --force;--out 请换一个目录"
+            f"run directory {out_dir} is occupied by another process "
+            f"(run_manifest.json exists) — runs are immutable, there is no "
+            f"--force; pick another --out directory"
         ) from None
     events: list[dict] = []
     vision_paths = dws.vision_answer_paths() if include_vision else []

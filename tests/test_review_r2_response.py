@@ -75,7 +75,7 @@ class TestCliErrorCoverage:
         out.mkdir(parents=True)
         (out / "stale.txt").write_text("x")
         monkeypatch.setattr(sys, "argv", ["invoiceloop", "run", "--out", str(out)])
-        with pytest.raises(SystemExit, match="错误"):
+        with pytest.raises(SystemExit, match="error:"):
             main()
 
 

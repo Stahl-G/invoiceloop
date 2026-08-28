@@ -131,53 +131,54 @@ def append_adjudication(
 
         if reason_code not in REASON_CODES:
             raise ValueError(
-                f"reason_code {reason_code!r} 不在最小心码集 {REASON_CODES} 内")
+                f"reason_code {reason_code!r} is not in the minimal reason-code set {REASON_CODES}")
         # 组合自洽(评审裁决六):心码与决策类型不许互相矛盾
         allowed = REASON_CODE_COMBOS.get(reason_code)
         if allowed is not None and decision not in allowed:
             raise ValueError(
-                f"reason_code {reason_code} 只能搭配 {sorted(allowed)},"
-                f"收到 {decision} —— 点错的心码会把错误监督喂给 mining")
+                f"reason_code {reason_code} may only combine with {sorted(allowed)}, "
+                f"got {decision} — a mismatched reason code feeds bad supervision to mining")
     if reviewer_confidence is not None \
             and reviewer_confidence not in ("high", "medium", "low"):
-        raise ValueError("reviewer_confidence 必须是 high/medium/low")
+        raise ValueError("reviewer_confidence must be high/medium/low")
     if suggestion_seen is not None:
         if not isinstance(suggestion_seen, str) \
                 or not _SUGGESTION_SEEN.fullmatch(suggestion_seen):
             raise ValueError(
-                "suggestion_seen 必须是 split|blind|agree:<值>|"
-                "agree_rejected:<值> 之一 —— 它记渲染时展示了什么,"
-                "自由文本会把噪声喂给建议采纳率统计")
+                "suggestion_seen must be one of split|blind|agree:<value>|"
+                "agree_rejected:<value> — it records what rendering displayed; "
+                "free text would feed noise into the suggestion-adoption stats")
     run_dir = Path(run_dir)
     if decision not in DECISIONS:
-        raise ValueError(f"decision 必须是 {DECISIONS} 之一,收到 {decision!r}")
+        raise ValueError(f"decision must be one of {DECISIONS}, got {decision!r}")
     if not isinstance(rationale, str) or not rationale.strip():
         raise ValueError(
-            "rationale 不能为空 —— 裁决理由会原文进入改进循环,"
-            "必须把发现的问题或判断依据写清")
+            "rationale must not be empty — it enters the improvement loop "
+            "verbatim; state the problem found or the basis of the judgement")
     if decision == "correct":
         if not (corrected_value and corrected_value.strip()):
-            raise ValueError("correct 必须带 corrected_value —— 修正值是什么必须写出来")
+            raise ValueError("correct requires corrected_value — the corrected value must be written out")
         corrected_value = corrected_value.strip()
     elif corrected_value is not None:
-        raise ValueError(f"{decision} 禁止携带 corrected_value —— 修正只能走 correct")
+        raise ValueError(f"{decision} must not carry corrected_value — corrections go through correct only")
     # 决策语义拆分(81 评 P0):「接受声明」「确认页面没有」「不适用」是三种
     # 不同的东西,以前全塞在 accept 里,交付层分不出 缺失 与 人看不懂
     if decision == "accept" and claim_id is None:
         raise ValueError(
-            "accept 必须带 claim_id —— 接受的是哪条冻结声明必须指明;"
-            "要表达「页面上确实没有这个字段」用 confirm_absent,"
-            "「该文档不适用此字段」用 not_applicable"
+            "accept requires claim_id — it must name the frozen claim being "
+            "accepted; to say \"this document genuinely has no such field\" use "
+            "confirm_absent, and \"this document class has no such concept\" "
+            "use not_applicable"
         )
     if decision in ("confirm_absent", "not_applicable") and claim_id is not None:
         raise ValueError(
-            f"{decision} 针对无声明的槽位;这个槽位有冻结声明 {claim_id},"
-            f"声明错了用 reject 或 correct"
+            f"{decision} targets a slot with no claim; this slot has frozen claim "
+            f"{claim_id} — use reject or correct when the claim itself is wrong"
         )
     if field not in FIELDS:
-        raise ValueError(f"field {field!r} 不是受评字段({sorted(FIELDS)} 之一)")
+        raise ValueError(f"field {field!r} is not a scored field (one of {sorted(FIELDS)})")
     if not (decided_at and str(decided_at).strip()):
-        raise ValueError("decided_at 不能为空 —— 裁决时间由人给出,不由系统代填")
+        raise ValueError("decided_at must not be empty — the time comes from a human, never auto-filled")
     decided_at = str(decided_at).strip()
     from datetime import datetime
 
@@ -185,8 +186,8 @@ def append_adjudication(
         datetime.fromisoformat(decided_at.replace("Z", "+00:00"))
     except ValueError:
         raise ValueError(
-            f"decided_at {decided_at!r} 不是 ISO 8601 时间 —— 账本里的时间必须"
-            f"可机读,「下礼拜吧」进不了审计轨迹(82 评 P2)"
+            f"decided_at {decided_at!r} is not ISO 8601 — ledger times must be "
+            f"machine-readable; \"sometime next week\" does not enter an audit trail"
         ) from None
 
     # 建议溯源:服务端导出,不收调用方给的值。load 会重算 live TSV /
@@ -200,7 +201,7 @@ def append_adjudication(
 
     manifest = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
     if doc_id not in set(manifest.get("docs", [])):
-        raise ValueError(f"doc {doc_id!r} 不在本次 run 的文档集合里 —— 裁决必须指向 run 内文档")
+        raise ValueError(f"doc {doc_id!r} is not in this run's document set — an adjudication must target a run document")
 
     snapshot_id = load_or_derive_snapshot(run_dir)["review_snapshot_id"]
     # 落盘的快照必须与此刻盘上的工件一致 —— 有人在 run 之后动过工件的话,
@@ -211,20 +212,21 @@ def append_adjudication(
         current = compute_review_snapshot(run_dir)["review_snapshot_id"]
         if current != snapshot_id:
             raise ValueError(
-                "run 目录内工件与 review_snapshot.json 不符 —— 有工件在 run 之后"
-                "被改动过。先比对 components 查清哪份被动了,再裁决;"
-                "系统不在被动过的证据上记裁决"
+                "run artifacts do not match review_snapshot.json — something was "
+                "modified after the run. Compare components to find what changed "
+                "before adjudicating; the system records no adjudication on "
+                "tampered evidence"
             )
     if claim_id is not None:
         ledger = json.loads((run_dir / "field_ledger.json").read_text(encoding="utf-8"))
         claims = {c["claim_id"]: c for c in ledger["claims"]}
         claim = claims.get(claim_id)
         if claim is None:
-            raise ValueError(f"claim_id {claim_id!r} 不在已冻结账本里 —— 裁决必须指向真实声明")
+            raise ValueError(f"claim_id {claim_id!r} is not in the frozen ledger — an adjudication must target a real claim")
         if claim["doc_id"] != doc_id or claim["field"] != field:
             raise ValueError(
-                f"claim_id {claim_id} 属于 {claim['doc_id']}/{claim['field']},"
-                f"与提交的 {doc_id}/{field} 不一致 —— 三者必须精确一致"
+                f"claim_id {claim_id} belongs to {claim['doc_id']}/{claim['field']}, "
+                f"not the submitted {doc_id}/{field} — all three must match exactly" 
             )
         # 投影↔权威交叉检查(81 评 P0):support_matrix 不在快照成分内
         # (可重建投影),但它若与冻结账本同槽位值不符,说明 run 之后有
@@ -237,9 +239,10 @@ def append_adjudication(
             if row is not None and row.get("claim_id") == claim_id \
                     and row.get("value") != claim["value"]:
                 raise ValueError(
-                    f"support_matrix 该槽位的值 {row.get('value')!r} 与冻结声明 "
-                    f"{claim['value']!r} 不符 —— 投影与权威分叉,run 之后有工件"
-                    f"被改动过。先查清再裁决"
+                    f"support_matrix shows {row.get('value')!r} for this slot but the "
+                    f"frozen claim says {claim['value']!r} — projection and authority "
+                    f"diverged; an artifact was modified after the run. Investigate "
+                    f"before adjudicating"
                 )
 
     target = target_id_for(snapshot_id, doc_id, field)
@@ -256,16 +259,18 @@ def append_adjudication(
             slot = project(decisions).get(target)
             if slot and slot["conflict"]:
                 raise ValueError(
-                    f"{doc_id}/{field} 的裁决链冲突(多条 tip)—— "
-                    f"先人工整理 adjudication_ledger.jsonl,系统不替人猜"
+                    f"adjudication chain conflict for {doc_id}/{field} (multiple tips) "
+                    f"— fix adjudication_ledger.jsonl by hand; the system will not "
+                    f"guess for you"
                 )
             tip = slot["tip"] if slot else None
             if tip is None and supersedes_decision_id is not None:
-                raise ValueError("该字段槽没有既有裁决,supersedes_decision_id 必须为 null")
+                raise ValueError("this slot has no prior decision; supersedes_decision_id must be null")
             if tip is not None and supersedes_decision_id != tip["decision_id"]:
                 raise ValueError(
-                    f"该字段槽已有裁决 {tip['decision_id']}({tip['decision']})—— "
-                    f"第二次决定必须显式带上 supersedes_decision_id={tip['decision_id']!r}"
+                    f"this slot already has decision {tip['decision_id']} ({tip['decision']}) "
+                    f"— a second decision must explicitly carry "
+                    f"supersedes_decision_id={tip['decision_id']!r}"
                 )
 
             seq = len(decisions) + 1
