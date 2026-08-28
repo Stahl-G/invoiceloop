@@ -1,38 +1,45 @@
-# 放行契约 `release_profile`(2026-08-14)
+# Release contract `release_profile` (2026-08-14)
 
-HITL R1 在 S2 第一次裁决前终止,见
-[`HITL_R1_TERMINATION_2026-08-14.md`](HITL_R1_TERMINATION_2026-08-14.md)。
-本文件是下一版本的产品契约,不是那一轮的补丁。
+HITL R1 terminated before S2's first adjudication, see
+[`HITL_R1_TERMINATION_2026-08-14.md`](HITL_R1_TERMINATION_2026-08-14.md).
+This file is the next version's product contract, not a patch to that round.
 
-一句话:**交付从「十字段全裁决」改成「窄放行契约 + 全量支持矩阵 + 风险抽查」。**
+In one sentence: **the deliverable changes from "ten-field full adjudication"
+to "narrow release contract + full support matrix + risk spot-checks".**
 
-不主张抽取变准。不主张未复核槽是对的。不把自动字段比例当首要成功指标。
+No claim that extraction got more accurate. No claim that unreviewed slots
+are right. The automated-field ratio is not taken as the primary success
+metric.
 
 ---
 
-## 1. 两个问题,分开答
+## 1. Two questions, answered separately
 
-| 问题 | 谁回答 | 不是谁 |
+| Question | Who answers it | Who does not |
 |---|---|---|
-| 这个值有什么支持?该信到哪一档? | 支持矩阵(十字段全在,可零 API 重算) | 人不必给每个槽签字 |
-| 这张单能不能付款/过账? | `release_profile` 规定的字段 + 文档级署名批准 | 路由策略不得授予外发权限(`approve.py`,2026-08-09) |
+| What supports this value? Which tier should it be trusted to? | the support matrix (all ten fields present, recomputable with zero API) | the human need not sign off every slot |
+| Can this document be paid/posted? | the fields prescribed by `release_profile` + document-level signed approval | routing policy must not grant export permission (`approve.py`, 2026-08-09) |
 
-R1 把两个问题收成同一条「人工队列走完」。字段自动率约 50% 时,十字段合取
-的零触达 ≈ 0(`scripts/doc_touch_economics.py`)。S1 实测 20/20 打开。
+R1 collapsed the two questions into a single "human queue walked to the end".
+At a field automation rate around 50%, the ten-field conjunction's zero-touch
+≈ 0 (`scripts/doc_touch_economics.py`). S1 measured 20/20 opened.
 
 ---
 
-## 2. `release_profile`(加法,不改 HAR-0001)
+## 2. `release_profile` (additive, does not modify HAR-0001)
 
-政策键 `release_profile`。**缺省 = 普查**:全部记分字段的 `pending` /
-`pending_tier1` / `abstain` 都挡住 `ready_for_approval`。包内 HAR-0001
-不带这个键,SEALED 重放字节不变。
+Policy key `release_profile`. **Default = census**: `pending` /
+`pending_tier1` / `abstain` on every scored field all block
+`ready_for_approval`. The in-package HAR-0001 does not carry this key; SEALED
+replays stay byte-identical.
 
-`release_tier1_explicit` **不关**。它继续禁止把 TIER1 的自动放行伪装成
-人工 `accept`(字段状态仍是 `pending_tier1` 或 `policy_accepted`,取决于
-该旗标)。它不再偷偷等于「十个 TIER1 槽都要人点完才能等人批单」。
+`release_tier1_explicit` is **not turned off**. It continues to forbid
+disguising TIER1's automated release as a human `accept` (field status stays
+`pending_tier1` or `policy_accepted`, depending on the flag). It no longer
+silently equals "all ten TIER1 slots must be human-clicked before anyone may
+approve the document".
 
-冻结的产品默认:
+The frozen product default:
 
 ```json
 {
@@ -41,82 +48,106 @@ R1 把两个问题收成同一条「人工队列走完」。字段自动率约 5
 }
 ```
 
-字段集与 `doc_touch_economics.py` 的「付款必需(3 个)」同一份,改 id 才许
-改集合。可选 `posting_required_v1` = 再加 `issue_date`、`seller_vat_id`,
-本版不设为默认。
+The field set is the same one as `doc_touch_economics.py`'s "payment-required
+(3)"; the set may change only if the id changes. Optional
+`posting_required_v1` = adding `issue_date`, `seller_vat_id`; not made the
+default in this version.
 
-人类署名候选(`register_policy`)可以加上这个键。机器 `propose` 加它 =
-lint 拒绝(第一版只许加 cohort)。晋升仍要 `--approved-by` + evaluate。
-**不许**写进 HAR-0021 再假装 R1 后半段还在比。
-
----
-
-## 3. 字段状态 vs 整单状态
-
-字段层(矩阵/panel/deliverable.fields)诚实标签不改:
-
-- 队列里没裁的,还是 `pending`
-- TIER1 自动放行且 `release_tier1_explicit: true`,还是 `pending_tier1`
-  (「关键字段没人逐槽签字」,不是「机器认为正确」)
-- TIER2 自动放行,还是 `unreviewed_corroborated`
-
-整单层,仅当政策带了 `release_profile` 时:
-
-- 挡住 `ready_for_approval` 的,只剩契约字段上的 `pending` / `abstained` /
-  `reject`(含 TIER2 契约成员,如 `seller_name`),以及账本完整性破坏
-  (`accepted_unbound`、文档级阻断)
-- 契约外字段的 `pending` / `pending_tier1` **不挡付款**。它们留在矩阵上,
-  意思就是未人工复核
-- 契约内 TIER1 的 `pending_tier1`(路由已是 `auto_accept`)不挡
-  `ready_for_approval`。逐槽签字不是这张单的放行条件;文档级批准才是,
-  且批准账本已经记录 `tier1_policy_disposed_fields`(2026-08-09 Northstar:
-  知情之后才谈得上把自动放行开大)
-
-缺省普查路径(无 profile)保持今日语义,含「`pending_tier1` 挡住整单」。
-
-外发权限不变:只有 `approved_for_export`。机器最远到 `ready_for_approval`。
+Human-signed candidates (`register_policy`) may add this key. A machine
+`propose` adding it = lint rejection (the first version only allows adding
+cohorts). Promotion still requires `--approved-by` + evaluate. It is **not
+allowed** to write it into HAR-0021 and then pretend the second half of R1 is
+still being compared.
 
 ---
 
-## 4. 人工队列(写边界,不是展示滤镜)
+## 3. Field status vs document status
 
-路由(`in_human_queue`)不因 profile 变松。硬阻断、unsupported、门禁失败、
-口径争议、QA 探针,该进队列还进。
+Field level (matrix/panel/deliverable.fields): the honest labels do not
+change:
 
-工作台默认行走范围 = **契约字段 ∩ 人工队列**,并集 **任何带 `QA_SAMPLE`
-的探针槽**(探针不是损耗,是自动决策的前提)。契约外的非探针槽仍在矩阵/
-交付页,不进默认行走。
+- Undecided in the queue, still `pending`
+- TIER1 auto-released with `release_tier1_explicit: true`, still
+  `pending_tier1` ("no one signed off the key fields slot by slot", not "the
+  machine believes it correct")
+- TIER2 auto-released, still `unreviewed_corroborated`
 
-人按时预算从高风险单据往下看(矩阵本就按 `support_strength` 升序)。预算
-用尽后,未看的契约外字段保持未复核标签;未批的单据保持
-`ready_for_approval`,不外发。
+Document level, only when the policy carries a `release_profile`:
 
-终止的 R1 工作区:`round_status.json` 为 `terminated` 时,工作台拒绝
-`POST /decide`。那是停轮闸,不是 profile 机制。
+- What blocks `ready_for_approval` reduces to `pending` / `abstained` /
+  `reject` on contract fields (including TIER2 contract members such as
+  `seller_name`), plus ledger-integrity breaks (`accepted_unbound`,
+  document-level blocking)
+- `pending` / `pending_tier1` on non-contract fields **do not block payment**.
+  They stay on the matrix, meaning exactly "not human-reviewed"
+- `pending_tier1` on in-contract TIER1 (routing already `auto_accept`) does
+  not block `ready_for_approval`. Slot-by-slot signoff is not this document's
+  release condition; document-level approval is, and the approval ledger
+  already records `tier1_policy_disposed_fields` (2026-08-09 Northstar:
+  widening automated release is discussable only after being informed)
+
+The default census path (no profile) keeps today's semantics, including
+"`pending_tier1` blocks the whole document".
+
+Export permission unchanged: only `approved_for_export`. The machine goes at
+most to `ready_for_approval`.
 
 ---
 
-## 5. 辅线(本版设计,本版不实现)
+## 4. Human queue (a write boundary, not a display filter)
 
-办法 2,不挡第 2–4 节落地:
+Routing (`in_human_queue`) does not loosen because of a profile. Hard blocks,
+unsupported, gate failures, caliber disputes, QA probes — what belongs in the
+queue still enters.
 
-1. **批次口径政策**(一次签署,不是每张单改买方名):卖方/买方身份块怎么切、
-   NET 30 是否走 `due_date.py` 派生。现有 `scope.py` 管的是语料域授权,
-   不是字段口径;口径政策另立工件,建议层预填,不写账本。
-2. **金额三元组一次看**:`total_gross` / `total_net` / `amount_due` 在工作台
-   上是一组,不是连续三个槽。OCR 标签对齐是建议,不覆盖草稿。
+The workbench's default walk scope = **contract fields ∩ human queue**, union
+**any probe slot carrying `QA_SAMPLE`** (probes are not waste; they are the
+precondition of automated decisions). Non-probe slots outside the contract
+remain on the matrix/deliverable pages and do not enter the default walk.
 
-这两条是减「口径裁决混进槽队列」的人时。不配第 2 节,零触达张数仍然起不来。
+The human looks down from the highest-risk documents within a time budget
+(the matrix is already sorted ascending by `support_strength`). After the
+budget is spent, unseen non-contract fields keep their unreviewed labels;
+unapproved documents stay `ready_for_approval`, not sent out.
+
+The terminated R1 workspace: when `round_status.json` is `terminated`, the
+workbench refuses `POST /decide`. That is the round-halt gate, not a profile
+mechanism.
 
 ---
 
-## 6. 下一轮要测的(新协议,不拼接 R1)
+## 5. Auxiliary line (designed this version, not implemented this version)
 
-开发集限定,预注册后再跑:
+Option 2, not blocking Sections 2–4 from landing:
 
-1. 20 张里有多少张完全不用打开(契约字段 ∪ 探针 都不是 `review`)
-2. 每张被打开的单实际耗时(打开→离开,不是槽间隔中位冒充张成本)
-3. 付款必需字段还有多少未解决(`pending`/`abstain`)
-4. 抽样探针发现多少静默错误(人推翻 auto_accept / auto_absent)
+1. **Batch caliber policy** (signed once, not a per-document buyer-name
+   edit): how seller/buyer identity blocks are cut; whether NET 30 goes
+   through `due_date.py` derivation. The existing `scope.py` governs
+   corpus-domain authorization, not field calibers; the caliber policy is a
+   separate artifact, prefilled by the suggestion layer, not written to the
+   ledger.
+2. **The amount triad seen at once**: `total_gross` / `total_net` /
+   `amount_due` are one group on the workbench, not three consecutive slots.
+   OCR label alignment is a suggestion and does not overwrite drafts.
 
-不把「自动字段比例」当首要成功指标。不在改契约之后续画 R1 的 52s/槽。
+These two items cut the human time of "caliber adjudications mixed into the
+slot queue". Without Section 2, the zero-touch document count still cannot
+rise.
+
+---
+
+## 6. What the next round must test (new protocol, no splicing with R1)
+
+Development-set only; run only after pre-registration:
+
+1. How many of the 20 documents need no opening at all (neither contract
+   fields ∪ probes are `review`)
+2. Actual time spent on each opened document (open→leave, not a
+   slot-interval median passing as per-document cost)
+3. How many payment-required fields remain unresolved
+   (`pending`/`abstain`)
+4. How many silent errors the sampled probes catch (humans overturning
+   auto_accept / auto_absent)
+
+The "automated-field ratio" is not the primary success metric. R1's 52s/slot
+is not drawn further after the contract changes.
