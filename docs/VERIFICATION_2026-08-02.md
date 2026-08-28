@@ -1,6 +1,6 @@
 # Verification round record (2026-08-02) — carrying on the dws-derisk six-rounds discipline
 
-The six-rounds discipline: criteria before data, answers before scoring, wrong predictions reported as-is.
+The six-rounds discipline: criteria before data, answers before scoring, wrong predictions recorded as-is.
 This round is the first verification after InvoiceLoop was built, with two parts: the **held-out
 experiment** (does the architecture's empirical claim survive unseen documents) and **human acceptance**
 (GOAL.md's falsification endpoint). Details live in their own documents; this one is the master record
@@ -28,7 +28,7 @@ relay. Artifacts under `runs/heldout/`; the verdict is recomputable:
 | H5 | citation failure rate | 15.3% | 14.4% | <15% | PASS |
 | H6 | Freeze rejection rate | 18.9% | 34.6% | 5–35% | PASS |
 
-**Prediction misses reported as-is** (criteria untouched, wrong predictions written down): the H5
+**Prediction misses recorded as-is** (criteria untouched, wrong predictions written down): the H5
 footnote's "calibration roughly 3–5%" was wrong (same-caliber measurement 15.3%; the round-three quantity
 was misquoted); H6 hugs the upper bound, the held-out rejection rate nearly double calibration — a wider
 document-type distribution and more OCR degradation, to be re-estimated on a corpus change;

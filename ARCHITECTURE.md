@@ -57,7 +57,7 @@ DWS returned no value is **blocking**, not "payload cost".
 
 **Five. Semantically unresolved conflicts stay explicit and go to human adjudication, not into error rates.**
 The page prints `Gross Billings` while the annotation wants `Net Amount Due` — that is a
-convention conflict, not an extraction error.
+caliber conflict, not an extraction error.
 
 **Six. Say nothing the artifacts cannot prove.**
 With traceability only, one must not claim semantic proof or quality improvement. Unmeasured
@@ -257,7 +257,7 @@ already implemented and tested in dws-derisk**.
 
 | gate_id | Checks | Measured in the six rounds |
 |---|---|---|
-| `arithmetic_consistency` | net+vat=gross, gross=due, date ordering | reproduces the production convention 530/1000 |
+| `arithmetic_consistency` | net+vat=gross, gross=due, date ordering | reproduces the production caliber 530/1000 |
 | `field_wellformed` | amounts parseable, dates valid, numbers non-empty | — |
 | `extraction_present` | whether DWS returned a value | of 359 flagged, 267 missing a value |
 | `citation_holds` | whether the value lies in the citation region DWS claims for itself (**independent OCR**) | T1 silent 4.4%→3.1% |
@@ -309,7 +309,7 @@ alongside**:
    ~~Held-out confirmation never executed~~ → **executed on 2026-08-02** (a 100-document
    DocILE hold-out; criteria pre-registered and frozen before execution; H1–H6 all passed;
    triage lift 3.04× > the 1.5 line; the numbers and the deviations from the registered
-   predictions, printed as-is, are in the results section of `docs/HELDOUT.md`)
+   predictions, recorded as-is, are in the results section of `docs/HELDOUT.md`)
 2. The DocILE annotations are themselves disputed — in Round Four, document-by-document
    vision reading found **8 of 14 cases were annotation errors**
 3. The calibration set is entirely US radio advertising invoices; the hold-out reproduced
