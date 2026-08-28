@@ -1,0 +1,102 @@
+{
+ "arm": "unattended",
+ "advisory": false,
+ "run_dir": "/data/job-ws/runs/run-0001",
+ "model": "gemini-3.7-flash",
+ "decided_at": "2026-08-27T20:54:02Z",
+ "drive_fatal": null,
+ "gate_error": null,
+ "deliverable_error": null,
+ "policy_id": "unattended-policy-v3",
+ "policy_digest": "6c5a6652619e82f4e3258e11c01763595bb228dfbb92bda0822b37cdb3b6ce4c",
+ "queue_slots": 25,
+ "clerk_written": 25,
+ "clerk_failures": [],
+ "clerk_binding_failures": [],
+ "critic_overrides": [
+  {
+   "slot": "003cc91637994b7d9566ac41|total_net",
+   "decision_id": "HD-0026",
+   "decision": "confirm_absent",
+   "release_veto": false
+  }
+ ],
+ "critic_failures": [],
+ "critic_binding_failures": [],
+ "gate": {
+  "002e3cf97973428f905671b3": {
+   "doc_id": "002e3cf97973428f905671b3",
+   "ready": false,
+   "status": "ready_for_approval",
+   "queue_slots": 8,
+   "violations": [
+    {
+     "rule": "R8",
+     "code": "correct_on_label_absent_field",
+     "slot": "002e3cf97973428f905671b3|due_date",
+     "field": "due_date"
+    }
+   ],
+   "policy_id": "unattended-policy-v3",
+   "policy_digest": "6c5a6652619e82f4e3258e11c01763595bb228dfbb92bda0822b37cdb3b6ce4c"
+  },
+  "003cc91637994b7d9566ac41": {
+   "doc_id": "003cc91637994b7d9566ac41",
+   "ready": false,
+   "status": "ready_for_approval",
+   "queue_slots": 8,
+   "violations": [
+    {
+     "rule": "R4",
+     "code": "tier1_clerk_critic_disagreement",
+     "slot": "003cc91637994b7d9566ac41|total_net",
+     "clerk": "correct",
+     "critic": "confirm_absent"
+    }
+   ],
+   "policy_id": "unattended-policy-v3",
+   "policy_digest": "6c5a6652619e82f4e3258e11c01763595bb228dfbb92bda0822b37cdb3b6ce4c"
+  },
+  "046e0c4924044de09f6d9e7b": {
+   "doc_id": "046e0c4924044de09f6d9e7b",
+   "ready": true,
+   "status": "ready_for_approval",
+   "queue_slots": 9,
+   "violations": [],
+   "policy_id": "unattended-policy-v3",
+   "policy_digest": "6c5a6652619e82f4e3258e11c01763595bb228dfbb92bda0822b37cdb3b6ce4c"
+  }
+ },
+ "gate_ready_docs": [
+  "046e0c4924044de09f6d9e7b"
+ ],
+ "approver_decisions": {
+  "046e0c4924044de09f6d9e7b": {
+   "release": true,
+   "rationale": "All critical AP fields are consistent, confirmed absent where appropriate with valid provenance, amounts match ($120.00), and there are no blocking issues or vetoes."
+  }
+ },
+ "approver_failures": [],
+ "approvals": [
+  {
+   "doc_id": "046e0c4924044de09f6d9e7b",
+   "approval_id": "AP-0001"
+  }
+ ],
+ "approval_refusals": [],
+ "adk": {
+  "executed": true,
+  "runner": "google.adk.runners.Runner",
+  "pipeline": "SequentialAgent(unattended_pipeline)",
+  "event_authors": [
+   "clerk",
+   "binder",
+   "critic",
+   "binder2",
+   "gate",
+   "approver",
+   "binder3"
+  ]
+ },
+ "note": "实验臂,非产品默认:clerk=agent:<model>,改判=agent:critic:<model>,批准=unattended-policy-v3+agent:critic:<model>;默认路径的批准仍只有人能签"
+}

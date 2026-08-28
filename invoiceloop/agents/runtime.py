@@ -306,9 +306,14 @@ def export_credential_for_adk(workspace: Path | str | None = None) -> str | None
 
     重放模式下不需要凭据,直接返回 None —— 那条路一个请求都不发。
     INVOICELOOP_GCLOUD_OAUTH=1(vertex_oauth.activate 已在进程内装好
-    短时 OAuth)同样直接返回 —— 那条路不读 API key。
+    短时 OAuth)同样直接返回 —— 那条路不读 API key。Cloud Run Job 这类
+    有原生 ADC 的环境(GOOGLE_GENAI_USE_VERTEXAI 已设)也一样:
+    google-genai 会用元数据服务器的 SA 凭据,逼它找 API key 反而挡路。
     """
-    if is_replay_mode(workspace) or os.environ.get("INVOICELOOP_GCLOUD_OAUTH"):
+    if (is_replay_mode(workspace)
+            or os.environ.get("INVOICELOOP_GCLOUD_OAUTH")
+            or os.environ.get("GOOGLE_GENAI_USE_VERTEXAI")
+            in ("1", "true", "TRUE")):
         return None
     api_key = env.credential("gemini", workspace=workspace)
     if not api_key:

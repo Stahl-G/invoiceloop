@@ -15,6 +15,9 @@ WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY invoiceloop ./invoiceloop
 COPY scripts/cloud_entrypoint.sh /cloud_entrypoint.sh
+# scripts/ 整体进镜像:Cloud Run Job 用 --command=bash --args=scripts/run_unattended_job.sh
+# 复用同一镜像(公开只读工作台入口不变)
+COPY scripts ./scripts
 
 # demo workspace 在构建时烤进镜像 —— 运行期不取任何外部数据,
 # 于是没有「拉取失败了怎么办」这个问题(见 docs/CLOUD_RUN.md)

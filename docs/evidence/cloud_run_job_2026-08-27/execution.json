@@ -1,0 +1,119 @@
+{
+  "apiVersion": "run.googleapis.com/v1",
+  "kind": "Execution",
+  "metadata": {
+    "annotations": {
+      "run.googleapis.com/client-name": "gcloud",
+      "run.googleapis.com/client-version": "579.0.0",
+      "run.googleapis.com/creator": "guoyihong012@gmail.com",
+      "run.googleapis.com/execution-environment": "gen2",
+      "run.googleapis.com/lastModifier": "guoyihong012@gmail.com",
+      "run.googleapis.com/operation-id": "d932d5fb-7589-4b37-ad2b-3826706797f1"
+    },
+    "creationTimestamp": "2026-08-27T20:53:41.179602Z",
+    "generation": 1,
+    "labels": {
+      "client.knative.dev/nonce": "cig_zej_hek",
+      "cloud.googleapis.com/location": "asia-southeast1",
+      "run.googleapis.com/job": "invoiceloop-unattended",
+      "run.googleapis.com/jobGeneration": "2",
+      "run.googleapis.com/jobResourceVersion": "1787864012357707",
+      "run.googleapis.com/jobUid": "8f2f646f-d9ae-4117-9a91-c6da6162abf4",
+      "run.googleapis.com/satisfiesPzs": "true"
+    },
+    "name": "invoiceloop-unattended-gqw8q",
+    "namespace": "478275522139",
+    "ownerReferences": [
+      {
+        "apiVersion": "serving.knative.dev/v1",
+        "blockOwnerDeletion": true,
+        "controller": true,
+        "kind": "Job",
+        "name": "invoiceloop-unattended",
+        "uid": "8f2f646f-d9ae-4117-9a91-c6da6162abf4"
+      }
+    ],
+    "resourceVersion": "AAZaDZmjFGc",
+    "selfLink": "/apis/run.googleapis.com/v1/namespaces/478275522139/executions/invoiceloop-unattended-gqw8q",
+    "uid": "233dd722-3ae9-42f3-bab0-f4418d3033b4"
+  },
+  "spec": {
+    "parallelism": 1,
+    "taskCount": 1,
+    "template": {
+      "spec": {
+        "containers": [
+          {
+            "args": [
+              "scripts/run_unattended_job.sh"
+            ],
+            "command": [
+              "bash"
+            ],
+            "env": [
+              {
+                "name": "GOOGLE_GENAI_USE_VERTEXAI",
+                "value": "true"
+              },
+              {
+                "name": "GOOGLE_CLOUD_PROJECT",
+                "value": "airy-decorator-361514"
+              },
+              {
+                "name": "GOOGLE_CLOUD_LOCATION",
+                "value": "global"
+              },
+              {
+                "name": "BUCKET",
+                "value": "invoiceloop-airy-decorator-361514-arm-u"
+              }
+            ],
+            "image": "asia-southeast1-docker.pkg.dev/airy-decorator-361514/cloud-run-source-deploy/invoiceloop-unattended@sha256:3ed826cc97bbe6791c8e03f5bb8e4b238a163f351b0ba07d60c7fcf6ef7985f4",
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "2Gi"
+              }
+            }
+          }
+        ],
+        "maxRetries": 3,
+        "serviceAccountName": "478275522139-compute@developer.gserviceaccount.com",
+        "timeoutSeconds": "1800"
+      }
+    }
+  },
+  "status": {
+    "completionTime": "2026-08-27T20:58:33.761649Z",
+    "conditions": [
+      {
+        "lastTransitionTime": "2026-08-27T20:58:33.761649Z",
+        "message": "Execution completed successfully in 4m44.52s.",
+        "status": "True",
+        "type": "Completed"
+      },
+      {
+        "lastTransitionTime": "2026-08-27T20:53:47.159369Z",
+        "message": "Provisioned imported containers.",
+        "status": "True",
+        "type": "ResourcesAvailable"
+      },
+      {
+        "lastTransitionTime": "2026-08-27T20:53:55.983601Z",
+        "message": "Started deployed execution in 8.82s.",
+        "status": "True",
+        "type": "Started"
+      },
+      {
+        "lastTransitionTime": "2026-08-27T20:53:46.667921Z",
+        "message": "Imported container image in 5.49s.",
+        "status": "True",
+        "type": "ContainerReady"
+      }
+    ],
+    "logUri": "https://console.cloud.google.com/logs/viewer?project=airy-decorator-361514&advancedFilter=resource.type%3D%22cloud_run_job%22%0Aresource.labels.job_name%3D%22invoiceloop-unattended%22%0Aresource.labels.location%3D%22asia-southeast1%22%0Alabels.%22run.googleapis.com/execution_name%22%3D%22invoiceloop-unattended-gqw8q%22",
+    "observedGeneration": 1,
+    "startTime": "2026-08-27T20:53:49.241451Z",
+    "succeededCount": 1
+  }
+}

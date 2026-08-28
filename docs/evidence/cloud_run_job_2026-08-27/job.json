@@ -1,0 +1,100 @@
+{
+  "apiVersion": "run.googleapis.com/v1",
+  "kind": "Job",
+  "metadata": {
+    "annotations": {
+      "run.googleapis.com/client-name": "gcloud",
+      "run.googleapis.com/client-version": "579.0.0",
+      "run.googleapis.com/creator": "guoyihong012@gmail.com",
+      "run.googleapis.com/lastModifier": "guoyihong012@gmail.com",
+      "run.googleapis.com/operation-id": "e6b44bc9-3f0a-43b0-802b-ba0a04a7ba71"
+    },
+    "creationTimestamp": "2026-08-27T19:03:40.267444Z",
+    "generation": 2,
+    "labels": {
+      "cloud.googleapis.com/location": "asia-southeast1",
+      "run.googleapis.com/lastUpdatedTime": "2026-08-27T20:53:31.613784Z",
+      "run.googleapis.com/satisfiesPzs": "true"
+    },
+    "name": "invoiceloop-unattended",
+    "namespace": "478275522139",
+    "resourceVersion": "AAZaDZmi+IA",
+    "selfLink": "/apis/run.googleapis.com/v1/namespaces/478275522139/jobs/invoiceloop-unattended",
+    "uid": "8f2f646f-d9ae-4117-9a91-c6da6162abf4"
+  },
+  "spec": {
+    "template": {
+      "metadata": {
+        "annotations": {
+          "run.googleapis.com/client-name": "gcloud",
+          "run.googleapis.com/client-version": "579.0.0",
+          "run.googleapis.com/execution-environment": "gen2"
+        },
+        "labels": {
+          "client.knative.dev/nonce": "cig_zej_hek"
+        }
+      },
+      "spec": {
+        "taskCount": 1,
+        "template": {
+          "spec": {
+            "containers": [
+              {
+                "args": [
+                  "scripts/run_unattended_job.sh"
+                ],
+                "command": [
+                  "bash"
+                ],
+                "env": [
+                  {
+                    "name": "GOOGLE_GENAI_USE_VERTEXAI",
+                    "value": "true"
+                  },
+                  {
+                    "name": "GOOGLE_CLOUD_PROJECT",
+                    "value": "airy-decorator-361514"
+                  },
+                  {
+                    "name": "GOOGLE_CLOUD_LOCATION",
+                    "value": "global"
+                  },
+                  {
+                    "name": "BUCKET",
+                    "value": "invoiceloop-airy-decorator-361514-arm-u"
+                  }
+                ],
+                "image": "asia-southeast1-docker.pkg.dev/airy-decorator-361514/cloud-run-source-deploy/invoiceloop-unattended:latest",
+                "resources": {
+                  "limits": {
+                    "cpu": "1",
+                    "memory": "2Gi"
+                  }
+                }
+              }
+            ],
+            "maxRetries": 3,
+            "serviceAccountName": "478275522139-compute@developer.gserviceaccount.com",
+            "timeoutSeconds": "1800"
+          }
+        }
+      }
+    }
+  },
+  "status": {
+    "conditions": [
+      {
+        "status": "True",
+        "type": "Ready"
+      }
+    ],
+    "executionCount": 2,
+    "latestCreatedExecution": {
+      "completionStatus": "EXECUTION_SUCCEEDED",
+      "completionTimestamp": "2026-08-27T20:58:33.761649Z",
+      "creationTimestamp": "2026-08-27T20:53:41.179602Z",
+      "name": "invoiceloop-unattended-gqw8q"
+    },
+    "observedGeneration": 2
+  }
+}

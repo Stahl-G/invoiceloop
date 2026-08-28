@@ -124,8 +124,24 @@ approver `appr_*` 前缀)。
 Cumulus 属诚实失败。P0 的结论是:**内核吃得下 agent 闭环,而确定性
 策略在 demo 语料上一条不放 —— 这个"不放"每一条都站得住。**
 
-## 尚未做(按计划书顺序,本地绿了才碰云)
+## P2 部署与首次云端执行(2026-08-28,Cloud Run Job)
 
-- P2:Cloud Run Job(IAM 私有)+ Secret Manager + GCS 工件上传;
-  公开 `.run.app` 继续只读,只当部署证明。
-- approver 只看摘要不看像素的取舍是否站得住,等首轮真实运行数据。
+`scripts/deploy_cloud_run_job.sh` 一条命令:Cloud Build 打镜像 → IAM 私有
+Job(无 URL,SA 走原生 Vertex ADC)→ 执行 → GCS 工件 → 证据落
+[`evidence/cloud_run_job_2026-08-27/`](evidence/cloud_run_job_2026-08-27/)。
+公开 `.run.app` 工作台保持只读不变。
+
+执行 `invoiceloop-unattended-gqw8q`(succeeded 1/0,工件 24 项落桶):
+
+- **本臂第一次真实批准发生在云端**:Cumulus(`046e0c49`)在 policy v3
+  下 **零违规**通过闸,approver 放行,AP-0001 署名
+  `unattended-policy-v3+agent:critic:gemini-3.7-flash`(digest 进账本)。
+  原因与第三轮本地不同:云端 poppler 从那张降质扫描件**恢复了文本**
+  (`ocred: 3, ocr_blocked: []` —— README 写过两种结局都合法),
+  Cumulus 不再是 OCR 受阻单,页面证据齐全。
+- UMI 仍被 R8 拦(无标签的印着日期),Powell 仍被 R4 拦(两角色分歧)
+  —— 与本地第三轮同一批具名规则,一台不放过。
+- 交付投影:2 ready_for_approval + **1 approved_for_export**。
+- 诚实历史:前一次执行(`pmdtq`)在**上传步骤**崩于本仓库的
+  `Path()` 装箱 bug(已在 `479ed4b` 修复),三次重试的工件只存在于
+  日志、从未落桶;`gqw8q` 是修复后的完整执行。
