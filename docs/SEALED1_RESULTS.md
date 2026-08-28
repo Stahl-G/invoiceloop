@@ -1,98 +1,124 @@
-# SEALED-1 封箱评测结果(2026-08-05 执行,一次完成,数字照登)
+# SEALED-1 sealed evaluation results (executed 2026-08-05, completed in one pass, numbers recorded as-is)
 
-协议:`docs/SEALED1_PROTOCOL.md`(判据、种子承诺、两臂、终点全部先于结果冻结)。
-名单:`docs/sealed1_doc_list.json`(drand 轮次 6350076,2026-08-05T12:35Z;
-承诺 commit 979fd37 先于开奖;名单 commit f3594ce 先于任何 DWS 调用;
-独立复算 `heldout.sealed_list(seed)` 与名单逐份一致,与 260 份暴露清单
-及旧留出 100 零交集)。
+Protocol: `docs/SEALED1_PROTOCOL.md` (criteria, seed commitment, both arms, and
+endpoints all frozen before results).
+List: `docs/sealed1_doc_list.json` (drand round 6350076, 2026-08-05T12:35Z;
+the commitment commit 979fd37 precedes the reveal; the list commit f3594ce precedes
+any DWS call; independent recomputation of `heldout.sealed_list(seed)` matches the
+list document by document, with zero overlap with the 260-document exposure
+manifest and the old held-out 100).
 
-## 执行记录
+## Execution record
 
-- 200 次 DWS 调用(understand + agentic × 100 份)**全部 200 OK,零失败**;
-  消耗 **4,953 credits**(预估 ≈4,758,熔断线 6,000 未触发);4 把 key。
-- 主臂 run:`runs/sealed1`(HAR-0001);第二臂:同一冻结证据 + 仅换策略
-  重建矩阵(`runs/sealed1-har2`;冻结重放 ledger sha 与主臂逐位一致)。
-- evidence bundle:`runs/sealed1-evidence.zip`(22MB,raw + 两臂工件 +
-  名单 + 摘要)sha256 =
-  `fca5f1e209373bb13fc9c31212e05136748b43429db2d937ef25c0b7750dc0ff`。
-- **DWS 签名封缄(2026-08-06)**:`runs/sealed1/audit_bundle.sealed.zip`
+- 200 DWS calls (understand + agentic × 100 documents): **all 200 OK, zero
+  failures**; spent **4,953 credits** (estimate ≈4,758; the 6,000 circuit-breaker
+  line was not triggered); 4 keys.
+- Primary-arm run: `runs/sealed1` (HAR-0001); second arm: same frozen evidence +
+  the matrix rebuilt with only the policy swapped (`runs/sealed1-har2`; the
+  frozen-replay ledger sha matches the primary arm bit for bit).
+- evidence bundle: `runs/sealed1-evidence.zip` (22MB, raw + both arms' artifacts +
+  list + summary) sha256 =
+  `fca5f1e209373bb13fc9c31212e05136748b43429db2d937ef25c0b7750dc0ff`.
+- **DWS signature sealing (2026-08-06)**: `runs/sealed1/audit_bundle.sealed.zip`
   sha256 = `ad6a698cb6e45ba66f4063b2cf760440b13fa335cd896b64fed6f2b6d4f33132`,
-  CAdES b-lt 签名(签署者 `CN=Nutrient DWS API Test Document Signer`,
-  可信时间戳在签名内)。verify 五层全过(成员/快照/语义/签名;
-  空裁决故绑定 None)。**诚实边界不变**:签名固定的是「这份 manifest
-  摘要于时间 T 经过 DWS 签名且未改」,签发主体是 Nutrient 的测试签名
-  证书,不是本项目 —— 「谁造的包」仍锚在带外。
+  CAdES b-lt signature (signer `CN=Nutrient DWS API Test Document Signer`, trusted
+  timestamp inside the signature). verify passes all five layers
+  (members/snapshot/semantics/signature; empty adjudication, hence binding None).
+  **The honesty boundary is unchanged**: what the signature pins down is "this
+  manifest digest passed through DWS signing at time T and was not altered"; the
+  signing principal is Nutrient's test signing certificate, not this project —
+  "who built the bundle" is still anchored out-of-band.
 
-## 主终点:H1–H7(主臂 HAR-0001;通过区间沿用旧 HELDOUT 预注册)
+## Primary endpoint: H1–H7 (primary arm HAR-0001; pass intervals carry over the old HELDOUT preregistration)
 
-| # | 量 | 校准 | 旧留出 | **SEALED-1** | 区间 | 判定 |
+| # | Quantity | Calibration | Old held-out | **SEALED-1** | Interval | Verdict |
 |---|---|---|---|---|---|---|
-| H1 | 分诊 lift | 4.10× | 3.04× | **4.03×** | > 1.5 | **PASS** |
+| H1 | triage lift | 4.10× | 3.04× | **4.03×** | > 1.5 | **PASS** |
 | H2 | coverage@46% | 78.1% | 74.3% | **77.3%** | > 55% | **PASS** |
-| H3 | 复核召回 | 75.1% | 72.5% | **77.7%** | > 55% | **PASS** |
-| H4 | 缺值率 | 26.8% | 27.9% | **29.3%** | 10–45% | **PASS** |
-| H5 | citation 失败率 | 15.3% | 14.4% | **15.3%** | < 15% | **FAIL(照登)** |
-| H6 | 冻结拒绝率 | 18.9% | 34.6% | **36.6%** | 5–35% | **FAIL(照登)** |
-| H7 | 运行闭环 | — | — | bundle 416 成员,verify 四层全过(空裁决 → binding=None) | — | **PASS** |
+| H3 | review recall | 75.1% | 72.5% | **77.7%** | > 55% | **PASS** |
+| H4 | missing rate | 26.8% | 27.9% | **29.3%** | 10–45% | **PASS** |
+| H5 | citation failure rate | 15.3% | 14.4% | **15.3%** | < 15% | **FAIL (recorded as-is)** |
+| H6 | frozen rejection rate | 18.9% | 34.6% | **36.6%** | 5–35% | **FAIL (recorded as-is)** |
+| H7 | operational closed loop | — | — | bundle 416 members, verify passes all four layers (empty adjudication → binding=None) | — | **PASS** |
 
-(记分槽 587,偏差 256;队首偏差率 70.0% vs 队尾 17.3%。)
+(587 scored slots, 256 discrepancies; head-of-queue discrepancy rate 70.0% vs tail
+17.3%.)
 
-**判定:H1 达标(4.03×,线的 2.7 倍)→ 整体不失败;H5/H6 未达标,按协议
-写入限定清单,不调判据重测:**
+**Verdict: H1 meets the bar (4.03×, 2.7 times the line) → overall not a failure;
+H5/H6 miss the bar, written into the limitations list per protocol, without
+adjusting criteria and retesting:**
 
-- **H5(15.3% vs 线 15%)**:擦线 0.3pp。与旧留出集(14.4%)同量级,
-  不是新退化; citation 可判子集失败率长期在 14–15% 徘徊,这条线的依据
-  本身来自当年误写的「校准约 3–5%」(旧协议已照登勘误)。如实结论:
-  citation 门禁的可判子集失败率约 15%,是已知边界,不是本次新发现。
-- **H6(36.6% vs 上界 35%)**:连续两批都站上界(旧 34.6%)。方向一致的
-  解释不变:冻结拒绝主因是 OCR 退化文档的绑定失败,与文档类型分布相关
-  (校准集全是美国广播广告发票,两批留出集分布更宽)。**这意味着
-  「冻结拒绝率 ≈35%」应被视为本语料全类型分布下的常态,而不是异常**;
-  它直接限制了自动放行的天花板,是改进层的真实工作面。
-- 分布对比:H1 反而比旧留出集更强(4.03 vs 3.04),H2/H3 回升近校准
-  水平 —— 上一批的衰减没有延续,排序能力在第二个未见批次上复现。
+- **H5 (15.3% vs line 15%)**: over the line by 0.3pp. Same magnitude as the old
+  held-out set (14.4%), not a new regression; the failure rate on the
+  citation-decidable subset has long hovered around 14–15%, and this line's basis
+  itself came from a mistakenly written "calibration ~3–5%" back then (the old
+  protocol already carries the erratum recorded as-is). Honest conclusion: the
+  citation gate's decidability-subset failure rate is about 15% — a known boundary,
+  not a new finding this time.
+- **H6 (36.6% vs upper bound 35%)**: two consecutive batches have stood at the
+  bound (old: 34.6%). The direction-consistent explanation is unchanged: frozen
+  rejections are driven mainly by binding failures on OCR-degraded documents and
+  correlate with the document-type distribution (the calibration set is all US
+  radio-advertising invoices, while the two held-out batches have a broader
+  distribution). **This means "frozen rejection rate ≈35%" should be treated as the
+  norm under this corpus's full type distribution, not as an anomaly**; it directly
+  caps the ceiling on automatic release and is the real work surface for the
+  improvement layer.
+- Distribution comparison: H1 is actually stronger than the old held-out set
+  (4.03 vs 3.04), and H2/H3 rebound to near-calibration levels — the previous
+  batch's decay did not continue; ranking ability reproduced on a second unseen
+  batch.
 
-## 第二臂(HAR-0002,用户决策:取消无冲突 TIER1 强制人工;预注册 §3.5)
+## Second arm (HAR-0002, user decision: remove mandatory manual confirmation for non-conflicting TIER1; preregistered §3.5)
 
-| 量 | HAR-0001 | HAR-0002 |
+| Quantity | HAR-0001 | HAR-0002 |
 |---|---|---|
-| 字段复核负载(requires) | 63.3% | 64.2%(+0.9pp,QA 抽样 5% 的代价) |
-| **放行决策负载** | **82.9%** | **64.2%**(−18.7pp) |
-| 文档触达率 | 100/100 | 100/100(如实:每份仍有至少一个需复核槽) |
-| TIER1 静默错误率(反事实) | 9.62% | 9.46% |
-| TIER1 偏差路由召回 | 83.3% | 84.4% |
+| field-review workload (requires) | 63.3% | 64.2% (+0.9pp, the cost of 5% QA sampling) |
+| **release-decision workload** | **82.9%** | **64.2%** (−18.7pp) |
+| document touch rate | 100/100 | 100/100 (recorded truthfully: every document still has at least one slot requiring review) |
+| TIER1 silent-error rate (counterfactual) | 9.62% | 9.46% |
+| TIER1 discrepancy-routing recall | 83.3% | 84.4% |
 
-H1–H6 第二臂:H1 4.13× / H2 77.0% / H3 78.1%(H4–H6 与路由无关,相同)。
-**安全性未见劣化(同证据配对),工作量按预期下降;文档触达 100% 是下一
-个改进对象,不是这次的目标。**
+Second-arm H1–H6: H1 4.13× / H2 77.0% / H3 78.1% (H4–H6 are routing-independent,
+identical). **No safety degradation observed (paired on the same evidence), and
+workload down as expected; a 100% document touch rate is the next improvement
+target, not this round's goal.**
 
-## 次终点:排序比较(预注册 paired 分析,TIER1)
+## Secondary endpoint: ranking comparison (preregistered paired analysis, TIER1)
 
-| 复核预算 | 置信度升序 | 分诊序 | paired diff(95% CI,按文档 bootstrap n=1000) |
+| Review budget | Ascending confidence | Triage order | paired diff (95% CI, per-document bootstrap n=1000) |
 |---|---|---|---|
-| 10% | 29.4% | 31.1% | +1.7pp [−3.1, +17.9] 跨零 |
+| 10% | 29.4% | 31.1% | +1.7pp [−3.1, +17.9] spans zero |
 | 20% | 31.8% | 55.6% | **+23.8pp [+10.7, +30.6]** |
 | 30% | 41.2% | 63.3% | **+22.2pp [+10.8, +35.2]** |
 | 40% | 49.4% | 77.8% | **+28.4pp [+15.0, +43.2]** |
 
-confidence 同分组范围仍极宽(30% 预算处 [29.4%, 98.8%],均匀随机期望
-45.7%)。**按协议口径可以说:在预注册固定 tie-break 下,20–40% 预算段
-分诊序的 paired CI 下界 > 0。** 但必须带两条附注:(a) 这是固定 tie-break
-口径,对「同分组内最有利排列」不成立;(b) 本批置信度阈基线与
-「有值才放行」完全重合(这批 DWS 返回的非空值全是 0.95 档)——
-confidence 在本批几乎没有区分度,这个对手偏弱。
+The confidence tie-group span is still extremely wide (at the 30% budget,
+[29.4%, 98.8%], against a uniform-random expectation of 45.7%). **Under the
+protocol's measure it may be said: under the preregistered fixed tie-break, the
+triage order's paired CI lower bound is > 0 across the 20–40% budget range.** But
+two caveats must accompany it: (a) this is the fixed-tie-break measure and does not
+hold for "the most favorable arrangement within a tie group"; (b) in this batch the
+confidence-threshold baseline coincides exactly with "release only when a value is
+present" (every non-empty value DWS returned this batch was in the 0.95 band) —
+confidence has almost no discriminative power in this batch, so this opponent is on
+the weak side.
 
-## 与旧留出集的对照(为什么这批复现更干净)
+## Comparison with the old held-out set (why this batch replicates more cleanly)
 
-旧留出集(3.04×)曾比校准(4.10×)衰减;SEALED-1(4.03×)回到校准水平。
-差异最可能的解释:旧批的名单虽先提交,但案例后来进了开发(C3/C8);
-本批是机械封箱。两批合读:排序能力稳定在 3–4×,非单批运气。
+The old held-out set (3.04×) had decayed relative to calibration (4.10×); SEALED-1
+(4.03×) returns to calibration level. The most likely explanation for the
+difference: the old batch's list was committed first, but its cases later entered
+development (C3/C8); this batch is mechanically sealed. Reading the two batches
+together: ranking ability is stable at 3–4×, not single-batch luck.
 
-## 限定清单(本批新增/更新)
+## Limitations list (additions/updates in this batch)
 
-1. H5/H6 未过线 —— 照登,不退役、不调判据;
-2. 文档触达率两臂均 100% —— 「整单零触碰放行」在本语料分布下尚未实现;
-3. confidence 对手在本批偏弱(非空值全 0.95 档),排序优势结论的外部
-   有效性受限;
-4. 本批自动降级为回归/演化集 —— 此后由它启发的任何改动进下一版本,
-   正式结论等下一批封箱。
+1. H5/H6 missed their lines — recorded as-is, not retired, no criteria adjusted;
+2. Document touch rate is 100% in both arms — "whole-document zero-touch release"
+   has not been achieved under this corpus distribution;
+3. The confidence opponent is weak in this batch (all non-empty values in the 0.95
+   band); the external validity of the ranking-advantage conclusion is limited;
+4. This batch is automatically demoted to a regression/evolution set — any change
+   inspired by it from now on goes into the next version; formal conclusions wait
+   for the next sealed batch.

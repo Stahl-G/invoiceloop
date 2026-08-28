@@ -1,72 +1,85 @@
-# SEALED-2 封箱评测协议(2026-08-06,执行前冻结)
+# SEALED-2 sealed evaluation protocol (2026-08-06, frozen before execution)
 
-SEALED-1 已完成 final-held-out 职责并降级为演化/回归集
-(见 `docs/SEALED1_RESULTS.md` 限定 4、`docs/LOOP_GENERALIZATION_2026-08-06.md`)。
-本协议再建一批真正未见的 100 份,作晋升资格集(PROMOTION-1)与「未见数据」
-公开口径的唯一依据。
+SEALED-1 has completed its final-held-out duty and been demoted to an
+evolution/regression set (see `docs/SEALED1_RESULTS.md` limitation 4 and
+`docs/LOOP_GENERALIZATION_2026-08-06.md`). This protocol builds another batch of
+100 genuinely unseen documents, serving as the promotion qualification set
+(PROMOTION-1) and the sole basis for the public "unseen data" claim.
 
-**与 SEALED-1 的关键差异:**
-- 排除池已含 SEALED-1 全 100(`docs/development_exposure_manifest.json`);
-- 抽样 PRNG 语境为 `invoiceloop-sealed2-v1`(不是 sealed1-v1),避免撞流;
-- 本批兼任晋升资格集;结果驱动的规则/代码修改 = 本批作废。
+**Key differences from SEALED-1:**
+- The exclusion pool already contains all 100 of SEALED-1
+  (`docs/development_exposure_manifest.json`);
+- The sampling PRNG context is `invoiceloop-sealed2-v1` (not sealed1-v1), to avoid
+  stream collision;
+- This batch doubles as the promotion qualification set; results-driven rule/code
+  changes = this batch is voided.
 
-## 0. 冻结对象(本文件 commit 时即冻结)
+## 0. What is frozen (frozen at the moment this file is committed)
 
-- 产品代码:本文件的首次提交即冻结点;
-- 排除池:`docs/development_exposure_manifest.json`(须含 sealed1-100);
-- 抽样实现:`invoiceloop/heldout.py::sealed_list(..., context="sealed2-v1")`;
-- harness:评测时锁定的 active harness(写入 RESULTS 时照登 digest)。
+- Product code: the first commit of this file is the freeze point;
+- Exclusion pool: `docs/development_exposure_manifest.json` (must contain the
+  sealed1-100);
+- Sampling implementation: `invoiceloop/heldout.py::sealed_list(..., context="sealed2-v1")`;
+- harness: the active harness locked at evaluation time (digest recorded as-is
+  when RESULTS is written).
 
-## 1. 随机种子承诺
+## 1. Random seed commitment
 
-- 随机源:drand 主网 beacon(`https://api.drand.sh/public/{round}`);
-- **本批轮次:6352483**;种子 =
+- Randomness source: drand mainnet beacon (`https://api.drand.sh/public/{round}`);
+- **Round for this batch: 6352483**; seed =
   `b99de6bbc5e0c20707ceda77aae574391266b8d8dd5114bb8227523b680a1e59`
-  (该轮 `randomness` 字段原文);
-- 抽样 = `heldout.sealed_list(seed, context="sealed2-v1")`:
+  (the literal `randomness` field of that round);
+- Sampling = `heldout.sealed_list(seed, context="sealed2-v1")`:
   `random.Random("invoiceloop-sealed2-v1|" + seed).sample(sorted(pool), 100)`,
-  pool = ≥4 记分字段标注 ∧ 不在暴露清单;
-- 名单落盘:`docs/sealed2_doc_list.json`(与 workspace 副本一致);
-  任何人可公开复算。
+  pool = documents with ≥4 scored-field annotations ∧ not in the exposure
+  manifest;
+- List on disk: `docs/sealed2_doc_list.json` (identical to the workspace copy);
+  anyone can recompute it publicly.
 
-## 2. 执行顺序(不许颠倒)
+## 2. Execution order (must not be reordered)
 
-1. 暴露清单并入 SEALED-1 的 100 并 commit;
-2. 本协议 commit(**先于名单开奖写入仓库的可验证顺序:
-   协议与排除池冻结 → 取种子 → 名单落盘 commit → 才许 extract**);
+1. Merge SEALED-1's 100 into the exposure manifest and commit;
+2. Commit this protocol (**the verifiable order, written into the repo before the
+   list draw: protocol and exclusion pool frozen → take the seed → list written to
+   disk and committed → only then may extract run**);
 3. `python3 -m invoiceloop sealed plan --workspace runs/sealed2-workspace
-   --seed <hex> --seed-source "drand round <N>"` → 复制为
-   `docs/sealed2_doc_list.json` 并 **单独 commit**(先于任何 DWS 调用);
-4. **仅在明确预算授权后**:
+   --seed <hex> --seed-source "drand round <N>"` → copy to
+   `docs/sealed2_doc_list.json` and **commit separately** (before any DWS call);
+4. **Only after explicit budget authorization**:
    `python3 -m invoiceloop sealed extract --workspace runs/sealed2-workspace`
-   —— 200 次调用(understand + agentic),预算熔断 6000 credits;
+   — 200 calls (understand + agentic), budget circuit breaker 6000 credits;
 5. `INVOICELOOP_CORPUS=runs/sealed2-workspace python3 -m invoiceloop run
-   --out runs/sealed2 --doc-ids <名单>`;
-6. 评测一次,结果写入 `docs/SEALED2_RESULTS.md`,数字照登;
-7. 若作晋升资格:在目标 workspace 放置
-   `improve/sealed2_qualified.ok`(人工确认 SEALED-2 eval 已过 Gate 2),
-   **标记必须点名它资格化的 `harness_id`** —— 只有该 harness 自己晋升时
-   `basis` 才升为 `sealed2_qualified`,派生候选**不继承**
-   (`improve.mark_sealed2_qualified(ws, harness_id=...)`;
-   理由见 `docs/SEALED2_RESULTS.md` 的 2026-08-06 修正)。
+   --out runs/sealed2 --doc-ids <list>`;
+6. Evaluate once, results written into `docs/SEALED2_RESULTS.md`, numbers
+   recorded as-is;
+7. If used as promotion qualification: place `improve/sealed2_qualified.ok` in the
+   target workspace (manual confirmation that the SEALED-2 eval has passed Gate 2);
+   **the marker must name the `harness_id` it qualifies** — only when that very
+   harness is itself promoted does `basis` rise to `sealed2_qualified`; derived
+   candidates **do not inherit** it
+   (`improve.mark_sealed2_qualified(ws, harness_id=...)`; rationale in the
+   2026-08-06 correction in `docs/SEALED2_RESULTS.md`).
 
-网络失败按断点续跑恢复;**结果驱动的规则/代码修改 = 本批作废,
-SEALED-2 自动降级为回归集**,另批新种子重来。
+Network failures are recovered by checkpoint resume; **results-driven rule/code
+changes = this batch is voided, SEALED-2 is automatically demoted to a regression
+set**, and a new batch is drawn with a fresh seed.
 
-## 3. 预注册终点
+## 3. Preregistered endpoints
 
-主终点沿用 SEALED-1 / HELDOUT 的 H1–H7 区间(见 `docs/SEALED1_PROTOCOL.md` §3)。
-另增晋升门:
+The primary endpoint carries over the H1–H7 intervals from SEALED-1 / HELDOUT (see
+`docs/SEALED1_PROTOCOL.md` §3). Promotion gates added on top:
 
-| # | 量 | 通过 |
+| # | Quantity | Pass |
 |---|---|---|
-| P1 | Gate 2 silent_absent / silent_wrong 相对基线 | 不上升 |
-| P2 | 字段复核负载相对基线 | 不上升 |
+| P1 | Gate 2 silent_absent / silent_wrong relative to baseline | does not rise |
+| P2 | field-review workload relative to baseline | does not rise |
 
-## 4. 主张纪律
+## 4. Claim discipline
 
-- SEALED-2 通过 ⇒ 可以说「当前 HEAD 在一个开发期未见的 100 份封箱集上
-  保持 H1–H6 量级 / 负载不升且静默错不升」;
-- SEALED-1、HITL-12、旧 heldout-100 **一律不得**再称为 final held-out;
-- 未跑 extract 前,promote 即使 `pareto_gated` 也只能用
-  `basis=evo_truth_replay`,不得声称未见封箱减负。
+- SEALED-2 passing ⇒ it becomes permissible to say "the current HEAD holds H1–H6
+  magnitudes on a 100-document sealed set unseen during development / workload not
+  rising and silent errors not rising";
+- SEALED-1, HITL-12, and the old heldout-100 **may none of them** be called final
+  held-out any more;
+- Before extract has run, promote — even when `pareto_gated` — may use only
+  `basis=evo_truth_replay` and must not claim unseen-sealed workload reduction.
