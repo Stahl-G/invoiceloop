@@ -1,66 +1,74 @@
-# QUALIFICATION_NARROW_V2_2026-08-23 结果（有效负资格轮，n=200）
+# QUALIFICATION_NARROW_V2_2026-08-23 results (a valid negative qualification round, n=200)
 
-状态：`valid / qualification FAIL / promotion DENIED`
+Status: `valid / qualification FAIL / promotion DENIED`
 
-协议：`docs/QUALIFICATION_NARROW_V2_PROTOCOL_2026-08-23.md`
+Protocol: `docs/QUALIFICATION_NARROW_V2_PROTOCOL_2026-08-23.md`
 
-权威机器裁定：
+Authoritative machine ruling:
 `docs/evidence/qual-narrow-v2-2026-08-23/decision/qualification_decision.json`
 
-## 0. 结论先行
+## 0. Conclusion up front
 
-本轮完整性通过，工作流效果复现，**安全产品能力失败**。
+Integrity passed this round, the workflow effect reproduced, and **the safety
+product capability failed**.
 
-- HAR-0023 在 200 份新未曝光 DocILE 文档上的路由时零触碰为
-  **21/200 = 10.5%（95% Wilson CI 7.0–15.5）**，落在预注册的 5–20%。
-- 这 21 份没人打开的文档有 63 个付款闸槽：`silent_absent_true=0`，但有
-  **6 个 `silent_wrong`**，另有 **3 个不可对拍的 auto-accept 槽**。
-- 因此协议 §6 III 的三项零容忍条件有两项失败。HAR-0023 **不晋升**，默认
-  census 不变。
+- HAR-0023's routing-time zero-touch on 200 new, never-exposed DocILE documents
+  was **21/200 = 10.5% (95% Wilson CI 7.0–15.5)**, inside the pre-registered
+  5–20% band.
+- Those 21 never-opened documents carry 63 payment-gate slots:
+  `silent_absent_true=0`, but **6 `silent_wrong`**, plus **3 auto-accept slots
+  that could not be scored**.
+- Two of protocol §6 III's three zero-tolerance conditions therefore fail.
+  HAR-0023 is **not promoted**; the default census stays.
 
-这是一个有效负结果，不是污染轮，也不是“差一点通过”。工作流路由属性成立，
-不能抵消主张所指子集里的安全失败。
+This is a valid negative result — not a contaminated round, and not "almost
+passed." The workflow routing property holds; it cannot offset a safety
+failure in exactly the subset the claim points at.
 
-## 1. 完整性
+## 1. Integrity
 
-| 项 | 确定性结果 |
+| Item | Deterministic result |
 |---|---:|
-| 冻结名单 | 200 份，v1 / SEALED-4 交集 0 |
-| DWS 调用 | 400/400 |
+| Frozen list | 200 documents; intersection with v1 / SEALED-4 = 0 |
+| DWS calls | 400/400 |
 | HTTP 200 | 400 |
 | failed / skipped | 0 / 0 |
 | DWS credits | 10,374 |
 | raw tree SHA-256 | `204727aacb50952123b85729c55cabc85f05da4a4ca0cf507c5fc5089e16d74f` |
-| 三臂矩阵 | A/B/D 各 200 × 10 = 2,000 个唯一槽 |
-| 缺件 | 0 |
-| 旧指标漂移 | 0 |
-| 协议 / identity 污染 | 0 |
+| Three-arm matrices | A/B/D at 200 × 10 = 2,000 unique slots each |
+| Missing components | 0 |
+| Stale-metric drift | 0 |
+| Protocol / identity contamination | 0 |
 
-提取身份钉在 `34bb17e676bd5eb5dfe227cdabf761891f79955b`；三臂与安全 scorer
-同钉在 `897a47a1f18bba024ef89b14885abd3561e1f0ee`；最终裁定器钉在
-`569794fc1be53be294075d816055bd75183f4bab`。裁定器逐 stage 验
-`MANIFEST.sha256`，拒绝缺件、额外成员、哈希漂移、不同 code revision 或不完整矩阵。
+Extraction identity is pinned at `34bb17e676bd5eb5dfe227cdabf761891f79955b`;
+the three arms and the safety scorer share pin
+`897a47a1f18bba024ef89b14885abd3561e1f0ee`; the final decider is pinned at
+`569794fc1be53be294075d816055bd75183f4bab`. The decider verifies
+`MANIFEST.sha256` stage by stage and rejects missing components, extra
+members, hash drift, differing code revisions, or incomplete matrices.
 
-## 2. 预注册预测对照
+## 2. Pre-registered predictions vs. measurements
 
-| # | 预测 | 实测 | 判定 |
+| # | Prediction | Measured | Verdict |
 |---|---|---|---|
-| P1 | A 零触碰 = 0/200 | 0/200 | **成立** |
-| P2 | D 零触碰 5–20% | 21/200 = **10.5%** | **成立** |
-| P3 | C 零触碰 ≥ D | 23 ≥ 21 | **成立** |
-| P4 | D 全臂 `silent_wrong` ≤ B | 113 ≤ 116 | **成立** |
-| P5 | D 零触碰 `silent_wrong` 8–18，错误文档 6–14 | **6** 个错值 / 6 份错误文档 | **不成立**：槽数低于下界，文档数命中 |
-| P6 | D 零触碰不可对拍 auto-accept 槽 0–6 | 3 | **成立** |
-| P7 | 三付款闸全自动 15–19% | 32/200 = **16.0%** | **成立** |
+| P1 | A zero-touch = 0/200 | 0/200 | **held** |
+| P2 | D zero-touch 5–20% | 21/200 = **10.5%** | **held** |
+| P3 | C zero-touch ≥ D | 23 ≥ 21 | **held** |
+| P4 | D whole-arm `silent_wrong` ≤ B | 113 ≤ 116 | **held** |
+| P5 | D zero-touch `silent_wrong` 8–18, wrong documents 6–14 | **6** wrong values / 6 wrong documents | **failed**: slot count below the floor; document count in range |
+| P6 | D zero-touch unscoreable auto-accept slots 0–6 | 3 | **held** |
+| P7 | All three payment gates fully automatic 15–19% | 32/200 = **16.0%** | **held** |
 
-P5 预测失败照登。实际错值少于开发先验的预测区间，但安全晋升线是 **0**，不是 8；
-所以“比预期少”仍然是确定性 FAIL。
+P5's failure is recorded as-is. The actual wrong-value count came in below the
+development-prior prediction band, but the safety promotion line is **0**, not
+8 — so "fewer than expected" is still a deterministic FAIL.
 
-## 3. 四臂 × 分层
+## 3. Four arms × strata
 
-分层：strong 107 / weak 60 / none 33。C 是 B 路由的付款闸投影，不是第四次跑。
+Strata: strong 107 / weak 60 / none 33. C is the payment-gate projection of
+B's routing, not a fourth run.
 
-| 臂 | 层 | 文档 | 零触碰 | 未决放行槽 | QA 探针 | 人队列槽 | 全臂真静默 | 全臂错值 |
+| Arm | Stratum | Docs | Zero-touch | Released unresolved slots | QA probes | Human-queue slots | Whole-arm true-silent | Whole-arm wrong values |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
 | A HAR-0001 | strong | 107 | 0 (0.0%) | 625 | 0 | 625 | 0 | 77 |
 | A HAR-0001 | weak | 60 | 0 (0.0%) | 403 | 0 | 403 | 0 | 23 |
@@ -79,63 +87,72 @@ P5 预测失败照登。实际错值少于开发先验的预测区间，但安�
 | D HAR-0023 | none | 33 | 2 (6.1%) | 53 | 21 | 183 | 1 | 16 |
 | D HAR-0023 | **ALL** | 200 | **21 (10.5%)** | 289 | 102 | 1020 | 4 | 113 |
 
-D 相对 C 多 19 个 QA 探针、少 2 份零触碰文档。strong → weak → none 的 D 零触碰
-为 12.1% → 10.0% → 6.1%，方向与广播 OCR 支持机制一致；它仍只是一轮单语料观察。
+D carries 19 more QA probes than C and 2 fewer zero-touch documents. D's
+zero-touch across strong → weak → none is 12.1% → 10.0% → 6.1%, consistent in
+direction with the broadcast OCR-support mechanism; it remains a single-corpus,
+single-round observation.
 
-## 4. 安全晋升三闸
+## 4. The three safety promotion gates
 
-只看 D 臂 21 份**整份无需打开**文档的三个付款字段：
+Looking only at the three payment fields of D's 21 documents that were **never
+opened at all**:
 
-| 安全条件 | 要求 | 实测 | 判定 |
+| Safety condition | Required | Measured | Verdict |
 |---|---:|---:|---|
-| `silent_absent_true` | 0 | 0 | **过** |
-| `silent_wrong` | 0 | **6** | **不过** |
-| `unscored_auto_accept_slots` | 0 | **3** | **不过** |
+| `silent_absent_true` | 0 | 0 | **pass** |
+| `silent_wrong` | 0 | **6** | **fail** |
+| `unscored_auto_accept_slots` | 0 | **3** | **fail** |
 
-6 个错值分布在 6 份文档：`amount_due` 3、`seller_name` 3。另有 3 份文档各一个
-不可对拍的 `invoice_number` auto-accept 槽。不可对拍没有从分母里消失，也没有被算成
-“正确”；它按协议直接阻断晋升。
+The 6 wrong values spread over 6 documents: `amount_due` 3, `seller_name` 3.
+Three further documents each have one unscoreable `invoice_number` auto-accept
+slot. Unsocreable did not vanish from the denominator, nor was it counted as
+"correct"; per the protocol it blocks promotion directly.
 
-全臂 P4 的 113 ≤ 116 只说明 D 没让全体自动槽的错值数高于 B。它不能替代这个
-零触碰风险子集，更不能把 6 个错值稀释成产品通过。
+Whole-arm P4's 113 ≤ 116 only says D did not raise the wrong-value count on
+ALL automatic slots above B. It cannot substitute for this zero-touch
+risk-concentrated subset, still less dilute 6 wrong values into a product pass.
 
-## 5. 三层裁定
+## 5. Three-layer ruling
 
-| 层 | 结果 | 后果 |
+| Layer | Result | Consequence |
 |---|---|---|
-| I. 轮次完整性 | **PASS** | 本轮数字可作为有效资格证据 |
-| II. 工作流效果复现 | **PASS** | 允许报告本轮路由时零触碰 10.5% |
-| III. 安全产品能力 | **FAIL** | 禁止晋升 HAR-0023 |
-| 总裁定 | **QUALIFICATION FAIL** | `promotion: denied`；默认 census 不变 |
+| I. Round integrity | **PASS** | this round's numbers are valid qualification evidence |
+| II. Workflow effect reproduction | **PASS** | permitted to report this round's routing-time zero-touch of 10.5% |
+| III. Safety product capability | **FAIL** | promotion of HAR-0023 forbidden |
+| Overall ruling | **QUALIFICATION FAIL** | `promotion: denied`; default census unchanged |
 
-机器 reason codes：`zero_touch_silent_wrong_nonzero`、
-`zero_touch_unscored_auto_accept_nonzero`。
+Machine reason codes: `zero_touch_silent_wrong_nonzero`,
+`zero_touch_unscored_auto_accept_nonzero`.
 
-## 6. 允许与禁止的公开说法
+## 6. Allowed and forbidden public phrasings
 
-允许：
+Allowed:
 
-> 在一轮通过完整性门的 200 份新未曝光 DocILE 文档上，HAR-0023 测得路由时
-> 零触碰 21/200（10.5%，95% Wilson CI 7.0–15.5）。其零触碰付款子集出现
-> 6 个错值和 3 个不可对拍 auto-accept 槽，因此安全资格失败，HAR-0023 未晋升。
+> On 200 new, never-exposed DocILE documents that passed the integrity gate,
+> HAR-0023 measured routing-time zero-touch of 21/200 (10.5%, 95% Wilson CI
+> 7.0–15.5). Its zero-touch payment subset contained 6 wrong values and 3
+> unscoreable auto-accept slots; safety qualification therefore failed and
+> HAR-0023 was not promoted.
 
-禁止：
+Forbidden:
 
-- “窄放行已经安全”或“产品能力通过”；
-- “抽取准确率提高”；
-- 把 10.5% 写成人时节省率；
-- 把本轮迁移到其他语料、供应商或真值口径。
+- "the narrow release is safe" or "product capability passed";
+- "extraction accuracy improved";
+- presenting 10.5% as a human-time saving rate;
+- transferring this round to other corpora, vendors, or truth conventions.
 
-三条限定始终挂着：单一语料 DocILE、单一供应商 Nutrient DWS、单一真值口径
-DocILE 标注 + truth-caliber-v1。
+The three qualifiers stay attached at all times: single corpus DocILE, single
+vendor Nutrient DWS, single truth convention (DocILE annotations +
+truth-caliber-v1).
 
-## 7. 证据索引
+## 7. Evidence index
 
-- 冻结计划：`docs/evidence/qual-narrow-v2-2026-08-23/plan/`
-- 提取审计：`docs/evidence/qual-narrow-v2-2026-08-23/extract/`
-- 四臂指标：`docs/evidence/qual-narrow-v2-2026-08-23/arms/`
-- 补充安全审计：`docs/evidence/qual-narrow-v2-2026-08-23/analysis-audit/`
-- 三臂原件：`source-har-0001/`、`source-har-0021/`、`source-har-0023/`
-- 权威裁定：`docs/evidence/qual-narrow-v2-2026-08-23/decision/`
+- Frozen plan: `docs/evidence/qual-narrow-v2-2026-08-23/plan/`
+- Extraction audit: `docs/evidence/qual-narrow-v2-2026-08-23/extract/`
+- Four-arm metrics: `docs/evidence/qual-narrow-v2-2026-08-23/arms/`
+- Supplementary safety audit: `docs/evidence/qual-narrow-v2-2026-08-23/analysis-audit/`
+- Three-arm originals: `source-har-0001/`, `source-har-0021/`, `source-har-0023/`
+- Authoritative ruling: `docs/evidence/qual-narrow-v2-2026-08-23/decision/`
 
-ADK 人类行走可作为独立问责证据继续，但不能改写本页的自动放行 FAIL。
+The ADK human walk may continue as independent accountability evidence, but it
+cannot rewrite this page's automatic-release FAIL.

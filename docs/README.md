@@ -37,6 +37,20 @@ result missed the pre-registered line.
 | `BASELINE_COMPARISON_SEALED1.md` | Against a confidence-threshold baseline at a fixed operating point: TIER1 silent error 9.62% vs 21.91% |
 | `BASELINE_COMPARISON.md` / `R0_BASELINE_2026-08-05.md` | Earlier baseline work |
 
+## Note on language (2026-08-28)
+
+The judge-cited records were translated into English in place on 2026-08-28
+for the two hackathon submissions (`CLOUD_RUN.md`, `ARM_UNATTENDED.md`,
+`QUALIFICATION_NARROW_V2_RESULTS_2026-08-23.md`,
+`QUALIFICATION_NARROW_CONTAMINATION_2026-08-23.md`). The Chinese originals of
+those four remain in git history. One file is byte-pinned by the machine
+decision chain and is **never** edited: the v2 protocol
+(`sha256 08a540b6…`, pinned in `qualification_decision.json`) — its English
+version lives beside it as `QUALIFICATION_NARROW_V2_PROTOCOL_2026-08-23.en.md`
+and is a translation only, not an authority. The remaining dated records stay
+in Chinese as written laboratory notes; this index states in English what each
+contains.
+
 ## HITL and the payment-posting contract (2026-08-14)
 
 The default harness remains census (HAR-0021). `payment_required_v1` is an

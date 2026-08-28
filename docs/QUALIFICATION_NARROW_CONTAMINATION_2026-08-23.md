@@ -1,100 +1,123 @@
-# QUALIFICATION_NARROW_2026-08-22 污染与撤权记录
+# QUALIFICATION_NARROW_2026-08-22 contamination and revocation record
 
-状态:`contaminated`
+Status: `contaminated`
 
-阻断级别:`blocking`
+Blocking level: `blocking`
 
-决定:撤销本轮的 qualification / 产品能力晋升；保留全部数字作为带污染标签的探索性测量。
+Decision: this round's qualification / product-capability promotion is revoked;
+all numbers are retained as exploratory measurements carrying the contamination
+label.
 
-本记录不删除、不覆盖原协议、原结果或原始工件。它是后来的显式状态事件，
-supersede `docs/QUALIFICATION_NARROW_RESULTS_2026-08-23.md` §0/§4 的
-「无阻断」「产品能力四闸全过」结论。HAR-0023 从未成为包内 active harness；
-默认仍是 census。
+This record does not delete or overwrite the original protocol, the original
+results, or the raw artifacts. It is a later, explicit status event and
+supersedes the "no blocking findings" / "all four product-capability gates
+passed" conclusions of `docs/QUALIFICATION_NARROW_RESULTS_2026-08-23.md` §0/§4.
+HAR-0023 never became the packaged active harness; the default remains census.
 
-以下先写产品风险，再写过程污染；两者都是独立阻断，任一个都足以否定产品晋升。
+Product risk comes first below, then process contamination; both are
+independent blockers, and either alone suffices to negate product promotion.
 
-## 1. 产品阻断：零触碰付款子集仍含错误值
+## 1. Product blocker: the zero-touch payment subset still contained wrong values
 
-预注册 P6 比的是 D、B 两臂**全体自动槽**的 `silent_wrong`（110 ≤ 111）。它没有
-单列“无需任何人打开”的 25 份文档，而产品句子恰好说的是这 25 份。
+Pre-registered P6 compared D vs B on **all automatic slots** (`silent_wrong`
+110 ≤ 111). It did not isolate the 25 documents that needed **no one to open
+them at all** — and the product sentence speaks about exactly those 25.
 
-用同一份路由、同一份 DocILE 标注、同一套规范化函数作零 API 补充审计：
+A zero-API supplementary audit, using the same routing, the same DocILE
+annotations, and the same normalisation functions:
 
-| D 臂零触碰付款子集 | 数量 |
+| D-arm zero-touch payment subset | Count |
 |---|---:|
-| 零触碰文档 | 25 |
-| 付款闸槽 | 75 |
-| 有值可对拍 | 71 |
-| 与 DocILE 标注不符 | 12 |
-| 含至少一个不符槽的文档 | 10 |
-| 不可对拍的 auto-accept 槽 / 文档 | 4 / 4 |
+| zero-touch documents | 25 |
+| payment-gate slots | 75 |
+| with a value to compare | 71 |
+| disagreeing with DocILE annotations | 12 |
+| documents containing at least one disagreeing slot | 10 |
+| unscoreable auto-accept slots / documents | 4 / 4 |
 
-12 个不符槽按字段分为 `seller_name` 7、`amount_due` 3、`invoice_number` 2；
-4 个不可对拍槽按字段分为 `invoice_number` 2、`seller_name` 1、`amount_due` 1。
+The 12 disagreeing slots by field: `seller_name` 7, `amount_due` 3,
+`invoice_number` 2; the 4 unscoreable slots by field: `invoice_number` 2,
+`seller_name` 1, `amount_due` 1.
 
-这是事后补充审计，不能伪装成预注册 P6 的新判定，也不能单独宣称供应商抽取错误率。
-它证明的是：原安全终点没有覆盖产品主张的风险集中区，因而即使没有协议污染，原四闸
-也不足以支持“安全的零触碰产品能力”。
+This is a post-hoc supplementary audit: it cannot masquerade as a new
+pre-registered P6 verdict, and it cannot by itself claim a vendor extraction
+error rate. What it establishes: the original safety endpoint did not cover
+the risk-concentrated region the product claim speaks about, so even absent
+protocol contamination the original four gates were insufficient to support a
+"safe zero-touch product capability."
 
-## 2. 过程阻断：协议自己的废臂条款已触发
+## 2. Process blocker: the protocol's own dirty-arm clause had already fired
 
-冻结协议 §7 写明：提取开始后修改协议正文，臂即不干净。
+The frozen protocol §7 states: modifying the protocol text after extraction
+begins makes the arm dirty.
 
-- 协议与名单先冻结于 `b45f983`。
-- 提取开始后，协议正文在 `1afe7da` 被修改。
-- `68a2701` 把文件恢复为冻结字节，并把事实移入运行日志。
-- 恢复字节不能撤销已经发生的 transition；否则废臂条款只剩事后解释权。
+- Protocol and list were first frozen at `b45f983`.
+- After extraction began, the protocol text was edited in `1afe7da`.
+- `68a2701` restored the frozen bytes and moved the fact into the run log.
+- Restoring the bytes cannot undo a transition that already happened;
+  otherwise the dirty-arm clause survives only as after-the-fact interpretation.
 
-因此，不论改动内容是否影响数值，本轮都不能作为 qualification，也不能把 12.5%
-晋升为产品能力。原结果把“改动不影响数字”错误地当成“无阻断”，违反了协议自己的
-precedence。
+Therefore, regardless of whether the edit affected any number, this round
+cannot serve as a qualification, and 12.5% cannot be promoted to product
+capability. The original results wrongly treated "the edit did not affect the
+numbers" as "no blocking finding," violating the protocol's own precedence.
 
-## 3. 数字没有被删，但语义降级
+## 3. The numbers were not deleted, but their meaning is downgraded
 
-聚合抽取审计核遍冻结名单与存盘原件，而不是只信最后一次断点续跑小结：
+The aggregate extraction audit walked the frozen list and the stored originals
+rather than trusting the last resumable-run summary:
 
-| 项 | 确定性结果 |
+| Item | Deterministic result |
 |---|---:|
-| 文档 | 200 |
-| 预期 / 存盘调用 | 400 / 400 |
+| documents | 200 |
+| expected / stored calls | 400 / 400 |
 | HTTP 200 | 400 |
 | DWS credits | 10,491 |
-| 原始响应树 SHA-256 | `2fa28111dba94e95e40f636893d4c1951cf52503bbc40b0f2ecf3e01212ad655` |
+| raw response tree SHA-256 | `2fa28111dba94e95e40f636893d4c1951cf52503bbc40b0f2ecf3e01212ad655` |
 
-四臂历史路由也已逐臂冻结。补充审计在 scorer commit
-`71afebfab167bb08908fdfe6cdbc3d4741486327` 上复算，旧报告已有指标的漂移数为 0。
-所以 25/200、12.5% 仍是这组历史路由的真实**描述性**结果；污染改变的是它能承担的
-资格与公开主张，不是假装数字从未发生。
+The four arms' historical routings were also frozen arm by arm. The
+supplementary audit recomputed at scorer commit
+`71afebfab167bb08908fdfe6cdbc3d4741486327`; drift on already-reported metrics
+was 0. So 25/200 and 12.5% remain the true **descriptive** results of that
+historical routing; contamination changes what qualification and public claims
+they can carry, not the pretense that the numbers never happened.
 
-## 4. 当前允许与禁止的说法
+## 4. Currently allowed and forbidden phrasings
 
-允许：
+Allowed:
 
-> 在一轮后来按其自身协议判为污染的 200 份 DocILE 探索性测量中，HAR-0023 的
-> 路由时零触碰为 25/200（12.5%，95% Wilson CI 8.6–17.8）。该结果不是
-> qualification，不支持安全、准确率或产品晋升主张。
+> In a 200-document DocILE exploratory measurement later judged contaminated
+> under its own protocol, HAR-0023's routing-time zero-touch was 25/200 (12.5%,
+> 95% Wilson CI 8.6–17.8). This result is not a qualification and supports no
+> safety, accuracy, or product-promotion claim.
 
-禁止：
+Forbidden:
 
-- “资格轮通过”或“四条产品能力闸全过”；
-- “窄放行已成为产品能力”；
-- “25 份无需打开，因此付款字段安全/正确”；
-- 把 12.5% 写成节省 12.5% 人力，或迁移到其他语料、供应商、真值口径。
+- "the qualification round passed" or "all four product-capability gates passed";
+- "the narrow release has become a product capability";
+- "25 documents needed no opening, therefore the payment fields are
+  safe/correct";
+- writing 12.5% as saving 12.5% of human labor, or transferring it to other
+  corpora, vendors, or truth conventions.
 
-## 5. 恢复路径
+## 5. Recovery path
 
-必须开新 round，不复用这 200 份：
+A new round is required, without reusing these 200 documents:
 
-1. 从 exposure registry 排除 v1 名单，冻结新 pool、盐、200 份名单与协议；
-2. 协议冻结 commit 后才允许第一笔 DWS 调用，期间不改协议；
-3. 聚合抽取审计、逐臂代码身份、完整路由矩阵成为机器门禁；
-4. 安全终点直接落在零触碰付款子集，并显式阻断不可对拍槽；
-5. 全部证据提交后，才允许抽 ADK 人类行走集。
+1. exclude the v1 list via the exposure registry; freeze a new pool, salt,
+   200-document list, and protocol;
+2. the first DWS call is permitted only after the protocol-freeze commit, and
+   the protocol does not change thereafter;
+3. aggregate extraction audit, per-arm code identity, and complete routing
+   matrices become machine gates;
+4. the safety endpoint lands directly on the zero-touch payment subset and
+   explicitly blocks on unscoreable slots;
+5. only after all evidence is committed may the ADK human-walk set be drawn.
 
-## 6. 证据索引
+## 6. Evidence index
 
-- 聚合抽取：`docs/evidence/qual-narrow-2026-08-22/extract-audit/`
-- 补充审计 v2：`docs/evidence/qual-narrow-2026-08-22/analysis-audit-v2/`
-- 历史臂：`docs/evidence/qual-narrow-2026-08-22/source-har-0001/`、
-  `source-har-0021/`、`source-har-0023/`
-- 原运行日志：`docs/QUALIFICATION_NARROW_LOG_2026-08-23.md`
+- Aggregate extraction: `docs/evidence/qual-narrow-2026-08-22/extract-audit/`
+- Supplementary audit v2: `docs/evidence/qual-narrow-2026-08-22/analysis-audit-v2/`
+- Historical arms: `docs/evidence/qual-narrow-2026-08-22/source-har-0001/`,
+  `source-har-0021/`, `source-har-0023/`
+- Original run log: `docs/QUALIFICATION_NARROW_LOG_2026-08-23.md`
