@@ -1,65 +1,66 @@
-# 单据类型接入调查(阶段 B,2026-08-07)
+# Document Type Integration Investigation (Stage B, 2026-08-07)
 
-计划:`docs/DOCTYPE_PLAN_2026-08-07.md`。本文件只登记调查结论,**不落产品接入**。
+Plan: `docs/DOCTYPE_PLAN_2026-08-07.md`. This file registers investigation conclusions only; **no product integration lands**.
 
-复算:
+Recompute:
 
 ```bash
 INVOICELOOP_CORPUS=runs/sealed2-workspace python3 scripts/doctype_block_impact.py
 ```
 
-## Q1 — 文档级裁决放哪?
+## Q1 — Where do document-level verdicts go?
 
-### `evaluations` 消费方(穷举)
+### `evaluations` consumers (exhaustive)
 
-| 消费方 | 怎么读 | 若塞 `__document__` |
+| Consumer | How it reads | If `__document__` is stuffed in |
 |---|---|---|
-| `matrix.derive_document_records` | `evaluations[doc][field]` | 忽略未知 field 键 → 无害但类型裁决不可见 |
-| `improve` 反事实重路由 | 同上 | 同上 |
-| `adjudicate` verify 语义层 | 同上 | 同上 |
-| `scripts/heldout_metrics.py` H4/H5 | **展平** `for doc in evaluations.values() for v in doc.values()` | **污染缺值率/citation 分母** |
-| `scripts/adaptive_probe.py` | `.items()` 按字段 | 把 `__document__` 当字段 |
-| C8 先例 | 盖回 `invoice_number` 槽 | 类型无自然归属槽 |
+| `matrix.derive_document_records` | `evaluations[doc][field]` | ignores unknown field keys → harmless, but the type verdict is invisible |
+| `improve` counterfactual re-routing | same | same |
+| `adjudicate` verify semantic layer | same | same |
+| `scripts/heldout_metrics.py` H4/H5 | **flattens** `for doc in evaluations.values() for v in doc.values()` | **contaminates missing-value rate / citation denominators** |
+| `scripts/adaptive_probe.py` | `.items()` by field | treats `__document__` as a field |
+| C8 precedent | stamps back onto the `invoice_number` slot | type has no natural home slot |
 
-### 方案判定
+### Option verdict
 
-| 方案 | 判定 |
+| Option | Verdict |
 |---|---|
-| (a) `evaluations[doc]["__document__"]` | **否** —— 打断 heldout_metrics 展平与 probe |
-| (b) `gate_report["document_checks"][doc_id]` | **首选** —— 加性;消费方显式读取;可进 `input_signature` |
-| (c) 独立 `doctype_report.json` | 可作交付投影,但门禁事务签名要另挂 digest,两处真理 |
+| (a) `evaluations[doc]["__document__"]` | **No** — breaks heldout_metrics flattening and the probe |
+| (b) `gate_report["document_checks"][doc_id]` | **Preferred** — additive; consumers read it explicitly; can enter `input_signature` |
+| (c) standalone `doctype_report.json` | workable as a deliverable projection, but the gate transaction signature needs a separately hung digest — two sources of truth |
 
-**选定(阶段 C 目标):(b)**。`findings` 仍可并行挂一条 `gate_id=doctype_evidence`
-(blocking 与否由 Q2 粒度定)。历史 run 无该键 → 消费者必须 `.get`。
+**Selected (Stage C target): (b)**. `findings` can still hang a parallel `gate_id=doctype_evidence`
+(whether it blocks is decided by the Q2 granularity). Historical runs lack the key → consumers must `.get`.
 
-## Q2 — 阻断粒度对 SEALED-2 负载
+## Q2 — Blocking granularity's effect on SEALED-2 load
 
-无类型字面证据文档:**9** 份。
+Documents with no type literal evidence: **9**.
 
-| 粒度 | human_queue | Δpp | 说明 |
+| Granularity | human_queue | Δpp | Note |
 |---|---|---|---|
-| 基线 HAR-0004 | 468/1000 (46.8%) | — | |
-| **文档级全槽 block** | **513/1000 (51.3%)** | **+4.5** | 新逼进队列 45 槽 |
-| 仅依赖类型的判定 / 非阻断 finding | 468/1000 | **0** | 交付物标 9 份「类型不可信」 |
+| baseline HAR-0004 | 468/1000 (46.8%) | — | |
+| **document-level all-slot block** | **513/1000 (51.3%)** | **+4.5** | 45 slots newly forced into the queue |
+| type-dependent verdicts only / non-blocking finding | 468/1000 | **0** | deliverable marks 9 documents "type untrusted" |
 
-计划出口线是「三种都 >5pp 且抓不回静默错 → C 暂停」。
-文档级 **+4.5pp < 5pp**,未触发暂停线;但 +4.5pp 换来的是把已机器放行的
-无关字段也拖进队列 —— **与「抓类型谎报」不成比例**。
+The plan's exit line was "all three >5pp and recovering no silent errors → C pauses".
+Document-level **+4.5pp < 5pp** does not trigger the pause line; but what +4.5pp buys is dragging
+unrelated fields already machine-released into the queue — **out of proportion to "catching type
+misreporting"**.
 
-**选定粒度:只阻断/降级依赖类型的判定 + 非阻断 finding + 交付物可见。**
-不把 9 份文档的全部 10 槽 `block`。阶段 C 按此接入;若后续要更严,
-再开预注册测量。
+**Selected granularity: block/downgrade type-dependent verdicts only + non-blocking finding + deliverable visibility.**
+The 9 documents' full 10 slots are not `block`ed. Stage C wires in on this basis; if something
+stricter is wanted later, open a preregistered measurement.
 
-## 阶段 C 入口条件
+## Stage C entry conditions
 
-- [x] Q1 方案选定:(b) `document_checks`
-- [x] Q2 粒度选定:typedep / finding(负载不净增)
-- [x] 执行指纹加 `doctype_digest`(`snapshot.build_input_manifest` + `gates` input_signature)
-- [x] 三套重放测试零 diff(`pytest` 489 passed,含 binding/port/heldout)
+- [x] Q1 option selected: (b) `document_checks`
+- [x] Q2 granularity selected: typedep / finding (no net load increase)
+- [x] execution fingerprint gains `doctype_digest` (`snapshot.build_input_manifest` + `gates` input_signature)
+- [x] all three replay test suites zero diff (`pytest` 489 passed, including binding/port/heldout)
 
-**阶段 C 已落地**(2026-08-07):`document_checks` + 非阻断 finding;
-`deliverable.docs[*].type_trust`;SEALED-2 烟测 `40532c4e…` → fail/untrusted,
-`086b0b4d…` → pass/`purchase_order`。下一站阶段 D。
+**Stage C has landed** (2026-08-07): `document_checks` + non-blocking finding;
+`deliverable.docs[*].type_trust`; SEALED-2 smoke test `40532c4e…` → fail/untrusted,
+`086b0b4d…` → pass/`purchase_order`. Next stop, Stage D.
 
-阶段 D 已跑完并 **KILL**(见 `docs/DOCTYPE_STAGE_D_2026-08-07.md`)。
-下一站阶段 E(适用性矩阵);不得用 `doc_class` 替代主体方向。
+Stage D has run and was **KILLed** (see `docs/DOCTYPE_STAGE_D_2026-08-07.md`).
+Next stop, Stage E (applicability matrix); `doc_class` must not substitute for party direction.

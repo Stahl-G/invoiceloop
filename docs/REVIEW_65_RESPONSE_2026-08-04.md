@@ -1,66 +1,79 @@
-# 65/100 评审的应答(2026-08-04)
+# Response to the 65/100 review (2026-08-04)
 
-外部 10 路评审(静态/复现 3 + 代码/信任层 4 + 红队实测 3)给 InvoiceLoop
-打出 65/100:「及格但平庸,修完 P0 可进冲奖档(83–87)」。
-本文件是逐条应答 —— 已修、已在前序提交修过、用户决策项,三类分开。
+An external 10-way review (static/reproduction 3 + code/trust-layer 4 + red-team live 3)
+scored InvoiceLoop 65/100: "passing but mediocre; fixing the P0s would put it in the
+award-contender band (83–87)". This file is the item-by-item response — fixed,
+already fixed in prior commits, and user-decision items, kept in three separate
+categories.
 
-## 它评的是旧 HEAD:前序提交已修
+## It reviewed an old HEAD: already fixed in prior commits
 
-| 评审项 | 早已修于 |
+| Review item | Long since fixed in |
 |---|---|
-| P0-2 README 主 demo 干净环境跑不通 | `demo` 命令 + 内嵌语料(eb98143),fresh_venv_check 含 demo 段且全过 |
-| P0-4 脏 PDF 崩掉整个 ingest 批次 | ocr_ingest 子进程失败统一退 OcrUnavailable + 回归测试(22e5c43) |
-| P1 抽取失败文档隐身(ingest 摘要丢弃) | workbench ingest 失败文档与原因显式列页(22e5c43 #6) |
-| P1 24% 测试评委机全 skip | 评审口径即设计:研究测试守卫 corpus_available(),fresh-venv 175 过 41 跳,产品路径不受影响(ade37f5) |
+| P0-2 README main demo fails in a clean environment | `demo` command + embedded corpus (eb98143), fresh_venv_check includes a demo stage and fully passes |
+| P0-4 dirty PDF crashes the whole ingest batch | ocr_ingest subprocess failures uniformly return OcrUnavailable + regression test (22e5c43) |
+| P1 extraction-failed documents invisible (ingest summary discards them) | workbench lists failed ingest documents and reasons on an explicit page (22e5c43 #6) |
+| P1 24% of tests fully skip on the judge machine | The review's reading is the design: research tests guard with corpus_available(); fresh-venv 175 pass, 41 skip, product paths unaffected (ade37f5) |
 
-## 本轮修复(776ded5,各带回归测试)
+## Fixes in this round (776ded5, each with a regression test)
 
-| 评审项 | 修复 |
+| Review item | Fix |
 |---|---|
-| P1 损坏存盘响应 crash 整批 | `register_artifacts` 标 corrupt 记 sha,`_load` 返回 None → extraction_present 阻断;run 照完 |
-| P1 静默丢单(run 文档集=raw) | 文档集 = input/pdfs ∪ raw(CLI/workspace/workbench/demo 三处);缺 raw 由 extraction_present 记阻断 |
-| P2 doc_blocked 只进 event_log | `independent_ocr` 文档级阻断发现进 gate_report.findings |
-| P1 panel 页脚打印自报哈希不重算 | 页脚重算账本 sha 并比对,不符显式 ⚠;另加「渲染时裁决 N 条」staleness 行 |
-| P2 verify 不报告深度 / CRC 裸 traceback | verify 返回 layers(members/snapshot/binding)+ notes:v1 包明说只有成员级;三层全过也必须声明「真实性锚在带外哈希」;CRC 损坏为结构化失败 |
-| P0-3 协同篡改无外部锚 | 不修代码修说法:新增钉边测试「全一致伪造会过」(test_fully_consistent_forgery_passes_and_that_is_the_boundary),README/verify notes 把防篡改收敛为「单点篡改可检出,锚在带外 sha256」 |
-| P2 CLI 裸 traceback | main() 包 SystemExit:「错误:<一句话>」 |
-| P2 恒真断言 / M2 脚手架 skip | 删 `or True`;binding 回归 import 失败应变红 |
-| P1 TESTING_RESULTS 裁决数与实物不符 | 文档 3→2(与账本实物一致) |
-| P1 提交物缺口(部分) | LICENSE(MIT)、.env.example、README 研究测试说明、ARCHITECTURE 无墙钟取舍说明 |
+| P1 corrupted saved response crashes the whole batch | `register_artifacts` marks corrupt, records sha; `_load` returns None → extraction_present blocking; the run still completes |
+| P1 silent document loss (run document set = raw) | Document set = input/pdfs ∪ raw (in CLI/workspace/workbench/demo, all three places); missing raw recorded as a blocking by extraction_present |
+| P2 doc_blocked only goes to event_log | `independent_ocr` document-level blocking findings go into gate_report.findings |
+| P1 panel footer prints a self-reported hash without recomputing | The footer recomputes the ledger sha and compares; on mismatch shows an explicit ⚠; also adds a "N adjudications at render time" staleness line |
+| P2 verify does not report depth / CRC bare traceback | verify returns layers (members/snapshot/binding) + notes: v1 bundles say plainly that they only have member-level checks; even when all three layers pass it must still state "authenticity is anchored in out-of-band hashes"; CRC corruption becomes a structured failure |
+| P0-3 coordinated tampering has no external anchor | Fix the claim, not the code: added the boundary-pinning test "a fully consistent forgery passes" (test_fully_consistent_forgery_passes_and_that_is_the_boundary); README/verify notes converge the tamper-resistance claim to "single-point tampering is detectable; the anchor is the out-of-band sha256" |
+| P2 CLI bare traceback | main() wraps with SystemExit: "error: <one-line summary>" |
+| P2 always-true assertion / M2 scaffolding skip | Removed `or True`; a binding-regression import failure must turn red |
+| P1 TESTING_RESULTS adjudication count does not match the artifact | Document 3→2 (consistent with the actual ledger) |
+| P1 submission-materials gaps (partial) | LICENSE (MIT), .env.example, README research-test explanation, ARCHITECTURE no-wall-clock tradeoff note |
 
-## v2 实物再生成(P0-3 的主体修复)
+## Regenerating the v2 artifacts (the main fix for P0-3)
 
-runs/demo 是 H0 之前的 v1 run(无 review_snapshot、panel 无裁决投影、
-bundle 只有成员级校验)。用当前代码重生成 runs/demo-v2(160 份校准存盘,
-零 API):全 v2 工件 + 重打 bundle + verify 三层。旧 runs/demo 保留原样
-(run 不可变),两条 2026-08-02 的真人裁决留在它自己的账本里 ——
-它们的快照与 v2 不同(门禁加了 independent_ocr 发现),搬进 v2 会是
-orphan,不如实。
+runs/demo is a v1 run from before H0 (no review_snapshot, no adjudication projection
+in the panel, bundle with member-level verification only). Regenerated runs/demo-v2
+with the current code (160 saved calibration responses, zero API): full v2 artifacts
++ re-stamped bundle + verify on all three layers. The old runs/demo stays untouched
+(runs are immutable); the two human adjudications from 2026-08-02 stay in its own
+ledger — their snapshot differs from v2 (the gates gained independent_ocr findings);
+moving them into v2 would create orphans, which would not be truthful.
 
-## 用户决策项(评审也标了「离线核不了」)
+## User-decision items (the review also flagged these "cannot be verified offline")
 
-1. **代码新鲜度(取消资格级)**:29+ 提交全部早于 8/17 开赛。应对是
-   披露 + 增量,不是 rebase(造假且可查)。开赛时按 Devpost Rules 写
-   既有项目披露;书面问询主办方留证。H1 之后的实质功能恰好在赛期内
-   可继续(workbench 是 8/3 建的,赛期里做盲测复测与视频)。
-2. **公开 repo 与历史清理**:runs/ 历史工件、.DS_Store、author 邮箱、
-   私有绝对路径 —— 推送前一次性清理;建议新仓库只带干净历史,不改日期。
-3. **视频 + blind 复测**:素材齐(21,900 拒对、Harry Huge 补录、
-   046e0c49 互换事件、verify 篡改对照);录前用 TESTING_FACILITATOR.md
-   做一次不知情被试复测。
-4. **Nutrient 一句话**:README 已是赞助商中立口径(「没有任何单一信号
-   能识别所有错误 → 组合层」),Devpost 文案照此,别写成「DWS 不可靠」。
-5. **F 维度三句话**:细分客户(被审计/被监管的发票处理团队)、切入点
-   (审计交付物而非抽取器)、大厂不做理由(信任层不是抽取卖点,卖不出 license)。
+1. **Code freshness (disqualification-grade)**: all 29+ commits predate the 8/17
+   start. The response is disclosure + increments, not rebase (that would be fraud
+   and detectable). At kickoff, disclose the pre-existing project per Devpost Rules;
+   keep evidence of a written inquiry to the organizers. Substantive features after
+   H1 can legitimately continue during the hackathon (workbench was created on 8/3;
+   the blind re-test and the video happen during the hackathon window).
+2. **Public repo and history cleanup**: runs/ historical artifacts, .DS_Store,
+   author emails, private absolute paths — clean up once before pushing; recommend
+   the new repo carry only a clean history, without changing dates.
+3. **Video + blind re-test**: materials are ready (21,900 rejection pairs, Harry
+   Huge re-recording, the 046e0c49 swap incident, verify tamper comparison); before
+   recording, run one uninformed-participant re-test using TESTING_FACILITATOR.md.
+4. **Nutrient in one sentence**: the README already takes the sponsor-neutral line
+   ("no single signal can identify all errors → a composition layer"); keep Devpost
+   copy the same, do not write "DWS is unreliable".
+5. **Three sentences for the F dimension**: the niche customer (audited/regulated
+   invoice-processing teams), the entry point (an audit deliverable, not an
+   extractor), why the big vendors won't (the trust layer is not an extraction
+   selling point and sells no licenses).
 
-## 红队通过项(评审记分,不动)
+## Red-team passing items (the review scored them; unchanged)
 
-模糊扫描件全阻断、缺字段不编造、prompt injection 无消费者、改后再改回
-supersession 链完整、1 字节篡改 verify 即失败、超大 PDF/无 poppler/无 key
-优雅降级 —— 与实现一致,无动作。
+Blurry scans all blocked, no fabrication of missing fields, prompt injection has no
+consumer, edit-then-revert keeps the supersession chain intact, a 1-byte tamper makes
+verify fail immediately, oversized PDF / no poppler / no key degrade gracefully —
+all consistent with the implementation; no action.
 
-## 评审提的新能力( backlog,不是 bug)
+## New capabilities suggested by the review (backlog, not bugs)
 
-- 跨文档查重(同号不同内容零检出)—— 「跨单核验」卖点,赛后做。
-- 明细行级对账(字段集无明细)—— demo 叙事避开「异常检测」话术即可。
-- net+vat≠gross non-blocking —— 设计哲学(finding 不是 verdict),视频口播。
+- Cross-document duplicate detection (zero detection for same number, different
+  content) — a "cross-invoice verification" selling point; do it after the hackathon.
+- Line-item-level reconciliation (the field set has no line items) — just steer the
+  demo narrative away from "anomaly detection" phrasing.
+- net+vat≠gross non-blocking — design philosophy (a finding is not a verdict);
+  say it in the video voice-over.

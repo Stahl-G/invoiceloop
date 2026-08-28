@@ -1,196 +1,216 @@
-# 引擎 v3 + 派生 v2:开发集测量(2026-08-10)
+# Engine v3 + Derivation v2: Development-Set Measurement (2026-08-10)
 
-接着 [`ABSENCE_EVIDENCE_DEV_2026-08-09.md`](ABSENCE_EVIDENCE_DEV_2026-08-09.md)。
-两个机制变更都**先于本次测量 commit**(时间戳即预注册):
+Continues [`ABSENCE_EVIDENCE_DEV_2026-08-09.md`](ABSENCE_EVIDENCE_DEV_2026-08-09.md).
+Both mechanism changes **precede this measurement's commits** (the timestamps are the
+preregistration):
 
-- `6341052` —— 派生规则 v2(`due_date.py`,条款清单见代码注释);
-- `e06488f` —— 缺席引擎 v3(`absence_evidence.py`,长 token 允许一个编辑的
-  OCR 容错;方向与加词相同,只多匹配不少匹配)。
+- `6341052` — derivation rules v2 (`due_date.py`; the clause list is in the code comments);
+- `e06488f` — absence engine v3 (`absence_evidence.py`; OCR tolerance of one edit for long
+  tokens; same direction as adding words — only matches more, never less).
 
-全程零 API:只读存盘 DWS 响应、独立 OCR、DocILE 标注。开发集 =
-sealed1 / sealed2 / heldout 工作区去重后 300 份(SEALED-3 不用,它已被
-一次性开箱用掉)。
+Zero API throughout: reads only saved DWS responses, independent OCR, DocILE annotations.
+Development set =
+300 deduplicated documents from the sealed1 / sealed2 / heldout workspaces (SEALED-3 unused; it
+was consumed by its one-time unsealing).
 
-## 一、缺席引擎 v3:seller_vat_id 过线了
+## I. Absence engine v3: seller_vat_id crosses the line
 
-`python3 scripts/absence_by_evidence.py` 原样重跑,引擎
-`absence-evidence-v3`(词表 `0a9f3773577e068c…`,词表内容**与 v2 逐字相同**,
-只有匹配规则变了):
+`python3 scripts/absence_by_evidence.py` re-run unchanged, engine
+`absence-evidence-v3` (vocabulary `0a9f3773577e068c…`; vocabulary contents are **verbatim
+identical to v2**; only the matching rule changed):
 
-| field | 缺值 | held | saves(v2) | saves(v3) | silent(v2) | **silent(v3)** |
+| field | missing | held | saves (v2) | saves (v3) | silent (v2) | **silent (v3)** |
 |---|---:|---:|---:|---:|---:|---:|
 | `seller_vat_id` | 266 | 27 → 32 | 238 | 234 | 1 | **0** |
 | `total_vat` | 143 | 19 | 124 | 124 | 0 | **0** |
 | `total_net` | 80 | 28 | 51 | 51 | 1 | **1** |
 | `due_date` | 207 | 115 | 84 | 84 | 8 | **8** |
 
-- v2 仅剩的那个静默(OCR 把 "Federal" 读成 "federai",
-  `5da5a0e2bded40ad8948d5eb`)被模糊匹配接住 → `held`,回到人工。
-  同时模糊匹配在别处多接住 4 个标签,saves 238 → 234 ——
-  **少省 4 槽,正是安全方向该有的代价**。
-- **`AV-seller_vat_id` 过线:234 saves / 0 silent / 0 unscored,其中 193 槽
-  是 16 条类别规则够不到的(invoice 类 174 槽)。** 按与 HAR-0017 同一条线
-  (silent=0、unscored=0、saves≥3)可提。
-- 照登:这次测量是**事后的**——机制变更的动机案例就在 v2 台账里。
-  与 v2 补词同一定性:单调安全掩护得了机制,掩护不了"盲"字。
-  资格只能靠 SEALED-4。
+- v2's last remaining silent (OCR read "Federal" as "federai",
+  `5da5a0e2bded40ad8948d5eb`) is caught by fuzzy matching → `held`, back to humans.
+  The same fuzzy matching catches 4 more labels elsewhere, saves 238 → 234 —
+  **4 fewer slots saved, exactly the cost the safe direction should carry**.
+- **`AV-seller_vat_id` crosses the line: 234 saves / 0 silent / 0 unscored, of which 193 slots
+  are beyond the reach of the 16 class rules (174 slots in the invoice class).** Promotable
+  under the same bar as HAR-0017 (silent=0, unscored=0, saves≥3).
+- Recorded as-is: this measurement is **post hoc** — the motivating cases for the mechanism
+  change sit in the v2 ledger.
+  Same qualification as the v2 word additions: monotone safety can cover the mechanism, not the
+  word "blind".
+  Eligibility can only come from SEALED-4.
 
-### 晋升(同日;门内数,与即席台账口径不同,以门内数为准)
+### Promotion (same day; in-gate numbers, a different caliber from the ad-hoc ledger — the in-gate numbers are authoritative)
 
-在干净工作区 `runs/absence-v3-2026-08-10`(只含 v3 探针 run——旧 v2
-探针若混在同一 workspace,`_compute_evaluation` 的 `docs_without_probes`
-会把规则静默禁用还误报 probe 状态)走完 propose → evaluate → promote:
+In the clean workspace `runs/absence-v3-2026-08-10` (containing only the v3 probe run — if old
+v2 probes mixed into the same workspace, `_compute_evaluation`'s `docs_without_probes` would
+silently disable the rules and misreport probe status), walking propose → evaluate → promote:
 
-- **`AV-seller_vat_id` 进 HAR-0019**(`PROM-0018`,署名 stahl,
-  2026-08-10T05:23:20Z)。强制门逐字节重算的数字:review load
-  55.67% → 50.47%(delta −5.2pp = 156/3000 槽出队),
-  `absent_rule_matches` 212 → 405(+193),
-  `silent_absent` 0→0,`absent_rule_truth_conflicts` 0,probe available。
-- 口径自陈:台账的 234 saves 是"规则点火"计法(缺值 + 真值空 + 页面
-  无证即计);门内 +193 是反事实重路由下的规则匹配数,156 是队列真实
-  减少。三个计数器各计各的,对外引用一律用门内数。
-- 工件:`docs/evidence/absence_v3_2026-08-10/`(policy / eval / PROM
-  三份拷贝)。
+- **`AV-seller_vat_id` enters HAR-0019** (`PROM-0018`, signed stahl,
+  2026-08-10T05:23:20Z). Numbers recomputed byte-for-byte by the mandatory gate: review load
+  55.67% → 50.47% (delta −5.2pp = 156/3000 slots leaving the queue),
+  `absent_rule_matches` 212 → 405 (+193),
+  `silent_absent` 0→0, `absent_rule_truth_conflicts` 0, probe available.
+- Caliber disclosure: the ledger's 234 saves uses the "rule fired" count (missing value + empty
+  truth + no page evidence = counted); the in-gate +193 is rule matches under counterfactual
+  re-routing, and 156 is the actual queue reduction. The three counters each count their own
+  thing; external citations always use the in-gate numbers.
+- Artifacts: `docs/evidence/absence_v3_2026-08-10/` (three copies: policy / eval / PROM).
 
-## 二、total_net 仅剩的 1 个静默:单总额口径分歧,不是词表漏词
+## II. total_net's 1 remaining silent: a single-total caliber dispute, not a vocabulary omission
 
-`f7b199fd711149feaf0044c8`(1998 年扫描件,圣安东尼奥西班牙裔商会会员发票):
-页面只印一个 `$1100.00`("Anount Due" 都是 OCR 错字),**没有任何 net 类
-标签**;DocILE 把这一个金额标成了 `total_net`(amount_due 也标了 $1100.00)。
+`f7b199fd711149feaf0044c8` (a 1998 scan, a San Antonio Hispanic Chamber of Commerce membership
+invoice):
+the page prints only one `$1100.00` (even "Anount Due" is an OCR typo), with **no net-type label
+whatsoever**; DocILE labeled that single amount `total_net` (amount_due also labeled $1100.00).
 
-这正是单总额 ruling(commit `6dce2e9`,2026-08-08 预注册)的形状:
-单总额文档的 Total 映射到 amount_due,其余三个金额 confirm_absent。
-**页面证据规则的 auto_absent 与项目自己的口径一致,与真值的字段选择不一致。**
-按宪章五这是 `applicability` 维度的口径分歧,不是抽取错误——但按
-08-09 的纪律,在真值口径规则写进协议之前,它**照登为静默错,规则不晋升**。
+This is exactly the shape of the single-total ruling (commit `6dce2e9`, preregistered
+2026-08-08): on single-total documents, Total maps to amount_due and the other three amounts are
+confirm_absent. **The page-evidence rule's auto_absent agrees with the project's own caliber and
+disagrees with the ground truth's field choice.**
+Per Charter Five this is a caliber dispute in the `applicability` dimension, not an extraction
+error — but per the 08-09 discipline, until the truth-caliber rule is written into the protocol,
+it is **recorded as-is as a silent error, and the rule is not promoted**.
 
-## 三、due_date 的 8 个静默:同上一家族的口径分歧
+## III. due_date's 8 silents: a caliber dispute in the same family
 
-逐条构成不变(08-09 已查):真值把 "transaction sale date time"、
-"credit adjustment by eft"、"donation received payment status completed"
-这类**别名目日期**标成 `date_due`,而派生值 ruling(commit `95c6b66`)
-已规定:页面上没有该名目的标注列 → confirm_absent,不许从邻列推断。
+The one-by-one composition is unchanged (checked on 08-09): ground truth labels dates under
+**other names** like "transaction sale date time", "credit adjustment by eft", "donation
+received payment status completed" as `date_due`, while the derived-value ruling (commit
+`95c6b66`) already stipulates: no annotation column for that name on the page → confirm_absent;
+no inferring from neighboring columns.
 
-**total_net×1 + due_date×8 = 9 个静默,全部落在"项目口径 vs DocILE 标注
-口径"的同一条缝上。** 处理路径是 SEALED-4 增补件里的真值口径规则
-(预注册、逐条列明、进文档),不是词表改动——见
+**total_net×1 + due_date×8 = 9 silents, all falling on the same "project caliber vs DocILE
+annotation caliber" seam.** The resolution path is the truth-caliber rule in the SEALED-4
+amendment (preregistered, listed item by item, written into the document), not vocabulary
+changes — see
 [`BROADCAST_HARNESS_DESIGN_2026-08-10.md`](BROADCAST_HARNESS_DESIGN_2026-08-10.md)
-§4.4。
+§4.4.
 
-## 四、口径规则落地:9 个静默全部重分类,两规则晋升(同日)
+## IV. Truth-caliber rules land: all 9 silents reclassified, two rules promoted (same day)
 
-真值口径规则经采纳后(增补件 A3,`04fc8cd`),T1/T2 以
-`truth-caliber-v1` 落进打分器、晋升门与台账(`0381016`)。同一台账重跑,
-9 个静默**全部**按预期标签重分类 —— 1 例 T1 + 8 例 T2(逐条与增补件
-表格一致,`tests/test_truth_caliber.py` 真语料回归钉死),真静默归零:
+After the truth-caliber rules were adopted (amendment A3, `04fc8cd`), T1/T2 landed in the
+scorer, the promotion gate, and the ledger as `truth-caliber-v1` (`0381016`). Re-running the
+same ledger, all 9 silents reclassify **with exactly the expected labels** — 1 case T1 + 8 cases
+T2 (matching the amendment table row by row, pinned by the `tests/test_truth_caliber.py`
+real-corpus regression), true silents at zero:
 
-| field | saves | silent(原口径) | 口径争议 | 真静默 |
+| field | saves | silent (original caliber) | caliber dispute | true silent |
 |---|---:|---:|---:|---:|
-| `total_net` | 51 | 1 | 1(T1) | **0** |
-| `due_date` | 84 | 8 | 8(T2) | **0** |
+| `total_net` | 51 | 1 | 1 (T1) | **0** |
+| `due_date` | 84 | 8 | 8 (T2) | **0** |
 
-逐条走完 propose → evaluate → promote(署名 stahl):
+Walking propose → evaluate → promote one by one (signed stahl):
 
-- **HAR-0020**(`AV-total_net`,PROM-0019,2026-08-10T06:34:15Z):
-  队列 −6.03pp(对存量路由基线;对 HAR-0019 边际 −0.83pp),
-  真静默 0→0,冲突 0,T1 争议 1 单列;
-- **HAR-0021**(`AV-due_date`,PROM-0020,2026-08-10T06:34:54Z):
-  队列 55.67% → **47.73%**(−7.93pp 对存量基线),原口径 silent_absent
-  0→5 但 5 例全是 T2 争议,**真静默 0→0**,冲突 0。
+- **HAR-0020** (`AV-total_net`, PROM-0019, 2026-08-10T06:34:15Z):
+  queue −6.03pp (vs the standing routing baseline; marginal −0.83pp vs HAR-0019),
+  true silent 0→0, conflicts 0, T1 dispute 1, listed separately;
+- **HAR-0021** (`AV-due_date`, PROM-0020, 2026-08-10T06:34:54Z):
+  queue 55.67% → **47.73%** (−7.93pp vs the standing baseline); original-caliber silent_absent
+  0→5, but all 5 cases are T2 disputes, **true silent 0→0**, conflicts 0.
 
-广播 harness 至此 = HAR-0017 + 四条页面证据缺席规则(total_vat /
-seller_vat_id / total_net / due_date),开发集人工队列从 60.20%
-(HAR-0001)降到 47.73%。SEALED-4 主臂按增补件 A2 的机制解析为
-HAR-0021(「以抽取前最后一次晋升为准」),policy digest
+The broadcast harness now = HAR-0017 + four page-evidence absence rules (total_vat /
+seller_vat_id / total_net / due_date); the development-set human queue drops from 60.20%
+(HAR-0001) to 47.73%. The SEALED-4 main arm resolves per amendment A2's mechanism to
+HAR-0021 ("the last promotion before extraction wins"), policy digest
 `bed2a20912c59fd5355873448d2d0f6c5a18545c25e64404d59ddb83b776bbc4`;
-工件钉在 `docs/evidence/absence_v3_2026-08-10/`。
+artifacts pinned at `docs/evidence/absence_v3_2026-08-10/`.
 
-**口径争议不是零成本的通行证**:T2 会放过真到期日恰好印在 transaction
-词旁的槽(增补件 A3 已自陈),QA 探针(absent_evidenced_rate ≥ 0.20)
-是盯着这件事的常设机制。资格仍只能由 SEALED-4 给。
+**A caliber dispute is not a zero-cost pass**: T2 will let through slots whose true due date
+happens to be printed next to the word "transaction" (amendment A3 already self-declares this);
+the QA probe (absent_evidenced_rate ≥ 0.20) is the standing mechanism watching for exactly
+this. Eligibility still can only come from SEALED-4.
 
-## 五、派生规则 v2:触发率 8/300(2.7%),诚实但稀疏
+## V. Derivation rules v2: trigger rate 8/300 (2.7%), honest but sparse
 
-同一 300 份上跑 `derive_due_date`(版本 `due-date-relative-term-v2`):
+Running `derive_due_date` (version `due-date-relative-term-v2`) on the same 300 documents:
 
-| 结果 | 份数 |
+| Outcome | Documents |
 |---|---:|
-| computed(days 分布:30×7,0×1) | 8 |
-| not_computable:页面无相对付款条款 | 201 |
-| not_computable:有条款但**无标签**的基准日(印的是裸 "Date") | 53 |
-| not_computable:receipt 类条款无 receipt 日期(诚实拒算) | 28 |
-| not_computable:EOM/prox 月末条款(认得但不算) | 6 |
-| not_computable:条款互相矛盾 | 4 |
+| computed (days distribution: 30×7, 0×1) | 8 |
+| not_computable: no relative payment terms on the page | 201 |
+| not_computable: terms present but base date **unlabeled** (page prints a bare "Date") | 53 |
+| not_computable: receipt-type terms with no receipt date (honest refusal to compute) | 28 |
+| not_computable: EOM/prox end-of-month terms (recognized but not computed) | 6 |
+| not_computable: mutually contradictory terms | 4 |
 
-真值对照:8 份 computed 里 2 份真值有 `date_due`,**两份都一致**
-(我的即席比对脚本把 `2018-07-12` 与真值文本 `07/12/18` 判成不一致——
-是两位数年份的格式假象,逐条核对为同一日期;脚本不是评分器,照登)。
-另 6 份真值无 date_due,无从判对。
+Against ground truth: of the 8 computed, 2 have a ground-truth `date_due`, and **both agree**
+(my ad-hoc comparison script judged `2018-07-12` against the ground-truth text `07/12/18` as
+disagreeing — a two-digit-year format artifact; checked one by one, same date; the script is not
+a scorer, recorded as-is).
+The other 6 have no ground-truth date_due, so there is nothing to judge against.
 
-**结论:v2 把 v1 的 2/30(pilot)提到 8/300,但绝对触发率只有 2.7%。**
-最大的拦路不是条款形态,是 53 份"有条款、裸 Date"——把裸 `Date` 当
-issue date 是一条新的口径规则(它也可能是 due date),**没有预注册不做**。
-派生层对队列的贡献有限,duedate 的主杠杆仍在缺席侧(第二节);
-schema 侧的步 2 已复抽完毕,无可测收益、不晋升(第六节)。
+**Conclusion: v2 lifts v1's 2/30 (pilot) to 8/300, but the absolute trigger rate is only 2.7%.**
+The biggest blocker is not clause shape; it is the 53 "terms present, bare Date" documents —
+treating a bare `Date` as the issue date would be a new caliber rule (it could also be the due
+date), and **without preregistration, it is not done**. The derivation layer's contribution to
+the queue is limited; due_date's main lever remains on the absence side (Section II); the
+schema-side step 2 re-extraction is finished — no measurable benefit, not promoted (Section VI).
 
-## 六、步 2 复抽:终版 schema 描述无可测收益,门被复抽方差触发(不晋升)
+## VI. Step 2 re-extraction: the final schema descriptions show no measurable benefit, and the gate is tripped by re-extraction variance (not promoted)
 
-终版 10 条描述预注册在 `BROADCAST_SCHEMA_FINAL_2026-08-10.json`
-(= main 当前 `ingest.py::FIELD_DESCRIPTIONS` + seller_vat_id 改指 EIN);
-候选 HAR-0022 与 HAR-0021 只差 due_date、seller_vat_id 两条 description。
-30 份 understand-only 复抽(510 credits,2026-08-10):
+The final 10 descriptions were preregistered in `BROADCAST_SCHEMA_FINAL_2026-08-10.json`
+(= main's current `ingest.py::FIELD_DESCRIPTIONS` + seller_vat_id re-pointed at EIN);
+candidate HAR-0022 differs from HAR-0021 in only two descriptions, due_date and seller_vat_id.
+30 documents re-extracted understand-only (510 credits, 2026-08-10):
 
-| 指标(同 30 份,基线 HAR-0021) | 基线 → 候选 |
+| Metric (same 30 documents, baseline HAR-0021) | baseline → candidate |
 |---|---:|
-| review_load | 64.33% → 64.00%(-0.33pp,1 槽) |
-| silent_wrong | 8 → 11(**+3**) |
-| 真静默 / 口径争议(truth-caliber-v1) | 0 → 0 / 0 → 0 |
-| value_hits | 87 → 88(+1) |
+| review_load | 64.33% → 64.00% (−0.33pp, 1 slot) |
+| silent_wrong | 8 → 11 (**+3**) |
+| true silent / caliber dispute (truth-caliber-v1) | 0 → 0 / 0 → 0 |
+| value_hits | 87 → 88 (+1) |
 
-**+3 silent_wrong 逐条定位**:`buyer_name`×2、`seller_name`×1——
-**描述一字未改的字段**。DWS understand 复抽把地址拼进了名字
+**The +3 silent_wrong, located one by one**: `buyer_name`×2, `seller_name`×1 —
+**fields whose descriptions changed by not one word**. The DWS understand re-extraction
+concatenated the address into the name
 (`'Philip Morris USA 120 Park Avenue New York, NY 10017-5592'` vs
-真值 `'Philip Morris USA'`),规范化后不符。是模型非确定性,
-不是 schema 效果。唯一的 route 翻转(`total_net` review→auto_accept,
-值与真值一致)解释了 -0.33pp 与 +1 value_hit,同属复抽方差。
+ground truth `'Philip Morris USA'`); after normalization they disagree. It is model
+non-determinism, not a schema effect. The single route flip (`total_net` review→auto_accept,
+value matching ground truth) explains the −0.33pp and the +1 value_hit — same re-extraction
+variance.
 
-**目标字段本身**:seller_vat_id 唯一真值案例(真值 `25-1126415`)
-两臂都错(base `26415` → cand `Federal ID # 26415`,标签噪声反而更重);
-due_date 唯一真值案例两臂都路由 review(候选值是复抽噪声
-`'Due by August 1, 1 1999'`,但进人工、不静默);无真值文档上候选对
-"NET 30"/"30 Days" 这类条款更多返回空——方向符合派生层语义,
-但不可计分。
+**The target fields themselves**: seller_vat_id's only ground-truth case (truth `25-1126415`)
+is wrong in both arms (base `26415` → cand `Federal ID # 26415`; the label noise is actually
+heavier); due_date's only ground-truth case routes to review in both arms (the candidate value
+is re-extraction noise `'Due by August 1, 1 1999'`, but it goes to humans, not silent); on
+documents without ground truth the candidate more often returns empty for terms like
+"NET 30"/"30 Days" — direction consistent with the derivation layer's semantics, but not
+scoreable.
 
-**裁决:不晋升**(2026-08-10,stahl),HAR-0021 保持 active;
-SEALED-4 主臂解析不变。证据:`docs/evidence/absence_v3_2026-08-10/`
-(`eval_HAR-0022.json` + `HAR-0022.extraction_schema.json`)。
+**Verdict: not promoted** (2026-08-10, stahl); HAR-0021 stays active;
+the SEALED-4 main-arm resolution is unchanged. Evidence: `docs/evidence/absence_v3_2026-08-10/`
+(`eval_HAR-0022.json` + `HAR-0022.extraction_schema.json`).
 
-**方法论发现**:n=30 复抽门的 silent_wrong 比较会被**未改动字段**的
-understand 方差污染(本次 +3 即此;门若机械执行会错杀,门若放行又
-开了旁路)。对后续 schema 类候选与 SEALED-4 设计的含义:安全比较
-要么**配对复抽**(基线臂同轮重抽,控制时漂),要么门只看改动字段;
-现行单臂重抽在 n=30 上太脆,不足以裁决文字级 schema 改动。
+**Methodological finding**: at n=30, the re-extraction gate's silent_wrong comparison is
+contaminated by understand variance in **unchanged fields** (this round's +3 is exactly that;
+mechanical enforcement would kill wrongly, and waving it through would open a bypass). For
+future schema candidates and SEALED-4 design, the implication is: a safe comparison needs
+either **paired re-extraction** (the baseline arm re-extracted in the same round, controlling
+temporal drift) or a gate that looks only at changed fields; the current single-arm
+re-extraction at n=30 is too brittle to adjudicate wording-level schema changes.
 
-## 限定
+## Caveats
 
-- 全部是**开发集**数字(sealed1/2/heldout 全部曝光过),不是未见集结论;
-  资格只能由 SEALED-4 给。
-- 引擎 v3 测量是事后的(动机案例在 v2 台账里);`AV-total_vat` 仍是唯一
-  在盲测版上通过过的规则。
-- 真值口径规则(第二、三节)已被采纳(2026-08-10,stahl),写进 SEALED-4
-  增补件;T1/T2 的采纳同样**先于**第四节的晋升,但规则文本的形状取自
-  这 9 个案例本身 —— 与引擎 v3 同一定性:单调安全掩护得了机制,
-  掩护不了"盲"字。
-- 第四节的两条晋升全部走强制门(逐字节重算),署名 stahl;门内数与
-  台账口径的差异(234/193/156 三个计数器)已在第一节自陈。
+- All of these are **development-set** numbers (sealed1/2/heldout all exposed), not conclusions
+  on unseen data; eligibility can only come from SEALED-4.
+- The engine v3 measurement is post hoc (the motivating cases sit in the v2 ledger);
+  `AV-total_vat` remains the only rule that ever passed on a blind version.
+- The truth-caliber rules (Sections II and III) were adopted (2026-08-10, stahl) and written
+  into the SEALED-4 amendment; T1/T2's adoption likewise **preceded** Section IV's promotions,
+  but the shape of the rule text is taken from these 9 cases themselves — the same
+  qualification as engine v3: monotone safety can cover the mechanism, not the word "blind".
+- Both promotions in Section IV went through the mandatory gate (byte-for-byte recomputation),
+  signed stahl; the gap between in-gate numbers and ledger calibers (the 234/193/156 counters)
+  is self-declared in Section I.
 
-## 复算
+## Recompute
 
 ```bash
-python3 scripts/absence_by_evidence.py          # 第一节台账(引擎 v3 + 口径拆分)
+python3 scripts/absence_by_evidence.py          # Section I ledger (engine v3 + caliber split)
 python3 -m pytest tests/test_absence_evidence.py tests/test_due_date.py \
-    tests/test_truth_caliber.py                 # 含增补件 9 案例的真语料回归
+    tests/test_truth_caliber.py                 # incl. the real-corpus regression on the amendment's 9 cases
 ```
 
-派生触发率为即席脚本(零 API,只读 `load_ocr` + `derive_due_date`),
-未存盘;对比口径的格式假象已在第四节自陈。
+The derivation trigger rate is an ad-hoc script (zero API; reads only `load_ocr` +
+`derive_due_date`), not saved; the format artifact of the comparison caliber is self-declared
+in Section IV.

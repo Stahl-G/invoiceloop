@@ -1,115 +1,97 @@
-# 四方基线比较(2026-08-04 初版;2026-08-05 按高级裁决三重写)
+# Four-way baseline comparison (first edition 2026-08-04; rewritten 2026-08-05 per senior adjudication three)
 
-**问题**:把每个信号当作「自动放行规则」时,静默错误 / 自动化覆盖 / 人工负载
-各是什么形状 —— InvoiceLoop 的分诊是否相对 raw DWS 与简单基线构成改进
-(78 评 P1;81 评修正;69/83 双评后按高级裁决三重写比较合同)。
+**Question**: when each signal is treated as an "auto-release rule", what shape do silent errors / automation coverage / human load take — and does InvoiceLoop's triage constitute an improvement over raw DWS and simple baselines (review-78 P1; review-81 correction; comparison contract rewritten per senior adjudication three after the 69/83 dual review).
 
-**复算**:`python3 scripts/baseline_comparison.py runs/heldout-r3 runs/heldout-workspace`
-(零 API,全部从存盘证据)。
+**Recompute**: `python3 scripts/baseline_comparison.py runs/heldout-r3 runs/heldout-workspace`
+(zero API, entirely from stored evidence).
 
-## 口径(先读,宪章六)
+## Caliber (read first; charter six)
 
-- **探索性,非预注册**。预注册的是 H1–H6(docs/HELDOUT.md);本表是评审后
-  补做的分析,判据意义与 H 系不同。
-- **各系统从自己的预测源打分(2026-08-05 重写,高级裁决三)**:
-  raw 系(全信/有值才放行/置信度/双模式)的判定值全部来自 raw 存盘响应的
-  `output.data` / `output.metadata`;InvoiceLoop 的判定值来自冻结账本。
-  偏差按系统各自的值独立计算,不共用。「有值」= DWS 自己返回了非空值,
-  不是「通过了 InvoiceLoop 冻结绑定」—— 旧口径把冻结被拒的 DWS 错值算成
-  其他基线的「缺值进人工」,等于让对手借用了 InvoiceLoop 的闸门。
-- **错值与缺值拆报**:raw 全信口径把缺值也放进交付(占其静默错误一份);
-  有值才放行口径把缺值赶进人工。
-- **置信度平局用固定 (doc_id, field) tie-break**。旧口径用 queue_idx
-  (矩阵行序)破平 —— 那是 InvoiceLoop 自己的分诊序,confidence 只有
-  0.95/0.4 两个主档、平局面极大,旧「打平」结论部分是这个借用造成的
-  (见下「与旧口径的差异」)。预算切入同分组时加报 best/worst/expected。
-- **槽宇宙** = 真值存在且非口径争议;争议判据只读 raw understand 数据
-  本身(全系统共享的输入属性)。新宇宙 572 槽(旧 574,争议判据不再
-  要求冻结入账,差 2 槽)。
-- **InvoiceLoop 产品本身从不自动放行** —— 复核队列由人裁决。本表评估的是
-  分诊信号在反事实自动放行下的质量,不是产品行为承诺。
-- 「置信度阈值」= understand 的字段级 confidence ≥ 0.95 且有值才放行。
-  confidence 是粗粒度离散的 grounding score(0.95/0.4 两档,
-  `source=no-logprobs`),**不是校准正确率**。
+- **Exploratory, not pre-registered**. What is pre-registered is H1–H6 (docs/HELDOUT.md); this table is an analysis added after review, and its criteria do not carry the H-series' evidentiary meaning.
+- **Each system is scored from its own prediction source (2026-08-05 rewrite, senior adjudication three)**: the decision values of the raw systems (full trust / release-only-if-value / confidence / dual-mode) all come from the stored raw responses' `output.data` / `output.metadata`; InvoiceLoop's decision values come from the frozen ledger. Deviations are computed independently from each system's own values, not shared. "Has value" = DWS itself returned a non-empty value, not "passed InvoiceLoop's frozen binding" — the old caliber counted DWS wrong values rejected at freezing as "missing value goes to human" for the other baselines, which amounts to letting the opponents borrow InvoiceLoop's gate.
+- **Wrong values and missing values reported separately**: the raw full-trust caliber puts missing values into delivery as well (counting toward its silent errors); the release-only-if-value caliber drives missing values into human review.
+- **Confidence ties broken by a fixed (doc_id, field) tie-break**. The old caliber broke ties with queue_idx
+  (matrix row order) — that is InvoiceLoop's own triage order; confidence has only 0.95/0.4 as its two main levels and enormous tie groups, and the old "tie" conclusion was partly an artifact of that borrowing
+  (see "Differences from the old caliber" below). When a budget cut lands inside a tie group, best/worst/expected are additionally reported.
+- **Slot universe** = ground truth exists and it is not a caliber dispute; the dispute criterion reads only the raw understand data itself (an input property shared by all systems). The new universe has 572 slots (old 574; the dispute criterion no longer requires frozen admission, a difference of 2 slots).
+- **The InvoiceLoop product itself never auto-releases** — the review queue is adjudicated by humans. This table evaluates the quality of the triage signal under counterfactual auto-release, not a promise about product behavior.
+- "Confidence threshold" = understand's field-level confidence ≥ 0.95 plus release only if a value exists.
+  Confidence is a coarse-grained discrete grounding score (0.95/0.4 two levels,
+  `source=no-logprobs`), **not a calibrated accuracy**.
 
-## 全部记分字段(572 槽)
+## All scored fields (572 slots)
 
-| 系统 | 自动放行覆盖 | 字段静默错误率 | 其中错值 | 其中缺值放行 | 文档静默失败率 | 复核负载 | 偏差路由召回 |
+| System | Auto-release coverage | Field silent error rate | of which wrong values | of which released missing | Document silent failure rate | Review load | Deviation routing recall |
 |---|---|---|---|---|---|---|---|
-| raw DWS(全信) | 100.0% (572/572) | 34.79% | 28.67% | 6.12% | 90.0% (100/100 整单放行) | 0.0% | 0.0% |
-| raw DWS(有值才放行) | 93.9% (537/572) | 30.54% | 30.54% | 0.00% | 86.8% (76/100) | 6.1% | 17.6% |
-| 置信度阈值(≥0.95) | 93.4% (534/572) | 30.71% | 30.71% | 0.00% | 86.5% (74/100) | 6.6% | 17.6% |
-| 双模式一致 | 69.6% (398/572) | 18.84% | 18.84% | 0.00% | 77.3% (22/100) | 30.4% | 62.3% |
-| InvoiceLoop 分诊 | 58.6% (335/572) | 17.91% | 17.91% | 0.00% | 72.2% (18/100) | 41.4% | 72.4% |
+| raw DWS (full trust) | 100.0% (572/572) | 34.79% | 28.67% | 6.12% | 90.0% (100/100 whole-document release) | 0.0% | 0.0% |
+| raw DWS (release only if value) | 93.9% (537/572) | 30.54% | 30.54% | 0.00% | 86.8% (76/100) | 6.1% | 17.6% |
+| Confidence threshold (≥0.95) | 93.4% (534/572) | 30.71% | 30.71% | 0.00% | 86.5% (74/100) | 6.6% | 17.6% |
+| Dual-mode agreement | 69.6% (398/572) | 18.84% | 18.84% | 0.00% | 77.3% (22/100) | 30.4% | 62.3% |
+| InvoiceLoop triage | 58.6% (335/572) | 17.91% | 17.91% | 0.00% | 72.2% (18/100) | 41.4% | 72.4% |
 
-## 仅 TIER1 关键字段(285 槽)
+## TIER1 critical fields only (285 slots)
 
-| 系统 | 自动放行覆盖 | 字段静默错误率 | 其中错值 | 其中缺值放行 | 文档静默失败率 | 复核负载 | 偏差路由召回 |
+| System | Auto-release coverage | Field silent error rate | of which wrong values | of which released missing | Document silent failure rate | Review load | Deviation routing recall |
 |---|---|---|---|---|---|---|---|
-| raw DWS(全信) | 100.0% (285/285) | 26.32% | 18.95% | 7.37% | 50.5% (99/99 整单放行) | 0.0% | 0.0% |
-| raw DWS(有值才放行) | 92.6% (264/285) | 20.45% | 20.45% | 0.00% | 41.7% (84/99) | 7.4% | 28.0% |
-| 置信度阈值(≥0.95) | 91.6% (261/285) | 20.69% | 20.69% | 0.00% | 41.5% (82/99) | 8.4% | 28.0% |
-| 双模式一致 | 74.7% (213/285) | 11.27% | 11.27% | 0.00% | 27.3% (55/99) | 25.3% | 68.0% |
-| InvoiceLoop 分诊 | 58.6% (167/285) | **8.98%** | 8.98% | 0.00% | **24.3%** (37/99) | 41.4% | **82.4%** |
+| raw DWS (full trust) | 100.0% (285/285) | 26.32% | 18.95% | 7.37% | 50.5% (99/99 whole-document release) | 0.0% | 0.0% |
+| raw DWS (release only if value) | 92.6% (264/285) | 20.45% | 20.45% | 0.00% | 41.7% (84/99) | 7.4% | 28.0% |
+| Confidence threshold (≥0.95) | 91.6% (261/285) | 20.69% | 20.69% | 0.00% | 41.5% (82/99) | 8.4% | 28.0% |
+| Dual-mode agreement | 74.7% (213/285) | 11.27% | 11.27% | 0.00% | 27.3% (55/99) | 25.3% | 68.0% |
+| InvoiceLoop triage | 58.6% (167/285) | **8.98%** | 8.98% | 0.00% | **24.3%** (37/99) | 41.4% | **82.4%** |
 
-## 同人工预算比较(TIER1 偏差召回,前 b% 槽进人工)
+## Comparison at equal human budget (TIER1 deviation recall, top b% of slots to human)
 
-置信度系按置信度升序(固定 doc_id/field 破平);InvoiceLoop 按矩阵分诊序。
+The confidence systems sort by confidence ascending (fixed doc_id/field tie-break); InvoiceLoop uses the matrix triage order.
 
-| 复核预算 | 置信度升序 | InvoiceLoop 分诊序 |
+| Review budget | Confidence ascending | InvoiceLoop triage order |
 |---|---|---|
 | 10% | 25.3% | 32.9% |
 | 20% | 34.7% | 61.2% |
 | 30% | 48.0% | 67.1% |
 | 40% | 56.0% | 80.0% |
 
-预算切入 confidence 同分组时的全范围(粗粒度档位 → 平局面极大):
+Full ranges when the budget cut lands inside a confidence tie group (coarse levels → enormous tie groups):
 
-| 预算 | 固定 tie-break 点估计 | 同组内全范围 | 均匀随机期望 |
+| Budget | Fixed tie-break point estimate | Full range within tie group | Uniform-random expectation |
 |---|---|---|---|
 | 10% | 25.3% | [24.0%, 33.3%] | 26.0% |
 | 20% | 34.7% | [24.0%, 72.0%] | 34.4% |
 | 30% | 48.0% | [24.0%, 100.0%] | 42.4% |
 | 40% | 56.0% | [24.0%, 100.0%] | 50.8% |
 
-@30% 预算 95% CI(按文档 bootstrap,n=1000,种子固定):
-置信度升序 [35.4%, 58.2%];InvoiceLoop 分诊序 [58.5%, 76.9%]。
+At the 30% budget, 95% CI (bootstrap by document, n=1000, fixed seed):
+confidence ascending [35.4%, 58.2%]; InvoiceLoop triage order [58.5%, 76.9%].
 
-## 与旧口径(2026-08-04/05 表)的差异 —— 全部摊开
+## Differences from the old caliber (2026-08-04/05 tables) — all laid out
 
-| 量 | 旧口径 | 新口径 | 为什么变 |
+| Quantity | Old caliber | New caliber | Why it changed |
 |---|---|---|---|
-| 置信度阈值 TIER1 静默错误 | 16.10% | 20.69% | 旧口径的 confidence_accept 要求 InvoiceLoop 冻结入账(借闸门);新口径只看 raw 值+raw confidence |
-| recall@30%:置信度 vs 分诊 | 67.4% vs 67.4%(「打平」) | 48.0% vs 67.1% | 旧口径用 queue_idx 破 confidence 平局 —— 那是分诊序本身;固定 tie-break 后差距显形 |
-| 偏差定义 | 全系统共用(IL 口径) | 各系统各自 | 高级裁决三 |
+| Confidence threshold TIER1 silent errors | 16.10% | 20.69% | The old caliber's confidence_accept required InvoiceLoop frozen admission (gate borrowed); the new caliber looks only at raw value + raw confidence |
+| recall@30%: confidence vs triage | 67.4% vs 67.4% ("tie") | 48.0% vs 67.1% | The old caliber broke confidence ties with queue_idx — that is the triage order itself; with a fixed tie-break the gap becomes visible |
+| Deviation definition | Shared across all systems (IL caliber) | Per system | Senior adjudication three |
 
-**旧「打平」结论的正确处置**:它不是被「修掉」的 bug,而是偏差合同下的
-测量结果;新合同下点估计不再打平。但注意置信度同分组范围极宽
-(30% 预算处 [24%, 100%])—— 粗粒度离散档位决定了 confidence 排序的
-真实不确定性很大,单次点估计之差不足以宣称稳健胜出。**正式的 paired
-比较留给 SEALED-1 预注册次终点**(paired recall diff + 按文档 bootstrap
-CI + tie 规则事前冻结)。本条保留为 claim limit:在 SEALED-1 之前,
-不说「排序优于 confidence」。
+**The correct handling of the old "tie" conclusion**: it was not a bug that got "fixed" but a measurement under the deviation contract; under the new contract the point estimates no longer tie. Note, though, that confidence's within-tie-group ranges are extremely wide
+([24%, 100%] at the 30% budget) — the coarse discrete levels mean the true uncertainty of confidence ordering is large, and a difference between single point estimates is not enough to claim a robust win. **The formal paired
+comparison is left to the SEALED-1 pre-registered secondary endpoint** (paired recall diff + bootstrap-by-document CI + tie rules frozen in advance). This item remains a claim limit: before
+SEALED-1, do not say "the ordering beats confidence".
 
-## 读法(不夸大)
+## How to read this (no exaggeration)
 
-- **固定操作点上 InvoiceLoop 在风险端最强**:TIER1 静默错误 8.98%
-  (置信度 20.69%,双模式 11.27%),偏差路由召回 82.4%(28.0% / 68.0%)。
-  但五个点互不支配 —— InvoiceLoop 的复核负载也最高(41.4%)。
-- **公平合同下 confidence 阈值基线明显变弱**(16.10% → 20.69%):它旧的
-  「有值」判定借了冻结绑定;独立站立时,它放行的错值更多。
-- **排序比较的方向变了,但强度未定**:固定 tie-break 点估计分诊序领先
-  (30% 处 67.1% vs 48.0%,CI 恰好不重叠);然而 confidence 的同分组
-  范围极宽,这不是稳健胜出的充分证据 —— SEALED-1 次终点正式回答。
-- **残余不是零**:分诊放行档仍有 8.98% 的 TIER1 字段静默错误 —— 产品
-  形态是「人裁决队列」而非「自动放行器」,§8 限定与本表同屏有效。
-- **真实人工负载另报**:docs/R0_BASELINE_2026-08-05.md(61.2% / 100% /
-  82.3%)。
+- **At the fixed operating point InvoiceLoop is strongest on the risk side**: TIER1 silent errors 8.98%
+  (confidence 20.69%, dual-mode 11.27%), deviation routing recall 82.4% (28.0% / 68.0%).
+  But the five points do not dominate one another — InvoiceLoop's review load is also the highest (41.4%).
+- **Under a fair contract the confidence-threshold baseline is clearly weaker** (16.10% → 20.69%): its old
+  "has value" decision borrowed the frozen binding; standing on its own, it releases more wrong values.
+- **The direction of the ordering comparison changed, but its strength is undetermined**: with the fixed tie-break the triage-order point estimate leads
+  (67.1% vs 48.0% at 30%, CIs happen not to overlap); yet confidence's within-tie-group
+  ranges are extremely wide, so this is not sufficient evidence of a robust win — the SEALED-1 secondary endpoint answers formally.
+- **The residual is not zero**: the triage-release band still has 8.98% TIER1 field silent errors — the product
+  shape is a "human-adjudicated queue", not an "auto-releaser"; the §8 limitations remain in effect alongside this table.
+- **Real human load is reported separately**: docs/R0_BASELINE_2026-08-05.md (61.2% / 100% / 82.3%).
 
-## 不主张
+## Not claimed
 
-- 不主张 8.98% 是「真实错误率」—— 它是 100 份留出集上、按上述口径的观测值;
-- 不主张跨数据集成立(DocILE 之外的分布未测,§8 限定三);
-- 不主张排序优势已统计确立 —— 点估计领先 + CI 恰好不重叠,但 tie 范围
-  极宽,正式结论待 SEALED-1 预注册 paired 分析;
-- 不主张置信度基线无用 —— 它是曲线上合法的一点,负载更低时可选。
+- Not claimed: that 8.98% is the "true error rate" — it is an observation on the 100-document held-out set under the caliber above;
+- Not claimed: that it holds across datasets (distributions beyond DocILE untested, §8 limitation three);
+- Not claimed: that the ordering advantage is statistically established — the point estimate leads and the CIs happen not to overlap, but the tie ranges are extremely wide; the formal conclusion awaits the SEALED-1 pre-registered paired analysis;
+- Not claimed: that the confidence baseline is useless — it is a legitimate point on the curve, selectable when lower load matters.

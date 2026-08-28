@@ -1,37 +1,49 @@
-# Rubric 评审(78/100,证据约束型评委)的应答(2026-08-04)
+# Response to the rubric review (78/100, evidence-constrained judge) (2026-08-04)
 
-这份评审用用户预冻结的 rubric v0.1 评 commit e8aa56d,结论 78/100:
-「架构思想有获奖差异化,但产品价值和量化效果没追上架构复杂度」。
-红队实测全部属实(医生/demo/裁决/bundle/篡改),无争议项。
+This review scored commit e8aa56d against the user's prefrozen rubric v0.1, verdict
+78/100: "the architectural thinking has award-winning differentiation, but product
+value and quantified effect have not caught up with the architectural complexity".
+All red-team live tests held (doctor/demo/adjudication/bundle/tampering); no
+contested items.
 
-## 本轮修复
+## Fixes in this round
 
-| 评审项 | 修复 | 提交 |
+| Review item | Fix | Commit |
 |---|---|---|
-| P1 缺 raw DWS / 简单阈值 / InvoiceLoop 三方比较(rubric E 项最大缺口) | `scripts/baseline_comparison.py` + `docs/BASELINE_COMPARISON.md`:TIER1 上 raw DWS 静默错误 29.97% → 双模式一致 14.95% → InvoiceLoop 8.88%;文档静默失败 54.5% → 31.5% → 21.1%;偏差路由召回 82.6%。三点构成单调风险—覆盖曲线,分诊在风险端显著优于简单基线。同屏写明:探索性非预注册、产品不自动放行、残余不是零;度量数学 4 条测试钉死 | 本轮 |
-| P3 demo 在评委机 1 failed(OCR-blocked 展品写死) | 根因:046e0c49 是否被 pdftotext 抽出文字层取决于 poppler 构建。改为钉「受阻必显式」不变量(事件+阻断 finding 成对),不钉「某份文档必须受阻」;demo note 按实测生成 | b98a0ae |
-| P4 版本绑定不全 | run_manifest 记 `code_revision`(git commit,非 git 环境如实 null);读图 answers6.*.tsv 捕获进 run/bundle(并行会话,eb383cc) | b98a0ae + eb383cc |
+| P1 no three-way comparison of raw DWS / simple threshold / InvoiceLoop (the biggest gap in rubric item E) | `scripts/baseline_comparison.py` + `docs/BASELINE_COMPARISON.md`: on TIER1, raw DWS silent errors 29.97% → dual-mode agreement 14.95% → InvoiceLoop 8.88%; document-level silent failures 54.5% → 31.5% → 21.1%; deviation-routing recall 82.6%. The three points form a monotone risk–coverage curve; triage is significantly better than the simple baseline at the risky end. Stated on the same screen: exploratory and not preregistered, the product does not auto-release, the residual is not zero; the measurement math is pinned by 4 tests | this round |
+| P3 demo gets 1 failed on the judge machine (the OCR-blocked exhibit was hard-coded) | Root cause: whether 046e0c49 gets a text layer extracted by pdftotext depends on the poppler build. Now pinning the invariant "blocked must be explicit" (event + blocking finding as a pair), not "this particular document must be blocked"; the demo note is generated from what actually happened | b98a0ae |
+| P4 incomplete version pinning | run_manifest records `code_revision` (git commit; honestly null in non-git environments); vision answers6.*.tsv captured into the run/bundle (parallel session, eb383cc) | b98a0ae + eb383cc |
 
-## 设计待用户点头(P2,+4~6 分)
+## Design awaiting the user's nod (P2, +4~6 points)
 
-TIER1 进入运行时策略 + 整单放行/阻断 + 裁决后最终 JSON/CSV 导出。
-改分诊口径、引入「整单放行」新概念 —— 与 C8 同级,先设计后实现。
+TIER1 entering the runtime policy + whole-document release/blocking + final
+JSON/CSV export after adjudication. Changing the triage definition and introducing
+the new concept of "whole-document release" — same weight as C8; design first, then
+implement.
 
-**→ 已实现(用户 2026-08-04 批准设计,dc501b0)**:`deliver.py` 纯投影
-deliverable.json —— 每槽最终值(correct→修正值 / accept→声明值 / reject→null /
-abstain→未决)+ 整单 released/pending/blocked;**TIER1 在放行层而非分诊层**:
-印证的关键字段也必须显式裁决才放行,分诊口径与校准数字零漂移。
-workbench 交付页有每文档状态与下载;bundle 带上 deliverable(可选成员,
-旧 run 不阻断);9 条测试钉死,含「裁决后 render 同步刷新」「弃权不许放行」。
+**→ Implemented (design approved by the user on 2026-08-04, dc501b0)**: `deliver.py`
+is a pure projection, deliverable.json — the final value per slot
+(correct→corrected value / accept→claimed value / reject→null / abstain→undecided)
++ whole-document released/pending/blocked; **TIER1 sits at the release layer, not
+the triage layer**: corroborated key fields must also be explicitly adjudicated
+before release, so the triage definition and the calibration numbers have zero
+drift. The workbench delivery page has per-document status and downloads; the
+bundle carries the deliverable (optional member; old runs are not blocked); 9 tests
+pin it down, including "render refreshes in sync after adjudication" and
+"abstention may not release".
 
-## 用户决策项(不变)
+## User-decision items (unchanged)
 
-P0 资格书面确认(决定是否参赛的前提)、视频(rubric 给了分镜脚本,
-live_dws_demo.sh 可直接录)、pitch 与 heavy-lifting 一句话(评审已起草,
-在 Devpost 文案里采用即可)、DocILE 许可核查。
+P0 eligibility confirmation in writing (the precondition for deciding whether to
+enter), video (the rubric provided a storyboard; live_dws_demo.sh can be recorded
+directly), pitch and the heavy-lifting sentence (already drafted by the review;
+just adopt it in the Devpost copy), DocILE license check.
 
-## 评审里我们不同意扣分的一处(留痕,不改)
+## One deduction in the review we disagree with (on record; unchanged)
 
-「六轮实验证明做不到,那条路封死了」被评审读成「提高抽取正确性整体不可能」。
-原文语境是「没有单一信号能识别所有错误」——README 与 ARCHITECTURE §9 的
-不主张清单都是这个口径。文档措辞已在先前轮次收敛,不再改;视频口播注意即可。
+"The six rounds of experiments proved it cannot be done; that road is closed" was
+read by the review as "improving extraction correctness is impossible overall".
+The original context is "no single signal can identify all errors" — the
+non-claims lists in the README and ARCHITECTURE §9 both take that line. The
+document wording was already converged in earlier rounds and is not being changed
+again; just be careful in the video voice-over.

@@ -1,60 +1,66 @@
-# 类别条件缺席:开发集测量(2026-08-09)
+# Class-Conditional Absence: Development-Set Measurement (2026-08-09)
 
-两份零 API 脚本的结果,重算命令在文末。**全部数字来自开发语料**
-(`sealed1-workspace`、`sealed2-workspace`、`heldout-workspace`,300 份去重后的
-DWS 存盘响应)。SEALED-3 不在里面,也不许拿来验这里的任何结论 ——
-它已被一次性开箱用掉(`SEALED3_RESULTS.md` §7)。
+Results of two zero-API scripts; recompute commands at the end. **All numbers come from the
+development corpus**
+(`sealed1-workspace`, `sealed2-workspace`, `heldout-workspace`; 300 deduplicated
+saved DWS responses). SEALED-3 is not in here and must not be used to validate any conclusion
+here — it was consumed by its one-time unsealing (`SEALED3_RESULTS.md` §7).
 
-## 结论先行
+## Conclusions up front
 
-1. **DocILE 自带单据类型真值**:`metadata.document_type`,5,680 份全有 ——
-   tax_invoice 3850、order 1440、purchase_order 128、receipt 116、
-   sales_order 75、proforma 29、credit_note 24、utility_bill 12、debit_note 6。
-   所以类别判定的正确性是**可测的**,不必只靠断言。
-2. **页面字面证据能给出可用类别的占 91.7%**(275/300)。其余 25 份不是判错,
-   是页面上没写 —— 类别条件规则本来就不该在它们身上生效。
-3. **可判子集上与 DocILE 一致 96.3%**(211/219)。8 处不一致里多数不是门禁
-   的错:DocILE 标 receipt 而页面印着 INVOICE,DocILE 标 tax_invoice 而页面
-   印着 Proforma / Confirmation / Estimate。**AP 复核者看到的是印在页面上的
-   那个词。**
-4. **类别条件化正是安全性的来源,这一点在数字上是分开的**:
-   `seller_vat_id` 一个字段,按类别拆开之后一半的规则可以开、一半绝对不能开。
-5. 按 silent=0 且 saves≥3 筛,**16 条候选可以提**,合计省 107 槽 /
-   全语料 3,000 槽 = **人工负载 −3.6pp**,全部落在**非 invoice** 类别上。
+1. **DocILE ships document-type ground truth**: `metadata.document_type`, present on all 5,680 —
+   tax_invoice 3850, order 1440, purchase_order 128, receipt 116,
+   sales_order 75, proforma 29, credit_note 24, utility_bill 12, debit_note 6.
+   So the correctness of class decisions is **measurable**, not a matter of assertion.
+2. **Literal page evidence yields a usable class for 91.7%** (275/300). The other 25 are not
+   misjudged; the page just doesn't say — class-conditional rules should never have applied to
+   them in the first place.
+3. **On the decidable subset, 96.3% agreement with DocILE** (211/219). Most of the 8
+   disagreements are not the gate's fault: DocILE says receipt while the page prints INVOICE;
+   DocILE says tax_invoice while the page prints Proforma / Confirmation / Estimate.
+   **What the AP reviewer sees is the word printed on the page.**
+4. **Class conditioning is precisely where the safety comes from, and the numbers show this
+   separately**: for the single field `seller_vat_id`, once split by class, half the rules can
+   turn on and half absolutely must not.
+5. Filtering on silent=0 and saves≥3, **16 candidates are promotable**, saving 107 slots in
+   total / 3,000 slots corpus-wide = **human load −3.6pp**, all falling on **non-invoice**
+   classes.
 
-## 1. 类别判定 vs DocILE
+## 1. Class decisions vs DocILE
 
-| 门禁裁决 | 份数 | 占比 |
+| Gate verdict | Documents | Share |
 |---|---:|---:|
-| pass(有页面字面证据) | 275 | 91.7% |
-| fail(DWS 报了类型,页面上找不到) | 18 | 6.0% |
-| no_claim(DWS 没报类型) | 5 | 1.7% |
-| unmapped(报的类型不在受控词表) | 2 | 0.7% |
+| pass (has literal page evidence) | 275 | 91.7% |
+| fail (DWS reported a type; none found on the page) | 18 | 6.0% |
+| no_claim (DWS reported no type) | 5 | 1.7% |
+| unmapped (reported type not in the controlled vocabulary) | 2 | 0.7% |
 
-**6.7% 的文档 DWS 自报了一个页面上无从印证的类型。** 这就是
-`doctype.py` 存在的理由:那 20 份如果直接采信自报类型,被监督的模型就替
-自己决定了要不要被监督。
+**On 6.7% of documents DWS self-reported a type that the page offers no way to corroborate.**
+This is exactly why `doctype.py` exists: on those 20 documents, taking the self-reported type at
+face value lets the supervised model decide for itself whether it gets supervised.
 
-可判子集(DocILE 类型在受控词表里有对应项、且门禁拿到可用类别)219 份,
-一致 211 份 = **96.3%**。8 处不一致逐条在
-`scripts/doctype_truth.py` 的输出里,例如:
+The decidable subset (DocILE type has a counterpart in the controlled vocabulary and the gate
+obtained a usable class) is 219 documents, 211 agreeing = **96.3%**. The 8 disagreements are
+listed one by one in the output of `scripts/doctype_truth.py`, for example:
 
-- `254b7845…`:DocILE `receipt`,页面印 `invoice`,DWS 自报 `sale`
-- `a187ba31…`:DocILE `tax_invoice`,页面印 `received`(Donation Received)
-- `9ab6841f…`:DocILE `tax_invoice`,页面印 `estimate`
+- `254b7845…`: DocILE `receipt`, page prints `invoice`, DWS self-reports `sale`
+- `a187ba31…`: DocILE `tax_invoice`, page prints `received` (Donation Received)
+- `9ab6841f…`: DocILE `tax_invoice`, page prints `estimate`
 
-**DocILE 的 `order` 标签不进这一节**:65 份 DocILE-`order` 在页面上散成
-purchase_order 9、confirmation 6、contract 5、credit_note 3、estimate 19、
-invoice 9 —— 一个标签盖了几种单据,拿它算准确率只会算出一个没有意义的数。
+**DocILE's `order` label does not enter this section**: 65 DocILE-`order` documents scatter on
+the page into purchase_order 9, confirmation 6, contract 5, credit_note 3, estimate 19,
+invoice 9 — one label covering several document kinds; computing an accuracy against it yields
+only a meaningless number.
 
-## 2. 每条「类别 × 字段」缺席规则的两侧代价
+## 2. The two-sided cost of every "class × field" absence rule
 
-一个槽只有在 DWS 没返回值时才落到缺席规则手里。此时真值也没有 → 净省一次
-人工;真值**有** → 这个槽被自动判成缺席,**再也不会有人看到它**。
+A slot falls into an absence rule's hands only when DWS returns no value. If ground truth is
+also absent there → one human review saved; if ground truth **exists** → the slot is auto-judged
+absent and **no one will ever see it again**.
 
-### 可以提的 16 条(silent=0,saves≥3)
+### The 16 promotable ones (silent=0, saves≥3)
 
-| 规则 | 省 | 占该类文档 |
+| Rule | Saves | Share of that class's documents |
 |---|---:|---:|
 | `AE-purchase_order-seller_vat_id` | 16 | 100.0% |
 | `AE-purchase_order-due_date` | 14 | 87.5% |
@@ -73,11 +79,11 @@ invoice 9 —— 一个标签盖了几种单据,拿它算准确率只会算出�
 | `AE-estimate-total_net` | 3 | 75.0% |
 | `AE-estimate-total_vat` | 3 | 75.0% |
 
-合计 107 槽 / 全语料 3,000 槽 = **人工负载 −3.6pp**,全部在非 invoice 类别上。
+Total 107 slots / 3,000 slots corpus-wide = **human load −3.6pp**, all on non-invoice classes.
 
-### 绝对不能开的(silent > 0),按诱惑程度排
+### The absolutely-must-not-turn-on ones (silent > 0), ordered by temptation
 
-| 规则 | 省 | 静默吞掉 |
+| Rule | Saves | Silently swallowed |
 |---|---:|---:|
 | `AE-invoice-seller_vat_id` | 184 | **7** |
 | `AE-invoice-due_date` | 130 | **10** |
@@ -85,32 +91,35 @@ invoice 9 —— 一个标签盖了几种单据,拿它算准确率只会算出�
 | `AE-invoice-total_net` | 55 | **3** |
 | `AE-invoice-buyer_name` | 2 | **31** |
 
-第一行就是这套东西的全部意义。`seller_vat_id` **不加类别条件**时是一条
-「省 184 槽」的规则,看起来是全表最划算的一条 —— 而它会吞掉 7 个真有值的
-税号。把同一个字段按类别拆开之后:purchase_order / confirmation /
-credit_note / contract / receipt / estimate 六类各自 silent=0,加起来省 48 槽,
-零代价;invoice 那一类留给人。
+The first row is the whole point of this apparatus. Without the class condition,
+`seller_vat_id` is a "save 184 slots" rule that looks like the best deal in the table — and it
+would swallow 7 tax IDs that really have values. Split the same field by class:
+purchase_order / confirmation / credit_note / contract / receipt / estimate — six classes each
+silent=0, together saving 48 slots at zero cost; the invoice class stays with humans.
 
-`AE-invoice-due_date` 同理,并且与 2026-08-06 记下的那次泛化伤害是同一件事
-(一条 due_date 缺席 cohort 在 88 份没复核过的文档上静默丢掉 5 个真实到期日)。
+`AE-invoice-due_date` is the same story, and the same affair as the generalization harm recorded
+on 2026-08-06 (one due_date absence cohort silently dropped 5 real due dates across 88
+unreviewed documents).
 
-## 3. 三条限定,不许省略
+## 3. Three caveats, not to be omitted
 
-- **这是开发集上的数字。** 它决定值不值得提这条候选,**不是未见集上的保证**。
-  要说「在没见过的数据上也成立」,得另抽 SEALED-4。
-- **`credit_note × seller_vat_id` 在这里是 0/7,而 SEALED-3 主臂唯一那次
-  静默缺席正好是一张 credit note 的 seller_vat_id**
-  (`5a34aacb…`,真值 `27042768`,`SEALED3_RESULTS.md` §4)。开发集干净不等于
-  未见集干净 —— 这条恰好把两者的差距摆在同一页上。
-- **`unscored` 一栏是「算不出来」,不是零。** 没有 DocILE 标注记录的文档不能
-  当作没有真值;`improve.gate_verdict` 在 QA 抽检**之前**就会因此拒掉候选。
+- **These are development-set numbers.** They decide whether a candidate is worth promoting;
+  they are **not a guarantee on unseen data**.
+  To say "also holds on unseen data", a separate SEALED-4 draw is required.
+- **`credit_note × seller_vat_id` is 0/7 here, while the single silent absence in SEALED-3's
+  main arm was exactly a credit note's seller_vat_id**
+  (`5a34aacb…`, ground truth `27042768`, `SEALED3_RESULTS.md` §4). Clean on the development set
+  does not mean clean on unseen data — this rule lays the gap between the two out on the same page.
+- **The `unscored` column means "cannot be computed", not zero.** Documents with no DocILE
+  annotation record cannot be treated as having no ground truth; `improve.gate_verdict` will
+  refuse candidates for exactly this reason **before** any QA sampling.
 
-## 重算
+## Recompute
 
 ```bash
-python3 scripts/doctype_truth.py       # 类别判定 vs DocILE 交叉表
-python3 scripts/absence_by_class.py    # 每条规则的 saves / silent 台账
+python3 scripts/doctype_truth.py       # class decisions vs DocILE cross-tabulation
+python3 scripts/absence_by_class.py    # saves / silent ledger per rule
 ```
 
-零 API:只读已存盘的 DWS 响应、已存盘的独立 OCR、DocILE 标注。
-两份脚本都不接受 SEALED-3 的工作区作为默认输入。
+Zero API: reads only saved DWS responses, saved independent OCR, and DocILE annotations.
+Neither script accepts a SEALED-3 workspace as default input.

@@ -1,127 +1,145 @@
-# HITL 实验记录：ADK OAuth 20 份独立 run（2026-08-27）
+# HITL experiment record: ADK OAuth 20-document standalone run (2026-08-27)
 
-状态：**开发集 / 探索性结果**。本记录不构成资格测试、不构成晋升依据，
-也不估计模型抽取准确率。
+Status: **development set / exploratory results**. This record constitutes no
+qualification test, no promotion basis, and no estimate of model extraction
+accuracy.
 
-协议背景：本轮沿用
-[`HITL_NARROW_PROTOCOL_2026-08-14.md`](HITL_NARROW_PROTOCOL_2026-08-14.md)
-的 20 份广播语料和 `HAR-0023` 付款字段范围，但增加了 ADK 读图建议层，
-并在工作台中进行了人工裁决。因此它不是原协议预注册指标的干净复测，不能
-和 2026-08-14 的人时或零触达数字拼接。
+Protocol background: this round reuses the 20-document broadcast corpus and
+the `HAR-0023` payment-field scope of
+[`HITL_NARROW_PROTOCOL_2026-08-14.md`](HITL_NARROW_PROTOCOL_2026-08-14.md),
+but adds an ADK page-reading suggestion layer and performs human adjudication
+in the workbench. It is therefore not a clean re-measurement of the original
+protocol's pre-registered metrics, and cannot be spliced with the 2026-08-14
+human-time or zero-touch numbers.
 
-## 1. 结论先行
+## 1. Conclusions first
 
-- ADK 建议层在本轮 20 份单据上成功完成；20/20 没有 ADK 请求失败。
-- 窄放行工作台实际落盘 **32 条人工裁决**：`accept 13`、`correct 11`、
-  `confirm_absent 7`、`reject 1`。
-- 对 7 条同时满足 `label_convention_disputed` 和
-  `arithmetic_consistency = fail` 的 `amount_due` 行，人工全部接受了原值。
-- 这支持一个**适用性 / 归因缺陷**判断：算术门按普通发票恒等式计算没有数值错误，
-  但把“Gross 刊例价、Net/Due 扣除佣金或折扣后的实付额”当成了
-  `gross == amount_due` 的普通发票模型，并在槽位层显示成算术失败。
-- 这不支持关闭算术门，也不支持宣称“抽取变准”。同一批人工裁决仍包含 11 条
-  修正和 1 条拒绝，说明队列中有真实抽取 / 绑定问题。
+- The ADK suggestion layer completed successfully on this round's 20 documents;
+  20/20 with no ADK request failures.
+- The narrow-release workbench actually recorded **32 human adjudications**:
+  `accept 13`, `correct 11`, `confirm_absent 7`, `reject 1`.
+- On the 7 `amount_due` rows satisfying both `label_convention_disputed` and
+  `arithmetic_consistency = fail`, the human accepted the original value on
+  every one.
+- This supports an **applicability / attribution defect** judgment: the
+  arithmetic gate computes the ordinary-invoice identity without numerical
+  error, but treats "Gross as rate-card price, Net/Due as the amount actually
+  payable after commission or discount" as the ordinary-invoice model
+  `gross == amount_due`, and displays it at slot level as an arithmetic
+  failure.
+- This does not support turning off the arithmetic gate, nor the claim that
+  "extraction got more accurate". The same batch of human adjudications still
+  contains 11 corrections and 1 rejection, showing real extraction / binding
+  problems in the queue.
 
-## 2. 实验身份与边界
+## 2. Experiment identity and boundary
 
-| 项 | 记录 |
+| Item | Record |
 |---|---|
-| 单据池 | `docs/hitl_narrow_doc_list.json`，20 份 DocILE 广播语料 |
-| 单据名单 SHA-256 | `20315c0daa606ad098bcce6e91d16b01dcfc635805e9f9049fa6c9336496f25d` |
-| 工作区 / run | 本机 `/private/tmp/invoiceloop-adk-oauth-20.jqyavx/hitl-clean/runs/run-0001` |
+| Document pool | `docs/hitl_narrow_doc_list.json`, 20 DocILE broadcast-corpus documents |
+| Document list SHA-256 | `20315c0daa606ad098bcce6e91d16b01dcfc635805e9f9049fa6c9336496f25d` |
+| Workspace / run | local `/private/tmp/invoiceloop-adk-oauth-20.jqyavx/hitl-clean/runs/run-0001` |
 | Harness | `HAR-0023` |
-| 输入 fingerprint | `140726a760d533c72c422c509182b66f729ddf63567c2ecb0b32091c40fccf06` |
-| 代码版本 | `2dfb7b7db3327123eda638dfef1fb55b528fb228-dirty` |
-| ADK 模型 | `gemini-3.7-flash` |
-| ADK 路径 | Vertex AI / `aiplatform.googleapis.com` / `global` |
-| ADK 鉴权 | gcloud 短期 OAuth access token，仅驻留内存；token 未写入工件 |
-| 执行方式 | 并行，4 workers；此前成功 8 份，本次处理 12 份，12 成功、0 失败 |
-| 人工身份 | `stahl`；单一 warm reviewer，裁决时可见 ADK 建议 |
+| Input fingerprint | `140726a760d533c72c422c509182b66f729ddf63567c2ecb0b32091c40fccf06` |
+| Code revision | `2dfb7b7db3327123eda638dfef1fb55b528fb228-dirty` |
+| ADK model | `gemini-3.7-flash` |
+| ADK path | Vertex AI / `aiplatform.googleapis.com` / `global` |
+| ADK auth | gcloud short-lived OAuth access token, memory-resident only; the token was not written to any artifact |
+| Execution | parallel, 4 workers; 8 documents had succeeded earlier, this pass handled 12, 12 succeeded, 0 failed |
+| Human identity | `stahl`; single warm reviewer, ADK suggestions visible at adjudication time |
 
-账本、审批账本、ADK 读法、路由/矩阵、closeout/mine 报告与单据名单等
-9 项关键工件已冻结进 repo：
+9 key artifacts — the ledgers, approval ledger, ADK readings,
+routing/matrix, closeout/mine reports, and the document list — are frozen
+into the repo at
 [`docs/evidence/hitl-clean-2026-08-27/postwalk/`](evidence/hitl-clean-2026-08-27/postwalk/)
-（含 `MANIFEST.sha256`）。PDF、OCR 与页面渲染图仍只在本机工作区，§8 的
-哈希用于定位这些外部工件。`code_revision` 带 `dirty`，所以本记录不能被
-解释为某个干净 Git commit 上的资格结果。
+(including `MANIFEST.sha256`). PDFs, OCR, and page-render images remain only
+in the local workspace; the §8 hashes locate those external artifacts.
+`code_revision` carries `dirty`, so this record cannot be read as a
+qualification result on some clean Git commit.
 
-## 3. 机器侧结果（人工裁决前）
+## 3. Machine-side results (before human adjudication)
 
-以下数字从本轮 `support_matrix.json` 和 `gate_report.json` 读取 / 重算，描述的是
-机器分层，不是真值准确率：
+The numbers below are read / recomputed from this round's `support_matrix.json`
+and `gate_report.json`; they describe machine stratification, not ground-truth
+accuracy:
 
-| 项 | 数量 |
+| Item | Count |
 |---|---:|
-| 文档 / 字段槽 | 20 / 200 |
+| Documents / field slots | 20 / 200 |
 | `corroborated` / `single_source` / `unsupported` | 128 / 4 / 68 |
 | `requires_adjudication` | 114 |
-| 全矩阵 `human_queue` | 89 |
+| Full-matrix `human_queue` | 89 |
 | `machine_decided` / `machine_absent` | 86 / 25 |
 | `applicability_disputed` | 21 |
 | blocking findings | 18 |
 | admitted claims / rejected drafts | 269 / 132 |
-| rejected drafts：`dws_understand` / `dws_agentic` | 66 / 66 |
+| rejected drafts: `dws_understand` / `dws_agentic` | 66 / 66 |
 
-`arithmetic_consistency = fail` 共 20 行：`amount_due 7`、`total_gross 7`、
-`total_net 2`、`total_vat 2`、`issue_date 1`、`due_date 1`。其中 16 行属于
-`label_convention_disputed`。
+`arithmetic_consistency = fail` totals 20 rows: `amount_due 7`,
+`total_gross 7`, `total_net 2`, `total_vat 2`, `issue_date 1`, `due_date 1`.
+Of these, 16 rows are `label_convention_disputed`.
 
-窄工作台没有走完全部 89 条矩阵 human queue，而是按付款契约取出 32 条：
-契约字段 24 条（`invoice_number`、`seller_name`、`amount_due`）加 8 条 QA
-探针（`seller_vat_id`、`due_date`、`total_net`、`total_vat`）。因此“32 条裁决完成”
-不等于 200 个字段全部人工复核完成。
+The narrow workbench did not walk all 89 matrix human-queue entries; it took
+out 32 by the payment contract: 24 contract-field entries (`invoice_number`,
+`seller_name`, `amount_due`) plus 8 QA probes (`seller_vat_id`, `due_date`,
+`total_net`, `total_vat`). So "32 adjudications done" does not mean all 200
+fields were human-reviewed.
 
-## 4. 人工裁决结果
+## 4. Human adjudication results
 
-### 4.1 总量
+### 4.1 Totals
 
-| 指标 | 结果 |
+| Metric | Result |
 |---|---:|
-| 账本裁决行 | 32 |
-| 覆盖文档 | 16 / 20 |
+| Ledger adjudication rows | 32 |
+| Documents covered | 16 / 20 |
 | `accept` | 13 |
 | `correct` | 11 |
 | `confirm_absent` | 7 |
 | `reject` | 1 |
-| 看见建议的裁决 | 19 / 32 |
+| Adjudications that saw a suggestion | 19 / 32 |
 | supersession | 0 |
-| 裁决身份 | 32/32 为 `stahl` |
+| Adjudication identity | 32/32 `stahl` |
 
-人工原因码分布为：`CONFIRMED_ABSENT 7`、`ROUTING_FALSE_POSITIVE 6`、
-`WRONG_FIELD_MAPPING 4`、`WRONG_VALUE 3`、`BAD_SOURCE_BINDING 3`、
-`OTHER 3`，另有 6 条未填写原因码。
+Human reason-code distribution: `CONFIRMED_ABSENT 7`,
+`ROUTING_FALSE_POSITIVE 6`, `WRONG_FIELD_MAPPING 4`, `WRONG_VALUE 3`,
+`BAD_SOURCE_BINDING 3`, `OTHER 3`, plus 6 rows with no reason code filled.
 
-交付投影当前为：18 份 `ready_for_approval`、1 份
-`approved_for_export`、1 份 `blocked`。另有 1 条单独的审批记录，不能代表
-整轮已经批准或外发。
+The deliverable projection currently stands at: 18 `ready_for_approval`, 1
+`approved_for_export`, 1 `blocked`. There is also 1 separate approval record,
+which cannot stand for the whole round having been approved or sent out.
 
-AP-0001 的一个事实必须照登：被批准的 `075d4722` 是一张**零裁决单据**——
-32 条裁决里没有任何一条落在它身上，审批记录的 `policy_disposed_fields`
-列出了全部 10 个受评字段（全部由 HAR-0023 策略处置、无人读过任何槽），
-批准理由是 `good`。这在本轮是合法动作（人签了字），但零触达 + 单词批准
-理由这个组合作为产品信号偏弱，记录在案。
+One AP-0001 fact must be recorded as-is: the approved `075d4722` is a
+**zero-adjudication document** — none of the 32 adjudications falls on it, the
+approval record's `policy_disposed_fields` lists all 10 evaluated fields (all
+disposed by HAR-0023 policy; no human read any slot), and the approval reason
+is `good`. This was a legitimate action in this round (a human signed), but
+the combination of zero-touch + a one-word approval reason is weak as a
+product signal; recorded on file.
 
-### 4.2 建议采纳与人时（closeout 口径）
+### 4.2 Suggestion adoption and human time (closeout caliber)
 
-| 指标 | 值 |
+| Metric | Value |
 |---|---:|
-| 计时裁决（excluded_gaps 2） | 29 |
-| 中位人时/槽 | **112 s** |
-| accept / correct / confirm_absent / reject 中位 | 78.5 / 167.5 / 157.5 / 119 s |
-| 有字段级建议的槽 | 19 / 32 |
-| 建议状态 agree / agree_rejected / split | 15 / 3 / 1 |
-| agree 槽中被采纳 | 14 / 15（0.933） |
+| Timed adjudications (excluded_gaps 2) | 29 |
+| Median human time/slot | **112 s** |
+| accept / correct / confirm_absent / reject medians | 78.5 / 167.5 / 157.5 / 119 s |
+| Slots with a field-level suggestion | 19 / 32 |
+| Suggestion state agree / agree_rejected / split | 15 / 3 / 1 |
+| Adopted among agree slots | 14 / 15 (0.933) |
 
-对照 2026-08-14 普查走查的中位 52 s/槽：本轮窄队列单槽更慢，但那轮是
-十字段普查、本轮含 correct 类长耗时槽（167.5 s）。两轮测量口径不同，
-不可拼接，照 2026-08-14 记录的规矩并列展示。
+Against the 2026-08-14 census walk's median 52 s/slot: this round's narrow
+queue is slower per slot, but that round was a ten-field census and this round
+contains long-duration correct-type slots (167.5 s). The two rounds'
+measurement calibers differ; they cannot be spliced, and per the rule in the
+2026-08-14 record they are shown side by side.
 
-### 4.3 算术门 / 口径争议队列
+### 4.3 Arithmetic gate / caliber-dispute queue
 
-7 条 `amount_due` 行的机器结果全部是“算术失败 + 口径争议”，人工结果全部
-接受原值：
+The 7 `amount_due` rows' machine results were all "arithmetic failure +
+caliber dispute"; the human results accepted the original value in every case:
 
-| doc_id | Gross | Net / Due | 人工结果 |
+| doc_id | Gross | Net / Due | Human result |
 |---|---:|---:|---|
 | `5c1c7960b46f4dfc9a5a44db` | 1,040.00 | 884.00 | accept |
 | `9a359ef4cc4644ae9b5caaa4` | 23,600.00 | 20,060.00 | accept |
@@ -131,35 +149,46 @@ AP-0001 的一个事实必须照登：被批准的 `075d4722` 是一张**零裁�
 | `5a8c7ec3518c4daa978b4eb9` | 780.00 | 663.00 | accept |
 | `ba388b327d254ed384f97624` | 2,040.00 | 1,734.00 | accept |
 
-这 7 条结果不能单独证明可以自动放行；它们证明的是：在当前窄队列和这位
-人工复核者的观察下，`amount_due` 的值与页面一致，而机器的普通发票算术
-解释不足以判断其错误。
+These 7 results cannot by themselves prove auto-release is possible; what
+they prove is: under the current narrow queue and this human reviewer's
+observation, the `amount_due` values match the page, and the machine's
+ordinary-invoice arithmetic interpretation is insufficient to judge them
+wrong.
 
-### 4.4 重点案例：千分位金额的冻结绑定误报（`f47b8ee0...`）
+### 4.4 Key case: frozen-binding false positive on thousands-separated amounts (`f47b8ee0...`)
 
-`f47b8ee00eae416c94a083ca` 的三个金额槽（`amount_due`、`total_gross`、
-`total_net`）在冻结事务被**同因拒绝**：DWS 返回 `1744.20`，页面印的是
-`$1,744.20`。按 `[a-z0-9]+` 分词，值侧 token 为 `{1744, 20}`，文档侧是
-`{1, 744, 20}`，交集只剩 `{20}`，覆盖率 0.5 < 0.8，三条草稿全部
-`draft_rejected_at_freeze` → `unsupported` → 进人工队列。
+`f47b8ee00eae416c94a083ca`'s three amount slots (`amount_due`, `total_gross`,
+`total_net`) were **rejected for the same cause** at the freeze transaction:
+DWS returned `1744.20`, the page prints `$1,744.20`. Tokenized by
+`[a-z0-9]+`, the value side's tokens are `{1744, 20}`, the document side's
+are `{1, 744, 20}`, the intersection is only `{20}`, coverage 0.5 < 0.8, and
+all three drafts went `draft_rejected_at_freeze` → `unsupported` → into the
+human queue.
 
-- `amount_due` 在窄队列内，人工修正为 `$1,744.20`（HD-0020，
-  `suggestion_seen: agree_rejected:$1,744.20`——ADK 读法也给了
-  `$1,744.20`，但建议层不能补回被冻结拒绝的 DWS 声明）；
-- `total_gross` / `total_net` 不是付款契约字段，留在支持矩阵上未经人看。
+- `amount_due` was inside the narrow queue and human-corrected to
+  `$1,744.20` (HD-0020,
+  `suggestion_seen: agree_rejected:$1,744.20` — the ADK reading also gave
+  `$1,744.20`, but the suggestion layer cannot restore a DWS claim rejected
+  at the freeze);
+- `total_gross` / `total_net` are not payment-contract fields; they remain on
+  the support matrix unseen by humans.
 
-这是 [`ARCHITECTURE.md` §8b](../ARCHITECTURE.md) 已知边界的实战形态：
-分词器把带千分位的金额切成高频 token。此前 §8b 记录的是"$0.00 切成
-高频 token 导致**该拒的不拒**"（假阴性方向）；本例是同一个分词器的
-**假阳性方向**——格式不同就把真值拒绝。两个方向都是 §8b 预言的
-"换语料会放大、需重测"的家族。修法方向是 AMOUNT 绑定的格式等价
-（`1744.20` ≡ `1,744.20`，保留纸面原值），不是放宽 0.8 阈值。
+This is the in-the-wild shape of a known boundary in
+[`ARCHITECTURE.md` §8b](../ARCHITECTURE.md): the tokenizer splits
+thousands-separated amounts into high-frequency tokens. §8b previously
+recorded "$0.00 split into high-frequency tokens causing **should-reject not
+rejected**" (the false-negative direction); this case is the same tokenizer's
+**false-positive direction** — a true value rejected merely for its format.
+Both directions belong to the family §8b predicted would "amplify on a
+different corpus and need retesting". The fix direction is format equivalence
+for AMOUNT binding (`1744.20` ≡ `$1,744.20`, keeping the printed original),
+not loosening the 0.8 threshold.
 
 
 
-## 5. 重点案例：`0c7df662... / amount_due`
+## 5. Key case: `0c7df662... / amount_due`
 
-裁决记录为 `HD-0022`：
+The adjudication is recorded as `HD-0022`:
 
 ```text
 decision:      accept
@@ -168,7 +197,7 @@ reason_code:   ROUTING_FALSE_POSITIVE
 suggestion:    agree:$956.25
 ```
 
-页面第 2 页的独立 OCR 同时读到：
+The independent OCR of the document's page 2 also reads:
 
 ```text
 Gross Amount:      $1,125.00
@@ -176,13 +205,13 @@ Agency Commission: ($168.75)
 Net Amount Due:    $956.25
 ```
 
-页面关系是：
+The page relation is:
 
 ```text
 1,125.00 - 168.75 = 956.25
 ```
 
-但 `dws_understand` 返回的输入是：
+But `dws_understand` returned the inputs:
 
 ```text
 total_net   = 956.25
@@ -191,74 +220,91 @@ total_gross = 1,125.00
 amount_due  = 956.25
 ```
 
-于是当前门禁按普通发票恒等式计算：
+So the current gate computes per the ordinary-invoice identity:
 
 ```text
 C1: 956.25 + 68.75 = 1,025.00 != 1,125.00
 C2: 1,125.00 != 956.25
 ```
 
-`68.75` 没有页面 VAT 标签和绑定支持，支持矩阵将该值列为 unsupported；它不能
-被用来证明 `amount_due` 错误。这里的缺陷不是浮点数计算，而是：
+`68.75` has no page VAT label or binding support; the support matrix lists
+the value as unsupported, and it cannot be used to prove `amount_due` wrong.
+The defect here is not floating-point arithmetic, but:
 
-1. 通用 C2 把 `total_gross == amount_due` 当作所有发票都适用；
-2. 算术失败按 feeding 字段归属，导致正确的 `amount_due` 也得到 fail；
-3. `matrix.py` 已识别 `label_convention_disputed`，但 `routing.py` 先输出
-   `GATE_FAIL:*`，遮住了口径争议和具体恒等式。
+1. generic C2 treats `total_gross == amount_due` as applying to all invoices;
+2. arithmetic failure is attributed along feeding fields, so a correct
+   `amount_due` also gets fail;
+3. `matrix.py` already recognizes `label_convention_disputed`, but
+   `routing.py` emits `GATE_FAIL:*` first, masking the caliber dispute and
+   the specific identity.
 
-这是已知的解释性缺陷；历史记录见
-[`ARM_RUN_LOG_2026-08-08.md:184`](ARM_RUN_LOG_2026-08-08.md:184)。实现位置见
-[`gates.py:74`](../invoiceloop/gates.py#L74)、
-[`matrix.py:28`](../invoiceloop/matrix.py#L28) 和
-[`routing.py:253`](../invoiceloop/routing.py#L253)。
+This is a known interpretive defect; the historical record is at
+[`ARM_RUN_LOG_2026-08-08.md:184`](ARM_RUN_LOG_2026-08-08.md:184).
+Implementation locations:
+[`gates.py:74`](../invoiceloop/gates.py#L74),
+[`matrix.py:28`](../invoiceloop/matrix.py#L28), and
+[`routing.py:253`](../invoiceloop/routing.py#L253).
 
-## 6. 其他人工信号
+## 6. Other human signals
 
-本轮不是“所有入队都是误报”：
+This round is not "every enqueue is a false positive":
 
-- 3 条 `WRONG_VALUE`、4 条 `WRONG_FIELD_MAPPING`、3 条 `BAD_SOURCE_BINDING`
-  说明模型值或字段绑定仍会产生真实问题；
-- 7 条 `CONFIRMED_ABSENT` 说明“模型没有返回”与“页面明确缺失”需要分开；
-- 1 条 `reject` 说明页面上没有对应发票号；
-- 6 条明确使用 `ROUTING_FALSE_POSITIVE`，包括本记录的算术 / 口径案例。
+- 3 `WRONG_VALUE`, 4 `WRONG_FIELD_MAPPING`, 3 `BAD_SOURCE_BINDING` show model
+  values or field bindings still produce real problems;
+- 7 `CONFIRMED_ABSENT` show "the model returned nothing" and "the page is
+  explicitly missing it" need to be separated;
+- 1 `reject` shows the page has no corresponding invoice number;
+- 6 explicitly used `ROUTING_FALSE_POSITIVE`, including this record's
+  arithmetic / caliber cases.
 
-因此本轮的改进信号应被拆成 typed findings：算术模型适用性、字段映射、页面
-绑定和确实缺失，不能压成一个“路由准确率”。
+So this round's improvement signals should be split into typed findings:
+arithmetic-model applicability, field mapping, page binding, and genuine
+absence — not compressed into a single "routing accuracy".
 
-## 7. 可复用结论与限制
+## 7. Reusable conclusions and limitations
 
-可复用的工程结论：
+Reusable engineering conclusions:
 
-1. 保留底层 C1/C2 失败记录，但应把恒等式 ID、输入值和失败字段带到工作台；
-2. 对已识别的口径争议，用户界面应把 `LABEL_CONVENTION_DISPUTED` 作为主解释，
-   算术失败作为上下文，而不是暗示 `amount_due` 数值错误；
-3. 若要改变门禁适用范围，应建立版本化的 billing-model / commission 或 discount
-   语义契约，并新增回归样本；不能全局关闭算术门；
-4. 本次 run 保持冻结，不能用修复后的规则回写成“原来就通过”；
-5. AMOUNT 字段的文档级绑定需要**格式等价**：`1744.20` 与 `$1,744.20` 是
-   同一个值（§4.4 案例，三个真值槽被拒）。等价要在绑定层做、保留纸面
-   原值，不许靠放宽 0.8 阈值——阈值放松会把 §8b 记录的假阴性家族一起
-   放进来。
+1. Keep the underlying C1/C2 failure records, but bring the identity ID,
+   input values, and failing fields to the workbench;
+2. For recognized caliber disputes, the UI should present
+   `LABEL_CONVENTION_DISPUTED` as the primary explanation and the arithmetic
+   failure as context, rather than implying an `amount_due` value error;
+3. If the gate's scope of applicability is to change, build a versioned
+   billing-model / commission-or-discount semantic contract and add regression
+   samples; do not turn off the arithmetic gate globally;
+4. This run stays frozen; fixed rules must not be written back as "it passed
+   all along";
+5. Document-level binding for AMOUNT fields needs **format equivalence**:
+   `1744.20` and `$1,744.20` are the same value (the §4.4 case; three
+   true-value slots rejected). Equivalence must be done at the binding layer,
+   keeping the printed original — not by loosening the 0.8 threshold, which
+   would also let in the false-negative family recorded in §8b.
 
-限制：20 份是开发集；人工复核者为单一 warm reviewer；32 条是窄队列而不是
-全矩阵 200 槽；19 条看到建议且 ADK 与裁决同时存在；代码版本带 dirty；本轮
-没有盲法、没有独立真值复核，也没有资格语义。另有两条程序性缺口照登：
-裁决开始前没有先做 prewalk 证据冻结 commit（读法工件在裁决前已在盘，
-但"建议先冻结、后裁决"的性质只能靠本记录声明，无法靠 commit 时序证明）；
-`suggest_provenance` 冻结未运行，19 条带建议的裁决行 `suggestion_model`
-为空（`suggestion_seen` 由工作台从 live TSV 记录）——建议溯源的精确对账
-（P1 口径）在本轮不可评。因此本记录不报告准确率、提升率、
-安全晋升或通用化结论。
+Limitations: the 20 documents are a development set; the human reviewer is a
+single warm reviewer; the 32 rows are a narrow queue, not the full 200-slot
+matrix; 19 rows saw suggestions with ADK and adjudication co-present; the
+code revision carries dirty; this round had no blinding, no independent
+ground-truth review, and no qualification semantics. Two further procedural
+gaps are recorded as-is: no prewalk evidence-freeze commit was made before
+adjudication began (the reading artifacts were on disk before adjudication,
+but the "freeze first, adjudicate second" property can only be asserted by
+this record, not proven by commit ordering); the `suggest_provenance` freeze
+was not run, so the 19 suggestion-bearing adjudication rows have an empty
+`suggestion_model` (`suggestion_seen` was recorded by the workbench from the
+live TSV) — exact reconciliation of suggestion provenance (the P1 caliber) is
+not assessable this round. This record therefore reports no accuracy, no
+lift, no safety promotion, and no generalization conclusions.
 
-## 8. 工件索引与哈希
+## 8. Artifact index and hashes
 
-本机外部工件根目录：
+Local external-artifact root:
 
 ```text
 /private/tmp/invoiceloop-adk-oauth-20.jqyavx/hitl-clean/runs/run-0001
 ```
 
-| 工件 | SHA-256 |
+| Artifact | SHA-256 |
 |---|---|
 | `run_manifest.json` | `3c5073e4639a9b8868a5264999dfc94fbed4b4d608883ccbcf03b9f85222cca5` |
 | `input_manifest.json` | `8604337e9db917ec36c4079d2b9ec9b24ea56f5a24f35ce5932915ba89fe361a` |
@@ -272,5 +318,4 @@ C2: 1,125.00 != 956.25
 | `review_snapshot.json` | `40ca7b947d2bb32fbed7d1cbac2ec8e39412d767cb68696185e7d7fb36714047` |
 | `deliverable.json` | `9dc93929e6d856af32c16b723f550fad58bebd72a99beebc64ac2e0b501cffdc` |
 
-review snapshot ID：`24710c22ecf53504464af4ca2655cd8a2b8e18e6c3267c8440abccd30f70694a`。
-
+review snapshot ID: `24710c22ecf53504464af4ca2655cd8a2b8e18e6c3267c8440abccd30f70694a`.

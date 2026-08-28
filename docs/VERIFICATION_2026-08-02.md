@@ -1,62 +1,68 @@
-# 验证轮记录(2026-08-02)—— 承接 dws-derisk 六轮纪律
+# Verification round record (2026-08-02) — carrying on the dws-derisk six-rounds discipline
 
-六轮的纪律:判据先于数据,答案先于打分,错的预测照登。本轮是 InvoiceLoop
-建成后的第一轮验证,两件事:**留出集实验**(架构的经验主张活不活得过没见过的
-文档)与**人类验收**(GOAL.md 的证伪终点)。细节各自有专文,本文是总录与索引。
+The six-rounds discipline: criteria before data, answers before scoring, wrong predictions recorded as-is.
+This round is the first verification after InvoiceLoop was built, with two parts: the **held-out
+experiment** (does the architecture's empirical claim survive unseen documents) and **human acceptance**
+(GOAL.md's falsification endpoint). Details live in their own documents; this one is the master record
+and index.
 
-## 一、预注册(先于任何调用提交)
+## One. Pre-registration (committed before any call)
 
-- 留出集协议 `docs/HELDOUT.md`:H1–H6 通过区间冻结;名单
-  `docs/heldout_doc_list.json`(pool 5,331 等距 100 份,提交 `56d85ed`)
-- 验收协议 `docs/TESTING.md` + 主持包 `docs/TESTING_FACILITATOR.md`
+- Held-out protocol `docs/HELDOUT.md`: H1–H6 pass intervals frozen; list
+  `docs/heldout_doc_list.json` (systematic 100 of a pool of 5,331, commit `56d85ed`)
+- Acceptance protocol `docs/TESTING.md` + facilitator kit `docs/TESTING_FACILITATOR.md`
 
-## 二、留出集实验:H1–H6 全过,§8 限定一退役
+## Two. Held-out experiment: H1–H6 all pass, §8 limitation one retired
 
-100 份未参与任何设计的 DocILE 文档,200 次调用全部 200 OK、零失败,
-**4,758 credits**(预估 ≈5,100,熔断 6,000 未触发),三把 key 自动轮换接力。
-工件 `runs/heldout/`,判定可重算:
+100 DocILE documents that took no part in any design; all 200 calls 200 OK, zero failures,
+**4,758 credits** (estimate ≈5,100, circuit breaker 6,000 never triggered), three keys auto-rotated in
+relay. Artifacts under `runs/heldout/`; the verdict is recomputable:
 `INVOICELOOP_DWS_DERISK=runs/heldout-workspace python3 scripts/heldout_metrics.py runs/heldout runs/demo`
 
-| # | 量 | 校准 | 留出集 | 区间 | 判定 |
+| # | Quantity | Calibration | Held-out | Interval | Verdict |
 |---|---|---|---|---|---|
-| H1 | 分诊 lift | 4.10× | 3.04× | >1.5 | PASS |
+| H1 | Triage lift | 4.10× | 3.04× | >1.5 | PASS |
 | H2 | coverage@46% | 78.1% | 74.3% | >55% | PASS |
-| H3 | 复核召回 | 75.1% | 72.5% | >55% | PASS |
-| H4 | 缺值率 | 26.8% | 27.9% | 10–45% | PASS |
-| H5 | citation 失败率 | 15.3% | 14.4% | <15% | PASS |
-| H6 | 冻结拒绝率 | 18.9% | 34.6% | 5–35% | PASS |
+| H3 | Review recall | 75.1% | 72.5% | >55% | PASS |
+| H4 | Missing-value rate | 26.8% | 27.9% | 10–45% | PASS |
+| H5 | citation failure rate | 15.3% | 14.4% | <15% | PASS |
+| H6 | Freeze rejection rate | 18.9% | 34.6% | 5–35% | PASS |
 
-**照登的预测偏差**(判据未动,预测错的照写):H5 注脚的"校准约 3–5%"
-是错的(同口径实测 15.3%,引错了第三轮的量);H6 贴上界,留出集拒绝率
-几乎两倍于校准 —— 文档类型分布更宽、OCR 退化更多,换语料需重估;
-H1 有衰减(4.10→3.04)但仍 2 倍于线。
+**Prediction misses recorded as-is** (criteria untouched, wrong predictions written down): the H5
+footnote's "calibration roughly 3–5%" was wrong (same-caliber measurement 15.3%; the round-three quantity
+was misquoted); H6 hugs the upper bound, the held-out rejection rate nearly double calibration — a wider
+document-type distribution and more OCR degradation, to be re-estimated on a corpus change;
+H1 decayed (4.10→3.04) but remains 2 times the line.
 
-**结论:分诊排序优于随机不再是校准集轶事。** §8 限定一改为"已执行";
-限定三减半(DocILE 全类型内复现,DocILE 之外仍未知);限定二照旧。
+**Conclusion: triage ordering beating random is no longer a calibration-set anecdote.** §8 limitation one
+becomes "executed"; limitation three halved (reproduced within DocILE's full type range, still unknown
+beyond DocILE); limitation two stands as before.
 
-## 三、人类验收:通过(warm-subject 版)
+## Three. Human acceptance: pass (warm-subject edition)
 
-记录 `docs/TESTING_RESULTS_2026-08-02.md`。五任务全过(T5 否决线避开)。
-**被试是 warm 的**(读过构建汇报),锚点全部换过未污染实例;
-不知情被试复测仍欠着,主持包原样可用。
+Record: `docs/TESTING_RESULTS_2026-08-02.md`. All five tasks passed (the T5 veto line avoided).
+**The subject was warm** (had read the build reports); all anchors were swapped for uncontaminated
+instances; the naïve-subject re-test is still owed, and the facilitator kit remains usable as-is.
 
-本轮最有价值的产出是被试一句话抓出的**呈现缺陷**:被拒的行没有复核证据
-(「没有原图,人类理解不了」)。修复:矩阵行新增 `cited_span_ids`
-(DWS 指向哪,与值是否落入无关),panel 渲染「DWS 指向这里(复核用)」,
-无引用区的行给整页渲染;整页进 pipeline 与 audit bundle。三条测试看守。
+This round's most valuable output is the **presentation defect** the subject caught in a single sentence:
+rejected rows had no review evidence ("no source image — a human can't understand it"). Fix: matrix rows
+gained `cited_span_ids` (where DWS points, regardless of whether the value falls inside), the panel
+renders "DWS points here (for review)", and rows with no cited region get a full-page render; full pages
+entered the pipeline and the audit bundle. Three tests stand guard.
 
-两条真人裁决入账(邮编 27405 修正、Harry Huge 补值),M4
-"机器拒错 + 人改对"闭环首演;首个 audit_bundle.zip 打出。
+Two real-human adjudications entered the ledger (zip 27405 correction, Harry Huge value add); M4's
+"machine rejects wrong + human corrects" loop ran for the first time; the first audit_bundle.zip was
+produced.
 
-## 四、本轮改变的东西(提交序)
+## Four. What this round changed (commit order)
 
-1. 被拒行的复核证据(cited spans + 整页),`f6dbe54`
-2. 主持包 T2 措辞:"数"改为"用命令重算",`48cd976`
-3. 留出集执行与判定,`1aed211`
-4. 验收记录与首个 bundle,`ffd728b`
+1. Review evidence for rejected rows (cited spans + full page), `f6dbe54`
+2. Facilitator-kit T2 wording: "count" changed to "recompute with a command", `48cd976`
+3. Held-out execution and verdicts, `1aed211`
+4. Acceptance record and the first bundle, `ffd728b`
 
-## 五、仍欠着
+## Five. Still owed
 
-- 不知情被试复测(主持包就绪)
-- 多智能体对抗评审(网关故障,仅有构建者自审)
-- 三把 DWS key 建议轮换(经过聊天信道)
+- Naïve-subject re-test (facilitator kit ready)
+- Multi-agent adversarial review (gateway failure; only the builder's self-review exists)
+- Rotation recommended for the three DWS keys (they passed through a chat channel)

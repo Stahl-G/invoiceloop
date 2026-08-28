@@ -1,77 +1,84 @@
-# SEALED-3 封箱评测协议(2026-08-07,执行前冻结)
+# SEALED-3 sealed evaluation protocol (2026-08-07, frozen before execution)
 
-SEALED-2 已因开发期词表/原型污染撤权退役(不再作未见晋升集;
-见 `docs/SEALED2_RESULTS.md` 与污染裁决 F)。本协议再建一批真正未见的
-100 份,作当前唯一 final held-out / 晋升资格集候选。
+SEALED-2 has been retired with its authorization revoked due to development-time
+vocabulary/prototype contamination (it no longer serves as an unseen promotion set;
+see `docs/SEALED2_RESULTS.md` and contamination adjudication F). This protocol builds
+another batch of 100 genuinely unseen documents, as the current sole candidate for the
+final held-out / promotion qualification set.
 
-**与 SEALED-2 的关键差异:**
-- 排除池已含 SEALED-1 + SEALED-2 全 200
-  (`docs/development_exposure_manifest.json`,unique≈460);
-- 抽样 PRNG 语境为 `invoiceloop-sealed3-v1`,避免撞流;
-- **抽取后默认封箱不读**:不得用本批内容做发票类型/词表/策略挖矿;
-  未开箱评测前不得写 RESULTS、不得挂资格标记。
+**Key differences from SEALED-2:**
+- The exclusion pool now contains all 200 of SEALED-1 + SEALED-2
+  (`docs/development_exposure_manifest.json`, unique≈460);
+- The sampling PRNG context is `invoiceloop-sealed3-v1`, avoiding stream collisions;
+- **Sealed and unread by default after extraction**: the batch contents must not be mined
+  for invoice types/vocabularies/strategies; before an unsealed evaluation, no RESULTS
+  may be written and no qualification marker attached.
 
-## 0. 冻结对象(本文件 commit 时即冻结)
+## 0. Frozen objects (frozen as of this file's commit)
 
-- 产品代码:本文件的首次提交即冻结点;
-- 排除池:`docs/development_exposure_manifest.json`(须含 sealed1-100 + sealed2-100);
-- 抽样实现:`invoiceloop/heldout.py::sealed_list(..., context="sealed3-v1")`;
-- harness:开箱评测时锁定的 active harness(写入 RESULTS 时照登 digest)。
+- Product code: this file's first commit is the freeze point;
+- Exclusion pool: `docs/development_exposure_manifest.json` (must contain sealed1-100 + sealed2-100);
+- Sampling implementation: `invoiceloop/heldout.py::sealed_list(..., context="sealed3-v1")`;
+- harness: the active harness locked at unseal-evaluation time (digest recorded as-is in RESULTS).
 
-## 1. 随机种子承诺
+## 1. Random seed commitment
 
-- 随机源:drand 主网 beacon(`https://api.drand.sh/public/{round}`);
-- **本批轮次:6356175**;种子 =
+- Randomness source: drand mainnet beacon (`https://api.drand.sh/public/{round}`);
+- **Round for this batch: 6356175**; seed =
   `c3062ff4dfea53a7b36c67ee8f9a95b1180e37bb1999272d6bdb37d8284ad0e9`
-  (该轮 `randomness` 字段原文;取种 UTC 2026-08-07);
-- 抽样 = `heldout.sealed_list(seed, context="sealed3-v1")`:
+  (the verbatim `randomness` field of that round; seed taken UTC 2026-08-07);
+- Sampling = `heldout.sealed_list(seed, context="sealed3-v1")`:
   `random.Random("invoiceloop-sealed3-v1|" + seed).sample(sorted(pool), 100)`,
-  pool = ≥4 记分字段标注 ∧ 不在暴露清单;
-- 名单落盘:`docs/sealed3_doc_list.json`(与 workspace 副本一致);
-  任何人可公开复算。
+  pool = ≥4 scored-field annotations ∧ not in the exposure manifest;
+- The list is written to disk: `docs/sealed3_doc_list.json` (identical to the workspace copy);
+  anyone can recompute it publicly.
 
-### 种子落盘
+### Seed on record
 
-- 轮次:`6356175`
-- 种子(hex):`c3062ff4dfea53a7b36c67ee8f9a95b1180e37bb1999272d6bdb37d8284ad0e9`
-- 取种时间(UTC):`2026-08-07`(协议冻结时 `api.drand.sh/public/latest`)
+- Round: `6356175`
+- Seed (hex): `c3062ff4dfea53a7b36c67ee8f9a95b1180e37bb1999272d6bdb37d8284ad0e9`
+- Seed time (UTC): `2026-08-07` (`api.drand.sh/public/latest` at protocol freeze)
 
-## 2. 执行顺序(不许颠倒)
+## 2. Execution order (must not be reordered)
 
-1. 暴露清单并入 SEALED-2 的 100 并 commit;
-2. 本协议 commit(**先于名单开奖**);
-3. 取 drand 公开轮次 → 填入 §1「种子落盘」→ commit;
+1. Merge SEALED-2's 100 into the exposure manifest and commit;
+2. Commit this protocol (**before the list is drawn**);
+3. Take a public drand round → fill it into §1 "Seed on record" → commit;
 4. `python3 -m invoiceloop sealed plan --workspace runs/sealed3-workspace
    --context sealed3-v1 --seed <hex> --seed-source "drand round <N>"`
-   → 复制为 `docs/sealed3_doc_list.json` 并 **单独 commit**(先于任何 DWS 调用);
-5. **仅在明确预算授权后**:
+   → copy to `docs/sealed3_doc_list.json` and **commit separately** (before any DWS call);
+5. **Only after explicit budget authorization**:
    `python3 -m invoiceloop sealed extract --workspace runs/sealed3-workspace`
-   —— 200 次调用(understand + agentic),预算熔断 6000 credits;
-6. **封箱不读**:extract 完成后只记录 ops 摘要
-   (`extract_summary.json` 的 done/failed/spent);**不得** `run` / 开箱评测 /
-   阅读 raw / 用本批调词表或策略,除非另开「开箱」裁决并写 RESULTS;
-7. 开箱后:评测一次 → `docs/SEALED3_RESULTS.md`,数字照登;
-   若作晋升资格:点名 harness 放置 `improve/sealed3_qualified.ok`
-   (机制对齐 S2 的 harness 绑定,不得让派生候选继承)。
+   — 200 calls (understand + agentic), budget circuit breaker 6000 credits;
+6. **Sealed and unread**: after extract completes, record only the ops summary
+   (done/failed/spent from `extract_summary.json`); **must not** `run` / unseal-evaluate /
+   read raw / tune vocabularies or strategies on this batch,
+   unless a separate "unseal" adjudication is opened and RESULTS written;
+7. After unsealing: evaluate once → `docs/SEALED3_RESULTS.md`, numbers recorded as-is;
+   if used as promotion qualification: name the harness and place `improve/sealed3_qualified.ok`
+   (mechanism aligned with S2's harness binding; derived candidates must not inherit it).
 
-网络失败按断点续跑恢复;**结果驱动的规则/代码修改 = 本批作废,
-SEALED-3 自动降级为回归集**,另批新种子重来。
+Network failures are recovered by resuming from checkpoints; **any result-driven rule/code
+change = this batch is void, SEALED-3 is automatically demoted to a regression set**, and a
+new batch must be drawn with a fresh seed.
 
-## 3. 预注册终点
+## 3. Pre-registered endpoints
 
-主终点沿用 SEALED-1 / HELDOUT 的 H1–H7 区间(见 `docs/SEALED1_PROTOCOL.md` §3)。
-另增晋升门(开箱评测时适用):
+The primary endpoints carry over the H1–H7 intervals of SEALED-1 / HELDOUT
+(see `docs/SEALED1_PROTOCOL.md` §3). A promotion gate is added (applies at unseal evaluation):
 
-| # | 量 | 通过 |
+| # | Quantity | Pass |
 |---|---|---|
-| P1 | Gate 2 silent_absent / silent_wrong 相对基线 | 不上升 |
-| P2 | 字段复核负载相对基线 | 不上升 |
+| P1 | Gate 2 silent_absent / silent_wrong relative to baseline | no increase |
+| P2 | field-review load relative to baseline | no increase |
 
-## 4. 主张纪律
+## 4. Claim discipline
 
-- SEALED-3 未开箱前 ⇒ **不得**声称未见封箱减负或晋升资格;
-  仅可报告抽取 ops(调用次数 / 失败 / 花费估计);
-- SEALED-3 开箱通过 ⇒ 可以说「当前 HEAD 在一个开发期未见的 100 份封箱集上
-  保持 H1–H6 量级 / 负载不升且静默错不升」;
-- SEALED-1、SEALED-2、HITL、旧 heldout-100 **一律不得**再称为 final held-out;
-- SEALED-2 上的 `sealed2_qualified` 路径已撤权,不得复活为未见证据。
+- Before SEALED-3 is unsealed ⇒ **must not** claim unseen-sealed load reduction or promotion
+  qualification; only extraction ops may be reported (call counts / failures / spend estimate);
+- If SEALED-3 passes unsealing ⇒ it may be said that "the current HEAD holds H1–H6 magnitudes
+  on a 100-document sealed set unseen during development, with no load increase and no
+  silent-error increase";
+- SEALED-1, SEALED-2, HITL, and the old heldout-100 **may never again** be called final held-out;
+- The `sealed2_qualified` path on SEALED-2 has been de-authorized and must not be revived
+  as unseen evidence.

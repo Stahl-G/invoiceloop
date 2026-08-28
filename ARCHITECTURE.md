@@ -1,124 +1,141 @@
-# InvoiceLoop 架构设计 v0.1
+# InvoiceLoop Architecture v0.1
 
-> **血统**:BriefLoop 架构参考 v0.6.1(`main@47ae439d`)。InvoiceLoop 把它的
-> **支持充分性栈**(§3.6)搬到发票抽取 —— 那一格在 BriefLoop 里被标为实验性,
-> 语义门禁 §8.4 明写"尚未交付"。
+> **Lineage**: the BriefLoop architecture reference v0.6.1 (`main@47ae439d`). InvoiceLoop
+> ports its **sufficiency-of-support stack** (§3.6) to invoice extraction — the cell that
+> BriefLoop marks as experimental, and where the semantic-gate section §8.4 states outright
+> "not yet delivered".
 >
-> **证据基础**:`~/Developer/dws-derisk/` 六轮预注册实验,160 份 DocILE 发票,
-> 320 次 DWS 调用,五个读图模型。本文件引用的每个数字都可从该仓库零 API 重算。
+> **Evidence base**: `~/Developer/dws-derisk/`, six rounds of pre-registered experiments,
+> 160 DocILE invoices, 320 DWS calls, five vision models. Every number cited in this file
+> can be recomputed from that repository with zero API calls.
 
 ---
 
-## 0. 论点
+## 0. The Claim
 
-**抽取的正确性不可信,支持关系可验证。**
+**The correctness of extraction cannot be trusted; support relations can be verified.**
 
-六轮实验证明:厂商置信度、确定性校验、双模式分歧、独立 OCR、以及五个前沿
-模型的读图,**没有任何单一已测信号能可靠标出全部重要抽取错误**。信号有用,
-但不充分 —— 分诊能把人的注意力集中到弱支持行,不能把抽取变成判决。
+The six rounds of experiments showed: vendor confidence, deterministic checks, dual-mode
+disagreement, independent OCR, and the vision reading of five frontier models — **no single
+measured signal reliably flags all important extraction errors**. The signals are useful,
+but not sufficient — triage can focus human attention on weakly supported rows; it cannot
+turn extraction into a verdict.
 
-InvoiceLoop 因此**不承诺抽得准**。它承诺的是:每个字段带一条**可机械验证的支持关系**,
-以及一个诚实的"我们凭什么这么说、哪里说不准"。
+InvoiceLoop therefore **makes no promise of extracting correctly**. What it promises is:
+every field carries a **mechanically verifiable support relation**, plus an honest account
+of "on what basis we say this, and where we cannot say for sure".
 
-**发票是这件事最好的试验场。** 商业简报的支持关系是语义的(验不了);
-发票的支持关系是**几何的** —— bbox 与页面区域的关系可以用独立 OCR 逐词验证。
-
----
-
-## 1. 宪章
-
-继承自 BriefLoop §1.1,只保留本域适用的条款。
-
-**一、同一个字段只许有一个写者。**
-Python 写控制状态、证据注册、声明 ID、冻结、门禁、事件、哈希;
-模型写字段草稿与读图提案;人类写裁决与交付决定。派生投影不得反向覆盖权威记录。
-
-**二、有来源,不等于被支持;能追溯,不等于被证明。**
-DWS 返回一个 bbox,只说明它"看了那里",不说明那里支持这个值。
-第三轮实测:共享 bbox 的字段准确率 79.7%,独占 bbox 的 60.6% —— **方向与直觉相反**。
-支持必须按强度、来源层级、适用范围分别记录,不能压成一个分数。
-
-**三、机器能管的,不交给记忆。**
-能由 schema、验证器、门禁、事务检查的规则,不得只写在提示词或交接说明里。
-
-**四、冻结工件不能静默改写,缺口不能被隐藏。**
-检查跑不了 = 高危阻断发现,不是跳过。DWS 没返回值的字段是**阻断**,不是"负载成本"。
-
-**五、语义未解决的冲突保持显式,进入人工裁决,不进错误率。**
-纸面印 `Gross Billings` 而标注要 `Net Amount Due` —— 这是口径冲突,不是抽取错误。
-
-**六、不说工件证明不了的话。**
-只有可追溯性时,不得宣称语义证明或质量提升。未测量的能力写成"尚未测量"。
+**Invoices are the best test bed for this.** In a business brief the support relation is
+semantic (unverifiable); in an invoice the support relation is **geometric** — whether a
+bbox relates to a page region can be verified word by word with independent OCR.
 
 ---
 
-## 2. 单一写者
+## 1. Charter
 
-| 写者 | 拥有 | 不得触碰 |
+Inherited from BriefLoop §1.1; only the clauses that apply to this domain are kept.
+
+**One. A field has exactly one writer.**
+Python writes control state, evidence registration, claim IDs, freezing, gates, events,
+hashes; the model writes field drafts and vision proposals; humans write adjudications and
+delivery decisions. Derived projections must not write back over the authoritative record.
+
+**Two. Having a source does not mean being supported; being traceable does not mean being proven.**
+A bbox returned by DWS only shows that it "looked there", not that what is there supports
+the value. Measured in Round Three: fields sharing a bbox score 79.7% accuracy, fields with
+an exclusive bbox 60.6% — **the direction is opposite to intuition**. Support must be
+recorded separately by strength, source tier, and applicability; it cannot be crushed into
+one score.
+
+**Three. What a machine can enforce is not left to memory.**
+Rules that can be enforced by schema, validators, gates, or transaction checks must not
+live only in prompts or handoff notes.
+
+**Four. Frozen artifacts cannot be silently rewritten; gaps cannot be hidden.**
+A check that cannot run = a high-severity blocking finding, not a skip. A field for which
+DWS returned no value is **blocking**, not "payload cost".
+
+**Five. Semantically unresolved conflicts stay explicit and go to human adjudication, not into error rates.**
+The page prints `Gross Billings` while the annotation wants `Net Amount Due` — that is a
+caliber conflict, not an extraction error.
+
+**Six. Say nothing the artifacts cannot prove.**
+With traceability only, one must not claim semantic proof or quality improvement. Unmeasured
+capabilities are written as "not yet measured".
+
+---
+
+## 2. Single Writer
+
+| Writer | Owns | Must not touch |
 |---|---|---|
-| **Python 控制面** | 运行状态、证据片段注册表、声明 ID、冻结账本、门禁裁决、事件、哈希 | 字段值本身(只验证,不发明) |
-| **模型(读图/抽取)** | `field_drafts.json` —— **无 ID、无权威** | 账本、ID、门禁结果、事件 |
-| **人类** | 裁决记录、交付批准 | 已冻结运行的输入 |
+| **Python control plane** | run state, evidence span registry, claim IDs, frozen ledger, gate verdicts, events, hashes | field values themselves (verify only, never invent) |
+| **Model (vision/extraction)** | `field_drafts.json` — **no IDs, no authority** | ledger, IDs, gate results, events |
+| **Human** | adjudication records, delivery approvals | inputs of already-frozen runs |
 
-**`field_drafts.json` 与 `field_ledger.json` 是两个工件**,与 BriefLoop 的
-`claim_drafts` / `claim_ledger` 同理:模型只能提交草稿,Python 分配稳定 ID 并冻结。
+**`field_drafts.json` and `field_ledger.json` are two separate artifacts**, on the same
+logic as BriefLoop's `claim_drafts` / `claim_ledger`: the model can only submit drafts;
+Python assigns stable IDs and freezes.
 
-> **这一条不是形式主义。** 第六轮实测:一个读图模型把 359 行答案错位绑定到别的发票,
-> 63.1% 的作答内容出现在其他文档上。若模型只能提交草稿、由 Python 校验绑定,
-> 那次错位的 **70% 会被结构性拒绝**(118/168,与 §5.2 同案同分母,
-> test_binding_regression.py 逐行钉死),而不是靠事后 OCR 取证发现。
-
----
-
-## 3. 四条控制骨干
-
-```
-① 运行状态    run_manifest.json → run_state.json → artifact_registry.json → event_log.jsonl
-② 证据与声明  dws_response → evidence_span_registry.json → field_claim_graph.json
-                → field_drafts.json →【冻结事务】→ field_ledger.json
-③ 门禁        六个确定性门禁 → gate_report.json(evaluations + findings)
-④ 裁决与交付  adjudication_ledger.jsonl → support_matrix.json → support_panel.html
-```
-
-BriefLoop 有五条骨干,InvoiceLoop 只需四条:记忆与改进骨干(跨运行学习)
-对单张发票的 demo 不适用。
+> **This clause is not formalism.** Measured in Round Six: one vision model mis-bound 359
+> answer rows to other invoices, with 63.1% of the answered content appearing on other
+> documents. Had the model been able to submit only drafts, with Python validating the
+> binding, **70% of that mis-binding would have been structurally rejected** (118/168, same
+> case and denominator as §5.2, pinned line by line by test_binding_regression.py), instead
+> of being discovered by after-the-fact OCR forensics.
 
 ---
 
-## 4. 数据模型
+## 3. Four Control Backbones
 
-### EvidenceSpan —— 证据片段
+```
+① run state      run_manifest.json → run_state.json → artifact_registry.json → event_log.jsonl
+② evidence/claims  dws_response → evidence_span_registry.json → field_claim_graph.json
+                → field_drafts.json → [freeze transaction] → field_ledger.json
+③ gates          six deterministic gates → gate_report.json(evaluations + findings)
+④ adjudication/delivery  adjudication_ledger.jsonl → support_matrix.json → support_panel.html
+```
+
+BriefLoop has five backbones; InvoiceLoop needs only four: the memory-and-improvement
+backbone (cross-run learning) does not apply to a single-invoice demo.
+
+---
+
+## 4. Data Model
+
+### EvidenceSpan — evidence span
 ```python
-span_id: str            # ES-#### ,Python 分配
+span_id: str            # ES-####, assigned by Python
 doc_id: str
 page: int
-bbox_rel: tuple         # 归一化 (x0,y0,x1,y1),桥接 DWS 像素空间与渲染空间
-crop_sha256: str        # 裁剪图内容哈希
-ocr_text: str           # 该区域独立 OCR 文本(DocILE 词级 OCR)
-printed_label: str      # 值旁边印着的标签原文,如 "Gross Amt:"
+bbox_rel: tuple         # normalised (x0,y0,x1,y1); bridges DWS pixel space and render space
+crop_sha256: str        # content hash of the crop image
+ocr_text: str           # independent OCR text of this region (DocILE word-level OCR)
+printed_label: str      # the label printed next to the value, verbatim, e.g. "Gross Amt:"
 source: str             # dws_source_bbox | full_page
 ```
 
-### FieldClaim —— 原子声明
+### FieldClaim — atomic claim
 ```python
-claim_id: str           # FC-#### ,Python 分配,草稿不得预写
+claim_id: str           # FC-####, assigned by Python; drafts must not pre-write it
 doc_id: str
 field: str              # invoice_number | total_gross | ...
-value: str              # 规范化前的原文
-normalised: str         # 按预注册规则规范化后
-span_ids: list[str]     # 绑定的证据片段
+value: str              # the raw text before normalisation
+normalised: str         # after normalisation under the pre-registered rules
+span_ids: list[str]     # the bound evidence spans
 drafted_by: str         # dws_understand | dws_agentic | vision:<model>
 ```
 
-### 原子声明图的**边**
-发票的声明图比简报实:边是可验证的算术恒等式,不是语义关联。
+### The **edges** of the atomic claim graph
+The invoice claim graph is more concrete than the brief's: edges are verifiable arithmetic
+identities, not semantic associations.
 ```python
 ("total_net", "total_vat") --sum--> "total_gross"      # C1
 "total_gross" --equals--> "amount_due"                 # C2
 "issue_date" --before--> "due_date"                    # C3
 ```
 
-### SupportRow —— 支持矩阵的一行(四维,不是一个分数)
+### SupportRow — one row of the support matrix (four dimensions, not one score)
 ```python
 claim_id: str
 support_strength: "corroborated" | "single_source" | "unsupported"
@@ -129,23 +146,26 @@ requires_adjudication: bool
 gate_verdicts: dict     # gate_id -> pass | warning | fail | unavailable
 ```
 
-**"适用范围"这一维是给口径冲突准备的。** 证据可以完全支持一个值,
-而争议在于"纸面的 Gross"与"EN 16931 的 gross"不是同一个概念。
-六轮把这类算进错误率,是把两件事混为一谈 —— 第五轮 20 例共错里 5 例是这个形状。
+**The "applicability" dimension exists for convention conflicts.** The evidence can fully
+support a value while the dispute is that "Gross on the page" and "gross under EN 16931"
+are not the same concept. The six rounds counted these into error rates, conflating two
+different things — of Round Five's 20 shared errors, 5 had exactly this shape.
 
-### `label_convention_disputed` 的运行时判据(不需要真值)
+### Runtime criterion for `label_convention_disputed` (no ground truth needed)
 
-广告代理业发票:Gross 是刊例价,Net 是扣 15% 佣金后的**实付**;
-EN 16931 里 gross 才是实付。两套词汇方向相反。
+Advertising-agency invoices: Gross is the rate-card price and Net is the **amount actually
+paid** after the 15% agency commission; under EN 16931 gross is what is actually paid. The
+two vocabularies point in opposite directions.
 
-**判据只用 DWS 自己返回的三个值:**
+**The criterion uses only three values returned by DWS itself:**
 
 ```
-amount_due ≈ total_net  且  amount_due ≠ total_gross
+amount_due ≈ total_net  AND  amount_due ≠ total_gross
     → applicability = "label_convention_disputed"
 ```
 
-即"页面把应付额落在 Net 一侧"。实测(60 份新文档,三值齐全且 gross≠net 的 15 份):
+That is, "the page lands the amount due on the Net side". Measured (60 new documents; 15 of
+them have all three values present with gross ≠ net):
 
 | doc | gross | net | due | net/gross |
 |---|---|---|---|---|
@@ -155,238 +175,289 @@ amount_due ≈ total_net  且  amount_due ≠ total_gross
 | 060b4258 | 3,612.00 | 3,070.20 | 3,070.20 | 0.850 |
 | 067e90fb | 672.00 | 403.20 | 403.20 | 0.600 |
 
-5 例检出,其中 **4 例带 0.850 的 15% 代理佣金签名**。
+5 cases detected, of which **4 carry the 0.850 signature of the 15% agency commission**.
 
-**这条判据在运行时可算** —— 不需要 ground truth,只需 DWS 的三个返回值。
-命中即标 `requires_adjudication`,`limitations` 记录两种读法,**不进错误率**(宪章五)。
+**This criterion is computable at runtime** — it needs no ground truth, only the three DWS
+return values. A hit marks `requires_adjudication`; `limitations` records both readings,
+and it **does not enter the error rate** (Charter clause Five).
 
 ### GateFinding
 ```python
-finding_id, gate_id, severity, blocking_level      # 照 BriefLoop 契约
+finding_id, gate_id, severity, blocking_level      # per the BriefLoop contract
 repair_owner: "human" | "re_extract" | "vision_reread"
 recommendation: str
-evidence_ref: str                                   # 指向 span_id 或 claim_id
+evidence_ref: str                                   # points to a span_id or claim_id
 ```
-契约不变量:`blocking == (blocking_level == "blocking")`。
+Contract invariant: `blocking == (blocking_level == "blocking")`.
 
 ---
 
-## 5. 三个控制事务
+## 5. Three Control Transactions
 
-### 5.1 抽取事务 `extract`
-调 DWS → **原始响应按内容哈希冻结为工件** → 从 `source_bboxes` 注册证据片段 →
-渲染裁剪图与整页 → 建原子声明图。
+### 5.1 Extraction transaction `extract`
+Call DWS → **freeze the raw response as an artifact keyed by content hash** → register
+evidence spans from `source_bboxes` → render crops and full pages → build the atomic claim
+graph.
 
-产出:`artifact_registry.json` 一条记录 + `evidence_span_registry.json` + 事件。
+Output: one `artifact_registry.json` entry + `evidence_span_registry.json` + events.
 
-### 5.2 冻结事务 `freeze` —— 系统的关键防线
-| 步 | 写者 | 动作 |
+### 5.2 Freeze transaction `freeze` — the system's critical line of defense
+| Step | Writer | Action |
 |---|---|---|
-| 1 | 模型 | 写 `field_drafts.json`,**不含 claim_id** |
-| 2 | Python | 拒绝预写 ID;拒绝无法绑定到已注册片段的行 |
-| 3 | Python | 分配稳定 `FC-####` |
-| 4 | Python | 冻结 `field_ledger.json` + sha256,追加事件 |
+| 1 | Model | writes `field_drafts.json`, **without claim_id** |
+| 2 | Python | rejects pre-written IDs; rejects rows that cannot bind to registered spans |
+| 3 | Python | assigns stable `FC-####` |
+| 4 | Python | freezes `field_ledger.json` + sha256, appends an event |
 
-**第 2 步的绑定规则(可执行,非声明):**
+**The binding rule of step 2 (executable, not declarative):**
 
-> 草稿行声明 `(doc_id, field, value)`。Python 检查该 `value` 是否出现在
-> **该 `doc_id` 整份文档**的独立 OCR 文本中(规范化后 token 匹配 ≥80%)。
-> 不匹配 → 该草稿说的不是这份发票,拒绝,记 `draft_binding_rejected` 事件,**不进账本**。
+> A draft row asserts `(doc_id, field, value)`. Python checks whether that `value` appears
+> in the independent OCR text of **the entire document with that `doc_id`** (token match
+> ≥80% after normalisation). No match → the draft is not talking about this invoice: reject,
+> record a `draft_binding_rejected` event, **it never enters the ledger**.
 >
-> **随后**记录该值落在哪个已注册证据片段内(或不在任何片段内)——
-> 这决定 `support_strength`,**不决定是否接纳**。
+> **Afterwards**, record which registered evidence span the value falls inside (or that it
+> falls in none) — this determines `support_strength`; it **does not determine acceptance**.
 
-⚠ **必须是文档级,不能是片段级。** 片段级(要求值落在 DWS 注册的 bbox 内)实测会
-误伤 **26–28%** 的合法作答:
+⚠ **It must be document-level, not span-level.** Span-level (requiring the value to fall
+inside a DWS-registered bbox) measurably falsely rejects **26–28%** of legitimate answers:
 
-| 读图模型 | 作答 | 文档级拒绝 | 片段级拒绝 | 片段级误伤 |
+| Vision model | Answers | Document-level rejects | Span-level rejects | Span-level false rejects |
 |---|---|---|---|---|
 | Kimi K3 | 140 | **14** | 50 | 36 (26%) |
 | Opus 5 | 146 | **9** | 50 | 41 (28%) |
 | GPT 5.6 SOL | 168 | **118 (70%)** | 138 | 20 (12%) |
 
-被误伤的正是"DWS 没返回值或框错了位置,而读图在页面别处找到"的行 ——
-**那是读图唯一有增量价值的地方**(第六轮:漏网真错的真值 8/8 都印在页面上)。
-片段级规则会把系统最有价值的部分当成错误杀掉。
+The falsely rejected rows are exactly those where "DWS returned no value or boxed the wrong
+place, and vision reading found it elsewhere on the page" — **that is the only place vision
+reading has incremental value** (Round Six: the ground truth of the escaped true errors was
+printed on the page in 8/8 cases). A span-level rule kills the most valuable part of the
+system as if it were error.
 
-**GPT 5.6 SOL 的错位事故会被文档级规则拒掉 118 行(70%)。**
+**The GPT 5.6 SOL mis-binding incident would be rejected by the document-level rule on 118
+rows (70%).**
 
-### 5.3 门禁事务 `gate`
-绑定到**确切的工件修订与哈希**后运行。签名不一致时的「拒绝执行」落在两处
-(2026-08-04 对齐说辞:门禁本身不重验签名,拒绝在下游):
-裁决追加前重算 review_snapshot,工件在 run 之后被动过则**拒绝记录该裁决**
-(`adjudicate.py` 快照一致性检查);bundle verify 离线重算同一快照 id,
-成分被换即失败。这是可复算性的来源:同样的输入哈希 → 同样的裁决。
+### 5.3 Gate transaction `gate`
+Runs after binding to **exact artifact revisions and hashes**. When signatures disagree, the
+"refuse to run" lands in two places (wording aligned 2026-08-04: the gates themselves do not
+re-verify signatures; refusal happens downstream): before appending an adjudication,
+recompute the review_snapshot, and if artifacts were touched after the run, **refuse to
+record that adjudication** (snapshot-consistency check in `adjudicate.py`); bundle verify
+recomputes the same snapshot id offline and fails if any component was swapped. This is
+where recomputability comes from: same input hashes → same adjudications.
 
-产出:`gate_report.json`(evaluations + findings)+ 事件。
+Output: `gate_report.json` (evaluations + findings) + events.
 
 ---
 
-## 6. 门禁(六个,确定性,不调模型)
+## 6. Gates (six, deterministic, no model calls)
 
-照 BriefLoop §3.3:确定性审计由 Python 执行。六个门禁**全部已在 dws-derisk 实现并测过**。
+Per BriefLoop §3.3: deterministic auditing is executed by Python. All six gates **are
+already implemented and tested in dws-derisk**.
 
-| gate_id | 检查 | 六轮实测 |
+| gate_id | Checks | Measured in the six rounds |
 |---|---|---|
-| `arithmetic_consistency` | net+vat=gross、gross=due、日期序 | 复现生产口径 530/1000 |
-| `field_wellformed` | 金额可解析、日期合法、编号非空 | — |
-| `extraction_present` | DWS 是否返回值 | 359 flagged 中 267 例缺值 |
-| `citation_holds` | 值是否在 DWS 自称的引用区(**独立 OCR**) | T1 静默 4.4%→3.1% |
-| `cross_mode_agreement` | understand vs agentic | lift 2.40×,**已知不独立** |
-| `visual_corroboration` | 整页读图是否支持 | 三模型,lift 1.29–1.33 |
+| `arithmetic_consistency` | net+vat=gross, gross=due, date ordering | reproduces the production caliber 530/1000 |
+| `field_wellformed` | amounts parseable, dates valid, numbers non-empty | — |
+| `extraction_present` | whether DWS returned a value | of 359 flagged, 267 missing a value |
+| `citation_holds` | whether the value lies in the citation region DWS claims for itself (**independent OCR**) | T1 silent 4.4%→3.1% |
+| `cross_mode_agreement` | understand vs agentic | lift 2.40×, **known to be non-independent** |
+| `visual_corroboration` | whether full-page vision reading supports it | three models, lift 1.29–1.33 |
 
-**负面发现规则(§宪章四)**:门禁跑不了 = `blocking_level: "blocking"`,severity `high`。
-`extraction_present` 失败的 267 例是 267 条带修复路由的阻断发现。
+**Negative-finding rule (Charter clause Four)**: a gate that cannot run =
+`blocking_level: "blocking"`, severity `high`. The 267 `extraction_present` failures are 267
+blocking findings, each with a repair route.
 
-**`visual_corroboration` 对全部字段运行,不只对被 flag 的。**
-六轮的分层让最危险的错误逃过检查:未被 flag 的 TIER1 字段仍有 **7.8% 真错**,
-含 5 倍(`422,539` vs `83,625`)、8 倍(`6467` vs `800`)的金额错误,**六个门禁全过** ——
-因为它们是自洽的误读。而实测这 8 例的真值 **8/8 都印在页面上**,读图本有机会全拦。
+**`visual_corroboration` runs on all fields, not only the flagged ones.**
+The six rounds' stratification let the most dangerous errors escape: unflagged TIER1 fields
+still carry **7.8% true errors**, including 5× (`422,539` vs `83,625`) and 8× (`6467` vs
+`800`) amount errors that **pass all six gates** — because they are self-consistent
+misreads. And measured on these 8 cases, the ground truth was **printed on the page in
+8/8** — vision reading had a chance to stop every one of them.
 
 ---
 
-## 7. 分诊 —— 支持矩阵的投影,不是独立功能
+## 7. Triage — a projection of the support matrix, not a separate feature
 
-支持矩阵按 `support_strength` 升序排列,即复核队列。实测(60 份新文档,TIER1 字段):
+The support matrix sorted ascending by `support_strength` is the review queue. Measured
+(60 new documents, TIER1 fields):
 
-| | 偏差率 |
+| | Deviation rate |
 |---|---|
-| 门禁挑出的 | **50.0%** (43/86) |
-| 未挑出的 | 11.8% (12/102) |
-| **集中度** | **4.2×** |
+| flagged by gates | **50.0%** (43/86) |
+| not flagged | 11.8% (12/102) |
+| **concentration** | **4.2×** |
 
-**看 46% 的字段(86/188),覆盖 78% 的偏差(43/55)。**
-端到端:偏差 29.3% → 10.6%,人工 35.5%;每 1pt 人工换 0.52pt 偏差削减,
-是纯确定性检查的 **1.8 倍**。
+**Inspecting 46% of fields (86/188) covers 78% of deviations (43/55).**
+End to end: deviation 29.3% → 10.6%, with 35.5% manual review; each 1pt of human review
+buys 0.52pt of deviation reduction — **1.8×** that of purely deterministic checks.
 
-**分诊不要求任何一档"可信"**,只要求排序优于随机 —— 4.2× 已证明。
-这让 §6 那个 7.8% 从"致命缺陷"变成"如实标注的一格"。
-
----
-
-## 8. 校准与其限定
-
-`support_panel` 展示每个门禁的**实测拦截率**,来自六轮预注册实验。
-按宪章六,**必须同时展示三条限定**:
-
-1. 门禁是**看过第一轮数据之后**设计的(`THRESHOLDS.md §6c B-4` 自陈),带乐观偏差。
-   ~~留出集确认从未执行~~ → **已于 2026-08-02 执行**(100 份 DocILE 留出,
-   判据预注册冻结于执行前,H1–H6 全过,分诊 lift 3.04× > 1.5 线;
-   数字与照登的预测偏差见 `docs/HELDOUT.md` 结果节)
-2. DocILE 标注本身有争议 —— 第四轮逐份读图,14 例中 **8 例是标注错**
-3. 校准集全为美国广播广告发票;留出集在 DocILE 全类型内复现了分诊集中度,
-   **DocILE 之外的表现仍未知**
+**Triage does not require any tier to be "trustworthy"**, only that the ordering beats
+random — 4.2× already proves that. This turns the 7.8% in §6 from "fatal flaw" into "one
+honestly labeled cell".
 
 ---
 
-## 8b. 已知边界
+## 8. Calibration and Its Qualifiers
 
-**分词把小额切成高频 token。** 绑定检查按 `[a-z0-9]+` 切分,`$0.00` → `['0','00']`,
-几乎匹配任何文档 —— 这类草稿无论绑到哪份发票都会被接纳。
+`support_panel` shows each gate's **measured interception rate**, from the six rounds of
+pre-registered experiments. Per Charter clause Six, **all three qualifiers must be shown
+alongside**:
 
-用严格分词(金额整体保留、只去分隔符)实测对比:错位那份只多拒 **1 行 / 168**,
-同时给两个正常读者各多添 1 行误伤。**净收益为负,因此不改。**
-
-但这个语料只有 1 例,而**零税发票在真实分布里很常见**。换语料时这个失效模式会放大,
-需重测。记在这里,不要因为测试是绿的就以为它不存在。
-
-**两侧必须用同一个分词器。** 文档侧若额外收"整词剥标点"的 token,
-`$5.00` 会剥成 `500`,与金额 500 撞车。实测 `0486b911` 里正有两处 `$5.00`,
-足以让一行错位的 `$8,500.00` 从 `2/3 拒绝` 变成 `3/3 接纳`。
-`freeze.normalise_tokens` 的 docstring 记了这一条,不要"优化"回去。
-
-## 9. 主张与不主张
-
-**主张**
-- 每个字段带可机械验证的支持关系:证据片段、四维强度、六个门禁裁决、修复路由
-- 支持矩阵可从存盘响应**零 API 重算**
-- 分诊排序经 160 份预注册文档实测:4.2× 集中度、78% 覆盖
-- 冻结事务能结构性拒绝错位绑定(实测对一个真实故障拒绝 70%,118/168,§5.2)
-
-**不主张**
-- **不主张 DWS 可信,不主张抽取质量提升。** 六轮说的恰恰相反,**且要写进 demo**
-- 不主张语义正确性 —— 输出是支持矩阵,不是"这个值是对的"
-- 不主张可无人值守 —— 无支持项按设计就要人看
-- 不主张适用于生产 —— 160 份、英文、单一供应商、单一时间点
+1. The gates were designed **after seeing Round One data** (self-reported in
+   `THRESHOLDS.md §6c B-4`), with an optimism bias.
+   ~~Held-out confirmation never executed~~ → **executed on 2026-08-02** (a 100-document
+   DocILE hold-out; criteria pre-registered and frozen before execution; H1–H6 all passed;
+   triage lift 3.04× > the 1.5 line; the numbers and the deviations from the registered
+   predictions, recorded as-is, are in the results section of `docs/HELDOUT.md`)
+2. The DocILE annotations are themselves disputed — in Round Four, document-by-document
+   vision reading found **8 of 14 cases were annotation errors**
+3. The calibration set is entirely US radio advertising invoices; the hold-out reproduced
+   the triage concentration within DocILE's full type range, and **performance outside
+   DocILE remains unknown**
 
 ---
 
-## 10. 明确不做
+## 8b. Known Boundaries
 
-BriefLoop 的这些机制是为**并发多智能体、长周期可恢复运行**设计的。
-单张发票抽取是单写入者、几秒钟、无并发修改 —— **照搬是 cargo cult**:
+**Tokenisation shreds small amounts into high-frequency tokens.** The binding check splits
+on `[a-z0-9]+`; `$0.00` → `['0','00']`, which matches almost any document — such drafts are
+accepted no matter which invoice they bind to.
 
-乐观并发(`store_revision_conflict`)、Unit of Work、按请求指纹回放、
-artifact supersession、repair cycle、finalize render、跨运行改进账本。
+Measured against strict tokenisation (amounts kept whole, only separators stripped): the
+mis-bound document loses only **1 row / 168** more, while each of the two legitimate
+readers gains 1 extra false reject. **Net benefit is negative, so it stays unchanged.**
 
-**保留的三条与并发无关**:内容寻址冻结、草稿/冻结分离、负面发现即阻断。
+But this corpus contains only 1 such case, and **zero-tax invoices are common in the real
+distribution**. On a different corpus this failure mode amplifies and needs retesting. It
+is recorded here; do not assume it is absent just because the tests are green.
+
+**Both sides must use the same tokeniser.** If the document side additionally collects
+"whole-word, punctuation-stripped" tokens, `$5.00` strips to `500` and collides with the
+amount 500. Measured: `0486b911` contains exactly two `$5.00` occurrences — enough to flip
+a mis-bound `$8,500.00` row from `2/3 reject` to `3/3 accept`. The docstring of
+`freeze.normalise_tokens` records this; do not "optimise" it back.
+
+## 9. What Is Claimed and What Is Not
+
+**Claimed**
+- Every field carries a mechanically verifiable support relation: evidence spans,
+  four-dimensional strength, six gate verdicts, repair routes
+- The support matrix can be **recomputed with zero API calls** from saved responses
+- The triage ordering is measured on 160 pre-registered documents: 4.2× concentration, 78%
+  coverage
+- The freeze transaction structurally rejects mis-bound rows (measured: rejects 70% of one
+  real incident, 118/168, §5.2)
+
+**Not claimed**
+- **No claim that DWS is trustworthy, and no claim of improved extraction quality.** The
+  six rounds say the opposite, **and that goes into the demo**
+- No claim of semantic correctness — the deliverable is a support matrix, not "this value
+  is right"
+- No claim of unattended operation — unsupported items are, by design, for humans to look
+  at
+- No claim of production readiness — 160 documents, English, single vendor, single point
+  in time
 
 ---
 
-## 11. 里程碑(截止日决定做到哪一层,每层独立可演示)
+## 10. Explicitly Not Done
 
-| M | 交付 | 依赖 |
+These BriefLoop mechanisms are designed for **concurrent multi-agent, long-horizon
+resumable runs**. Single-invoice extraction is single-writer, a few seconds, no concurrent
+modification — **copying them over is cargo cult**:
+
+optimistic concurrency (`store_revision_conflict`), Unit of Work, replay by request
+fingerprint, artifact supersession, repair cycle, finalize render, the cross-run
+improvement ledger.
+
+**The three that stay have nothing to do with concurrency**: content-addressed freezing,
+draft/freeze separation, negative findings are blocking.
+
+---
+
+## 11. Milestones (the deadline decides how far to go; every tier is independently demoable)
+
+| M | Deliverable | Depends on |
 |---|---|---|
-| **M0** | `extract` + 证据片段注册 + 声明图 | 已有 `extract.py` |
-| **M1** | 六个确定性门禁 + `gate_report.json` | 已有全部检查逻辑 |
-| **M2** | `freeze` 事务 + 绑定拒绝 | 新写,~150 行 |
-| **M3** | 支持矩阵四维 + `support_panel.html` | 新写,demo 主画面 |
-| **M4** | 人工裁决记录 + `audit_bundle.zip` | 可选 |
+| **M0** | `extract` + evidence span registration + claim graph | `extract.py` already exists |
+| **M1** | six deterministic gates + `gate_report.json` | all check logic already exists |
+| **M2** | `freeze` transaction + binding rejection | newly written, ~150 lines |
+| **M3** | four-dimensional support matrix + `support_panel.html` | newly written, the demo's main screen |
+| **M4** | human adjudication records + `audit_bundle.zip` | optional |
 
-**M0–M1 大部分是把 dws-derisk 已有代码搬过来。** 真正新写的是 M2 与 M3。
+**M0–M1 is mostly porting existing dws-derisk code.** The genuinely new work is M2 and M3.
 
 ---
 
-## 12. 已定的四个决定(可推翻)
+## 12. Four Settled Decisions (reversible)
 
-问过四次未得答复,按最合理默认执行,以便开工:
+Asked four times with no answer; proceeding on the most reasonable defaults so work can
+start:
 
-1. **代码位置**:`~/Developer/invoiceloop/`(独立仓库,产品身份);
-   `~/Developer/dws-derisk/` 保持为**校准档案**,InvoiceLoop 通过配置指向它
-2. **panel 形态**:静态 HTML,可离线演示,无需服务
-3. **输入**:v0 仅 DocILE(证据链完整、可零 API 重算);
-   上传路径后续加,且必须标注"不在校准集内"
-4. **截止日**:未知 → 里程碑设计成每层独立可演示,截止日只决定停在哪一层
+1. **Code location**: `~/Developer/invoiceloop/` (standalone repository, product identity);
+   `~/Developer/dws-derisk/` stays a **calibration archive** that InvoiceLoop points to via
+   configuration
+2. **Panel form**: static HTML, demoable offline, no server needed
+3. **Input**: v0 is DocILE only (complete evidence chain, recomputable with zero API
+   calls); an upload path comes later, and it must be labeled "not in the calibration set"
+4. **Deadline**: unknown → milestones are designed so every tier is independently
+   demoable; the deadline only decides which tier we stop at
 
-## 13. H0 完整性地基(2026-08-03,外部复核驱动)
+## 13. H0 Integrity Foundation (2026-08-03, driven by external review)
 
-外部复核发现「冻结未被真正强制」等四个瓦解核心承诺的问题后确立的机制
-(全录:`docs/H0_INTEGRITY_2026-08-03.md`):
+Mechanisms established after external review found four problems — "freezing not actually
+enforced" among them — that would dissolve the core promises (full account:
+`docs/H0_INTEGRITY_2026-08-03.md`):
 
-- **运行不可变**:输出目录非空永拒,没有 `--force`,也不要求删除历史;
-  workspace 逐代 `runs/run-NNNN`,`current.json` 只是可重建指针。
-  输入指纹(PDF+OCR+raw+schema+读图作答的内容哈希)相同的重跑 = 重放既有 run;
-  半拉子 run(无 event_log)不许被重放,留在原地当现场。
-- **复核快照**:每条人工裁决绑定 `review_snapshot_id`(输入清单 + 工件注册表 +
-  证据片段 + 冻结账本 + 门禁报告五成分的哈希),不是只绑账本。
-  追加裁决前先验快照与盘上工件仍一致,不一致即阻断。
-- **裁决链**:`claim_id↔doc_id↔field` 三元精确一致;`correct` 必带修正值,
-  余者禁带;同槽二次决定必须显式 supersede 当前 tip;current state 由
-  supersession 链投影,链断显式标冲突;绑定别快照的裁决标 orphan,
-  不投影但不藏。
-- **panel 是投影**:从盘上工件随时可重建(`render --run`);
-  渲染失败不回滚已落盘的裁决。
-- **机器事件刻意无墙钟**:`event_log.jsonl` 只有 `seq`,不带时间戳 ——
-  这是确定性取舍(同输入重放须字节一致,墙钟会破坏它);
-  时间只由人在裁决时注入(`decided_at`,工作台由服务器在点击时盖章)。
-- **bundle 全量自包含**:上游证据按 input_manifest 记录的 sha 验收
-  (被换/丢失 = 阻断;run 时就不存在 = 进 notes);读图 `answers6.*.tsv`
-  也捕获到 run/bundle,工作台不再依赖可变的外部 vision 目录;`verify` 三层
-  离线校验(成员哈希 → 快照成分重算 → 裁决绑定)。
+- **Runs are immutable**: a non-empty output directory is always rejected; there is no
+  `--force`, and deleting history is not required either; the workspace advances
+  generation by generation as `runs/run-NNNN`, and `current.json` is only a rebuildable
+  pointer. A rerun whose input fingerprint (content hashes of PDF+OCR+raw+schema+vision
+  answers) matches = a replay of the existing run; a half-finished run (no event_log) must
+  not be replayed and is left in place as the scene.
+- **Review snapshot**: every human adjudication binds to a `review_snapshot_id` (hashes of
+  five components: input manifest + artifact registry + evidence spans + frozen ledger +
+  gate report), not to the ledger alone. Before appending an adjudication, the snapshot is
+  first verified to still match the artifacts on disk; a mismatch blocks.
+- **Adjudication chain**: the `claim_id↔doc_id↔field` triple must match exactly; `correct`
+  must carry a corrected value, the others must not; a second decision on the same slot
+  must explicitly supersede the current tip; current state is a projection of the
+  supersession chain, and a broken link is explicitly marked as a conflict; adjudications
+  bound to a different snapshot are marked orphan — not projected, but not hidden.
+- **The panel is a projection**: rebuildable at any time from the artifacts on disk
+  (`render --run`); a render failure does not roll back adjudications already on disk.
+- **Machine events deliberately carry no wall clock**: `event_log.jsonl` has only `seq`, no
+  timestamps — a determinism trade-off (replaying the same inputs must be byte-identical,
+  and a wall clock would break that); time is injected only by humans at adjudication time
+  (`decided_at`; in the workbench the server stamps it at click time).
+- **Bundles are fully self-contained**: upstream evidence is accepted against the shas
+  recorded in input_manifest (swapped/missing = blocking; already absent at run time = goes
+  into notes); the vision `answers6.*.tsv` is captured into the run/bundle too, so the
+  workbench no longer depends on a mutable external vision directory; `verify` does
+  three-layer offline validation (member hashes → snapshot component recomputation →
+  adjudication binding).
 
-## 14. H1 复核工作台(2026-08-03,评委面向)
+## 14. H1 Review Workbench (2026-08-03, judge-facing)
 
-全录:`docs/H1_WORKBENCH_2026-08-03.md`。形态决定:
+Full account: `docs/H1_WORKBENCH_2026-08-03.md`. Form decisions:
 
-- **零新增依赖的 loopback Web 应用**:stdlib http.server,仅 127.0.0.1;
-  server-rendered HTML + 渐进增强 JS(无 JS 时除浏览器上传外全部可用)。
-- **人只写裁决**:`/decide` 透传 §13 的同一套裁决校验,工作台不开后门;
-  decided_at 由服务器在点击时盖章(点击 = 人给出时间);
-  同槽二次决定表单自动带当前 tip 的 supersedes,过期提交 = 400。
-- **复核队列 = 分诊排序的行走版**:行 = 矩阵行(支持强度升序),
-  证据(裁剪图/OCR/印刷标签)手风琴,四决策按钮 + 修正值 + 问题/理由文本域
-  (必填,带快捷问题标签),两步确认。
-- **交付报告是第一公民**:复核完成度、修正清单(原值→改值+理由+署名),
-  残余风险声明(复核队列外的错误不是零)与 §8 限定同屏。
-- **视觉纪律**:DWS/模型值 = 紫(advisory,永不绿),人工确认 = 蓝,
-  绿只给确定性通过,红 = 阻断,灰 = 不可用。
+- **A loopback web app with zero new dependencies**: stdlib http.server, 127.0.0.1 only;
+  server-rendered HTML + progressively enhanced JS (without JS, everything except browser
+  upload still works).
+- **Humans write adjudications only**: `/decide` passes through the same adjudication
+  validation as §13 — the workbench opens no back door; decided_at is stamped by the server
+  at click time (the click = the human supplying the time); a second decision on the same
+  slot automatically carries the current tip's supersedes in the form, and a stale
+  submission = 400.
+- **The review queue = the triage ordering, made walkable**: rows = matrix rows (ascending
+  support strength); evidence (crop/OCR/printed label) in accordions; four decision
+  buttons + corrected value + problem/reason text fields (required, with quick problem
+  tags); two-step confirmation.
+- **The delivery report is a first-class citizen**: review completeness; the correction
+  list (original value → corrected value + reason + signature); the residual-risk statement
+  (errors outside the review queue are not zero) shown on the same screen as the §8
+  qualifiers.
+- **Visual discipline**: DWS/model values = purple (advisory, never green); human
+  confirmation = blue; green only for deterministic passes; red = blocking; grey =
+  unavailable.

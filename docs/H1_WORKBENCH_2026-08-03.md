@@ -1,182 +1,241 @@
-# H1 复核工作台(2026-08-03)
+# H1 review workbench (2026-08-03)
 
-H0 完整性地基之后,复核者钦定的下一单元:评委面向的复核工作台 ——
-本地 loopback Web 应用,把「上传 → 抽取 → 复核队列 → 裁决 → 交付报告 →
-bundle/verify」做成 2–4 分钟走得完的端到端体验。用户补充的硬需求:
-**人工审核环节在网页上直接输入问题**(按钮 + 输入框,不是只能看)。
+After the H0 integrity foundation, the reviewer's designated next unit: the
+judge-facing review workbench — a local loopback web application that turns
+"upload → extract → review queue → adjudicate → delivery report →
+bundle/verify" into an end-to-end experience walkable in 2–4 minutes. The
+user's hard requirement: **the human-review step enters problems directly in
+the web page** (buttons + input fields, not view-only).
 
-## 形态决定(钉死)
+## Shape decisions (pinned)
 
-- **stdlib http.server,零新增依赖。** 不加 Flask/FastAPI —— pyproject 运行时
-  仍只有 requests;评委 clean clone 后 `pip install .` 即可,不多装任何东西。
-- **仅 127.0.0.1 loopback。** 不提供 host 参数;要给别人看就走 audit bundle,
-  不把这个服务放上网络。
-- **server-rendered HTML + 渐进增强 JS。** 无 JS 时除浏览器上传/校验外全部可用;
-  文件上传回落到输入契约(把 PDF 放进 `workspace/input/pdfs/`)。
-- **人只写裁决,且只能写裁决。** `/decide` 透传 `adjudicate.append_adjudication`
-  的同一套校验(快照一致性、三元一致、决策语义、supersession),工作台不开后门。
-- **decided_at 由服务器在点击时盖章。** 点击就是人给出时间的动作;裁决是人的
-  输入,不是重算工件,run 工件的确定性不受影响。
-- **视觉纪律借 briefloop-prototypes**(Visual System v1):DWS/模型值 = 紫
-  (advisory,永不绿),人工确认 = 蓝,确定性通过 = 绿,阻断 = 红,不可用 = 灰。
+- **stdlib http.server, zero new dependencies.** No Flask/FastAPI — the
+  pyproject runtime still has only requests; a judge's clean clone plus
+  `pip install .` installs nothing extra.
+- **127.0.0.1 loopback only.** No host parameter; to show someone else, ship
+  the audit bundle — this service does not go on the network.
+- **Server-rendered HTML + progressively enhanced JS.** With JS off,
+  everything except browser upload/validation works; file upload falls back
+  to the input contract (put the PDF into `workspace/input/pdfs/`).
+- **A person writes adjudications, and only adjudications.** `/decide` passes
+  through the same checks as `adjudicate.append_adjudication` (snapshot
+  consistency, triple agreement, decision semantics, supersession); the
+  workbench opens no back door.
+- **decided_at is stamped by the server at click time.** Clicking *is* the
+  act of a person supplying the time; an adjudication is human input, not a
+  recomputed artifact, and run-artifact determinism is unaffected.
+- **Visual discipline borrowed from briefloop-prototypes** (Visual System
+  v1): DWS/model values = purple (advisory, never green), human confirmation
+  = blue, deterministic pass = green, blocked = red, unavailable = grey.
 
-## 构建方式(子代理分工)
+## How it was built (sub-agent split)
 
-- 测试代理:按钉死的路由/表单契约写 15 条契约测试(`tests/test_workbench.py`),
-  测试先行,服务器尚不存在时收集不炸。
-- 视觉代理:按钉死的 65 个选择器契约写 `invoiceloop/workbench_style.py`,
-  token 层借 prototype,语义色纪律守住(人工确认全蓝,绿只给确定性通过)。
-- 主会话内联:服务器本体(`invoiceloop/workbench.py`,路由 + 动作 + 页面),
-  零文件重叠。
-- 对抗复核 workflow:三维度(安全与宪章 / 裁决接线正确性 / 契约漂移)
-  独立发现 + 逐条反驳式验证(结果见下节)。
+- Test agent: 15 contract tests against the pinned route/form contracts
+  (`tests/test_workbench.py`), tests first; collection did not crash while
+  the server did not exist yet.
+- Visual agent: `invoiceloop/workbench_style.py` against 65 pinned selector
+  contracts, token layer borrowed from the prototype, semantic color
+  discipline held (human confirmation all blue; green only for deterministic
+  pass).
+- Main session inline: the server itself
+  (`invoiceloop/workbench.py`, routes + actions + pages), zero file overlap.
+- Adversarial-review workflow: three dimensions (security & charter /
+  adjudication wiring correctness / contract drift), independent discovery +
+  point-by-point rebuttal-style verification (results below).
 
-## 集成时自查抓到并修掉的
+## Caught and fixed during integration self-check
 
-1. `/verify` 的 form 用了 `enctype="application/octet-stream"` —— 浏览器根本不会
-   带文件内容(Python 3.14 没有 cgi,不糊 multipart;改为 fetch 原始字节,与
-   上传同一路径,no-JS 回落到 CLI `verify`)。
-2. `/decide` 重定向丢了表单里的语言(中文页面提交完跳回英文页)。
-3. `snapshot.build_input_manifest`:一个读图文件都不存在时(workspace 永远如此),
-   `--vision/--no-vision` 产出两个不同指纹,重放在 CLI 与工作台之间失灵 ——
-   归一为 None(视野文件存在时才进指纹)。
-4. rationale/adjudicator 空串绕开 HTML required 直接 POST 会入账 —— 服务器侧补校验。
-5. adjudicator cookie 写时 quote 读时不 unquote(中文名回显变百分号)。
+1. `/verify`'s form used `enctype="application/octet-stream"` — the browser
+   never attaches file content that way (Python 3.14 has no cgi; no
+   multipart hack). Switched to fetching raw bytes, the same path as upload;
+   the no-JS fallback is the CLI `verify`.
+2. `/decide` redirects dropped the form's language (a Chinese page submitted
+   and landed on an English page).
+3. `snapshot.build_input_manifest`: when not a single vision file exists
+   (workspaces are always so), `--vision/--no-vision` produced two different
+   fingerprints and replay broke between CLI and workbench — normalised to
+   None (vision files enter the fingerprint only when present).
+4. rationale/adjudicator empty strings could bypass HTML required via a raw
+   POST and enter the ledger — server-side validation added.
+5. The adjudicator cookie was quoted on write but not unquoted on read
+   (Chinese names echoed back as percent signs).
 
-## 冒烟(真实 PDF + 真实 OCR + crops)
+## Smoke test (real PDFs + real OCR + crops)
 
-全部页面 200,根路径 303 → /queue;POST /decide(correct,中文理由)→ 303 →
-队列行出现「当前裁决 HD-0001 … 提交将取代它」,交付报告 1/10 + 修正清单;
-证据裁剪图经 /files 正常出图。15 条契约测试 + 全量 184 条全绿。
+All pages 200, root 303 → /queue; POST /decide (correct, Chinese rationale)
+→ 303 → the queue row shows "current adjudication HD-0001 … submitting will
+supersede it", delivery report 1/10 + corrections list; evidence crops serve
+correctly through /files. The 15 contract tests + the full 184 all green.
 
-## 已知边界(记录,不修)
+## Known boundaries (recorded, not fixed)
 
-- 同名 PDF 重传不会重新 OCR/重抽(断点续跑纪律);要重抽先删 ocr/ raw 对应文件
-  (上传页有提示)。
-- crop 渲染失败(损坏 PDF + render_crops)会让 /ingest 500 —— 阻断不藏,页面给
-  traceback;CLI 同样行为。
-- 裁决并发的最后防线是 append 的 supersession 校验:两个标签页同时裁决同一槽,
-  第二个提交 400(过期 supersedes),不静默覆盖。
-- i18n 是 chrome 级双语(按钮/标签),证据内容(OCR、理由)保持原文。
+- Re-uploading a same-named PDF does not re-OCR/re-extract (resumable-run
+  discipline); to re-extract, delete the matching ocr/ and raw/ files first
+  (the upload page says so).
+- A crop-render failure (corrupt PDF + render_crops) makes /ingest 500 — the
+  block is not hidden, the page shows the traceback; the CLI behaves the
+  same.
+- The last line of defence for concurrent adjudication is the append's
+  supersession check: two tabs adjudicating the same slot, the second submit
+  gets 400 (stale supersedes) — no silent overwrite.
+- i18n is chrome-level bilingual (buttons/labels); evidence content (OCR,
+  rationales) stays in its original language.
 
-## 对抗复核结果
+## Adversarial review results
 
-24 个代理(3 维度发现 + 逐条反驳式验证,909k token):12 个发现提交,
-验证后 **17 项确认**(含两维度重复报告同一问题),全部修复并各带测试:
+24 agents (3-dimension discovery + rebuttal-style verification, 909k tokens):
+12 findings submitted; after verification **17 items confirmed** (including
+the same problem reported twice across dimensions), all fixed, each with a
+test:
 
-| # | 严重度 | 发现 → 修复 |
+| # | Severity | Finding → fix |
 |---|---|---|
-| 1 | critical | 写操作端点无 Host/Origin 校验:跨站表单可烧 DWS credits、伪造裁决进 append-only 账本;DNS rebinding 可读全部 → Host 白名单 + POST Origin 检查(403) |
-| 2 | critical | 长驻进程 OCR lru_cache 永不清:换新 OCR 后用旧缓存绑定,清单记新 sha → ingest 后显式清两个缓存 |
-| 3 | major | /decide 无锁竞态:并发写出重复 decision_id(实测 261/300)且 verify 查不出 → append 临界区持锁 + verify 查 decision_id 唯一性 |
-| 4 | major | 同名不同内容 PDF 覆盖后旧 OCR/raw 不失效:新页面图配旧证据,门禁全绿 → 内容变化自动失效下游证据,响应列出 invalidated |
-| 5 | major | cmd_ingest 的 SystemExit 穿透所有异常处理:空 workspace 点处理 = 掐连接 → 转 400 页 |
-| 6 | major | ingest 摘要丢弃:部分文档失败时悄悄少文档 → 失败文档与原因显式列页 |
-| 7 | major | `.wb-crop img` 选择器永不匹配(class 在 img 上):证据图按原始分辨率撑破版式 → 合并为 `.wb-crop` |
-| 8 | major | 无 JS 时 correct 提交不出修正值(input 恒 disabled)→ HTML 不带 disabled,JS 加载后按选择禁用,语义服务器守 |
-| 9 | major | 两步确认武装态不换档:armed 后改选决策,确认文案说谎 → radio change 解除武装 |
-| 10 | minor | 404 页未转义请求路径(全应用唯一未转义反射面)→ 转义 |
-| 11 | minor | 非 zip 上传 /verify → 500 整页 traceback → verify_bundle 内置 BadZipFile 失败分支(CLI 同收益) |
-| 12 | minor | `.wb-topbar-inner` 无规则:顶栏布局塌 → 补规则 |
-| 13 | minor | report 完成度测试恒真(断言支永远成立)→ 改精确计数断言 |
-| 14 | minor | 队列页 rationale XSS 测试守的是无输出区域 → rationale 渲染进当前裁决提示(转义),测试同时断言转义后存在 |
+| 1 | critical | Write endpoints had no Host/Origin checks: a cross-site form could burn DWS credits and forge adjudications into the append-only ledger; DNS rebinding could read everything → Host allowlist + POST Origin checks (403) |
+| 2 | critical | The long-lived process's OCR lru_cache never cleared: after new OCR, binding used stale cache while the manifest recorded the new sha → both caches explicitly cleared after ingest |
+| 3 | major | /decide had no lock: concurrent writes produced duplicate decision_ids (measured 261/300) and verify could not detect them → append holds a lock in the critical section + verify checks decision_id uniqueness |
+| 4 | major | Same-name different-content PDF overwrites left old OCR/raw valid: new page images with old evidence, all gates green → content changes auto-invalidate downstream evidence; the response lists invalidated items |
+| 5 | major | cmd_ingest's SystemExit pierced all exception handling: clicking process on an empty workspace = dropped connection → converted to a 400 page |
+| 6 | major | ingest summary dropped: with some documents failing, documents quietly went missing → failed documents and reasons listed explicitly on the page |
+| 7 | major | The `.wb-crop img` selector never matched (the class is on the img): evidence images broke the layout at native resolution → merged into `.wb-crop` |
+| 8 | major | With JS off, a correct submit could not carry the corrected value (input permanently disabled) → HTML ships without disabled; JS disables by selection after load; semantics enforced server-side |
+| 9 | major | The two-step-confirm armed state did not re-grade: changing the decision after arming made the confirmation text lie → radio change disarms |
+| 10 | minor | The 404 page did not escape the request path (the app's only unescaped reflection surface) → escaped |
+| 11 | minor | A non-zip upload to /verify → a full-page 500 traceback → verify_bundle gained a built-in BadZipFile failure branch (CLI benefits too) |
+| 12 | minor | `.wb-topbar-inner` had no rule: top-bar layout collapsed → rule added |
+| 13 | minor | A report-completeness test was always true (the assertion branch always held) → replaced with exact-count assertions |
+| 14 | minor | The queue-page rationale XSS test guarded an area with no output → rationale now rendered into the current-adjudication notice (escaped), and the test asserts both escaped presence |
 
-被反驳不成立的(记录,不改):缺失 run 域的手工构造 POST(loopback 单用户无触发路径)、
-handler 实例跨请求残留(HTTP/1.0 无 keep-alive)、三个 class 无样式(无契约可漂)、
-/ingest 双代竞争(pipeline 的 mkdir(exist_ok=False)已守)。
+Rebutted as invalid (recorded, unchanged): hand-crafted POSTs missing the run
+field (loopback, single user, no trigger path), handler-instance residue
+across requests (HTTP/1.0, no keep-alive), three unstyled classes (no
+contract to drift), /ingest two-generation races (already guarded by
+pipeline's mkdir(exist_ok=False)).
 
-顺手带出的一个复核未报的洞:损坏 PDF 让 pdftotext/pdftoppm 抛
-CalledProcessError 炸穿 ingest —— 现在统一退到 OcrUnavailable 阻断(宪章四)。
+One hole the review did not report, found in passing: a corrupt PDF made
+pdftotext/pdftoppm raise CalledProcessError and blow through ingest — now
+uniformly degrades to OcrUnavailable blocking (charter rule four).
 
-## 用户实测(2026-08-03 晚,warm subject,15 条真人裁决)
+## User testing (2026-08-03 evening, warm subject, 15 real adjudications)
 
-4 份真实发票(3 正常 + 1 OCR 受阻的退化扫描件),40 槽。用户独立完成
-15 条裁决(8 correct / 6 abstain / 1 accept,含 Harry Huge 缺值补录),
-全部良构(快照绑定、无冲突、无改判)。bundle 54 成员,verify 三层全过。
+4 real invoices (3 normal + 1 degraded scan with blocked OCR), 40 slots. The
+user independently completed 15 adjudications (8 correct / 6 abstain /
+1 accept, including the Harry Huge value backfill), all well-formed (snapshot
+binding, no conflicts, no reversals). Bundle of 54 members, verify's three
+layers all passed.
 
-实测抓出三个真虫(均已修复 + 回归测试):
+The live test caught three real bugs (all fixed + regression tests):
 
-1. **OCR 受阻文档没有整页图** —— `render_pages` 被关在 OCR 正常的分支里,
-   受阻文档每行都「没有原图」,复核直接断粮(用户原话,HD-0015)。
-   整页渲染不依赖 OCR/响应,提前到所有有 PDF 的文档。
-2. **上传 tab 链接拼成 `/upload&lang=zh`** —— 按有无 query string 选 `?`/`&`,
-   拼错就是 404;「无法返回」是 404/消息页没有导航 —— 导航现在永远指向
-   一个真实存在的 run。
-3. 快捷问题标签拼接产生「;;」(cosmetic)—— 拼接前先剥尾部 `;` 与空白。
+1. **The OCR-blocked document had no full-page images** — `render_pages` was
+   gated inside the OCR-ok branch, so every row of a blocked document said
+   "no original image" and review ran dry (user's words, HD-0015). Full-page
+   rendering depends on neither OCR nor responses; moved ahead to every
+   document that has a PDF.
+2. **The upload tab link was built as `/upload&lang=zh`** — pick `?`/`&` by
+   whether a query string exists; misassembly is a 404; "cannot go back" was
+   404/message pages having no navigation — navigation now always points at a
+   run that really exists.
+3. Quick problem-label concatenation produced ";;" (cosmetic) — strip
+   trailing `;` and whitespace before joining.
 
-另:这份 15 条裁决的 run 已打成 bundle 收档;受阻文档的整页图要新的
-run 代才有(旧 run 不可变,历史不动)。
+Also: the run holding those 15 adjudications is bundled and archived;
+full-page images for the blocked document require a new run generation (old
+runs are immutable; history stays).
 
-## 读图门的实测回答(2026-08-03,046e0c49 角色互换事件)
+## The vision gate's measured answer (2026-08-03, the 046e0c49 role-swap incident)
 
-用户问「读图为什么没开、开了会怎样」。答案分两层:
+The user asked "why is vision off by default, and what happens if on." The
+answer has two layers.
 
-**为什么默认没开**:读图作答是 dws-derisk 第六轮的研究产物(整页渲染 →
-三个前沿模型作答 → answers6 tsv),从未移植成 ingest 的活的步骤;
-workspace 没有 vision/ 目录,读图门如实报「未测」而不是跳过。
+**Why off by default**: vision answers are a research product of
+dws-derisk round six (full-page renders → three frontier models answering →
+answers6 tsv), never ported into a live ingest step; workspaces have no
+vision/ directory, and the vision gate honestly reports "not measured"
+rather than skipping.
 
-**开了会怎样(在同一 workspace 上实测)**:把校准档案的 answers6 tsv
-拷进 ws/vision/ 起新 run 代(run-0003)。4 份文档里只有 046e0c49
-(正是 OCR 受阻、其他机械信号全灭的那份扫描件)有读图作答;它的
-10 个槽里 8 个 DWS 没返回值(读图门按设计报未测),但有值的 2 个槽
-**全部触发 warning —— 而且恰好是 DWS 把买卖双方抽反了的两个字段**:
+**What happens when on (measured on the same workspace)**: copy the
+calibration archive's answers6 tsv into ws/vision/ and open a new run
+generation (run-0003). Of the 4 documents only 046e0c49 — precisely the
+scan whose OCR is blocked and whose other mechanical signals are all dead —
+has vision answers; of its 10 slots, 8 have no DWS value (the vision gate
+reports not-measured by design), but the 2 slots with values **both raise
+warnings — and they are exactly the two fields DWS extracted with buyer and
+seller swapped**:
 
-| 字段 | DWS understand | DWS agentic | 读图 A/B/C(一致) | 用户裁决(独立做出) |
+| Field | DWS understand | DWS agentic | Vision A/B/C (unanimous) | User adjudication (made independently) |
 |---|---|---|---|---|
-| buyer_name | Cumulus-Muskegon - WVIB-FM(错) | SHIYA IFA | **SHIYA IFA** | HD-0016 修正 → **SHIYA IFA** |
-| seller_name | SHIYA IFA(错) | Cumulus-Muskegon - WVIB-FM | **Cumulus-Muskegon - WVIB-FM** | HD-0020 修正 → **Cumulus-Muskegon - WVIB-FM** |
+| buyer_name | Cumulus-Muskegon - WVIB-FM (wrong) | SHIYA IFA | **SHIYA IFA** | HD-0016 corrected → **SHIYA IFA** |
+| seller_name | SHIYA IFA (wrong) | Cumulus-Muskegon - WVIB-FM | **Cumulus-Muskegon - WVIB-FM** | HD-0020 corrected → **Cumulus-Muskegon - WVIB-FM** |
 
-用户在看不到任何机器信号的情况下(纯看整页图)做出的两个修正,
-与读图模型的作答逐字一致;读图门的 warning 指的正是这两个
-被抽反的字段。这是「OCR 受阻文档上读图是唯一幸存的机器信号」的
-最佳演示。但宪章不动:读图门仍是 warning 不是判决 —— 读图相对 DWS
-的独立性过了预注册线(lift 1.29×/1.33× < 1.5,THRESHOLDS §6g),
-但读者自身静默错误 8.6–15.8% 远超 1% 线、弃权 59–61%,所以分歧
-只是「值得看」而非判决。它印证,它提示,它不裁决。
+The user's two corrections, made with no machine signal visible (reading the
+full page only), match the vision models' answers verbatim; the vision
+gate's warnings point at exactly those two swapped fields. This is the best
+demonstration of "on an OCR-blocked document, vision is the only surviving
+machine signal." But the charter does not move: the vision gate is still a
+warning, not a verdict — vision's independence from DWS passed the
+pre-registered bar (lift 1.29×/1.33× < 1.5, THRESHOLDS §6g), but the
+readers' own silent-error rate of 8.6–15.8% far exceeds the 1% line with a
+59–61% abstention rate, so disagreement means "worth a look," not a verdict.
+It corroborates and it prompts; it does not adjudicate.
 
-> 勘误(2026-08-03 晚,保真复核抓出):本节初版写「读图与 DWS 失败模式
-> 相关(非独立,lift 2.40×)」是错的 —— 2.40× 是双模式分歧的 lift,
-> 读图的独立性判据已通过;warning 的真实理由是读者自身错误率与弃权率。
-> 另:表中读者 C(GPT 5.6 SOL)在第六轮因 63.1% 内容出现在别的文档被
-> 整体作废,不进任何判定,此处仅作机制演示。
+> Erratum (2026-08-03 late, caught by the fidelity review): this section
+> first wrote "vision and DWS failure modes are correlated (not independent,
+> lift 2.40×)" — wrong. 2.40× is the lift of the dual-mode disagreement;
+> vision's independence criterion passed. The warning's true reason is the
+> readers' own error and abstention rates. Also: reader C (GPT 5.6 SOL) in
+> the table was wholly voided in round six because 63.1% of its content
+> appeared on other documents; it enters no verdict and is shown here for
+> mechanism demonstration only.
 
-## 读图预填建议层(2026-08-03 晚)
+## The vision pre-fill suggestion layer (2026-08-03 late)
 
-用户提案「需要裁决的默认开读图,读图出问题再交人」的合规版本。
-不能要的一半:读图自动裁决 —— 「读图出问题」没有探测器(读图模型自己
-就是抽取器,第六轮 118 行错位就是某读者自信地错、零自报)。可以要的一半:
-读图默认开,但只建议不裁决 —— 交付不变量守住:每个发出的值要么有机械
-支持,要么有一次人类点击。
+The compliant version of the user's proposal "turn vision on by default for
+slots needing adjudication; hand to a human when vision finds a problem."
+The half you cannot have: vision auto-adjudicating — "vision finds a
+problem" has no detector (a vision model is itself an extractor; round six's
+118 mis-bound rows were some reader confidently wrong with zero
+self-reporting). The half you can have: vision on by default, advising but
+never adjudicating — the delivery invariant holds: every emitted value has
+either mechanical support or one human click.
 
-- **建议层(workbench)**:行内紫色 advisory 块「读图建议:X · n/n 读者一致
-  + [采用建议]」。采用只预填表单(accept 或 correct+修正值+理由预设),
-  提交与署名仍是人;读者分歧时摊开各值不给采用按钮;全弃权如实显示
-  「读图也看不清」。一致性用与双模式门禁同一套 fields.normalise。
-  测试钉死:渲染建议后裁决账本仍为空(预填只是表单状态)。
-- **vision-ingest**:`python3 -m invoiceloop vision --workspace ws/` ——
-  packet 规格由子代理从 vision_eval6.py 逐项抄回(DPI 150 全页、五条纪律
-  prompt 逐字、tsv 列序、ABSTAIN 约定、空=弃权);单文档 API 调用
-  (纪律 5 本来禁拼图);tag D = Claude Sonnet 5,需 ANTHROPIC_API_KEY,
-  缺 key = typed unavailable;断点续跑只追加不重写。
-- **answers6 glob 修复**:VISION_READERS 曾是硬编码 ABC 名单 —— 新读者的
-  tsv 会被 load_vision_answers 漏读、被输入指纹漏哈希(改了作答旧 run
-  照样被重放)。现在按盘上 answers6.*.tsv 全量读、全量哈希。
+- **Suggestion layer (workbench)**: an inline purple advisory block "vision
+  suggests: X · n/n readers agree + [adopt suggestion]". Adopting only
+  pre-fills the form (accept, or correct + corrected value + rationale
+  preset); submitting and signing remain human; when readers disagree the
+  values are laid out with no adopt button; unanimous abstention honestly
+  shows "vision cannot read it either." Agreement uses the same
+  fields.normalise as the dual-mode gate. Test-pinned: after rendering
+  suggestions, the adjudication ledger is still empty (pre-fill is form
+  state only).
+- **vision-ingest**: `python3 -m invoiceloop vision --workspace ws/` — the
+  packet spec copied back item by item from vision_eval6.py by a sub-agent
+  (DPI 150 full page, the five discipline prompts verbatim, tsv column
+  order, the ABSTAIN convention, empty = abstain); one API call per document
+  (discipline 5 forbids stitching anyway); tag D = Claude Sonnet 5, needs
+  ANTHROPIC_API_KEY, missing key = typed unavailable; resumable runs append
+  and never rewrite.
+- **answers6 glob fix**: VISION_READERS was a hard-coded ABC list — a new
+  reader's tsv would be missed by load_vision_answers and left out of the
+  input fingerprint (changed answers, old run still replayed). Now every
+  answers6.*.tsv on disk is read fully and hashed fully.
 
-## 读图生产线打通(2026-08-03 深夜,kimi-k3 现场作答)
+## The vision pipeline goes live (2026-08-03 deep night, kimi-k3 answering on the spot)
 
-凭证通道的坎坷与结论:token-plan 转发纯文本(全模型探测,无一支持
-image input);本地 cliproxy(127.0.0.1:8317)的 kimi-k3 支持图片 ——
-`vision --workspace ws --model kimi-k3` 四份文档全读成功,14 个字段
-诚实弃权,零失败。现场作答的三个名场面:
+Credential-channel saga and conclusion: the token-plan relay is text-only
+(probed all models, none support image input); local cliproxy
+(127.0.0.1:8317)'s kimi-k3 accepts images — `vision --workspace ws --model
+kimi-k3` read all four documents successfully, 14 fields honestly abstained,
+zero failures. Three memorable moments from the live answers:
 
-- 046e0c49 的 buyer/seller:kimi-k3 给出 SHIYA IFA(标签 "Bill To:")与
-  Cumulus-Muskegon - WVIB-FM(标签 "Station:")—— 与用户的修正、
-  与存档三读者,三方独立一致。
-- 00136a27 due_date:**ABSTAIN**,note 写明 "no explicit due date; only
-  Payment Terms: 30 Days" —— 纪律 1(抄,不要算)在运作;而用户当初
-  从开票日+30 天推出 11/30/2020。模型按纪律拒绝推断,人可以合法推理 ——
-  这正是「人的那次点击不能省」的最好注脚。
-- 003cc916 buyer_name:"Harry Huge, Esq.",标签 "For",独立找到。
+- 046e0c49's buyer/seller: kimi-k3 gave SHIYA IFA (label "Bill To:") and
+  Cumulus-Muskegon - WVIB-FM (label "Station:") — three-way independent
+  agreement with the user's corrections and with the archived three readers.
+- 00136a27 due_date: **ABSTAIN**, the note says "no explicit due date; only
+  Payment Terms: 30 Days" — discipline 1 (copy, don't compute) at work;
+  whereas the user originally derived 11/30/2020 from issue date + 30 days.
+  The model refuses to infer per its discipline; a human may legally reason
+  — the best footnote to "that one human click cannot be skipped."
+- 003cc916 buyer_name: "Harry Huge, Esq.", label "For", found independently.
 
-run-0004 起,40/40 行带建议块(1/1 读者,单读者一致不是印证;
-多读者接入后一致/分歧才是信号)。
+From run-0004 on, 40/40 rows carry suggestion blocks (1/1 reader —
+single-reader agreement is not corroboration; with multiple readers,
+agreement/disagreement becomes the signal).

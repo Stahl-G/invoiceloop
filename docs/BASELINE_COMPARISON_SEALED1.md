@@ -1,47 +1,46 @@
-# SEALED-1 基线比较(2026-08-05 执行,封箱集,五方合同与重写后口径一致)
+# SEALED-1 baseline comparison (executed 2026-08-05, sealed set; five-way contract consistent with the rewritten caliber)
 
-评测对象:`runs/sealed1`(drand 封箱 100 份,`docs/SEALED1_RESULTS.md`)。
-复算:`INVOICELOOP_CORPUS=runs/sealed1-workspace python3 scripts/baseline_comparison.py runs/sealed1 runs/sealed1-workspace`
-(零 API,全部从存盘证据;口径与 docs/BASELINE_COMPARISON.md 重写版相同:
-各系统从自己的预测源打分,错值/缺值拆报,固定 tie-break + 同分组范围)。
+Subject: `runs/sealed1` (100 documents sealed via drand, `docs/SEALED1_RESULTS.md`).
+Recompute: `INVOICELOOP_CORPUS=runs/sealed1-workspace python3 scripts/baseline_comparison.py runs/sealed1 runs/sealed1-workspace`
+(zero API, entirely from stored evidence; the caliber is the same as the rewritten docs/BASELINE_COMPARISON.md:
+each system is scored from its own prediction source, wrong/missing values split, fixed tie-break + within-tie-group ranges).
 
-注意:本批 DWS 非空值全部 0.95 档,「置信度阈值」与「有值才放行」完全重合
-(confidence 在本批无区分度,排序比较的对手偏弱 —— 与 SEALED1_RESULTS
-的次终点附注同一条)。
+Note: in this batch every DWS non-empty value sits at the 0.95 level, so "confidence threshold" and "release only if value" coincide exactly
+(confidence has no discriminating power in this batch; the ordering comparison's opponent is on the weak side — the same caveat as the SEALED1_RESULTS secondary-endpoint note).
 
-### 全部记分字段(575 槽)
+### All scored fields (575 slots)
 
-| 系统 | 自动放行覆盖 | 字段静默错误率 | 其中错值 | 其中缺值放行 | 文档静默失败率 | 复核负载 | 偏差路由召回 |
+| System | Auto-release coverage | Field silent error rate | of which wrong values | of which released missing | Document silent failure rate | Review load | Deviation routing recall |
 |---|---|---|---|---|---|---|---|
-| raw DWS(全信) | 100.0% (575/575) | 40.87% | 28.52% | 12.35% | 92.0% (100/100 整单放行) | 0.0% | 0.0% |
-| raw DWS(有值才放行) | 87.7% (504/575) | 32.54% | 32.54% | 0.00% | 86.0% (57/100 整单放行) | 12.3% | 30.2% |
-| 置信度阈值(≥0.95) | 87.7% (504/575) | 32.54% | 32.54% | 0.00% | 86.0% (57/100 整单放行) | 12.3% | 30.2% |
-| 双模式一致 | 66.6% (383/575) | 20.10% | 20.10% | 0.00% | 72.2% (18/100 整单放行) | 33.4% | 67.2% |
-| InvoiceLoop 分诊 | 54.3% (312/575) | 18.27% | 18.27% | 0.00% | 75.0% (12/100 整单放行) | 45.7% | 77.0% |
+| raw DWS (full trust) | 100.0% (575/575) | 40.87% | 28.52% | 12.35% | 92.0% (100/100 whole-document release) | 0.0% | 0.0% |
+| raw DWS (release only if value) | 87.7% (504/575) | 32.54% | 32.54% | 0.00% | 86.0% (57/100 whole-document release) | 12.3% | 30.2% |
+| Confidence threshold (≥0.95) | 87.7% (504/575) | 32.54% | 32.54% | 0.00% | 86.0% (57/100 whole-document release) | 12.3% | 30.2% |
+| Dual-mode agreement | 66.6% (383/575) | 20.10% | 20.10% | 0.00% | 72.2% (18/100 whole-document release) | 33.4% | 67.2% |
+| InvoiceLoop triage | 54.3% (312/575) | 18.27% | 18.27% | 0.00% | 75.0% (12/100 whole-document release) | 45.7% | 77.0% |
 
-### 仅 TIER1 关键字段(281 槽,rubric critical fields)
+### TIER1 critical fields only (281 slots, rubric critical fields)
 
-| 系统 | 自动放行覆盖 | 字段静默错误率 | 其中错值 | 其中缺值放行 | 文档静默失败率 | 复核负载 | 偏差路由召回 |
+| System | Auto-release coverage | Field silent error rate | of which wrong values | of which released missing | Document silent failure rate | Review load | Deviation routing recall |
 |---|---|---|---|---|---|---|---|
-| raw DWS(全信) | 100.0% (281/281) | 30.25% | 19.57% | 10.68% | 51.5% (99/99 整单放行) | 0.0% | 0.0% |
-| raw DWS(有值才放行) | 89.3% (251/281) | 21.91% | 21.91% | 0.00% | 40.7% (81/99 整单放行) | 10.7% | 35.3% |
-| 置信度阈值(≥0.95) | 89.3% (251/281) | 21.91% | 21.91% | 0.00% | 40.7% (81/99 整单放行) | 10.7% | 35.3% |
-| 双模式一致 | 74.4% (209/281) | 12.92% | 12.92% | 0.00% | 26.8% (56/99 整单放行) | 25.6% | 68.2% |
-| InvoiceLoop 分诊 | 55.5% (156/281) | 9.62% | 9.62% | 0.00% | 23.7% (38/99 整单放行) | 44.5% | 83.3% |
+| raw DWS (full trust) | 100.0% (281/281) | 30.25% | 19.57% | 10.68% | 51.5% (99/99 whole-document release) | 0.0% | 0.0% |
+| raw DWS (release only if value) | 89.3% (251/281) | 21.91% | 21.91% | 0.00% | 40.7% (81/99 whole-document release) | 10.7% | 35.3% |
+| Confidence threshold (≥0.95) | 89.3% (251/281) | 21.91% | 21.91% | 0.00% | 40.7% (81/99 whole-document release) | 10.7% | 35.3% |
+| Dual-mode agreement | 74.4% (209/281) | 12.92% | 12.92% | 0.00% | 26.8% (56/99 whole-document release) | 25.6% | 68.2% |
+| InvoiceLoop triage | 55.5% (156/281) | 9.62% | 9.62% | 0.00% | 23.7% (38/99 whole-document release) | 44.5% | 83.3% |
 
-### 同人工预算比较(TIER1 偏差召回,前 b% 槽进人工)
+### Comparison at equal human budget (TIER1 deviation recall, top b% of slots to human)
 
-| 复核预算 | 置信度升序 | InvoiceLoop 分诊序 |
+| Review budget | Confidence ascending | InvoiceLoop triage order |
 |---|---|---|
 | 10% | 29.4% | 31.1% |
 | 20% | 31.8% | 55.6% |
 | 30% | 41.2% | 63.3% |
 | 40% | 49.4% | 77.8% |
-@10% 预算切入 confidence 同分组:固定 tie-break 29.4%;同组内全范围 [29.4%, 32.9%],均匀随机期望 30.2%
-@20% 预算切入 confidence 同分组:固定 tie-break 31.8%;同组内全范围 [29.4%, 65.9%],均匀随机期望 38.0%
-@30% 预算切入 confidence 同分组:固定 tie-break 41.2%;同组内全范围 [29.4%, 98.8%],均匀随机期望 45.7%
-@40% 预算切入 confidence 同分组:固定 tie-break 49.4%;同组内全范围 [29.4%, 100.0%],均匀随机期望 53.4%
-@30% 预算 置信度升序 95% CI(按文档 bootstrap,n=1000): [30.0%, 54.1%]
-@30% 预算 InvoiceLoop 分诊序 95% CI(按文档 bootstrap,n=1000): [54.6%, 74.4%]
+At a 10% budget the cut lands inside a confidence tie group: fixed tie-break 29.4%; full range within the tie group [29.4%, 32.9%], uniform-random expectation 30.2%
+At a 20% budget the cut lands inside a confidence tie group: fixed tie-break 31.8%; full range within the tie group [29.4%, 65.9%], uniform-random expectation 38.0%
+At a 30% budget the cut lands inside a confidence tie group: fixed tie-break 41.2%; full range within the tie group [29.4%, 98.8%], uniform-random expectation 45.7%
+At a 40% budget the cut lands inside a confidence tie group: fixed tie-break 49.4%; full range within the tie group [29.4%, 100.0%], uniform-random expectation 53.4%
+At the 30% budget, confidence ascending 95% CI (bootstrap by document, n=1000): [30.0%, 54.1%]
+At the 30% budget, InvoiceLoop triage order 95% CI (bootstrap by document, n=1000): [54.6%, 74.4%]
 
-口径:探索性分析,非预注册;各系统从自己的预测源打分(raw 存盘响应 / 冻结账本),deviation 不共用;置信度平局用固定 (doc_id, field) tie-break;InvoiceLoop 产品本身不自动放行,本表评估分诊信号的反事实质量。
+Caliber: exploratory analysis, not pre-registered; each system is scored from its own prediction source (stored raw responses / frozen ledger), deviations not shared; confidence ties broken by a fixed (doc_id, field) tie-break; the InvoiceLoop product itself does not auto-release — this table evaluates the counterfactual quality of the triage signal.

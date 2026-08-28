@@ -1,0 +1,22 @@
+{
+  "scanned_on": "2026-08-08",
+  "framework": "vanilla-html",
+  "font_stack": {
+    "existing": "JetBrains Mono in docs/architecture.html",
+    "scope": "independent generated architecture diagram"
+  },
+  "palette": {
+    "existing": "local CSS variables in docs/architecture.html",
+    "scope": "independent generated architecture diagram"
+  },
+  "motion": "motion-cut for the new Newsprint report",
+  "spacing": "new 4pt token scale",
+  "preserve": [
+    "docs/architecture.html"
+  ],
+  "introduce": [
+    "standalone Newsprint tokens",
+    "Stat-Led result narrative",
+    "accessible local speech summary"
+  ]
+}

@@ -1,122 +1,148 @@
-# 复核:`docs/LOOP_GENERALIZATION_2026-08-06.md`(评审方,2026-08-06)
+# Re-review: `docs/LOOP_GENERALIZATION_2026-08-06.md` (reviewer side, 2026-08-06)
 
-被复核 commit:`8aacaa4`。复核方式:独立重跑复算脚本 + 从权威工件重算
-三处争议数 + 逐例调取真值。结论按证据强弱排。
-
----
-
-## 一、成立的部分(复验通过,可以拿去裁决)
-
-| 主张 | 复验方式 | 结果 |
-|---|---|---|
-| 表格全部数字 | 原样跑 `scripts/loop_generalization.py` | **逐行吻合**(63.7/64.4/55.1、88/88/87、3/85、49/272·48/266·49/266) |
-| 88 份从未人工接触 | 名单差集 + 扫全仓所有 `adjudication_ledger.jsonl` | **成立**:12+88=100 零重叠;`runs/sealed1` 裁决 0 条;`hitl-sealed` 的 12 份裁决与 88 份零交集;`evo-workspace` 零裁决 |
-| 复核负载口径 | 读脚本 line 60 | 用的是 `route not in (auto_accept, auto_absent)` —— **正确的那个定义**(与 `deliver.py:113` 一致),没有把 auto_absent 算成人工 |
-| 角色声明(演化集非封箱集) | 对 `SEALED1_RESULTS.md` 限定 4 | 一致,`SEALED-1` 早已自我降级为回归/演化集 |
-
-**我预设的一个攻击点被证伪,如实登记**:脚本第 29–32 行在建 `facts` 时按
-HAR-0004 的 absent 字段过滤了 `extraction_present` 阻断发现,而 `facts`
-只建一次、三个策略共用 —— 我怀疑基线因此被"预先减负",优势被稀释或污染。
-实测两种事实基下 HAR-0001 **完全相同**(561/880,触达 88/88)。
-**基线是干净的,这条攻击不成立。**
+Reviewed commit: `8aacaa4`. Method: independently re-ran the recomputation script +
+recomputed the three disputed numbers from the authoritative artifacts + pulled the
+ground truth case by case. Conclusions are ordered by strength of evidence.
 
 ---
 
-## 二、必须改的三处(都不影响结论方向,但都是措辞与事实不符)
+## One: what holds (re-verified; usable for adjudication)
 
-### 1. 「两个 cohort 均由 mine 独立发现」—— 对一半
-
-文档 §方法:「seller_vat_id、total_vat,**均由 mine 从裁决事件独立发现**」。
-**仓库自己的晋升记录反驳了它**:
-
-| | 晋升记录里的理由原文 | 实际来源 |
+| Claim | How re-verified | Result |
 |---|---|---|
-| `seller_vat_id`(PROM-0002) | 「HITL 实测(**run-0002 报告**):seller_vat_id 12 槽 = 9 确认缺失 + 1 不适用……」 | **人读报告手写** |
-| `total_vat`(PROM-0003) | 「**挖掘臂独立发现(mine absence_candidates)**:total_vat 9/9 确认缺失,share 100%」 | **mine 产出** |
+| All numbers in the table | Ran `scripts/loop_generalization.py` as-is | **Matches line by line** (63.7/64.4/55.1, 88/88/87, 3/85, 49/272 · 48/266 · 49/266) |
+| The 88 documents were never touched by humans | Set difference of the lists + scanned every `adjudication_ledger.jsonl` in the repo | **Holds**: 12+88=100 with zero overlap; `runs/sealed1` has 0 adjudications; the 12 documents with adjudications in `hitl-sealed` have zero intersection with the 88; `evo-workspace` has zero adjudications |
+| The review-load definition | Read script line 60 | It uses `route not in (auto_accept, auto_absent)` — **the correct definition** (consistent with `deliver.py:113`); auto_absent is not counted as human |
+| The role statement (evolution set, not a sealed set) | Against `SEALED1_RESULTS.md` qualification 4 | Consistent; `SEALED-1` had already demoted itself to a regression/evolution set |
 
-补充证据:本评审在心码改动落地**之前**当场跑过 `improve.mine`,当时
-`actionable 0 / qualified_for_mining 0 / absence_candidates []` ——
-PROM-0002 成文之时挖掘臂产出为零,它不可能是 mine 发现的。
+**One attack I had preconceived was falsified; registered as-is**: script lines
+29–32 filter out `extraction_present` blocking findings according to HAR-0004's
+absent fields when building `facts`, and `facts` is built once and shared by all
+three policies — I suspected the baseline was thereby "pre-lightened", diluting or
+contaminating the advantage. Measured under both fact bases, HAR-0001 is **exactly
+identical** (561/880, reaching 88/88). **The baseline is clean; this attack does
+not hold.**
 
-**这条要紧,因为它正是 `FEEDBACK_PLANE_2026-08-06.md` §6 立下的第一条
-验收判据**(「让挖掘臂自己找出一条人已知的规则」)。准确的说法是:
+---
 
-> 一条由人从复核报告读出(PROM-0002),一条由挖掘臂独立发现
-> (PROM-0003,total_vat 9/9)—— 挖掘臂**首次点火**,验收判据达成。
+## Two: three places that must change (none affects the direction of the conclusion, but each is wording that contradicts the facts)
 
-这个说法比原文弱一点,但它是真的,而且「首次点火」本身就是个好消息,
-不需要把另一条也算上。
+### 1. "Both cohorts were independently discovered by mine" — half right
 
-### 2. 三例静默缺席错的性质写错了
+Document §method: "seller_vat_id, total_vat, **both independently discovered by
+mine from adjudication events**". **The repository's own promotion records refute
+that**:
 
-文档 §读法 3:「3 例含**一个真欧盟 VAT 号**(DWS 漏抽),**两个 EIN 格式号**」。
-逐例调真值:
-
-| 文档 | 字段 | DocILE 真值 |
+| | Verbatim rationale in the promotion record | Actual source |
 |---|---|---|
-| `5da5a0e2…` | seller_vat_id | `94-6036494` —— **EIN 格式**(XX-XXXXXXX),不是欧盟 VAT 号 |
+| `seller_vat_id` (PROM-0002) | "HITL in practice (**run-0002 report**): seller_vat_id 12 slots = 9 confirmed absent + 1 not applicable…" | **hand-written by a human reading the report** |
+| `total_vat` (PROM-0003) | "**independently discovered by the mining arm (mine absence_candidates)**: total_vat 9/9 confirmed absent, share 100%" | **mine output** |
+
+Supporting evidence: this review ran `improve.mine` live **before** the reason-code
+change landed; at the time it gave `actionable 0 / qualified_for_mining 0 /
+absence_candidates []` — when PROM-0002 was written, the mining arm's output was
+zero; it cannot have been a mine discovery.
+
+**This one matters, because it is precisely the first acceptance criterion set by
+`FEEDBACK_PLANE_2026-08-06.md` §6** ("have the mining arm find, on its own, a rule
+already known to humans"). The accurate statement is:
+
+> One was read out of the review report by a human (PROM-0002), one was
+> independently discovered by the mining arm (PROM-0003, total_vat 9/9) — the
+> mining arm's **first ignition**; the acceptance criterion is met.
+
+This statement is a bit weaker than the original, but it is true, and "first
+ignition" is good news on its own; there is no need to count the other one too.
+
+### 2. The nature of the three silent-absence errors is stated wrong
+
+Document §reading 3: "the 3 cases include **one genuine EU VAT number** (DWS
+missed the extraction) and **two EIN-format numbers**". Ground truth pulled case
+by case:
+
+| Document | Field | DocILE ground truth |
+|---|---|---|
+| `5da5a0e2…` | seller_vat_id | `94-6036494` — **EIN format** (XX-XXXXXXX), not an EU VAT number |
 | `a1481167…` | total_vat | `$0.00 USD` |
 | `db2e81c7…` | total_vat | `$0.00 USD` |
 
-**两处都反了**:一个 EIN、两个 `$0.00`,而不是一个欧盟 VAT、两个 EIN。
+**Both halves are reversed**: one EIN and two `$0.00`, not one EU VAT and two EINs.
 
-而且改正后性质完全不同,这才是该写进裁决材料的东西:
+And once corrected, the nature is completely different — this is what should go
+into the adjudication material:
 
-- 两例是 **`total_vat = $0.00`** —— 标注说"税额为零",策略说"缺席"。
-  「明写 $0.00 的税额行算不算缺席」是**口径争议**,按宪章五应当显式保留、
-  进人工裁决,**不进错误率**;它与 `matrix.py` 里已建模的
-  纸面 Gross vs EN 16931 是同一族问题;
-- 更要命的是 **`ARCHITECTURE.md §8b` 的已知边界原文就是讲 `$0.00`**:
-  「`$0.00` → `['0','00']`……**零税发票在真实分布里很常见**,
-  换语料时这个失效模式会放大」。三例里有两例正落在自己已登记的边界上。
+- Two cases are **`total_vat = $0.00`** — the annotation says "the tax amount is
+  zero" while the policy says "absent". "Does a tax line explicitly printed as
+  $0.00 count as absent" is a **measurement-convention dispute**; per charter rule
+  five it should stay explicit and go to human adjudication, **not into the error
+  rate**; it is the same family of problems as the paper Gross vs EN 16931 case
+  already modeled in `matrix.py`;
+- Worse, **the known boundary in `ARCHITECTURE.md §8b` is about exactly `$0.00`**:
+  "`$0.00` → `['0','00']`… **zero-tax invoices are common in the real
+  distribution**; this failure mode will amplify when the corpus changes". Two of
+  the three cases land right on a boundary we had already registered ourselves.
 
-按口径拆报会更诚实:**真外部漏标 1/85 = 1.2%,口径争议 2 例另计**;
-或者保留 3.5% 但注明其中两例是争议而非错误。两种都能站住,
-**当前这种「一个欧盟 VAT + 两个 EIN」的写法不能站**。
+Splitting the report by convention would be more honest: **genuine external
+labeling misses 1/85 = 1.2%, with the 2 convention-dispute cases counted
+separately**; or keep 3.5% but note that two of the cases are disputes, not errors.
+Either stands; **the current "one EU VAT + two EINs" phrasing does not stand**.
 
-### 3. 「与全 100 份独立估计的 3.4% 一致」—— 没有出处
+### 3. "Consistent with the 3.4% independently estimated on all 100" — no source
 
-`3.4%` 在全仓 `docs/` 里只出现在这一句里,没有任何文件给出它的算法或
-分母。这与 `FIELD_COVERAGE.md` 那次是同一类问题(为满足外部审视而写的
-数字反而不可复算)。**要么给出复算路径,要么删掉这半句** ——
-它对结论不承重,删掉零损失。
-
----
-
-## 三、一个定义缺口(不是错,但会被人拿去对撞)
-
-`55.1%` 的分子是 `route != auto_accept ∧ != auto_absent`(deliver 口径)。
-而产品里 `matrix.py:280` 仍是 `route != "auto_accept"`,**把 auto_absent
-算作需裁决**;`workbench.py` 里 `auto_absent` 出现次数为 **0** ——
-复核队列照旧把这些槽摆给人看。
-
-后果:同一个 run,分析文档说 55.1%,工作台会显示更高的数;两个数都"对",
-定义不同。建议:
-
-1. 文档里明写一句用的是哪个定义;
-2. 产品侧把三处统一,并且**分开命名**(`human_queue` / `machine_decided`),
-   这是 R0 那次「41% 不是 R0」的同一条教训。**在统一之前,
-   任何"人工负载从 X 降到 Y"的对外叙事都可能踩到自己。**
+`3.4%` appears in exactly one sentence in `docs/` across the whole repo; no file
+gives its algorithm or denominator. This is the same class of problem as the
+FIELD_COVERAGE.md incident (numbers written to satisfy external scrutiny that
+cannot in fact be recomputed). **Either give the recomputation path or delete this
+half-sentence** — it carries no weight for the conclusion; deleting it costs
+nothing.
 
 ---
 
-## 四、两个可以补进去的正面事实(文档漏了)
+## Three: one definitional gap (not an error, but people will use it for cross-examination)
 
-1. **`due_date` 也被 mine 判为 7/7、share 100% 的缺席候选,但没有被晋升。**
-   这是「候选是线索不是授权」最好的实证 —— 人筛掉了一条机器提的建议。
-   写进去比不写强。
-2. **撤销信号已在真实数据上首次命中**:`mine_report.overturned_auto_accepts`
-   有一条 —— `8c2273ca` 的 `seller_vat_id`,`auto_accept` 被人 `reject`,
-   心码 `WRONG_FIELD_MAPPING`,原话「美国发票的 Fed. I.D. 是 EIN 不是 VAT 号」。
-   收紧方向的机制不是设计稿,它响过了。
+The numerator of `55.1%` is `route != auto_accept ∧ != auto_absent` (the deliver
+definition). But in the product, `matrix.py:280` still reads
+`route != "auto_accept"`, **counting auto_absent as needing adjudication**; in
+`workbench.py` the count of `auto_absent` occurrences is **0** — the review queue
+still puts these slots in front of humans.
+
+Consequence: for the same run, the analysis document says 55.1% while the
+workbench will show a higher number; both numbers are "right" under different
+definitions. Recommendations:
+
+1. State explicitly in the document which definition it uses;
+2. On the product side, unify the three places, and **name them separately**
+   (`human_queue` / `machine_decided`) — this is the same lesson as the R0
+   incident where "41% was not R0". **Until they are unified, any outward-facing
+   narrative of the form "human load dropped from X to Y" can step on its own
+   rake.**
 
 ---
 
-## 五、裁决建议
+## Four: two positive facts that could be added (the document omits them)
 
-**主结论(同分布泛化成立,−9.3pp,代价实测)可以送裁决**,证据链我复验通过。
-送之前把 §二的三处改掉 —— 它们都不改变结论,但每一处都是外部裁决者
-动手一查就能发现的,而这个项目全部的说服力来自"查得越细越站得住"。
+1. **`due_date` was also judged by mine to be an absence candidate at 7/7, share
+   100%, but was not promoted.** This is the best live evidence that "a candidate
+   is a lead, not an authorization" — a human screened out one machine-suggested
+   rule. Better written in than left out.
+2. **The overturn signal has hit on real data for the first time**:
+   `mine_report.overturned_auto_accepts` has one entry — `8c2273ca`'s
+   `seller_vat_id`, an `auto_accept` rejected by a human, reason code
+   `WRONG_FIELD_MAPPING`, verbatim: "the Fed. I.D. on a US invoice is an EIN, not
+   a VAT number". The tightening-direction mechanism is not a design sketch; it
+   has rung.
 
-文档自己预判的攻击方向(同分布 vs 跨分布)是对的,也已如实写明,
-这一条不用改。
+---
+
+## Five: adjudication recommendation
+
+**The main conclusion (same-distribution generalization holds, −9.3pp, cost
+measured) can go to adjudication**; I re-verified the evidence chain. Before
+sending it, fix the three places in §Two — none of them changes the conclusion,
+but each is something an external adjudicator would find with one hands-on check,
+and this project's entire persuasive power comes from "the closer you look, the
+better it stands".
+
+The attack direction the document anticipated itself (same-distribution vs
+cross-distribution) is right and is already honestly stated; that one needs no
+change.

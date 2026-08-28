@@ -1,71 +1,95 @@
-# 81/100 评审(高级模型裁决)的应答(2026-08-05)
+# Response to the 81/100 review (senior-model adjudication) (2026-08-05)
 
-评 commit b5fe7a0,结论 81/100 CONDITIONAL PASS + 一个 P0 语义完整性漏洞
-+ improve 设计 HOLD-RECUT。这轮评审在副本上实跑了攻击链,不是纸面评审。
+Reviewed commit b5fe7a0, verdict 81/100 CONDITIONAL PASS + one P0 semantic-integrity
+hole + HOLD-RECUT on the improve design. This review actually ran the attack chain
+on a copy; it was not a paper review.
 
-## P0-1:投影被当成权威值(评审实测攻击,全部属实)
+## P0-1: the projection treated as the authoritative value (review's live attack; all confirmed real)
 
-攻击:只改 support_matrix.json(不在快照成分内)→ accept → deliverable
-输出污染值 → 三层 verify 全过。我们复现确认后按四层修:
+Attack: modify only support_matrix.json (not a snapshot component) → accept → the
+deliverable emits the poisoned value → all three verify layers pass. After we
+reproduced and confirmed it, we fixed it in four layers:
 
-1. **deliver.py 值源切换到冻结账本**:accept 的值从 field_ledger 的 claim 取,
-   matrix 只提供行集与 requires 标记;accept 指向不存在的 claim → 整单 blocked;
-2. **append 投影↔权威交叉检查**:matrix 同槽行值与冻结声明不符 → 拒绝裁决
-   (「在被动过的证据上不记裁决」原则的延伸);
-3. **verify 第 4 层(语义层)**:包内投影值与权威交叉比对 —— matrix 行值 vs
-   冻结声明、deliverable 接受值 vs 声明、修正值 vs 裁决、拒绝/缺失槽不许带值;
-   攻击者重算 MANIFEST 也过不了这层(回归测试钉死:members/snapshot 全过、
-   semantics 抓);
-4. **回归测试** `tests/test_projection_integrity.py`:三层防线各一条 +
-   完整攻击链一条,7 条。
+1. **deliver.py value source switched to the frozen ledger**: accepted values come
+   from the field_ledger claim; the matrix only supplies the row set and the
+   requires flag; an accept pointing at a nonexistent claim → the whole document
+   is blocked;
+2. **append cross-checks projection ↔ authority**: a matrix row value that
+   disagrees with the frozen claim in the same slot → the adjudication is refused
+   (an extension of the principle "no adjudication is recorded on evidence that
+   has been touched");
+3. **verify layer 4 (semantics layer)**: in-bundle projection values cross-checked
+   against authority — matrix row values vs frozen claims, deliverable accepted
+   values vs claims, correction values vs adjudications, rejected/missing slots
+   must not carry values; an attacker who recomputes the MANIFEST still cannot
+   pass this layer (pinned by a regression test: members/snapshot both pass,
+   semantics catches it);
+4. **Regression tests** `tests/test_projection_integrity.py`: one per defense
+   layer + one full attack chain, 7 tests.
 
-## P0-2:决策语义拆分(已实现)
+## P0-2: decision-semantics split (implemented)
 
-`accept`(必须带 claim_id)/ `confirm_absent` / `not_applicable` / `reject` /
-`correct` / `abstain`。无 claim 的 legacy accept 投影为 confirmed_absent 并标
-legacy;workbench 表单按槽位形状出不同决策集(有声明:accept/reject/correct/
-abstain;无声明:confirm_absent/correct/not_applicable/abstain)。
-「确认没有」与「人看不懂」从此是两个信号 —— 对任何未来反馈循环都关键。
+`accept` (must carry claim_id) / `confirm_absent` / `not_applicable` / `reject` /
+`correct` / `abstain`. Legacy accept projections without a claim map to
+confirmed_absent and are flagged legacy; the workbench form offers different
+decision sets depending on slot shape (with a claim: accept/reject/correct/abstain;
+without a claim: confirm_absent/correct/not_applicable/abstain). "Confirmed absent"
+and "human could not tell" are two distinct signals from now on — critical for any
+future feedback loop.
 
-文档级阻断的放行:不新增 document_override 决策类型(裁决对象是槽位),
-改为独立状态 `released_with_caveats` —— 与正常 released 分开计数,
-caveats 列明哪些机检没跑。披露不变,状态不再混。
+Releasing document-level blockings: no new document_override decision type is added
+(the object of adjudication is the slot); instead a separate state
+`released_with_caveats` — counted separately from normal released, with caveats
+listing which machine checks did not run. Disclosure unchanged; the states no
+longer mix.
 
-## P1:基线扩充与数字收敛
+## P1: baseline expansion and number convergence
 
-- **更正事实错误**:「DWS 不给字段级置信度」是错的 —— `output.metadata.
-  <field>.confidence` 存在(0.95/0.4,groundingScore,no-logprobs)。
-  BASELINE_COMPARISON.md 已更正并留痕;
-- **新增置信度阈值基线**(≥0.95):TIER1 静默错误 16.10%,召回 55.8%;
-- **新增同人工预算比较 + 按文档 bootstrap CI**:诚实结果 —— 分诊序与
-  置信度升序在 recall@budget 上**打平**(CI 完全重叠)。文档读法已收敛:
-  分诊的差异化在操作点安全性与可验证性,不在排序质量;
-- **真实人工负载**:deliverable summary 新增 `decision_load_for_release`
-  (requires_adjudication ∪ TIER1),demo 实测 0.83 —— 与反事实分诊负载
-  0.42 并排报告,不藏;
-- bootstrap 修了一个自发现的 bug:按文档重采样后必须按 queue_idx 重排,
-  否则 CI 不含点估计(已修,测试钉死)。
+- **Correcting a factual error**: "DWS gives no field-level confidence" was wrong —
+  `output.metadata.<field>.confidence` exists (0.95/0.4, groundingScore,
+  no-logprobs). BASELINE_COMPARISON.md has been corrected with the change left on
+  record;
+- **New confidence-threshold baseline** (≥0.95): TIER1 silent errors 16.10%,
+  recall 55.8%;
+- **New same-human-budget comparison + per-document bootstrap CI**: the honest
+  result — triage order and confidence-ascending order **tie** on recall@budget
+  (CIs fully overlap). The document's reading has converged: triage's
+  differentiation lies in operating-point safety and verifiability, not in ranking
+  quality;
+- **Real human load**: deliverable summary adds `decision_load_for_release`
+  (requires_adjudication ∪ TIER1), measured 0.83 on the demo — reported side by
+  side with the counterfactual triage load 0.42, not hidden;
+- Fixed one self-discovered bootstrap bug: after per-document resampling you must
+  re-sort by queue_idx, otherwise the CI excludes the point estimate (fixed and
+  pinned by a test).
 
-## Step 6:执行身份进指纹
+## Step 6: execution identity enters the fingerprint
 
-`build_input_manifest` 现在把 `code_revision`(git HEAD)纳入指纹:
-代码/策略变了,同输入不再重放旧 run,自动开新一代。非 git 环境记 null 并
-如实披露。docs-only 提交也会换代 —— 保守方向,宁可新 run。
+`build_input_manifest` now folds `code_revision` (git HEAD) into the fingerprint:
+if the code/policy changes, the same input no longer replays the old run and a new
+generation opens automatically. Non-git environments record null and disclose it
+honestly. Docs-only commits also turn the generation — the conservative direction;
+better a new run.
 
-## improve 设计:按用户指示暂缓
+## improve design: deferred per the user's instruction
 
-用户决定 improve 层需要更多讨论,本轮不重写设计文档。评审的 HOLD-RECUT
-意见(Tax AI 前提误读、可编辑面其实存在、fitness function 与提案不匹配、
-sealed final eval)已完整保留在评审记录里,待讨论后回写。
+The user decided the improve layer needs more discussion; this round does not
+rewrite the design document. The review's HOLD-RECUT points (the Tax AI premise
+misread, the editable surface does exist, the fitness function mismatches the
+proposal, sealed final eval) are preserved in full in the review record, to be
+written back after discussion.
 
-## 评审指出、我们评估后不动的
+## Pointed out by the review, evaluated by us, left unchanged
 
-- **matrix 整体进快照成分**:不进。matrix 是可重建投影,架构上快照只绑权威;
-  正确修法是值源归权威 + 语义层交叉验证(已完成),不是把投影抬成权威。
-- **verify 全量重建 matrix/deliverable 做字节比对**:暂不。语义层已覆盖
-  值级一致性;全量重建需要 bundle 内重跑矩阵构建(含 understand 响应解析),
-  复杂度与收益不匹配,列入 backlog。
+- **Fold the whole matrix into snapshot components**: no. The matrix is a
+  rebuildable projection; architecturally the snapshot binds only authority. The
+  correct fix is a value source rooted in authority + semantic-layer
+  cross-validation (done), not promoting the projection to authority.
+- **verify fully rebuilds matrix/deliverable for byte comparison**: not for now.
+  The semantics layer already covers value-level consistency; a full rebuild
+  requires re-running matrix construction inside the bundle (including understand
+  response parsing); complexity and payoff do not match; backlog item.
 
-## 数字
+## Numbers
 
-本地 309 passed;fresh-venv 259 passed + 41 skipped(语料守卫)。
+309 passed locally; fresh-venv 259 passed + 41 skipped (corpus guard).

@@ -1,210 +1,226 @@
-# InvoiceLoop Improve Layer v0.2 版本设计
+# InvoiceLoop Improve Layer v0.2 Edition Design
 
-**副标题：Evidence-Bound, Eval-Gated, Human-Promoted Harness Improvement**  
-**状态：建议冻结为实施基线**  
-**评估仓库：`b5fe7a0368ab7ef473edf8faebf061daa1ea847c`**  
-**日期：2026-08-05**
+**Subtitle: Evidence-Bound, Eval-Gated, Human-Promoted Harness Improvement**  
+**Status: proposed to freeze as the implementation baseline**  
+**Evaluation repo: `b5fe7a0368ab7ef473edf8faebf061daa1ea847c`**  
+**Date: 2026-08-05**
 
 ---
 
-## 0. 裁决摘要
+## 0. Adjudication summary
 
-### 0.1 选择的方案
+### 0.1 The chosen approach
 
-选择 **Guarded Improvement Control Plane（受控改进控制面）**：
+We choose the **Guarded Improvement Control Plane** (a controlled plane for guarded
+improvement):
 
 ```text
-真实使用与人工复核
-→ 结构化反馈事件
-→ 重复失败/无效复核模式
-→ 有边界的 Harness Candidate
+real usage and human review
+→ structured feedback events
+→ repeated failures / ineffective-review patterns
+→ bounded Harness Candidate
 → Targeted Eval + Regression Eval + Promotion Eval
-→ 人类批准晋升
-→ 新 Harness 版本影响未来 run
+→ human-approved promotion
+→ new Harness version affects future runs
 ```
 
-它既不是：
+It is none of these:
 
-- “人工改完当前发票就算闭环”；
-- “按历史修正率重新排个序”；
-- “agent 自动修改整个 repo 并直接上线”；
-- “用同一批 DocILE 反复调到好看”。
+- “humans finish fixing the current invoice and that counts as closing the loop”;
+- “re-sorting by historical correction rate”;
+- “an agent auto-edits the whole repo and ships it directly”;
+- “tuning repeatedly on the same batch of DocILE until it looks good”.
 
-### 0.2 产品主张
+### 0.2 Product claim
 
 > **InvoiceLoop starts conservative, then turns every reviewed invoice into evidence for safely reviewing fewer fields next time.**
 
-中文：
+In Chinese:
 
-> **InvoiceLoop 从保守策略开始，把每一次人工复核变成下一版 Harness 的评测证据，在不增加关键静默错误的前提下逐步减少人工复核。**
+> **InvoiceLoop starts from a conservative policy, turning every human review into evaluation evidence for the next Harness version, gradually reducing human review without increasing critical silent errors.**
 
-### 0.3 核心实验
+### 0.3 The core experiment
 
-以修正后的真实 R0 基线为起点，目标把：
+Starting from the corrected, real R0 baseline, the goal is to take:
 
 ```text
 TIER1 mandatory field review load
-约 41% → ≤30%
+approx. 41% → ≤30%
 ```
 
-同时满足：
+while also satisfying:
 
 ```text
-关键字段广义静默风险不劣于 R0
-关键错误路由召回不显著下降
-实际 reviewer minutes per invoice 下降
-审计与绑定不变量全部通过
+critical-field generalized silent risk no worse than R0
+critical-error routing recall does not significantly decrease
+actual reviewer minutes per invoice decrease
+audit and binding invariants all pass
 ```
 
-**30% 是产品目标，不是自然科学常数。** 真正的研究结论是风险—覆盖前沿向左下移动，而不是恰好跨过 30%。
+**30% is a product goal, not a constant of natural science.** The real research
+conclusion is that the risk–coverage frontier moves down and to the left, not that it
+happens to cross 30%.
 
-### 0.4 对外命名
+### 0.4 External naming
 
-实施前和只有开发集结果时：
+Before implementation, and while only development-set results exist:
 
 > feedback-driven, eval-gated harness improvement
 
-完成至少一次“反馈→候选→未见数据资格评测→人类晋升→未来 run 使用新版本”后：
+After completing at least one round of “feedback → candidate → qualification eval on
+unseen data → human promotion → future runs use the new version”:
 
 > human-steered self-improving harness
 
-没有 fresh sealed evaluation 前，禁止宣称 autonomous self-improvement。
+Without a fresh sealed evaluation, claiming autonomous self-improvement is forbidden.
 
 ---
 
-# 1. 当前设计为什么必须重切
+# 1. Why the current design must be re-cut
 
-现有 `docs/IMPROVE_LOOP_DESIGN.md` 有正确纪律，但第一刀不能支撑目标。
+The existing `docs/IMPROVE_LOOP_DESIGN.md` has the right discipline, but its first cut
+cannot support the goal.
 
-## 1.1 正确的部分
+## 1.1 The parts that are correct
 
-现有设计已经坚持：
+The existing design already insists on:
 
-- 提案不是权威；
-- 不自动改门禁，不自动上线；
-- 人工裁决是重要反馈来源；
-- 需要风险—覆盖评测；
-- 不能反复使用同一留出集；
-- 不能把读图模型作答当真值。
+- proposals are not authority;
+- no automatic gate changes, no automatic releases;
+- human adjudication is an important feedback source;
+- risk–coverage evaluation is required;
+- the same held-out set cannot be used repeatedly;
+- reading-model answers cannot be treated as ground truth.
 
-这些全部保留。
+All of these are kept.
 
-## 1.2 必须推翻的部分
+## 1.2 What must be overturned
 
-### A. “Tax AI 依赖完备自动神谕”并不准确
+### A. “Tax AI depends on a complete automated oracle” is not accurate
 
-Tax AI 的关键不是完备的税务 reference implementation，而是：
+The key to Tax AI is not a complete tax reference implementation, but:
 
 ```text
-专家修正
-→ 完整产品 trace
-→ 区分真实失败与工作流噪声
-→ 重复模式变成 targeted eval
-→ 有边界的工程任务
-→ targeted + regression 验证
-→ 人类负责架构与发布
+expert corrections
+→ complete product traces
+→ distinguishing real failures from workflow noise
+→ repeated patterns become targeted eval
+→ bounded engineering tasks
+→ targeted + regression validation
+→ humans own architecture and release
 ```
 
-InvoiceLoop 已经拥有 Tax AI 所需的大部分 trace 地基，缺的是从裁决到 finding、eval 和候选版本的后半环。
+InvoiceLoop already has most of the trace foundation Tax AI needs; what is missing is
+the second half of the loop from adjudications to findings, evals, and candidate
+versions.
 
-### B. “DWS 是黑盒，所以没有可学旋钮”不成立
+### B. “DWS is a black box, so there are no learnable knobs” does not hold
 
-即使不能修改 DWS 权重，InvoiceLoop 仍可改进：
+Even without being able to modify DWS weights, InvoiceLoop can still improve:
 
-- extraction schema；
-- routing policy；
-- warning / blocker 分类；
-- required / absent / not-applicable 语义；
-- understand→agentic 升级策略；
-- review priority；
-- field playbook；
-- normalization 和 mapping；
-- 文档类型的 policy profile。
+- extraction schema;
+- routing policy;
+- warning / blocker classification;
+- required / absent / not-applicable semantics;
+- understand→agentic escalation strategy;
+- review priority;
+- field playbook;
+- normalization and mapping;
+- policy profiles per document type.
 
-这些都是 Harness，而不是模型权重。
+These are all Harness, not model weights.
 
-### C. “同档内重排”无法把 41% 降到 30%
+### C. “Reordering within a band” cannot bring 41% down to 30%
 
-如果 `requires_adjudication` 集合不变，重排只改变人看的先后：
+If the `requires_adjudication` set is unchanged, reordering only changes the order a
+human looks in:
 
 ```text
-review load 不变
-automation coverage 不变
-silent failure 不变
+review load unchanged
+automation coverage unchanged
+silent failure unchanged
 ```
 
-它只适合优化：
+It is only suited to optimizing:
 
 ```text
-critical error recall@固定人工预算
+critical error recall@fixed human budget
 precision@k
 time-to-first-critical-error
 reviewer minutes to find 80% critical errors
 ```
 
-所以第一刀必须允许一个**受限的 routing policy candidate**改变哪些软风险进入人工，同时冻结硬性 blocker。
+So the first cut must allow a **restricted routing policy candidate** to change which
+soft risks reach humans, while hard blockers stay frozen.
 
-### D. 只统计人工裁决存在严重选择偏差
+### D. Counting only human adjudications has severe selection bias
 
-当前策略决定了哪些字段能被人看到。若只看已复核字段：
+The current policy determines which fields a human can see. If we look only at reviewed
+fields:
 
-- 被自动接受的区域没有标签；
-- “从未被纠正”可能只是“从未被抽查”；
-- 系统会错误地学习当前策略的盲点。
+- auto-accepted regions carry no labels;
+- “never corrected” may simply mean “never sampled”;
+- the system would wrongly learn the current policy's blind spots.
 
-因此必须加入随机/分层 QA 抽查，并记录每个字段被复核的概率。
+Therefore randomized/stratified QA spot-checks must be added, and the probability of
+each field being reviewed must be recorded.
 
-### E. Harness 身份尚未进入执行身份
+### E. Harness identity has not yet entered execution identity
 
-当前 `snapshot.build_input_manifest()` 的指纹主要绑定 PDF、OCR、DWS 响应、schema 和 vision 输入，但未来 routing / escalation policy 改变时，同一输入必须形成不同 execution identity。
+The fingerprint of the current `snapshot.build_input_manifest()` mainly binds PDFs, OCR,
+DWS responses, schema, and vision inputs, but when routing / escalation policies change
+in the future, the same input must form a different execution identity.
 
-否则新 Harness 可能重放旧 run，无法证明哪一版策略处理了哪张发票。
-
----
-
-# 2. 四条不可妥协的设计公理
-
-## 公理一：Feedback is evidence, not permission
-
-一条人工修正是证据，不是自动修改生产策略的授权。
-
-## 公理二：Proposal is not policy
-
-agent 只能生成 candidate；active harness 只能由显式 promotion record 指定。
-
-## 公理三：Evaluator stays outside the loop
-
-候选不能修改或读取：
-
-- 私有 ground truth；
-- sealed eval 集；
-- eval scorer；
-- 关键字段定义；
-- safety gate；
-- promotion rules。
-
-## 公理四：Review reduction is not improvement unless risk is preserved
-
-任何通过以下手段降低人工率的候选都算失败：
-
-- 把错误改叫 `not_applicable`；
-- 删除字段；
-- 放宽 evaluator normalization；
-- 把 warning 隐藏；
-- 对所有文档多跑昂贵模型且不报成本；
-- 只在开发集好看；
-- 牺牲 TIER1 静默错误来换覆盖率。
+Otherwise a new Harness could replay an old run, with no way to prove which policy
+version handled which invoice.
 
 ---
 
-# 3. 软件总架构
+# 2. Four non-negotiable design axioms
+
+## Axiom One: Feedback is evidence, not permission
+
+A human correction is evidence, not authorization to automatically modify production
+policy.
+
+## Axiom Two: Proposal is not policy
+
+The agent can only generate candidates; the active harness can only be designated by an
+explicit promotion record.
+
+## Axiom Three: Evaluator stays outside the loop
+
+Candidates must not modify or read:
+
+- private ground truth;
+- sealed eval sets;
+- the eval scorer;
+- critical-field definitions;
+- the safety gate;
+- promotion rules.
+
+## Axiom Four: Review reduction is not improvement unless risk is preserved
+
+Any candidate that lowers the human rate through the following means counts as failed:
+
+- renaming errors as `not_applicable`;
+- deleting fields;
+- loosening evaluator normalization;
+- hiding warnings;
+- running expensive models on all documents without reporting cost;
+- looking good only on the development set;
+- trading TIER1 silent errors for coverage.
+
+---
+
+# 3. Overall software architecture
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
 │                      EVALUATION AUTHORITY                    │
 │ private labels · frozen scorers · sealed sets · promotion   │
 │ rules · integrity tests                                     │
-│              （只读候选，不可被候选修改）                    │
+│ (read-only to candidates; cannot be modified by candidates)  │
 └──────────────────────────┬───────────────────────────────────┘
                            │ qualification result
                            ▼
@@ -235,13 +251,13 @@ agent 只能生成 candidate；active harness 只能由显式 promotion record �
 │ raw responses · artifact registry · evidence spans · field  │
 │ ledger · review snapshot · adjudication ledger · bundle     │
 │ verifier                                                    │
-│                   （Improve 永远只读）                        │
+│                (Improve is always read-only)                 │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 ## 3.1 Trust Kernel
 
-保留并强化现有：
+Keep and strengthen what exists:
 
 - `input_manifest.json`
 - `artifact_registry.json`
@@ -252,23 +268,23 @@ agent 只能生成 candidate；active harness 只能由显式 promotion record �
 - `adjudication_ledger.jsonl`
 - bundle manifest / verifier
 
-Improve Layer 对以上内容只有读取权。
+The Improve Layer has read-only access to all of the above.
 
 ## 3.2 Runtime Plane
 
-Runtime 使用一个已晋升 Harness 版本，生成：
+Runtime uses one promoted Harness version and produces:
 
-- 抽取结果；
-- 冻结声明；
-- 确定性门禁；
-- `routing_report.json`；
-- support matrix；
-- 人工队列；
-- deliverable。
+- extraction results;
+- frozen claims;
+- deterministic gates;
+- `routing_report.json`;
+- support matrix;
+- the human queue;
+- deliverable.
 
 ## 3.3 Versioned Harness Plane
 
-第一版 Harness 由纯配置文件组成：
+The first Harness version consists of pure configuration files:
 
 ```text
 harnesses/
@@ -284,99 +300,106 @@ harnesses/
       seller_tax_id.yaml
 ```
 
-每个 Harness 不可变。新版本必须新建目录，不能覆盖旧版本。
+Every Harness is immutable. A new version must create a new directory; old versions are
+never overwritten.
 
 ## 3.4 Feedback Plane
 
-人工裁决账本仍是权威。Feedback Plane 是从权威工件派生的、可重建的数据产品，不反向修改裁决。
+The human adjudication ledger remains the authority. The Feedback Plane is a
+rebuildable data product derived from the authoritative artifacts; it never writes
+adjudications back.
 
 ## 3.5 Improvement Control Plane
 
-负责：
+Responsible for:
 
 ```text
 compile → mine → propose → lint → evaluate → qualify → promote
 ```
 
-它不负责：
+Not responsible for:
 
-- 改写生产证据；
-- 直接判定发票真值；
-- 自动上线；
-- 修改 evaluator。
+- rewriting production evidence;
+- directly deciding invoice ground truth;
+- automatic release;
+- modifying the evaluator.
 
 ## 3.6 Evaluation Authority
 
-这是 Improve Layer 的外部宪法，包括：
+This is the Improve Layer's external constitution, including:
 
-- 私有标签；
-- 数据集划分；
-- scorer；
-- promotion gates；
-- integrity / regression suites；
-- query budget；
-- final sealed evaluation。
+- private labels;
+- dataset splits;
+- scorer;
+- promotion gates;
+- integrity / regression suites;
+- query budget;
+- final sealed evaluation.
 
 ---
 
-# 4. 当前 repo 的实施前置条件（P0）
+# 4. Implementation preconditions in the current repo (P0)
 
-Improve Layer 建立在反馈正确、版本可归因和交付值可信的前提上。以下必须先完成，且不算 41%→30% 的“学习成果”。
+The Improve Layer is built on the premises that feedback is correct, versions are
+attributable, and delivered values are trustworthy. The following must be completed
+first, and it does not count as a “learning gain” toward 41%→30%.
 
-## P0-1 最终值只能来自冻结权威
+## P0-1 Final values can only come from the frozen authority
 
-当前 `deliver.py` 的 `accept` 路径直接取 `support_matrix.json` 的 `row["value"]`。矩阵按架构是投影，不应成为最终值权威。
+The current `accept` path in `deliver.py` takes `row["value"]` from
+`support_matrix.json` directly. Architecturally the matrix is a projection and should
+not be the final-value authority.
 
-修正：
+Fix:
 
 ```text
-accept_claim → 必须有 claim_id
-最终值 → 从 field_ledger 对应 claim 读取
-correct → 从人工 corrected_value 读取
+accept_claim → must have a claim_id
+final value → read from the corresponding claim in field_ledger
+correct → read from the human corrected_value
 ```
 
-bundle verify 必须验证：
+bundle verify must verify:
 
 ```text
 accepted final value == frozen claim value
 corrected final value == adjudication corrected_value
 ```
 
-## P0-2 拆开人工决策语义
+## P0-2 Split human decision semantics apart
 
-将当前：
+From the current:
 
 ```text
 accept / reject / correct / abstain
 ```
 
-升级为：
+upgrade to:
 
 ```text
-accept_claim       确认一个已有 claim，必须有 claim_id
-correct            人工给出新值
-reject_claim       拒绝已有 claim
-confirm_absent     确认页面确实没有该字段
-not_applicable     该字段对这类文档不适用
-abstain            人也无法判定，保持未决
+accept_claim       confirm an existing claim; must have a claim_id
+correct            a human supplies a new value
+reject_claim       reject an existing claim
+confirm_absent     confirm the field is truly absent from the page
+not_applicable     the field does not apply to this kind of document
+abstain            even the human cannot decide; stays unresolved
 ```
 
-否则 Improve Layer 无法区分：
+Otherwise the Improve Layer cannot distinguish:
 
-- 抽取漏值；
-- 合法缺失；
-- 字段不适用；
-- 人无法看清。
+- missing extraction values;
+- legitimate absence;
+- field not applicable;
+- human cannot see clearly.
 
-## P0-3 增加独立 routing authority
+## P0-3 Add an independent routing authority
 
-从 `matrix.py` 中抽出：
+Extract out of `matrix.py`:
 
 ```text
 invoiceloop/routing.py
 ```
 
-生成：
+producing:
 
 ```json
 {
@@ -391,11 +414,12 @@ invoiceloop/routing.py
 }
 ```
 
-`support_matrix.json` 继续是展示投影；`deliverable.json` 使用冻结 ledger、routing report 和人工裁决重建。
+`support_matrix.json` remains a display projection; `deliverable.json` is rebuilt from
+the frozen ledger, the routing report, and human adjudications.
 
-## P0-4 Harness 必须进入 execution fingerprint
+## P0-4 The Harness must enter the execution fingerprint
 
-新增：
+Add:
 
 ```text
 execution_fingerprint = hash(
@@ -410,32 +434,34 @@ execution_fingerprint = hash(
 )
 ```
 
-同一 PDF 在不同 Harness 下必须开新 run，不能重放旧 run。
+The same PDF under a different Harness must open a new run; old runs must not be
+replayed.
 
-## P0-5 产品 normalization 与 eval normalization 分离
+## P0-5 Separate product normalization from eval normalization
 
 ```text
-invoiceloop/product_normalization.py  # 可作为候选演化面
-invoiceloop/eval/reference_normalization.py  # 冻结，不可编辑
+invoiceloop/product_normalization.py  # can serve as a candidate evolution surface
+invoiceloop/eval/reference_normalization.py  # frozen, not editable
 ```
 
-否则候选可以通过放宽“相等”定义来提高分数。
+Otherwise a candidate could raise its score by loosening the definition of “equal”.
 
-## P0-6 取消无冲突 TIER1 的伪人工审批
+## P0-6 Remove fake human approval for conflict-free TIER1
 
-系统自动放行必须记录为：
+System auto-release must be recorded as:
 
 ```text
 policy_accept
 ```
 
-而不是生成或要求一条人类 `accept`。
+rather than generating or requiring a human `accept`.
 
-只有完成这一点，41.1% 才能作为真实 mandatory field review load，而不是反事实分诊率。
+Only once this is done can 41.1% count as the real mandatory field review load rather
+than a counterfactual triage rate.
 
 ---
 
-# 5. 核心数据契约
+# 5. Core data contracts
 
 ## 5.1 HarnessManifest
 
@@ -457,7 +483,7 @@ policy_accept
 
 ## 5.2 FeedbackEvent
 
-FeedbackEvent 必须绑定原始裁决和当时 Harness：
+A FeedbackEvent must bind the original adjudication and the Harness then in effect:
 
 ```json
 {
@@ -488,7 +514,7 @@ FeedbackEvent 必须绑定原始裁决和当时 Harness：
 }
 ```
 
-### Reason code 最小集合
+### Minimal reason-code set
 
 ```text
 WRONG_VALUE
@@ -505,18 +531,19 @@ PROVIDER_FAILURE
 REVIEWER_PREFERENCE
 ```
 
-### 反馈可用性
+### Feedback usability
 
-只有以下事件可直接进入改进标签：
+Only events meeting the following can enter improvement labels directly:
 
 ```text
 reviewer_confidence = high/medium
 AND actionability = true
 AND action != abstain
-AND 无 reviewer conflict
+AND no reviewer conflict
 ```
 
-`REVIEWER_PREFERENCE`、`AMBIGUOUS_DOCUMENT` 不能作为自动放行规则的负样本。
+`REVIEWER_PREFERENCE` and `AMBIGUOUS_DOCUMENT` must not be used as negative samples for
+auto-release rules.
 
 ## 5.3 Finding
 
@@ -574,7 +601,7 @@ eval_plan_id: EP-0012
 
 ## 5.5 EvalResult
 
-结果必须同时记录 baseline 与 candidate，并绑定数据集指纹：
+Results must record baseline and candidate together and bind dataset fingerprints:
 
 ```json
 {
@@ -614,7 +641,7 @@ eval_plan_id: EP-0012
 
 ---
 
-# 6. 状态机
+# 6. State machines
 
 ## 6.1 Finding
 
@@ -625,7 +652,7 @@ draft
 → resolved | rejected | deferred
 ```
 
-模糊或不可行动：
+Vague or not actionable:
 
 ```text
 draft → non_actionable
@@ -642,7 +669,8 @@ draft
 → promoted | rejected | deferred
 ```
 
-任一阶段失败即停止，不自动“修到过”。新尝试必须新建 candidate ID。
+A failure at any stage stops the process; there is no automatic “fix until it passes”.
+A new attempt must use a new candidate ID.
 
 ## 6.3 Harness
 
@@ -650,15 +678,16 @@ draft
 candidate → qualified → active → retired
 ```
 
-只允许一个 active pointer，但所有历史版本永久保留。
+Only one active pointer is allowed, while all historical versions are retained
+permanently.
 
 ---
 
-# 7. 可编辑面与实施分层
+# 7. Editable surfaces and implementation tiers
 
-## 7.1 v0.1：配置级 Harness Evolution（黑客松主线）
+## 7.1 v0.1: configuration-level Harness Evolution (hackathon mainline)
 
-只允许编辑：
+Only edits to:
 
 ```text
 routing_policy.yaml
@@ -666,67 +695,70 @@ review_priority.yaml
 field_playbooks/*.yaml
 ```
 
-首个候选类型必须是：
+The first candidate type must be:
 
-> **Cohort-based routing relaxation：把一组低收益软风险从 mandatory review 改为 policy_accept。**
+> **Cohort-based routing relaxation: move a set of low-yield soft risks from mandatory
+> review to policy_accept.**
 
-候选规则只允许引用通用特征：
+Candidate rules may reference only generic features:
 
-- field / tier；
-- support strength；
-- gate verdict vector；
-- warning reason codes；
-- DWS confidence bucket；
-- document family / layout family（必须有最小样本）；
-- provider mode status。
+- field / tier;
+- support strength;
+- gate verdict vector;
+- warning reason codes;
+- DWS confidence bucket;
+- document family / layout family (a minimum sample is required);
+- provider mode status.
 
-禁止引用：
+Referencing these is forbidden:
 
-- doc ID；
-- benchmark row number；
-- ground-truth value；
-- 特定测试文件名；
-- 单个供应商名称的硬编码，除非明确是产品级 vendor policy 且人工批准。
+- doc ID;
+- benchmark row number;
+- ground-truth value;
+- specific test file names;
+- hard-coding a single vendor name, unless it is explicitly a product-level vendor
+  policy and human-approved.
 
-## 7.2 v0.2：运行时升级策略
+## 7.2 v0.2: runtime escalation strategy
 
-开放：
+Opens:
 
 ```text
 escalation_policy.yaml
 ```
 
-允许：
+Allows:
 
 ```text
 understand
-→ 初步 gates
-→ 只对边界风险字段/文档调用 agentic
+→ preliminary gates
+→ call agentic only for boundary-risk fields/documents
 → re-gate
-→ 仍冲突才人工
+→ human only if still conflicting
 ```
 
-这类候选必须做 paired live DWS evaluation，因为冻结旧响应无法评估新的调用顺序。
+Such candidates must run paired live DWS evaluation, because frozen old responses cannot
+evaluate a new call sequence.
 
-## 7.3 v0.3：Extraction Schema Candidate
+## 7.3 v0.3: Extraction Schema Candidate
 
-开放：
+Opens:
 
 ```text
 extraction_schema.json
 ```
 
-必须：
+Must:
 
-- 一个 candidate 只改一个或少量字段描述；
-- paired live extraction；
-- 保留所有原始响应；
-- 报告 credits 和 provider drift；
-- 不修改 eval normalizer。
+- one candidate changes only one or a few field descriptions;
+- paired live extraction;
+- retain all raw responses;
+- report credits and provider drift;
+- do not modify the eval normalizer.
 
-## 7.4 暂不开放：任意 Python 自修改
+## 7.4 Not opened for now: arbitrary Python self-modification
 
-黑客松期间不允许 agent 任意编辑：
+During the hackathon the agent may not freely edit:
 
 ```text
 freeze.py
@@ -738,183 +770,187 @@ bundle verifier
 eval scorer
 ```
 
-将来若开放代码级 candidate，也只能写入独立的：
+If code-level candidates are opened later, they may write only into the separate:
 
 ```text
 invoiceloop/harness_plugins/
 ```
 
-并通过 import allowlist、静态检查和 sandbox。
+and must pass an import allowlist, static checks, and a sandbox.
 
 ---
 
-# 8. 权限与沙箱
+# 8. Permissions and sandboxing
 
-## 8.1 三进程隔离
+## 8.1 Three-process isolation
 
 ### Proposer
 
-可读：
+May read:
 
-- Finding pack；
-- 脱敏/必要的 traces；
-- 公开架构文档；
-- allowlisted harness files；
-- targeted development cases。
+- the Finding pack;
+- redacted/necessary traces;
+- public architecture documents;
+- allowlisted harness files;
+- targeted development cases.
 
-可写：
+May write:
 
-- candidate worktree 中的 allowlisted files；
-- `proposal.yaml`；
-- `prediction.md`。
+- allowlisted files in the candidate worktree;
+- `proposal.yaml`;
+- `prediction.md`.
 
-不可读：
+May not read:
 
-- promotion/final labels；
-- private scorer internals；
-- active credentials。
+- promotion/final labels;
+- private scorer internals;
+- active credentials.
 
-不可写：
+May not write:
 
-- production workspace；
-- trust kernel；
-- git main branch；
-- active harness pointer。
+- production workspace;
+- trust kernel;
+- git main branch;
+- active harness pointer.
 
 ### Evaluator
 
-可读：
+May read:
 
-- baseline/candidate Harness；
-- frozen source inputs；
-- private ground truth；
-- scorer。
+- baseline/candidate Harness;
+- frozen source inputs;
+- private ground truth;
+- scorer.
 
-可写：
+May write:
 
-- immutable `eval_result.json`。
+- immutable `eval_result.json`.
 
-不可写：
+May not write:
 
-- candidate diff；
-- active harness；
-- production evidence。
+- candidate diff;
+- active harness;
+- production evidence.
 
 ### Promoter
 
-必须是显式人类命令，读取 EvalResult，写 PromotionRecord 和 active pointer。
+Must be an explicit human command; reads the EvalResult, writes the PromotionRecord and
+the active pointer.
 
 ## 8.2 Candidate Diff Linter
 
-自动拒绝：
+Automatically rejects:
 
-- 修改不在 allowlist 的路径；
-- 修改 eval/ground truth；
-- 新增网络调用；
-- 新增依赖；
-- 提高预算上限；
-- 出现 DocILE doc ID；
-- 出现 hard-coded expected value；
-- diff 超过预设大小；
-- 同时修改多个组件；
-- 删除日志、测试或失败案例。
+- modifying paths outside the allowlist;
+- modifying eval/ground truth;
+- adding network calls;
+- adding dependencies;
+- raising budget ceilings;
+- the presence of DocILE doc IDs;
+- the presence of hard-coded expected values;
+- diffs exceeding the preset size;
+- modifying multiple components at once;
+- deleting logs, tests, or failure cases.
 
-## 8.3 数据隐私
+## 8.3 Data privacy
 
-生产发票或人工理由发送给外部 proposer 模型前必须：
+Before production invoices or human rationales are sent to an external proposer model:
 
-- 获得明确授权；
-- 最小化上下文；
-- 优先提供结构化 feature / crop，而非整份发票；
-- 对银行账号、税号、地址等敏感字段做脱敏；
-- 将模型、provider 和发送工件记录进 candidate trace。
+- explicit authorization must be obtained;
+- context must be minimized;
+- structured features / crops must be preferred over whole invoices;
+- sensitive fields such as bank accounts, tax IDs, and addresses must be redacted;
+- the model, provider, and sent artifacts must be recorded in the candidate trace.
 
 ---
 
-# 9. 反馈质量：防止“从人工数据学错”
+# 9. Feedback quality: preventing “learning mistakes from human data”
 
-## 9.1 双层反馈
+## 9.1 Two-layer feedback
 
-每次人工操作分成：
+Every human action is split into:
 
-1. **业务裁决**：最终值或状态；
-2. **诊断标签**：为什么系统需要被改进。
+1. **business adjudication**: the final value or status;
+2. **diagnostic label**: why the system needs improving.
 
-业务裁决必须完成；诊断标签尽量使用单击 reason code，降低额外人工负担。
+The business adjudication must be completed; for diagnostic labels, prefer one-click
+reason codes to reduce the extra human burden.
 
-Agent 可以建议 reason code，但必须由人确认，不能自行写成真值。
+The agent may suggest reason codes, but a human must confirm them; they must never be
+written into truth on their own.
 
 ## 9.2 Reviewer confidence
 
 ```text
-high     页面证据明确
-medium   有推断但较确定
-low      依赖业务判断或页面模糊
+high     page evidence is clear
+medium   inferred but fairly certain
+low      relies on business judgment or the page is ambiguous
 ```
 
-自动策略放宽只使用 high/medium 且无冲突的反馈。
+Automatic policy relaxation uses only high/medium feedback without conflicts.
 
-## 9.3 双人复核
+## 9.3 Two-person review
 
-至少对以下样本进行第二人复核：
+A second person reviews at least the following samples:
 
-- 所有 candidate-only critical errors；
-- `not_applicable`；
-- `confirm_absent`；
-- 一定比例的 policy-accepted QA 样本；
-- reviewer confidence=low。
+- all candidate-only critical errors;
+- `not_applicable`;
+- `confirm_absent`;
+- a fixed proportion of policy-accepted QA samples;
+- reviewer confidence=low.
 
-## 9.4 随机 QA 与选择偏差
+## 9.4 Randomized QA and selection bias
 
-每个自动接受字段记录：
+Every auto-accepted field records:
 
 ```text
 review_probability
 ```
 
-建议：
+Recommended:
 
 ```text
-正常 auto-accept：5% 分层随机 QA
-新 layout / 新供应商 / provider 漂移：10%–20%
-刚晋升政策命中的 cohort：首批 20% QA，稳定后下降
+normal auto-accept: 5% stratified random QA
+new layout / new vendor / provider drift: 10%–20%
+cohorts hit by a freshly promoted policy: 20% QA for the first batch, decreasing once stable
 ```
 
-分层至少按：
+Stratify at least by:
 
-- TIER1/TIER2；
-- field；
-- document family；
-- support strength；
-- policy cohort；
-- 新旧 layout。
+- TIER1/TIER2;
+- field;
+- document family;
+- support strength;
+- policy cohort;
+- old vs new layout.
 
-**未复核不等于正确。** Weakness Miner 不得把没有 feedback 的 auto-accepted slot 当负例。
+**Unreviewed does not mean correct.** The Weakness Miner must not treat auto-accepted
+slots without feedback as negative examples.
 
 ---
 
 # 10. Weakness Mining
 
-## 10.1 不直接喂全部 raw trace
+## 10.1 Do not feed all raw traces directly
 
-构建分层 Experience Pack：
+Build a layered Experience Pack:
 
 ```text
-Level 0：总体指标和 drift
-Level 1：cohort 统计
-Level 2：代表性 review rows
-Level 3：具体 source / crop / gate / claim trace
+Level 0: overall metrics and drift
+Level 1: cohort statistics
+Level 2: representative review rows
+Level 3: specific source / crop / gate / claim traces
 ```
 
-这对应：
+This maps to:
 
-- component observability：明确哪一组件可改；
-- experience observability：把长轨迹压成可下钻证据；
-- decision observability：每个改动都带可验证预测。
+- component observability: makes explicit which component is changeable;
+- experience observability: compresses long trajectories into drillable evidence;
+- decision observability: every change carries a verifiable prediction.
 
 ## 10.2 Cohort key
 
-第一版可用：
+The first version can use:
 
 ```text
 field
@@ -927,7 +963,7 @@ field
 × harness_id
 ```
 
-## 10.3 统计项
+## 10.3 Statistics
 
 ```text
 reviewed_count
@@ -942,90 +978,94 @@ random_qa_count
 review_seconds
 ```
 
-## 10.4 最小样本纪律
+## 10.4 Minimum-sample discipline
 
-不建议把“n≥30”误当成安全证明。即使 30 次零错误，真实错误率上界仍很宽。
+Do not mistake “n≥30” for proof of safety. Even 30 zero-error observations leave a wide
+upper bound on the true error rate.
 
-规则：
+Rules:
 
-- n<30：只能提出“收集更多证据”，不能提出自动放行；
-- n≥30：允许生成 exploratory candidate；
-- 是否晋升由独立 promotion eval 决定；
-- 不对外声称绝对错误率保证。
+- n<30: may only propose “collect more evidence”, never auto-release;
+- n≥30: generating an exploratory candidate is allowed;
+- promotion is decided by an independent promotion eval;
+- no external claims of absolute error-rate guarantees.
 
-## 10.5 Finding 必须带保留集
+## 10.5 Findings must carry a preservation set
 
-每个 finding 除“要修什么”外，必须写：
+Beyond “what to fix”, every finding must also state:
 
-- 哪些成功行为不能破坏；
-- 哪些 hard blocker 永不放松；
-- 预计影响哪些成本；
-- 哪些 subgroup 可能回归。
+- which successful behaviors must not break;
+- which hard blockers are never relaxed;
+- which costs are expected to be affected;
+- which subgroups may regress.
 
 ---
 
-# 11. Routing Policy 设计
+# 11. Routing policy design
 
-当前 `matrix.py` 将“任何 warning”统一变成 `requires_adjudication=True`。建议改为显式、版本化 policy。
+The current `matrix.py` turns “any warning” uniformly into
+`requires_adjudication=True`. The recommendation is an explicit, versioned policy
+instead.
 
-## 11.1 四种 route
+## 11.1 Four routes
 
 ```text
-auto_accept  满足当前 Harness 的自动放行合同
-review       需要人工解决
-block        缺少基础证据或存在不可放行风险
-escalate     先调用额外机器步骤，再重新评估
+auto_accept  satisfies the current Harness's auto-release contract
+review       requires human resolution
+block        foundational evidence missing, or an unreleasable risk exists
+escalate     run extra machine steps first, then re-evaluate
 ```
 
-## 11.2 Hard blockers（Improve v0.1 禁止放松）
+## 11.2 Hard blockers (relaxation forbidden in Improve v0.1)
 
-至少包括：
+At least:
 
-- 文档级 OCR / extraction 基础设施不可用；
-- 冻结绑定失败；
-- TIER1 citation fail；
-- TIER1 arithmetic fail；
-- 两个竞争 claim；
-- label convention dispute；
-- cross-document duplicate/conflict；
-- required TIER1 missing 且未 confirm_absent/not_applicable；
-- 银行或支付信息异常（未来加入时）；
-- bundle / snapshot integrity fail。
+- document-level OCR / extraction infrastructure unavailable;
+- frozen binding failure;
+- TIER1 citation fail;
+- TIER1 arithmetic fail;
+- two competing claims;
+- label convention dispute;
+- cross-document duplicate/conflict;
+- required TIER1 missing without confirm_absent/not_applicable;
+- bank or payment-information anomalies (when added in the future);
+- bundle / snapshot integrity fail.
 
-## 11.3 Soft review triggers（候选可研究）
+## 11.3 Soft review triggers (open for candidates to study)
 
-例如：
+For example:
 
-- visual corroboration unavailable；
-- 某些 TIER2 单一来源；
-- 不参与恒等式导致 arithmetic unavailable；
-- 已知合法缺失；
-- 不影响金额/支付的格式 warning；
-- 经 QA 证实低收益的特定 gate combination。
+- visual corroboration unavailable;
+- certain single-source TIER2 fields;
+- not participating in identities, making arithmetic unavailable;
+- known legitimate absence;
+- format warnings that do not affect amounts/payment;
+- specific gate combinations that QA has confirmed to be low-yield.
 
-## 11.4 Candidate 只改软触发
+## 11.4 Candidates touch only soft triggers
 
-第一版 candidate 不能删除 hard blocker，只能把一个清晰 cohort 的：
+A first-version candidate cannot remove a hard blocker; it can only take one
+well-defined cohort's:
 
 ```text
 review → auto_accept
 ```
 
-或者：
+or:
 
 ```text
 review → escalate
 ```
 
-每个变更必须带 reason code 和 policy digest。
+Every change must carry a reason code and a policy digest.
 
 ---
 
-# 12. 评测目标与指标
+# 12. Evaluation goals and metrics
 
-## 12.1 不优化单一综合分
+## 12.1 Do not optimize a single composite score
 
-采用词典序：
+Use lexicographic order:
 
 ```text
 1. Integrity
@@ -1034,82 +1074,83 @@ review → escalate
 4. Cost and latency
 ```
 
-人工量永远不能覆盖安全失败。
+Human workload must never override safety failures.
 
-## 12.2 Headline 指标
+## 12.2 Headline metrics
 
 ### Mandatory field review load
 
 ```text
-必须人工处理的记分字段数 / 全部记分字段数
+scored fields requiring human handling / all scored fields
 ```
 
-41.1%→30%必须明确是这个口径。
+41.1%→30% must explicitly refer to this calibre.
 
 ### Document touch rate
 
 ```text
-至少有一个 mandatory field 的文档数 / 全部文档数
+documents with at least one mandatory field / all documents
 ```
 
 ### Human actions per invoice
 
 ```text
-人工提交的有效裁决动作数 / 文档数
+valid human-submitted adjudication actions / documents
 ```
 
 ### Reviewer minutes per invoice
 
-真实计时，而不是由字段数量代替。
+Real timing, not a proxy from field counts.
 
-## 12.3 安全指标
+## 12.3 Safety metrics
 
 ### Critical selective risk
 
 ```text
-自动接受但错误的 TIER1 字段数
-/ 自动接受的 TIER1 字段数
+TIER1 fields auto-accepted but wrong
+/ TIER1 fields auto-accepted
 ```
 
 ### Critical generalized silent risk
 
 ```text
-自动接受但错误的 TIER1 字段数
-/ 全部有标签的 TIER1 字段数
+TIER1 fields auto-accepted but wrong
+/ all labeled TIER1 fields
 ```
 
-后者不受 accepted 分母变化的误导，适合作为主安全指标。
+The latter is not misled by changes in the accepted denominator and is suited as the
+primary safety metric.
 
 ### Critical routing recall
 
 ```text
-进入人工/阻断的关键错误
-/ 全部关键错误
+critical errors routed to human/blocked
+/ all critical errors
 ```
 
 ### Critical document silent failure
 
 ```text
-被 release 且仍含至少一个关键错误的文档
-/ 全部 release 文档
+released documents still containing at least one critical error
+/ all released documents
 ```
 
-## 12.4 全曲线指标
+## 12.4 Full-curve metrics
 
-不能只看 41% 和 30% 两个工作点。至少画：
+Do not look only at the two operating points 41% and 30%. At minimum plot:
 
 ```text
 x = review load
  y = generalized critical silent risk
 ```
 
-并报告：
+and report:
 
-- critical error recall@10/20/30/40% review budget；
-- risk–coverage curve；
-- AUGRC 或等价平均未检测风险指标。
+- critical error recall@10/20/30/40% review budget;
+- risk–coverage curve;
+- AUGRC or an equivalent mean undetected-risk metric.
 
-## 12.5 成本指标
+## 12.5 Cost metrics
 
 ```text
 DWS credits per invoice
@@ -1121,96 +1162,101 @@ reviewer minutes
 
 ---
 
-# 13. 数据集与防过拟合协议
+# 13. Datasets and anti-overfitting protocol
 
-## 13.1 现有 100 份的身份
+## 13.1 The identity of the existing 100
 
-现有 100 份已经用于结果分析和方案设计，因此从 Improve 项目开始应改名为：
+The existing 100 have already been used for result analysis and solution design, so
+from the start of the Improve project they should be renamed:
 
 ```text
 EVOLUTION / DEVELOPMENT CORPUS
 ```
 
-不能再作为最终 held-out。
+They can no longer serve as the final held-out set.
 
-## 13.2 四类数据
+## 13.2 Four classes of data
 
 ### EVO
 
-完全可见，用于：
+Fully visible, used for:
 
-- mining；
-- finding；
-- targeted eval；
-- candidate 开发。
+- mining;
+- finding;
+- targeted eval;
+- candidate development.
 
 ### REGRESSION
 
-由 evaluator 持有。包含：
+Held by the evaluator. Contains:
 
-- 已知关键失败；
-- clean negative controls；
-- integrity attacks；
-- 不相关字段和其他 layout。
+- known critical failures;
+- clean negative controls;
+- integrity attacks;
+- irrelevant fields and other layouts.
 
-可以重复运行，但不能由 proposer 修改。
+It can be run repeatedly but must not be modified by the proposer.
 
 ### PROMOTION-k
 
-每轮新取、对 proposer 隐藏。只返回资格结果和聚合指标，不返回全部逐样本答案。
+Freshly drawn each round and hidden from the proposer. Only qualification results and
+aggregate metrics are returned, never all per-sample answers.
 
-被使用后即“燃烧”，下轮不能继续充当 promotion set。
+Once used it is “burned” and cannot serve as the promotion set again next round.
 
 ### FINAL SEALED
 
-所有轮次结束后只运行一次，用于最终对外结果。
+Run exactly once after all rounds, for the final external results.
 
 ## 13.3 Query budget
 
-每轮：
+Each round:
 
-- 最多 3 个 candidate；
-- 每个 candidate 最多一次 PROMOTION 查询；
-- 失败不能在同一 promotion set 上无限修补；
-- 所有查询写入 `evaluation_access_ledger.jsonl`。
+- at most 3 candidates;
+- at most one PROMOTION query per candidate;
+- failures cannot be patched indefinitely on the same promotion set;
+- all queries are written to `evaluation_access_ledger.jsonl`.
 
-## 13.4 配对评测
+## 13.4 Paired evaluation
 
-Baseline 和 Candidate 必须在完全相同文档上运行。
+Baseline and Candidate must run on exactly the same documents.
 
-下游 routing candidate：使用同一份冻结 DWS responses，隔离 provider drift。
+Downstream routing candidates: use the same frozen DWS responses to isolate provider
+drift.
 
-schema/escalation candidate：使用 paired live calls，并记录调用顺序、request schema、credits 和 raw response。
+schema/escalation candidates: use paired live calls, recording call order, request
+schema, credits, and raw responses.
 
-## 13.5 统计不确定性
+## 13.5 Statistical uncertainty
 
-- 以文档为 bootstrap 单位，不把同一发票多个字段当独立样本；
-- 固定随机种子并记录；
-- 报告 95% bootstrap interval；
-- 小样本时报告精确分子/分母；
-- 不把“未观察到新增错误”写成“已证明没有风险”。
+- bootstrap at the document level; multiple fields of the same invoice are not
+  independent samples;
+- fix and record random seeds;
+- report 95% bootstrap intervals;
+- report exact numerators/denominators for small samples;
+- never write “no new errors observed” as “risk proven absent”.
 
 ---
 
-# 14. 实验流程：41% → 30%
+# 14. Experiment sequence: 41% → 30%
 
-## R-1：语义与完整性准备
+## R-1: semantics and integrity preparation
 
-完成全部 P0，不计为 Improve 成果。
+Complete all of P0; not counted as an Improve gain.
 
-验收：
+Acceptance:
 
-- `policy_accept` 与人工决定分离；
-- accept 值来自 ledger；
-- absent / N/A / abstain 分离；
-- routing report 版本化；
-- Harness 进入 execution fingerprint；
-- bundle semantic verify；
-- reviewer time / QA sampling 可记录。
+- `policy_accept` separated from human decisions;
+- accept values come from the ledger;
+- absent / N/A / abstain separated;
+- routing report versioned;
+- Harness enters the execution fingerprint;
+- bundle semantic verify;
+- reviewer time / QA sampling recordable.
 
-## R0：冻结真实基线
+## R0: freeze the real baseline
 
-冻结：
+Freeze:
 
 ```text
 code revision
@@ -1222,170 +1268,173 @@ data split fingerprints
 candidate query budget
 ```
 
-报告：
+Report:
 
-- field review load；
-- document touch rate；
-- actions/doc；
-- minutes/doc；
-- critical generalized/selected risk；
-- routing recall；
-- DWS credits。
+- field review load;
+- document touch rate;
+- actions/doc;
+- minutes/doc;
+- critical generalized/selected risk;
+- routing recall;
+- DWS credits.
 
-只有重新测量结果约为 41%，才能对外讲“41→30”。
+Only when remeasurement lands around 41% may we tell the outside story “41→30”.
 
-## R1：消除无价值软复核
+## R1: eliminate worthless soft reviews
 
-目标：找出：
+Goal: find
 
 ```text
-被 review
-但大量 accept unchanged / confirm_absent
-且随机 QA 未发现关键漏错
+reviewed
+but mostly accept unchanged / confirm_absent
+and randomized QA found no critical misses
 ```
 
-候选：
+Candidates:
 
 ```text
-特定 soft-warning cohort
+specific soft-warning cohorts
 review → policy_accept
 ```
 
-要求：
+Requirements:
 
-- 不触碰 hard blockers；
-- 一个候选一个 cohort；
-- target + negative control；
-- promotion set 无新增关键静默错误。
+- do not touch hard blockers;
+- one cohort per candidate;
+- target + negative control;
+- no new critical silent errors on the promotion set.
 
-## R2：风险桶与 Review Budget Policy
+## R2: risk buckets and review budget policy
 
-在 R1 的新反馈基础上，构建保守的 risk bucket：
+Building on R1's new feedback, construct conservative risk buckets:
 
 ```text
 field × support × gates × warning set × document family
 ```
 
-不是直接相信点估计，而是根据样本量和不确定性给出风险上界/分层。
+Do not trust point estimates directly; derive risk upper bounds/strata from sample size
+and uncertainty.
 
-目标：
+Goal:
 
 ```text
-在 30% review budget 下最大化 critical error recall
+maximize critical error recall under a 30% review budget
 ```
 
-候选可调整：
+Candidates may adjust:
 
-- 哪些软触发 mandatory review；
-- priority；
-- QA sampling rate。
+- which soft triggers force mandatory review;
+- priority;
+- QA sampling rate.
 
-## R3：机器升级替代人工
+## R3: machine escalation in place of humans
 
-目标：将一部分边界字段从：
+Goal: move a portion of boundary fields from:
 
 ```text
 review
 ```
 
-改为：
+to:
 
 ```text
 escalate to agentic / focused extraction
 → re-gate
-→ unresolved 才 review
+→ review only if unresolved
 ```
 
-必须报告新增 DWS credits 与减少的人工分钟，证明不是“用无限 API 换人工”。
+The added DWS credits and the saved human minutes must both be reported, proving this
+is not “trading unlimited API for human labor”.
 
-## Final：一次性 sealed evaluation
+## Final: one-shot sealed evaluation
 
-最终表：
+Final table:
 
-| 版本 | Field review load | Document touch | Critical generalized silent risk | Critical routing recall | Minutes/doc | Credits/doc |
+| Version | Field review load | Document touch | Critical generalized silent risk | Critical routing recall | Minutes/doc | Credits/doc |
 |---|---:|---:|---:|---:|---:|---:|
-| R0 | 实测 | 实测 | 实测 | 实测 | 实测 | 实测 |
-| R1 | 实测 | 实测 | 实测 | 实测 | 实测 | 实测 |
-| R2 | 实测 | 实测 | 实测 | 实测 | 实测 | 实测 |
-| R3 | 实测 | 实测 | 实测 | 实测 | 实测 | 实测 |
-| Sealed final | 实测 | 实测 | 实测 | 实测 | 实测 | 实测 |
+| R0 | measured | measured | measured | measured | measured | measured |
+| R1 | measured | measured | measured | measured | measured | measured |
+| R2 | measured | measured | measured | measured | measured | measured |
+| R3 | measured | measured | measured | measured | measured | measured |
+| Sealed final | measured | measured | measured | measured | measured | measured |
 
-禁止预填后续数字。
+Pre-filling later numbers is forbidden.
 
 ---
 
 # 15. Promotion Gates
 
-## Gate 0：权限与完整性
+## Gate 0: permissions and integrity
 
-必须全部通过：
+All of these must pass:
 
-- forbidden files 未变化；
-- trust kernel tests 全绿；
-- bundle semantic verify 全绿；
-- candidate diff 在 allowlist；
-- 无 doc ID / expected value 硬编码；
-- execution fingerprint 正确变化。
+- forbidden files unchanged;
+- trust kernel tests all green;
+- bundle semantic verify all green;
+- candidate diff within the allowlist;
+- no doc ID / expected value hard-coding;
+- execution fingerprint changes correctly.
 
-## Gate 1：Must-Catch Regression
+## Gate 1: Must-Catch Regression
 
-以下已知关键案例不能从 review/block 变成 auto_accept：
+The following known critical cases must not move from review/block to auto_accept:
 
-- citation fail；
-- arithmetic fail；
-- binding reject；
-- label convention dispute；
-- duplicate/conflict；
-- missing required TIER1；
-- document-level infrastructure blocked。
+- citation fail;
+- arithmetic fail;
+- binding reject;
+- label convention dispute;
+- duplicate/conflict;
+- missing required TIER1;
+- document-level infrastructure blocked.
 
-## Gate 2：Safety Non-Inferiority
+## Gate 2: Safety Non-Inferiority
 
-同一 promotion docs 上：
+On the same promotion docs:
 
 ```text
 candidate critical generalized silent errors
 ≤ baseline critical generalized silent errors
 ```
 
-同时：
+Additionally:
 
-- 无新增 severity=critical 的 candidate-only document failure；
-- 报告 paired document bootstrap delta；
-- subgroup 无明显红旗。
+- no new candidate-only document failures with severity=critical;
+- report the paired document bootstrap delta;
+- no obvious red flags in subgroups.
 
-这是黑客松版保守门槛，不等于统计学上的永久安全保证。
+This is a conservative, hackathon-grade threshold, not a statistical guarantee of
+permanent safety.
 
-## Gate 3：Workload Benefit
+## Gate 3: Workload Benefit
 
-建议每轮工程门槛：
+Suggested per-round engineering threshold:
 
 ```text
-field review load 至少下降 2.5 percentage points
-OR reviewer minutes 至少下降 10%
+field review load drops by at least 2.5 percentage points
+OR reviewer minutes drop by at least 10%
 ```
 
-该数字是预注册工程门槛，不是科学定律。
+This number is a preregistered engineering threshold, not a law of nature.
 
-## Gate 4：Resource Budget
+## Gate 4: Resource Budget
 
-- DWS credits 不超过 candidate manifest 上限；
-- P95 latency 不超过上限；
-- 不新增未披露 provider；
-- 不降低 QA sampling 以制造人工率下降。
+- DWS credits within the candidate manifest cap;
+- P95 latency within the cap;
+- no undisclosed new providers;
+- no lowering QA sampling to manufacture a drop in the human rate.
 
-## Gate 5：Human Promotion
+## Gate 5: Human Promotion
 
-人类看到：
+The human sees:
 
-- finding；
-- exact diff；
-- predicted vs actual delta；
-- target/regression/promotion results；
-- 新增风险；
-- rollback target。
+- the finding;
+- exact diff;
+- predicted vs actual delta;
+- target/regression/promotion results;
+- added risks;
+- rollback target.
 
-然后选择：
+then chooses:
 
 ```text
 promote / reject / defer
@@ -1393,126 +1442,135 @@ promote / reject / defer
 
 ---
 
-# 16. Shadow、Canary 与回滚
+# 16. Shadow, canary, and rollback
 
 ## 16.1 Shadow
 
-Candidate 先对新发票产生反事实 route，不改变真实工作流：
+The candidate first produces counterfactual routes for new invoices without touching
+the real workflow:
 
 ```text
-active policy 决定实际 review
-candidate policy 只记录 shadow decision
+the active policy decides actual review
+the candidate policy only records shadow decisions
 ```
 
-这提供新分布证据。
+This provides evidence from new distributions.
 
 ## 16.2 Canary
 
-晋升后先应用于小比例、低风险 cohort，并提高 QA sampling。
+After promotion, apply first to a small fraction of low-risk cohorts, with QA sampling
+raised.
 
-## 16.3 自动回滚触发
+## 16.3 Automatic rollback triggers
 
-可以自动把 active pointer 回滚到上一版，但不能自动修复 Harness。触发包括：
+The active pointer may be rolled back to the previous version automatically, but the
+Harness itself must not be auto-repaired. Triggers include:
 
-- QA 出现 candidate-only critical error；
-- provider response drift 超过阈值；
-- document touch / latency 异常；
-- integrity test 失败；
-- 新 layout 比例突然上升。
+- QA finds a candidate-only critical error;
+- provider response drift exceeds the threshold;
+- document touch / latency anomalies;
+- integrity test failure;
+- the share of new layouts suddenly rises.
 
-所有回滚写入 append-only promotion ledger。
+All rollbacks are written to the append-only promotion ledger.
 
 ---
 
 # 17. Provider Drift
 
-当前仓库的 live test 已观察到同批 PDF 在不同时点 DWS 输出漂移，因此必须把“策略改进”和“provider 变化”分开。
+Live tests in the current repo have already observed DWS output drift on the same batch
+of PDFs at different times, so “policy improvement” and “provider change” must be
+separated.
 
 ## 17.1 Replay Eval
 
-适合：
+Suited to:
 
-- routing policy；
-- review priority；
-- warning taxonomy；
-- downstream mapping。
+- routing policy;
+- review priority;
+- warning taxonomy;
+- downstream mapping.
 
-使用完全相同的 raw DWS response，结果确定性。
+Uses exactly the same raw DWS responses; results are deterministic.
 
 ## 17.2 Live Paired Eval
 
-适合：
+Suited to:
 
-- extraction schema；
-- mode selection；
-- escalation policy。
+- extraction schema;
+- mode selection;
+- escalation policy.
 
-要求：
+Requirements:
 
-- 同文档 baseline/candidate 配对；
-- 原始请求和响应全部冻结；
-- 报告 provider error / missing / confidence distribution；
-- 调用顺序随机或交错；
-- 不把 provider drift 误写成 candidate 改进。
+- pair baseline/candidate on the same documents;
+- freeze all raw requests and responses;
+- report provider error / missing / confidence distribution;
+- call order randomized or interleaved;
+- never write provider drift up as candidate improvement.
 
 ## 17.3 Safe Mode
 
-当 drift 触发：
+When drift triggers:
 
 ```text
-暂停新的 policy relaxation
-提高 QA sample
-回退到最近 safe harness
-允许人工率超过 30%
+pause new policy relaxations
+raise the QA sample
+fall back to the most recent safe harness
+allow the human rate to exceed 30%
 ```
 
-30% 是正常分布目标，不是硬预算上限。
+30% is the target under normal distribution, not a hard budget cap.
 
 ---
 
-# 18. 明确禁止事项
+# 18. Explicit prohibitions
 
-1. 禁止 agent 自动晋升或发布。
-2. 禁止修改 Trust Kernel。
-3. 禁止修改 ground truth、scorer、critical field set、promotion rules。
-4. 禁止让 proposer 读取 promotion/final labels。
-5. 禁止同一 sealed set 上反复调参。
-6. 禁止覆盖失败 candidate；每次尝试必须新 ID。
-7. 禁止删除失败结果、负面 findings 或回滚记录。
-8. 禁止把未复核字段视为正确。
-9. 禁止把所有 human `accept` 视为无噪声真值。
-10. 禁止使用读图模型/DWS confidence 作为 ground truth。
-11. 禁止通过 `not_applicable`、字段删除或 normalization 放宽降低 review rate。
-12. 禁止使用 doc ID、benchmark index、expected value 硬编码规则。
-13. 禁止一次 candidate 修改多个 Harness 组件。
-14. 禁止未披露地增加 API 次数、预算、延迟或 provider。
-15. 禁止改变 QA sampling 以美化人工率。
-16. 禁止将 41.1% 称为 document review rate，除非重新实测确实如此。
-17. 禁止把开发集改善称为 generalization。
-18. 禁止把“零新增观察错误”写成“证明零风险”。
-19. 禁止在没有完整 promoted cycle 前称“系统已自我改进”。
-20. 禁止让系统为了 30% 硬预算放过已知 blocker。
+1. Agent-initiated promotion or release is forbidden.
+2. Modifying the Trust Kernel is forbidden.
+3. Modifying ground truth, scorers, the critical field set, or promotion rules is
+   forbidden.
+4. Letting the proposer read promotion/final labels is forbidden.
+5. Repeated tuning on the same sealed set is forbidden.
+6. Overwriting a failed candidate is forbidden; every attempt must use a new ID.
+7. Deleting failed results, negative findings, or rollback records is forbidden.
+8. Treating unreviewed fields as correct is forbidden.
+9. Treating every human `accept` as noise-free ground truth is forbidden.
+10. Using a reading model / DWS confidence as ground truth is forbidden.
+11. Reducing review rate via `not_applicable`, field deletion, or loosened
+    normalization is forbidden.
+12. Rules hard-coding doc IDs, benchmark indices, or expected values are forbidden.
+13. One candidate modifying multiple Harness components is forbidden.
+14. Undisclosed increases in API calls, budget, latency, or providers are forbidden.
+15. Changing QA sampling to flatter the human-review rate is forbidden.
+16. Calling 41.1% a document review rate is forbidden unless remeasurement actually
+    shows that.
+17. Calling development-set improvements generalization is forbidden.
+18. Writing “zero new observed errors” as “proof of zero risk” is forbidden.
+19. Claiming “the system has self-improved” before a complete promoted cycle is
+    forbidden.
+20. Letting the system pass a known blocker to hit the 30% hard budget is forbidden.
 
 ---
 
-# 19. 建议代码结构
+# 19. Proposed code structure
 
 ```text
 invoiceloop/
-  harness.py                 # 加载 immutable HarnessManifest
-  routing.py                 # 纯函数：ledger+gates+policy → RoutingReport
+  harness.py                 # load immutable HarnessManifest
+  routing.py                 # pure function: ledger+gates+policy → RoutingReport
   execution.py               # execution_fingerprint
   feedback.py                # adjudication → FeedbackEvent
-  qa_sampler.py              # 分层随机 QA / propensity
+  qa_sampler.py              # stratified random QA / propensity
 
   improve/
     models.py                # Finding/Candidate/Eval/Promotion schemas
-    compile.py               # 生成 Experience Pack
+    compile.py               # generate Experience Pack
     mine.py                  # deterministic weakness mining
     propose.py               # agent task pack / candidate manifest
     lint.py                  # diff allowlist / anti-cheat
-    sandbox.py               # worktree 与权限
-    metrics.py               # 风险—覆盖、人工、成本
+    sandbox.py               # worktree and permissions
+    metrics.py               # risk–coverage, human, cost
     evaluate.py              # targeted/regression/promotion
     promote.py               # human-only promotion
     report.py                # before/after + prediction audit
@@ -1533,24 +1591,25 @@ workspace/
     evaluation_access_ledger.jsonl
 ```
 
-保持项目现有的文件系统、不可变目录和 append-only 风格；黑客松阶段没有必要引入数据库。
+Keep the project's existing filesystem, immutable directories, and append-only style;
+there is no need to introduce a database for the hackathon.
 
 ---
 
-# 20. CLI 合同
+# 20. CLI contract
 
 ```bash
-# 从权威 run 和裁决重建反馈事件
+# rebuild feedback events from authoritative runs and adjudications
 python -m invoiceloop feedback compile --workspace ws
 
-# 确定性统计与 finding 草稿
+# deterministic statistics and finding drafts
 python -m invoiceloop improve mine --workspace ws
 
-# 人确认 finding 为 actionable
+# a human confirms a finding as actionable
 python -m invoiceloop improve confirm-finding \
   --finding FIND-0012 --reviewer Stahl
 
-# agent 只在 allowlisted Harness component 内提出候选
+# the agent proposes candidates only within allowlisted Harness components
 python -m invoiceloop improve propose \
   --finding FIND-0012 --component routing_policy
 
@@ -1558,74 +1617,75 @@ python -m invoiceloop improve propose \
 python -m invoiceloop improve evaluate \
   --candidate CAND-0012-A --stage regression
 
-# 一次 promotion-set 查询
+# one promotion-set query
 python -m invoiceloop improve qualify \
   --candidate CAND-0012-A
 
-# 只有人能执行
+# only a human can execute this
 python -m invoiceloop improve promote \
   --candidate CAND-0012-A \
   --approved-by Stahl \
   --rationale "..."
 
-# 展示 41%→X% 的完整轨迹
+# show the full 41%→X% trajectory
 python -m invoiceloop improve report --workspace ws
 ```
 
 ---
 
-# 21. 必须新增的测试
+# 21. Tests that must be added
 
 ## Trust / identity
 
-- Harness digest 变化 → execution fingerprint 必须变化；
-- 相同输入 + 不同 Harness 不得 replay 旧 run；
-- accept_claim 必须取 ledger value；
-- matrix tamper 不得改变 deliverable；
-- semantic verify 能抓最终值错绑；
-- `confirm_absent/not_applicable/abstain` 投影不同。
+- Harness digest changes → execution fingerprint must change;
+- same input + different Harness must not replay an old run;
+- accept_claim must take the ledger value;
+- matrix tampering must not change the deliverable;
+- semantic verify catches mis-bound final values;
+- `confirm_absent/not_applicable/abstain` project differently.
 
 ## Improve permissions
 
-- candidate 修改 forbidden path → reject；
-- candidate 包含 doc ID / expected value → reject；
-- candidate 修改 scorer → reject；
-- candidate 增加网络调用/依赖/预算 → reject；
-- candidate 多组件 diff → reject。
+- candidate modifies a forbidden path → reject;
+- candidate contains doc ID / expected value → reject;
+- candidate modifies the scorer → reject;
+- candidate adds network calls/dependencies/budget → reject;
+- candidate diffs multiple components → reject.
 
 ## Eval integrity
 
-- proposer 无法读取 private labels；
-- promotion query 计入 access ledger；
-- consumed promotion set 不可复用；
-- baseline/candidate 文档集必须完全一致；
-- metric bootstrap seed 记录；
-- field-level metric 不错误当 document-level metric。
+- the proposer cannot read private labels;
+- promotion queries are counted in the access ledger;
+- a consumed promotion set cannot be reused;
+- baseline/candidate document sets must be exactly identical;
+- metric bootstrap seeds recorded;
+- field-level metrics must not be mistaken for document-level metrics.
 
 ## Improvement semantics
 
-- 排序 candidate 不得宣称降低 review load；
-- policy relaxation 不能覆盖 hard blockers；
-- review rate 下降但新增 critical silent error → qualification fail；
-- QA sampling 下降 → qualification fail；
-- agent prediction 与实际结果差异被记录，不得覆盖。
+- an ordering candidate must not claim reduced review load;
+- policy relaxation cannot override hard blockers;
+- review rate drops but a new critical silent error appears → qualification fail;
+- QA sampling drops → qualification fail;
+- gaps between agent predictions and actual results are recorded and must not be
+  overwritten.
 
 ---
 
-# 22. 黑客松演示脚本
+# 22. Hackathon demo script
 
-## 画面 1：保守起点
+## Scene 1: conservative starting point
 
 ```text
 HAR-0001
 Mandatory field review load: 41.1%
 ```
 
-展示一张无实际错误但因为 soft warning 被送人工的字段。
+Show a field with no real error that was sent to a human because of a soft warning.
 
-## 画面 2：每次复核留下结构化反馈
+## Scene 2: every review leaves structured feedback
 
-人点击：
+The human clicks:
 
 ```text
 accept_claim
@@ -1633,9 +1693,9 @@ reason = ROUTING_FALSE_POSITIVE
 confidence = high
 ```
 
-显示它进入 Feedback Event，而不是只改当前 JSON。
+Show it entering a Feedback Event, not just mutating the current JSON.
 
-## 画面 3：Finding
+## Scene 3: Finding
 
 ```text
 This cohort caused 43 reviews,
@@ -1644,18 +1704,18 @@ This cohort caused 43 reviews,
 no hard blocker.
 ```
 
-## 画面 4：Agent Candidate
+## Scene 4: Agent Candidate
 
-Agent 只能修改 `routing_policy.yaml` 的一条规则，并写出预测：
+The agent may modify only one rule in `routing_policy.yaml` and writes a prediction:
 
 ```text
 Expected review-load reduction: 4pp
 Expected new critical silent errors: 0
 ```
 
-## 画面 5：评测门控
+## Scene 5: eval gating
 
-同屏显示：
+Show on one screen:
 
 ```text
 Targeted: PASS
@@ -1666,25 +1726,26 @@ Review load: 41.1% → 36.8%
 Critical silent errors: unchanged
 ```
 
-实际数字出来前不能预填。
+No pre-filling before the real numbers are in.
 
-## 画面 6：Human Promote
+## Scene 6: Human Promote
 
-人点击 Promote，生成 HAR-0002 和 PromotionRecord。
+The human clicks Promote, generating HAR-0002 and a PromotionRecord.
 
-## 画面 7：下一张发票
+## Scene 7: the next invoice
 
-新 run manifest 明确绑定 HAR-0002；同类软 warning 自动 policy_accept，完整审计链说明为什么不再需要人看。
+The new run manifest explicitly binds HAR-0002; the same class of soft warning is auto
+policy_accept, and the full audit chain explains why a human no longer needs to look.
 
-## Demo 结尾
+## Demo closing
 
 > **Every review becomes an eval. Every policy change must re-earn trust.**
 
 ---
 
-# 23. 可公开声称与禁止声称
+# 23. Public claims allowed and claims forbidden
 
-## 完成 v0.1 且有一次 promotion cycle 后可声称
+## Allowed claims once v0.1 is complete with one promotion cycle
 
 - InvoiceLoop captures human review as structured feedback events.
 - Repeated actionable feedback becomes bounded Harness candidates.
@@ -1693,19 +1754,19 @@ Critical silent errors: unchanged
 - A promoted policy reduced measured review load from R0 to R1 on an unseen qualification set.
 - Every future run binds the exact Harness version that produced its routing decisions.
 
-## 完成 final sealed evaluation 后可声称
+## Allowed claims after the final sealed evaluation is complete
 
 - On a fresh sealed DocILE-derived set, the promoted Harness reduced mandatory field review load from X% to Y% without increasing observed critical generalized silent failures.
 
-必须带：
+Must carry:
 
-- 精确分母；
-- 数据集范围；
-- confidence interval；
-- 人工时间与 DWS 成本；
-- 非生产适用声明。
+- exact denominators;
+- dataset scope;
+- confidence intervals;
+- human time and DWS cost;
+- a non-production-applicability statement.
 
-## 禁止声称
+## Forbidden claims
 
 - InvoiceLoop autonomously learns from every invoice.
 - Human review is no longer required.
@@ -1716,76 +1777,96 @@ Critical silent errors: unchanged
 
 ---
 
-# 24. 研究与工程依据
+# 24. Research and engineering grounding
 
-本设计吸收以下思想，但不照搬其自治强度：
+This design absorbs the following ideas without copying their degree of autonomy:
 
 1. **OpenAI, “Building self-improving tax agents with Codex”**  
-   专家修正 → 产品 trace → actionable findings → targeted eval → scoped engineering task → regression → human shipping。
+   expert corrections → product traces → actionable findings → targeted eval → scoped
+   engineering task → regression → human shipping.
 
 2. **Lilian Weng, “Harness Engineering for Self-Improvement” (2026)**  
-   Harness 包括 workflow、evaluation、permission control 和 persistent state；evaluator 与权限控制应位于演化循环之外，人类应上移到关键抽象层。
+   A harness includes workflow, evaluation, permission control, and persistent state;
+   the evaluator and permission control should sit outside the evolution loop, and
+   humans should move up to the key abstraction layers.
 
 3. **Agentic Harness Engineering (AHE), arXiv:2604.25850**  
-   component / experience / decision observability；每个改动必须是可证伪预测。
+   component / experience / decision observability; every change must be a falsifiable
+   prediction.
 
 4. **Self-Harness, arXiv:2606.09498**  
-   Weakness Mining → Harness Proposal → Proposal Validation；候选必须经 regression 才接受。
+   Weakness Mining → Harness Proposal → Proposal Validation; candidates must pass
+   regression before acceptance.
 
 5. **Harness Updating Is Not Harness Benefit, arXiv:2605.30621**  
-   能写 Harness 更新不等于下游真的受益；InvoiceLoop 必须评估未来 run 的实际 review/risk，而不是 proposal 文案质量。
+   being able to write Harness updates does not mean downstream actually benefits;
+   InvoiceLoop must evaluate the real review/risk of future runs, not the prose quality
+   of proposals.
 
 6. **Adaptive Auto-Harness, arXiv:2606.01770**  
-   开放任务流中单一持续密集更新的 Harness 可能变脆；应监控 drift、保留回滚，并避免把局部 finding 无条件全局化。
+   in open task streams a single harness under constant dense updates can turn brittle;
+   drift should be monitored, rollbacks kept, and local findings must not be
+   unconditionally globalized.
 
-7. **HarnessCompass, arXiv:2608.01918（非常新的预印本）**  
-   constrained evolution、component-wise optimization 和避免组件间干扰；第一版一个 candidate 只改一个组件。
+7. **HarnessCompass, arXiv:2608.01918 (a very recent preprint)**  
+   constrained evolution, component-wise optimization, and avoiding inter-component
+   interference; in the first version one candidate changes only one component.
 
 8. **Selective Classification, arXiv:1705.08500**  
-   自动接受与拒绝/人工之间本质是 risk–coverage trade-off，不能只看单点 accuracy。
+   auto-accept versus reject/human is inherently a risk–coverage trade-off; single-point
+   accuracy alone must not be used.
 
 9. **Conformal Risk Control, arXiv:2208.02814 / ICLR 2024**  
-   未来在样本量与选择偏差条件满足后，可研究用校准程序控制单调风险；不应在当前小样本黑客松阶段夸大保证。
+   once sample-size and selection-bias conditions are met, calibrated procedures for
+   controlling monotone risk may be studied; guarantees must not be overstated in the
+   current small-sample hackathon phase.
 
 10. **Dwork et al., adaptive data analysis / reusable holdout**  
-    反复查看同一测试集并据此改策略会过拟合；需要限制测试集暴露、燃烧 promotion set，并保留一次性 final sealed set。
+    repeatedly viewing the same test set and changing strategy accordingly overfits;
+    test-set exposure must be limited, promotion sets burned, and a one-shot final
+    sealed set kept.
 
 11. **NIST AI RMF 1.0**  
-    明确角色、反馈整合、持续监控、TEVV、变更管理、第三方模型 drift 和人类监督。
+    explicit roles, feedback integration, continuous monitoring, TEVV, change
+    management, third-party model drift, and human oversight.
 
-以上 2026 Harness 论文多数为新近预印本，适合作为架构启发，不应当作已经形成行业标准的证据。
+Most of the 2026 harness papers above are recent preprints, suitable as architectural
+inspiration but not as evidence that industry standards have already formed.
 
 ---
 
-# 25. 最终实施裁决
+# 25. Final implementation adjudication
 
 ## PASS
 
-- 把 Improve Layer 作为 InvoiceLoop 的核心新增叙事；
-- 以 41%→30% 作为清晰的产品目标；
-- 采用反馈→finding→candidate→eval→human promotion→future run 的完整循环；
-- 使用 AHE 式三类 observability；
-- 使用 Self-Harness 的 mine/propose/validate 骨架；
-- 使用 Tax AI 的 trace-to-eval 工程路径。
+- make the Improve Layer InvoiceLoop's core new narrative;
+- take 41%→30% as a clear product goal;
+- adopt the full loop feedback→finding→candidate→eval→human promotion→future run;
+- use AHE-style three-way observability;
+- use the Self-Harness mine/propose/validate skeleton;
+- use Tax AI's trace-to-eval engineering path.
 
-## HOLD，直到 P0 完成
+## HOLD until P0 is complete
 
-- 最终值权威绑定；
-- 人工决策语义拆分；
-- policy_accept；
-- routing report；
-- Harness execution identity；
-- evaluator 与 product normalization 分离。
+- final-value authority binding;
+- splitting human decision semantics;
+- policy_accept;
+- routing report;
+- Harness execution identity;
+- separating evaluator and product normalization.
 
-## 第一版明确不做
+## Explicitly not in the first version
 
-- 任意 repo 自修改；
-- 自动 promotion；
-- 多组件联合优化；
-- 模型权重更新；
-- 把现有 100 份继续冒充 final held-out；
-- 用一个综合分掩盖安全回归。
+- arbitrary repo self-modification;
+- automatic promotion;
+- joint multi-component optimization;
+- model weight updates;
+- passing the existing 100 off as the final held-out set;
+- masking safety regressions with a single composite score.
 
-**一句话结论：**
+**One-sentence conclusion:**
 
-> InvoiceLoop Improve Layer 不应当是一个“会改规则的 agent”，而应当是一个把真实人工复核变成可归因评测任务、只允许受限 Harness 候选、并要求每次改进在未见数据上重新赢得信任的控制面。
+> The InvoiceLoop Improve Layer should not be an “agent that changes rules”; it should be
+> a control plane that turns real human review into attributable evaluation tasks,
+> permits only bounded Harness candidates, and requires every improvement to re-earn
+> trust on unseen data.

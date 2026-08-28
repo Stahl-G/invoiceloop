@@ -1,80 +1,102 @@
-# HITL 窄放行轮(2026-08-14,第一次裁决前冻结)
+# HITL narrow-release round (2026-08-14, frozen before the first adjudication)
 
-本轮不是 R1 的 S2–S5,也不是原协议的 R2。R1 已在 S2 第一次裁决前预注册终止
-(`docs/HITL_R1_TERMINATION_2026-08-14.md`)。本文件第一次提交即冻结;
-本轮第一次裁决之后改任何一字 = 本轮作废。
+This round is neither R1's S2–S5 nor the original protocol's R2. R1 was
+terminated by pre-registered termination before S2's first adjudication
+(`docs/HITL_R1_TERMINATION_2026-08-14.md`). This file freezes on first commit;
+changing a single character after this round's first adjudication = this round
+is void.
 
-产品契约:`docs/RELEASE_PROFILE_DESIGN_2026-08-14.md`。
-办法 1 为主(付款三字段挡住放行,预算封顶,不再普查十字段);
-办法 2 为辅(口径一次签署,建议层预填,金额三元组同屏看)。
+Product contract: `docs/RELEASE_PROFILE_DESIGN_2026-08-14.md`.
+Option 1 is primary (the three payment fields gate release, budget capped, no
+more ten-field census); option 2 is auxiliary (caliber signed once, suggestion
+layer prefill, amount triad viewed on one screen).
 
-不主张抽取变准。不把自动字段比例当首要成功指标。
-
----
-
-## 1. 语料
-
-- 池:原 R2 的 100 份(`docs/hitl_r2_doc_list.json`),即 R1 用剩的广播
-  strong/weak 存盘文档。R1 的 100 份不进本轮(人已见过,计时不纯)。
-- **sealed4-100 永不进入**。
-- 本轮 20 份,种子 `invoiceloop-hitl-narrow-2026-08-14`,
-  `random.Random(int(sha256(seed)[:16], 16)).sample(r2, 20)` 后排序。
-  名单 `docs/hitl_narrow_doc_list.json`,同 commit 冻结,sha 校验。
-- 零新 DWS 调用。无 API 预读(R1 组合臂 52s/槽 vs 对照 28s,本轮不复用该臂)。
+No claim that extraction got more accurate. The automated-field ratio is not
+taken as the primary success metric.
 
 ---
 
-## 2. 冻结 harness 与口径
+## 1. Corpus
 
-- 路由:HAR-0023 = HAR-0021 的缺席规则
+- Pool: the original R2's 100 documents (`docs/hitl_r2_doc_list.json`), i.e.
+  the broadcast strong/weak saved documents left over from R1. R1's 100
+  documents do not enter this round (already human-seen; timing impure).
+- **sealed4-100 never enters**.
+- This round: 20 documents, seed `invoiceloop-hitl-narrow-2026-08-14`,
+  `random.Random(int(sha256(seed)[:16], 16)).sample(r2, 20)` then sorted.
+  List `docs/hitl_narrow_doc_list.json`, frozen in the same commit,
+  sha-checked.
+- Zero new DWS calls. No API pre-read (R1's combination arm 52s/slot vs
+  control 28s; this round does not reuse that arm).
+
+---
+
+## 2. Frozen harness and caliber
+
+- Routing: HAR-0023 = HAR-0021's absence rules
   + `release_profile.id = payment_required_v1`
   (`invoice_number`, `seller_name`, `amount_due`)
-  + `release_tier1_explicit: false`(CLEAN TIER1 标 `policy_accepted`,
-  5% `policy_accepted_tier1` 探针进队列)。
-  政策文件:`docs/evidence/narrow_v1_2026-08-14/HAR-0023.routing_policy.json`。
-  产品 active / HAR-0021 不动。
-- 口径政策一次签署,建议层预填,不写账本:
-  `docs/evidence/narrow_v1_2026-08-14/caliber_broadcast_v1.json`。
-  买方 = 账单名块(保留 Attn,去掉街道);卖方 = 台站/刊物;
-  到期日 = 印出的日历日,否则 `due_date.py` 派生。人不再在每张单上改口径。
-- 金额三元组(Gross / Commission / Net Due)由独立 OCR 对齐,建议进
-  `amount_due`(及能唯一对应的 gross/net)。工作台在付款槽上同屏展示三元组,
-  人签的是 `amount_due`,不是三个槽。
+  + `release_tier1_explicit: false` (CLEAN TIER1 marked `policy_accepted`,
+  with a 5% `policy_accepted_tier1` probe entering the queue).
+  Policy file: `docs/evidence/narrow_v1_2026-08-14/HAR-0023.routing_policy.json`.
+  Product active / HAR-0021 untouched.
+- Caliber policy signed once, prefilled by the suggestion layer, never
+  written to the ledger:
+  `docs/evidence/narrow_v1_2026-08-14/caliber_broadcast_v1.json`.
+  Buyer = the billing name block (keep Attn, drop the street); seller =
+  station/publication; due date = the printed calendar date, otherwise
+  derived by `due_date.py`. The human no longer adjusts caliber on each
+  document.
+- The amount triad (Gross / Commission / Net Due) is aligned by independent
+  OCR, with suggestions entering `amount_due` (and the gross/net that map
+  uniquely). The workbench shows the triad on one screen at the payment slot;
+  the human signs `amount_due`, not three slots.
 
-建议 tag(run 后展示型注入,不进指纹):`caliber`、`triad`、`derived`。
-不注入 xmode(R1 的 split 是人时成本)。
-
----
-
-## 3. 队列
-
-- 行走范围 = 契约三字段 ∩ `in_human_queue`,并集任何 `QA_SAMPLE` 探针。
-  其余字段留在支持矩阵,状态未复核。
-- 序:先按单据最弱 `support_strength`(unsupported → corroborated),
-  再按契约字段顺序。从高风险单据往下,不是随机翻。
-- **不设工作时间上限。** 不写 `review_budget.json`,不因人时拒绝 `/decide`。
-  关账仍可按相邻 `decided_at` 记耗时(>1h 休息剔除),那是测量,不是闸。
-  未批的单保持 `ready_for_approval`,不外发。
-- 残余风险必须写在队列页上,带 §8 限定:未挑出约 12%;未被 flag 的 TIER1
-  仍有 7.8% 真错。未复核 ≠ 正确。
+Suggestion tags (display-only injection after the run, not in the
+fingerprint): `caliber`, `triad`, `derived`. No xmode injection (R1's split
+was a human-time cost).
 
 ---
 
-## 4. 测量(开发集,不带资格语义)
+## 3. Queue
 
-预注册,不挑着报:
-
-1. **零触达张数**:契约字段 ∪ 探针 都不是 `review` 的张数 / 20
-2. **被打开的单的耗时**:该单第一条与最后一条行走槽裁决的间隔
-   (休息 >1h 剔除);未打开的单不进分母
-3. **付款三字段未解数**:行走范围内仍 `pending`/`abstain` 的槽
-4. **探针静默错**:人推翻 `auto_accept` / `auto_absent` 的探针槽数
-
-对照:R1 S1 普查 0/20 零触达、中位 52s/槽、约 3 小时/20 张。不拼接那条曲线。
+- Walk scope = the three contract fields ∩ `in_human_queue`, union any
+  `QA_SAMPLE` probe. The other fields stay on the support matrix with status
+  unreviewed.
+- Order: by each document's weakest `support_strength` first
+  (unsupported → corroborated), then by contract field order. Down from the
+  highest-risk documents, not random flipping.
+- **No working-time cap.** No `review_budget.json` is written, and `/decide`
+  is never refused over human time. Closeout may still record durations from
+  adjacent `decided_at` (>1h breaks removed) — that is measurement, not a
+  gate. Unapproved documents stay `ready_for_approval`, not sent out.
+- Residual risk must be written on the queue page with the §8 qualifiers:
+  about 12% not picked out; unflagged TIER1 still has 7.8% true errors.
+  Unreviewed ≠ correct.
 
 ---
 
-## 5. 产出
+## 4. Measurement (development set, no qualification semantics)
 
-`docs/HITL_NARROW_<日期>.md`:上列四点 + 混淆声明 + 名单/账本/harness sha。
-无晋升义务。改进候选另立,不在人时预算里。
+Pre-registered, no cherry-picked reporting:
+
+1. **Zero-touch document count**: documents where no slot of contract fields
+   ∪ probes is `review`, / 20
+2. **Duration on opened documents**: the interval between that document's
+   first and last walked-slot adjudication (>1h breaks removed); unopened
+   documents do not enter the denominator
+3. **Unresolved payment three-field slots**: slots still `pending`/`abstain`
+   within the walk scope
+4. **Probe silent errors**: probe slots where the human overturns
+   `auto_accept` / `auto_absent`
+
+Control: R1 S1's census 0/20 zero-touch, median 52s/slot, about 3 hours/20
+documents. That curve is not spliced.
+
+---
+
+## 5. Output
+
+`docs/HITL_NARROW_<date>.md`: the four points above + confounder declaration
++ list/ledger/harness shas. No promotion obligation. Improvement candidates
+are run separately, not inside the human-time budget.

@@ -1,70 +1,74 @@
-# Loop 泛化实测:一批文档的经验用于另一批(2026-08-06,供外部裁决)
+# Loop generalization, measured: experience from one batch of documents applied to another (2026-08-06, for external adjudication)
 
-**问题**:改进循环在一批文档上学到的东西,能不能用到**另一批从未人工
-接触**的文档上 —— 而不是只对重复证据有效(carry 只解决重复证据)。
+**Question**: can what the improvement loop learns on one batch of documents be applied to **another batch
+never touched by humans** — rather than working only on repeated evidence (carry solves only repeated evidence)?
 
-**方法(零 API,可重算)**:SEALED-1 的 100 份封箱文档中,12 份经过完整
-人工复核(`runs/hitl-sealed`,123 条裁决)并产出两个 absent_expected
-cohort(seller_vat_id、total_vat,均由 mine 从裁决事件独立发现,人工
-签署晋升 HAR-0003/HAR-0004)。把这版策略回放到**其余 88 份从未人工
-复核**的文档上:从权威工件(field_ledger + gate_report + raw 响应)
-重建槽位事实(单一事实源 derive_document_records),按策略重放路由,
-工作量与安全性分开报。安全性用 DocILE 真值评测。
+**Method (zero API, recomputable)**: of SEALED-1's 100 sealed documents, 12 went through complete
+human review (`runs/hitl-sealed`, 123 adjudications) and yielded two absent_expected
+cohorts (seller_vat_id, total_vat; both discovered independently by mine from adjudication events, promoted
+by human signature as HAR-0003/HAR-0004). That policy version is replayed onto the **remaining 88 documents
+never human-reviewed**: slot facts are rebuilt from the authoritative artifacts
+(field_ledger + gate_report + raw responses) via the single-source-of-truth derive_document_records,
+routing is replayed under the policy, and workload and safety are reported separately. Safety is evaluated
+against DocILE ground truth.
 
-**角色声明**:SEALED-1 已按协议完成 final held-out 职责并降级为
-演化/回归集 —— 用它做 cohort 开发与泛化分析是它的合法角色;
-本文件是演化集分析,不是新一轮封箱评测。
+**Role statement**: SEALED-1 has completed its protocol-assigned final held-out duty and has been demoted to
+an evolution/regression set — using it for cohort development and generalization analysis is its legitimate
+role; this document is an evolution-set analysis, not a new round of sealed evaluation.
 
-## 数字(88 份未人工文档 × 10 字段 = 880 槽)
+## Numbers (88 never-human-reviewed documents × 10 fields = 880 slots)
 
-**复核负载口径**:`route not in (auto_accept, auto_absent)` —— 与
-`deliver` / `matrix.in_human_queue` / `safety_metrics` 同定义;
-**不含** `auto_absent`(政策确认缺席不算待人工)。勿与
-`requires_adjudication`(含 auto_absent 的兼容字段)混淆。
+**Review-load caliber**: `route not in (auto_accept, auto_absent)` — same definition as
+`deliver` / `matrix.in_human_queue` / `safety_metrics`;
+**excludes** `auto_absent` (policy-confirmed absence does not count as awaiting human action). Do not confuse
+with `requires_adjudication` (a compatibility field that includes auto_absent).
 
-| 策略 | 复核负载 | 文档触达 | auto_absent 静默缺席错 | auto_accept 静默错值 |
+| Policy | Review load | Document touch | auto_absent silent absence errors | auto_accept silent wrong values |
 |---|---|---|---|---|
-| HAR-0001(保守基线) | 63.7% | 88/88 | — | 49/272 (18.0%) |
-| HAR-0002(TIER1 策略放行) | 64.4% | 88/88 | — | 48/266 (18.0%) |
-| **HAR-0004**(两个缺席 cohort) | **55.1%** | **87/88** | 3/85 (**3.5%**) | 49/266 (18.4%) |
+| HAR-0001 (conservative baseline) | 63.7% | 88/88 | — | 49/272 (18.0%) |
+| HAR-0002 (TIER1 policy release) | 64.4% | 88/88 | — | 48/266 (18.0%) |
+| **HAR-0004** (two absence cohorts) | **55.1%** | **87/88** | 3/85 (**3.5%**) | 49/266 (18.4%) |
 
-(HAR-0002 复核负载略高于 HAR-0001:policy_accepted TIER1 的 5% QA
-抽检回队,是设计代价,不是退化。)
+(HAR-0002's review load is slightly higher than HAR-0001: the 5% QA sampling of policy_accepted TIER1
+returns those slots to the queue — a design cost, not a regression.)
 
-## 读法
+## How to read this
 
-1. **经验迁移成立且有真值背书**:两个 cohort 都是字段级语义(美国发票
-   无 VAT 字段/无 VAT 金额行),不引用任何具体文档 —— 套到 88 份陌生
-   文档上复核负载 −9.3pp。这不是重复证据的红利(carry 的领域),
-   是跨文档的泛化。
-2. **「100% 文档触达」首次出现反例**:87/88 —— 一份文档的 10 个槽全部
-   政策接管且真值无恙。此前所有口径下文档触达都是 100%。
-3. **代价是实测的,不是猜的**:85 个 auto_absent 中 3 个真值其实有
-   (3.5%,与全 100 份独立估计的 3.4% 一致)—— 缺席政策的静默漏标率。
-   它由 QA 20% 抽检持续观测;severity 注记:3 例含一个真欧盟 VAT 号
-   (DWS 漏抽),两个 EIN 格式号(数据集口径争议的另一面)。
-4. **auto_accept 静默错值 18% 各策略持平**:这是 policy_accept 固定操作
-   点的既有风险(此前基线表里的 17.91% 同量级),与 cohort 无关,
-   由 5% QA 探针观测。cohort 没有让它变好或变坏。
+1. **Experience transfer holds and is backed by ground truth**: both cohorts are field-level semantics
+   (US invoices have no VAT field / no VAT amount line) and reference no specific document — applied to
+   88 unfamiliar documents, review load drops −9.3pp. This is not a repeated-evidence dividend (carry's
+   domain); it is cross-document generalization.
+2. **"100% document touch" meets its first counterexample**: 87/88 — one document had all 10 slots
+   taken over by policy with ground truth unharmed. Under every previous caliber, document touch was 100%.
+3. **The cost is measured, not guessed**: of 85 auto_absent slots, 3 actually have ground truth
+   (3.5%, consistent with the independent estimate of 3.4% over all 100 documents) — the silent
+   under-labeling rate of the absence policy. It is continuously observed by the 20% QA sampling;
+   severity note: the 3 cases include one genuine EU VAT number (missed by DWS) and two
+   EIN-format numbers (the other side of the dataset caliber dispute).
+4. **auto_accept silent wrong values hold flat at 18% across policies**: this is the pre-existing
+   risk of the policy_accept fixed operating point (the same order of magnitude as the 17.91% in the earlier
+   baseline tables), unrelated to the cohorts, observed by the 5% QA probes. The cohorts
+   did not make it better or worse.
 
-## 不主张
+## Not claimed
 
-- 不主张泛化到 DocILE 之外(单一语料、单一供应商、单一时间点,
-  ARCHITECTURE §8 限定同屏有效);
-- 不主张 55.1% 是终点:复核负载的剩余主体是门禁失败与真缺值,
-  需要新的 cohort 类型(不是缺席类)才能继续;
-- 不主张缺席政策无代价:3.5% 静默漏标是实际价格,晋升记录
-  (PROM-0003)的理由里已写入;
-- 不主张 carry 与本文是一回事:carry 解决重复证据,本文解决跨文档泛化。
+- Not claimed: generalization beyond DocILE (single corpus, single vendor, single point in time;
+  the ARCHITECTURE §8 limitations remain in effect on the same screen);
+- Not claimed: that 55.1% is the endpoint — the remaining bulk of review load is gate failures and genuinely
+  missing values, which needs new cohort types (not the absence kind) to go further;
+- Not claimed: that the absence policy is cost-free — the 3.5% silent under-labeling is the actual price,
+  already written into the rationale of the promotion record (PROM-0003);
+- Not claimed: that carry and this document are the same thing — carry solves repeated evidence; this
+  document solves cross-document generalization.
 
-## 复算
+## Recompute
 
 ```bash
-# 88 份名单 = sealed1 名单 − runs/hitl-sealed/input/pdfs/ 的 12 份
-# 方法与数字(本文全部表格的来源,零 API):
-INVOICELOOP_CORPUS=runs/sealed1-workspace python3 <本分析脚本>
-# 输入:runs/sealed1/{gate_report,field_ledger}.json +
-#       runs/sealed1-workspace/raw/*.understand.json +
-#       runs/hitl-sealed/harnesses/HAR-0004/routing_policy.json +
-#       DocILE 标注(heldout_metrics.truth 同一口径)
+# The 88-document list = sealed1 list − the 12 documents in runs/hitl-sealed/input/pdfs/
+# Method and numbers (source of every table in this document, zero API):
+INVOICELOOP_CORPUS=runs/sealed1-workspace python3 <this-analysis-script>
+# Inputs: runs/sealed1/{gate_report,field_ledger}.json +
+#         runs/sealed1-workspace/raw/*.understand.json +
+#         runs/hitl-sealed/harnesses/HAR-0004/routing_policy.json +
+#         DocILE annotations (the same caliber as heldout_metrics.truth)
 ```

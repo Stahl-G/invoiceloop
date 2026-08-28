@@ -1,111 +1,137 @@
-# SEALED-1 封箱评测协议(2026-08-05,执行前冻结)
+# SEALED-1 sealed evaluation protocol (2026-08-05, frozen before execution)
 
-69 评判决:旧 100 份留出集的案例进过开发过程(C3/C8 修复、漂移分析),
-只能当回归/演化集,不再是 final held-out。本协议建一个真正未见的封箱集。
-**与旧 HELDOUT.md 的关键差异:取样种子来自代码冻结之后才存在的外部
-随机源,开发期间名单机械不可预知(高级裁决一);排除池是全量暴露清单,
-不只是两份正式名单(高级裁决二)。**
+Adjudication decision 69: cases from the old 100-document held-out set entered
+development (C3/C8 fixes, drift analysis), so it can serve only as a
+regression/evolution set, no longer as final held-out. This protocol builds a
+genuinely unseen sealed set. **Key differences from the old HELDOUT.md: the sampling
+seed comes from an external randomness source that did not exist until after the code
+freeze, so the list was mechanically unpredictable during development (senior
+adjudication one); the exclusion pool is the full exposure manifest, not just the two
+official lists (senior adjudication two).**
 
-## 0. 冻结对象(本文件 commit 时即冻结)
+## 0. What is frozen (frozen at the moment this file is committed)
 
-- 产品代码:本文件的首次提交即冻结点
-  (`git log --diff-filter=A -- docs/SEALED1_PROTOCOL.md` 可查);
-- 评测脚本 sha256:
+- Product code: the first commit of this file is the freeze point
+  (verifiable via `git log --diff-filter=A -- docs/SEALED1_PROTOCOL.md`);
+- Evaluation script sha256:
   - `scripts/heldout_metrics.py` = a486e82f…01d804
   - `scripts/baseline_comparison.py` = 5eb34dcb…c865eb
-  - `invoiceloop/heldout.py`(取样/抽取驱动) = e5588497…40d4cbf
-- 排除池:`docs/development_exposure_manifest.json`(260 份:
-  校准 160 + 旧留出 100 + vendored demo 3,逐条带 reason/source);
-- harness:包内 HAR-0001(`release_tier1_explicit: true`,零 cohort)。
+  - `invoiceloop/heldout.py` (sampling/extraction driver) = e5588497…40d4cbf
+- Exclusion pool: `docs/development_exposure_manifest.json` (260 documents:
+  calibration 160 + old held-out 100 + vendored demo 3, each entry with
+  reason/source);
+- harness: bundled HAR-0001 (`release_tier1_explicit: true`, zero cohorts).
 
-## 1. 随机种子承诺(先承诺,后开奖)
+## 1. Random seed commitment (commit first, reveal later)
 
-- 随机源:drand 主网 beacon(`https://api.drand.sh/public/{round}`,
-  30 秒一轮,链上不可预测、事后可公开验证);
-- **承诺轮次:6350076 = 2026-08-05T12:35:00Z**。
-  修订记录:原承诺 6350246(≈14:00Z),用户指示提前;本修订 commit 于
-  ~12:26Z,仍先于 6350076 开奖(承诺时该轮随机性尚不存在),且代码/
-  脚本/排除池的冻结 commit(5050dfb)先于一切 —— 「开发期间名单不可
-  预知」的机械性质不变,时间差从 ~4 小时缩到 ~9 分钟;
-- 种子 = 该轮 `randomness` 字段(hex)原文;抽样 =
-  `heldout.sealed_list(seed)`:`random.Random("invoiceloop-sealed1-v1|" +
-  seed).sample(sorted(pool), 100)`,pool = ≥4 记分字段标注 ∧ 不在暴露清单;
-- 任何人事后可用同一轮次 + 同一代码复算名单 —— 可验证,不可预知。
+- Randomness source: drand mainnet beacon (`https://api.drand.sh/public/{round}`,
+  one round every 30 seconds, unpredictable on-chain and publicly verifiable after
+  the fact);
+- **Committed round: 6350076 = 2026-08-05T12:35:00Z**.
+  Revision record: the original commitment was 6350246 (≈14:00Z); the user
+  instructed moving it earlier. This revision was committed at ~12:26Z, still
+  before round 6350076 was revealed (at commitment time that round's randomness did
+  not yet exist), and the freeze commit for the code/scripts/exclusion pool
+  (5050dfb) precedes everything — the mechanical property that "the list is
+  unpredictable during development" is unchanged; the time gap shrank from ~4 hours
+  to ~9 minutes;
+- Seed = the literal `randomness` field (hex) of that round; sampling =
+  `heldout.sealed_list(seed)`: `random.Random("invoiceloop-sealed1-v1|" +
+  seed).sample(sorted(pool), 100)`, pool = documents with ≥4 scored-field
+  annotations ∧ not in the exposure manifest;
+- Anyone can afterwards recompute the list from the same round + the same code —
+  verifiable, not predictable.
 
-## 2. 执行顺序(不许颠倒)
+## 2. Execution order (must not be reordered)
 
-1. ✅ 修复 1–5 落地、345 测试全绿、commit;
-2. ✅ 暴露清单生成并 commit;
-3. 本协议 + 脚本哈希 commit(**先承诺轮次**);
-4. 轮次开奖后:取 randomness → `python3 -m invoiceloop sealed plan
+1. ✅ Fixes 1–5 landed, 345 tests all green, committed;
+2. ✅ Exposure manifest generated and committed;
+3. This protocol + script hashes committed (**the round is committed first**);
+4. After the round is revealed: take randomness → `python3 -m invoiceloop sealed plan
    --workspace runs/sealed1-workspace --seed <hex> --seed-source
-   "drand round 6350246"` → **名单 commit**(先于任何 DWS 调用);
+   "drand round 6350246"` → **list commit** (before any DWS call);
 5. `python3 -m invoiceloop sealed extract --workspace runs/sealed1-workspace`
-   —— 200 次调用(understand + agentic),预算熔断 6000 credits
-   (参照旧留出集实测 4,758);key 只从 `DWS_API_KEYS` 或
-   `~/.config/invoiceloop/heldout.keys` 读;断点续跑;4xx 也是证据;
+   — 200 calls (understand + agentic), budget circuit breaker 6000 credits
+   (with the old held-out set's measured 4,758 as the reference); keys read only
+   from `DWS_API_KEYS` or `~/.config/invoiceloop/heldout.keys`; resume from
+   checkpoint; 4xx responses are also evidence;
 6. `INVOICELOOP_CORPUS=runs/sealed1-workspace python3 -m invoiceloop run
-   --out runs/sealed1 --doc-ids <名单>`;
-7. 评测**一次**(见 §3),结果写入 docs/SEALED1_RESULTS.md,数字照登;
-8. 打 evidence bundle(raw + run 工件 + 评测输出 + 命令日志),
-   公布 sha256。
+   --out runs/sealed1 --doc-ids <list>`;
+7. Evaluate **once** (see §3), results written into docs/SEALED1_RESULTS.md,
+   numbers recorded as-is;
+8. Build the evidence bundle (raw + run artifacts + evaluation output + command
+   logs), publish the sha256.
 
-网络失败按既有断点续跑恢复;**结果驱动的规则/代码修改 = 本批作废,
-SEALED-1 自动降级为回归集**,另批新种子重来。
+Network failures are recovered by the existing checkpoint-resume mechanism;
+**results-driven rule/code changes = this batch is voided, SEALED-1 is
+automatically demoted to a regression set**, and a new batch is drawn with a fresh
+seed.
 
-## 3. 预注册终点(执行后不得修改)
+## 3. Preregistered endpoints (must not be modified after execution)
 
-### 主终点(资格目标:解除 held-out ceiling)
+### Primary endpoint (qualification goal: lift the held-out ceiling)
 
-当前 HEAD 在未见集上的可靠性与运行闭环。判据沿用 HELDOUT.md 的区间
-(对照组 = 校准 160 同口径实测值):
+Reliability and operational closed loop of the current HEAD on an unseen set.
+Criteria carry over HELDOUT.md's intervals (control group = the calibration 160's
+measured values under the same measure):
 
-| # | 量 | 通过区间 |
+| # | Quantity | Pass interval |
 |---|---|---|
-| H1 | 分诊 lift(前50%偏差率/后50%) | > 1.5 |
+| H1 | triage lift (front-50% discrepancy rate / back 50%) | > 1.5 |
 | H2 | coverage@46% | > 55% |
-| H3 | 复核召回 | > 55% |
-| H4 | extraction_present 缺失率 | 10–45% |
-| H5 | citation 可判子集失败率 | < 15% |
-| H6 | 冻结拒绝率 | 5–35% |
-| H7(新) | 运行闭环 | run 完成 + bundle 四层 verify 通过 |
+| H3 | review recall | > 55% |
+| H4 | extraction_present missing rate | 10–45% |
+| H5 | failure rate on the citation-decidable subset | < 15% |
+| H6 | frozen rejection rate | 5–35% |
+| H7 (new) | operational closed loop | run completes + bundle passes four-layer verify |
 
-判定同旧协议:H1 不达标 = 整体失败;其余不达标 = 如实写入限定清单,
-附数字,不调判据重测。
+Verdict as in the old protocol: H1 below bar = overall failure; any other below
+bar = written truthfully into the limitations list with the numbers attached,
+without adjusting criteria and retesting.
 
-### 次终点(研究目标:排序比较,**不预设 InvoiceLoop 胜出**)
+### Secondary endpoint (research goal: ranking comparison, **without presupposing an InvoiceLoop win**)
 
-- paired recall difference @ 复核预算 10/20/30/40%(分诊序 vs 置信度升序,
-  同一批槽、同一预算,配对差);
-- matched-coverage selective risk:取两排序覆盖相同的点比静默错误;
-- 按文档 bootstrap 的 paired 95% CI(种子固定 42);
-- tie 规则:confidence 平局固定 (doc_id, field) 破 + 切入同分组时报
-  best/worst/expected(已在 baseline_comparison.py 实现并冻结);
-- 功效声明(事前写下):100 份 × 285 槽量级,几个百分点的差异**可能
-  达不到统计显著**;不显著不是实验失败,如实报告点估计 + CI 即可。
-  任何结果下都不改代码继续用本批。
+- paired recall difference @ review budgets 10/20/30/40% (triage order vs
+  ascending confidence, same batch of slots, same budget, paired difference);
+- matched-coverage selective risk: compare silent errors at points where the two
+  rankings reach equal coverage;
+- per-document bootstrap paired 95% CI (seed fixed at 42);
+- tie rule: confidence ties are broken by the fixed (doc_id, field) order, plus
+  best/worst/expected is reported when a cut lands inside the same tie group
+  (already implemented and frozen in baseline_comparison.py);
+- power statement (written down in advance): at the scale of 100 documents × 285
+  slots, differences of a few percentage points **may not reach statistical
+  significance**; non-significance is not an experimental failure — truthfully
+  reporting the point estimate + CI is enough. Whatever the outcome, the code is
+  not changed and this batch continues in use.
 
-## 3.5 第二臂(2026-08-05 12:5xZ 修订,结果未出前的预注册)
+## 3.5 Second arm (revised 2026-08-05 12:5xZ, preregistered before any results were out)
 
-用户决策(2026-08-05):取消无冲突 TIER1 槽的强制人工确认。该决策以
-**HAR-0002**(`release_tier1_explicit: false`,其余与 HAR-0001 相同)
-落地,走完整 propose → evaluate → promote 通道。
+User decision (2026-08-05): remove mandatory manual confirmation for non-conflicting
+TIER1 slots. The decision lands as **HAR-0002** (`release_tier1_explicit: false`,
+otherwise identical to HAR-0001), going through the full propose → evaluate →
+promote channel.
 
-SEALED-1 增加第二臂:同一批封箱 raw 证据、同一冻结代码,仅 routing
-策略换 HAR-0002 重跑(零 API,抽取与门禁不变 —— routing 是证据冻结
-之后的纯函数)。两臂配对报告:
+SEALED-1 gains a second arm: the same batch of sealed raw evidence, the same frozen
+code, re-run with only the routing policy swapped to HAR-0002 (zero API calls;
+extraction and gates unchanged — routing is a pure function applied after the
+evidence is frozen). The two arms are reported paired:
 
-- 字段复核负载 / 放行决策负载 / 文档触达率(工作量);
-- H1–H6 同口径(安全性,真值评测);
-- 差异的按文档 bootstrap CI。
+- field-review workload / release-decision workload / document touch rate (effort);
+- H1–H6 under the same measure (safety, ground-truth evaluation);
+- per-document bootstrap CI of the differences.
 
-本修订 commit 于名单生成之后、**任何 SEALED-1 结果可见之前**;
-主臂(HAR-0001)的判据与通过线一字不动。
+This revision was committed after the list was generated and **before any SEALED-1
+result was visible**; the primary arm's (HAR-0001) criteria and pass lines are
+unchanged to the letter.
 
-## 4. 主张纪律(评测前后都有效)
+## 4. Claim discipline (in force before and after the evaluation)
 
-- SEALED-1 通过 ⇒ 可以说「当前 HEAD 在一个开发期未见的 100 份封箱集上
-  保持 H1–H6 量级」;不 ⇒ 限定清单照登;
-- 次终点无论方向 ⇒ 只报数字与 CI;「优于 confidence 排序」只有在
-  paired CI 下界 > 0 时才许说,且必须带 tie 范围附注;
-- 本批不兼任 PROMOTION-1 资格集(晋升资格集是一次性消耗品,要另批)。
+- SEALED-1 passing ⇒ it becomes permissible to say "the current HEAD holds H1–H6
+  magnitudes on a 100-document sealed set unseen during development"; not passing ⇒
+  the limitations list is recorded as-is;
+- Secondary endpoint, whichever direction ⇒ report only numbers and CIs; "better
+  than the confidence ranking" may be said only when the paired CI lower bound
+  > 0, and must carry the tie-range caveat;
+- This batch does not double as the PROMOTION-1 qualification set (a promotion
+  qualification set is a one-shot consumable; a separate batch is required).

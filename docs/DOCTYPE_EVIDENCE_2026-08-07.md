@@ -1,78 +1,81 @@
-# 单据类型声明的页面字面证据(2026-08-07,阶段 A)
+# Literal Page Evidence for Document Type Claims (2026-08-07, Stage A)
 
-协议/计划:`docs/DOCTYPE_PLAN_2026-08-07.md`。实现:`invoiceloop/doctype.py`。
-复算(零 API):
+Agreement/plan: `docs/DOCTYPE_PLAN_2026-08-07.md`. Implementation: `invoiceloop/doctype.py`.
+Recompute (zero API):
 
 ```bash
 INVOICELOOP_CORPUS=runs/sealed1-workspace python3 scripts/doctype_evidence.py
 INVOICELOOP_CORPUS=runs/sealed2-workspace python3 scripts/doctype_evidence.py --sealed2
-python3 scripts/doctype_vocab_ablation.py            # 逐 token 消融
-python3 scripts/doctype_vocab_ablation.py --v1-diff  # 去污前后对比
+python3 scripts/doctype_vocab_ablation.py            # per-token ablation
+python3 scripts/doctype_vocab_ablation.py --v1-diff  # before/after decontamination comparison
 ```
 
-> **2026-08-07 更新(词表去污,`doctype-v1` → `doctype-v2`)。** 本文覆盖率
-> 数字**一个没变**;变的是词表和对污染的描述。原「未了项 1」写的删除清单
-> 有一处是错的,已在下面「去污」一节照登。
+> **2026-08-07 update (vocab decontamination, `doctype-v1` → `doctype-v2`).** Not one of this
+> document's coverage numbers **changed**; what changed is the vocabulary and the description of
+> contamination. The deletion list written in the original "open item 1" had one error; it is
+> recorded as-is in the "decontamination" section below.
 
-## 词表冻结(阶段 A)
+## Vocabulary freeze (Stage A)
 
-| 决定 | 取值 | 理由 |
+| Decision | Value | Reason |
 |---|---|---|
-| `proforma` | **单独成类** | 形式发票与 invoice 会计语义不同;已在 `CLASSES` |
-| `check` | **归入 `receipt`** | 不拆新类;证据短语含 `check` |
-| 匹配顺序 | `credit_note` → `proforma` → `confirmation` → `purchase_order` → … → `invoice` | `credit` 先于 `invoice`;`confirmation` 先于 `purchase_order`(否则 "Order Confirmation" 被 `\border\b` 抢走) |
+| `proforma` | **its own class** | a proforma differs from invoice in accounting semantics; already in `CLASSES` |
+| `check` | **mapped into `receipt`** | no new class split; evidence phrases contain `check` |
+| match order | `credit_note` → `proforma` → `confirmation` → `purchase_order` → … → `invoice` | `credit` before `invoice`; `confirmation` before `purchase_order` (otherwise "Order Confirmation" is snatched by `\border\b`) |
 
-后续**只许扩类/扩短语,不许改判据方向**(计划 §4)。
+Afterwards **only adding classes/phrases is allowed; the direction of the criteria may not change** (plan §4).
 
-## 覆盖率(模型声明 → 受控类 → OCR 字面证据)
+## Coverage (model claim → controlled class → OCR literal evidence)
 
-| 集 | n | 有声明且映入词表 | 有字面证据 | 证据率 | 无证据阻断 |
+| Set | n | has claim mapped into vocabulary | has literal evidence | evidence rate | blocked for no evidence |
 |---|---|---|---|---|---|
-| SEALED-1 未人工 88 | 88 | 86 | **81** | **94.2%** | 5 (5.8%) |
+| SEALED-1 not-human-reviewed 88 | 88 | 86 | **81** | **94.2%** | 5 (5.8%) |
 | SEALED-2 | 100 | 99 | **90** | **90.9%** | 9 (9.1%) |
 
-`unmapped=0`(两集)。`no_claim` 为模型未返回 `invoice_type`。
+`unmapped=0` (both sets). `no_claim` means the model returned no `invoice_type`.
 
-> **⚠ 这张表是样本内的,不是留出测量。** 词表是照着这两个集的自由文本
-> 拼法写出来的,所以「`unmapped=0`」**构造出来的成分无法排除** ——
-> 换一个没看过的集合,该数字不成立。去污(下节)删掉了七个明显的语料
-> 派生 token,但**没有、也不可能**因此把这句话取消:剩下的载荷 token 里
-> 仍有 `\bcheck\b`(S1 的 'check')和 `donation`(S1 的 'donation received')
-> 是照着语料写的,删掉就有 3 份改判。**删不掉的那部分只能照登。**
+> **⚠ This table is in-sample, not a held-out measurement.** The vocabulary was written against
+> the free-text spellings of these two sets, so for `unmapped=0` **a constructed component cannot
+> be ruled out** — on a set never seen, that number does not hold. The decontamination (next
+> section) deleted seven obvious corpus-derived tokens, but that does not and cannot cancel this
+> sentence: among the remaining payload tokens, `\bcheck\b` (S1's 'check') and `donation` (S1's
+> 'donation received') were still written against the corpus, and deleting them would reclassify 3
+> documents. **The undeletable part can only be recorded as-is.**
 >
-> 唯一能把 `unmapped=0` 变成测量的办法,是在一个**词表冻结后才见到**的
-> 集合上跑一次。那是下一步(见文末「未了项」1),不是本文能给的。
+> The only way to turn `unmapped=0` into a measurement is to run once on a set **first seen after
+> the vocabulary froze**. That is the next step (see "open item" 1 at the end), not something this
+> document can deliver.
 
-**口径**:抽取器类型声明在这两个集上约 **8–9% 找不到页面字面支撑**
-(SEALED-2 9/99),**且这个百分比带样本内污染**。
-「找不到字面支撑」是一条可复算的支持关系判定,**不等于**「模型分类错了」——
-语义对错仍由人看(宪章六)。也不是「类型检查能修好付款静默错」,
-那是另一回事(见计划 §0)。
+**Caliber**: on these two sets, about **8–9% of the extractor's type claims find no literal page
+support** (SEALED-2 9/99), **and this percentage carries in-sample contamination**.
+"No literal support" is a recomputable support-relation verdict; it does **not equal** "the model
+misclassified" — semantic right and wrong is still a human judgment (Charter Six). Nor is it "the
+type check can fix payment silent errors"; that is a different matter (see plan §0).
 
-## SEALED-2 阻断名单(9)
+## SEALED-2 blocked list (9)
 
-| doc_id | 模型声明 → 类 | 备注 |
+| doc_id | model claim → class | note |
 |---|---|---|
-| `39fd2941088a4cd9864d8dbf` | Order Confirmation → confirmation | 分类对,页上无 confirm\* 字面 |
-| `40532c4e2c6a42bca301ea58` | invoice → invoice | 抽查:实为 traffic order form |
-| `45f1811ec4c74141b459f4ea` | pro forma invoice → proforma | 页上无 proforma 字面 |
-| `6a6b6a39b9914e72b943c579` | invoice → invoice | 抽查:整页无 invoice 字样 |
-| `9a52926255a64fd1aa57c5f8` | invoice → invoice | 抽查:实为 makegood form |
-| `b45c2725a2204c03aa5b858a` | invoice → invoice | 抽查:整页无 invoice 字样 |
-| `b5b4d5fb37b64428958cd7f5` | invoice → invoice | 无字面 |
-| `e12004780d164ee9ba386f5f` | invoice → invoice | 无字面 |
-| `fc7554630cc24a2c8f9db32b` | invoice → invoice | 无字面 |
+| `39fd2941088a4cd9864d8dbf` | Order Confirmation → confirmation | classification correct; no literal confirm\* on the page |
+| `40532c4e2c6a42bca301ea58` | invoice → invoice | spot-checked: actually a traffic order form |
+| `45f1811ec4c74141b459f4ea` | pro forma invoice → proforma | no literal proforma on the page |
+| `6a6b6a39b9914e72b943c579` | invoice → invoice | spot-checked: no "invoice" wording anywhere on the page |
+| `9a52926255a64fd1aa57c5f8` | invoice → invoice | spot-checked: actually a makegood form |
+| `b45c2725a2204c03aa5b858a` | invoice → invoice | spot-checked: no "invoice" wording anywhere on the page |
+| `b5b4d5fb37b64428958cd7f5` | invoice → invoice | no literal |
+| `e12004780d164ee9ba386f5f` | invoice → invoice | no literal |
+| `fc7554630cc24a2c8f9db32b` | invoice → invoice | no literal |
 
-## SEALED-1 未人工 88 阻断名单(5)
+## SEALED-1 not-human-reviewed 88 blocked list (5)
 
-`0f1ca104…` / `50bbaa7c…` / `6decf48f…` / `9fadde21…`(均声明 invoice,无字面);
-`afe032e8…`(声明 check → receipt,无 receipt/check/received 字面)。
+`0f1ca104…` / `50bbaa7c…` / `6decf48f…` / `9fadde21…` (all claim invoice, no literal);
+`afe032e8…` (claims check → receipt; no receipt/check/received literal).
 
-## 词表去污(`doctype-v1` → `doctype-v2`,2026-08-07)
+## Vocab decontamination (`doctype-v1` → `doctype-v2`, 2026-08-07)
 
-删掉七个**只在校准语料自由文本里出现过**的 token:
+Deleted seven tokens that **appeared only in the calibration corpus's free text**:
 
-| 类 | 删掉 | 它当初吃的串 | 那个串其实靠谁命中 |
+| Class | Deleted | The string it used to consume | What actually matched that string |
 |---|---|---|---|
 | `credit_note` | `discrepancy` | S2 'billing discrepancy/credit request' | `credit` |
 | `purchase_order` | `worksheet` | S1/S2 'order worksheet' | `\border\b` |
@@ -82,58 +85,67 @@ python3 scripts/doctype_vocab_ablation.py --v1-diff  # 去污前后对比
 | `invoice` | `affidavit` | S1 'invoice / affidavit' | `invoice` |
 | `invoice` | `billing` | S2 'official billing invoice' ×2 | `invoice` |
 
-**七个全是死票。** 逐 token 消融 + 组合验证实测:一起删,SEALED-1 未人工 88
-与 SEALED-2 100 **各 0 份改判**,本文覆盖率表一个数字没变。
+**All seven are no-ops.** Measured by per-token ablation + combination verification: deleted
+together, SEALED-1 not-human-reviewed 88 and SEALED-2 100 each reclassify **0 documents**; not one
+number in this document's coverage table changed.
 
 ```bash
 python3 scripts/doctype_vocab_ablation.py --v1-diff
 #   TOTAL RECLASSIFIED BY THE DE-CONTAMINATION: 0
 ```
 
-它们决定不了任何事,却让词表看起来是照着测试集调过的 —— 删掉是为了让
-`unmapped=0` 不再有这层假象,不是为了改数字。
+They decide nothing, yet they made the vocabulary look as if tuned against the test set — the
+deletion was to strip `unmapped=0` of that illusion, not to change numbers.
 
-### 照登纠正:原「未了项 1」的删除清单是错的
+### Recorded-as-is correction: the original "open item 1" deletion list was wrong
 
-原文写的是删 `discrepancy` / `printout` / `traffic` / **`receipt`** / `billing`
-五个,并预测「SEALED-2 变成 ≈91% 有证据 + 2 份 unmapped」。实测后两处错:
+The original text said the five deleted were `discrepancy` / `printout` / `traffic` /
+**`receipt`** / `billing`, and predicted "SEALED-2 becomes ≈91% with evidence + 2 documents
+unmapped". Measurement found two errors:
 
-1. **五个里有四个是死票,删了零改判**;预测的 2 份 unmapped **全部来自
-   `receipt` 一个 token**,与另外四个无关。
-2. **`receipt` 不该删。** 它是 `receipt` 类的本名,不是语料派生 —— 任何
-   人凭常识写应付账款词表都会先写它。删掉的后果是 S2 里字面标题就是
-   "Receipt" 和 "Transaction Receipt" 的两份变成 `unmapped`。
-   **一个不认识 "receipt" 的 receipt 类不是去污,是自残。**
+1. **Four of the five are no-ops; deleting them reclassified nothing**; the predicted 2 unmapped
+   documents **come entirely from the single token `receipt`**, unrelated to the other four.
+2. **`receipt` should not have been deleted.** It is the proper name of the `receipt` class, not
+   corpus-derived — anyone writing an accounts-payable vocabulary from common sense would write it
+   first. Deleting it turned the two S2 documents whose literal titles are "Receipt" and
+   "Transaction Receipt" into `unmapped`.
+   **A receipt class that does not recognize "receipt" is not decontamination, it is self-harm.**
 
-同时原清单**漏了** `worksheet` / `broadcast` / `affidavit` 三个同性质的
-token(都是死票,现已一并删),也没提到真正删不掉的那两个:
-`\bcheck\b` 与 `donation` 是 S1 派生**且载荷**(共 3 份改判)。
+At the same time, the original list **omitted** three same-character tokens, `worksheet` /
+`broadcast` / `affidavit` (all no-ops, now deleted together), and never mentioned the two that
+truly cannot be deleted: `\bcheck\b` and `donation` are S1-derived **and payload** (3 documents
+reclassified together).
 
-结论是这条方法论:**污染不能靠删 token 消掉。** 能删的都是死票(删了不
-改数字,只改观感),改数字的那些恰恰删不得。真正的解药只有一个 ——
-在词表冻结之后才见到的集合上量一次。
+The conclusion is this methodology: **contamination cannot be eliminated by deleting tokens.**
+Everything deletable is a no-op (deleting changes no numbers, only appearances); the ones that
+change numbers are precisely the ones that must not be deleted. The only real remedy is one thing —
+measure once on a set first seen after the vocabulary froze.
 
-## 与「付款静默错 22%」脱钩(照登纠正)
+## Decoupling from "22% payment silent errors" (recorded-as-is correction)
 
-零触达集上 13 个静默错值**零个与贷项符号有关**;主体认错(`seller_name`)占 6/13。
-类型证据门禁标出的是**类型声明在页面上找不到字面支撑的文档**,
-它不直接消掉那 13 个金额错。
-阶段 D 已处理主体方向并 **KILL**(51.6% < 80%,见
-`docs/DOCTYPE_STAGE_D_2026-08-07.md`);贷项符号检查**不做**。
+Of the 13 silent wrong values on the zero-touch set, **zero are related to credit-note sign**;
+party misidentification (`seller_name`) is 6/13.
+What the type evidence gate flags is **documents whose type claims find no literal support on the
+page**; it does not directly eliminate those 13 amount errors.
+Stage D handled party direction and **KILLed** it (51.6% < 80%, see
+`docs/DOCTYPE_STAGE_D_2026-08-07.md`); the credit-note sign check is **not done**.
 
-## 阶段 A 边界
+## Stage A boundary
 
-- 本阶段**不接入**门禁 / 路由 / 指纹。
-- 测试:`tests/test_doctype.py`(词序、边界、bbox 合并、`NO_CLAIM`≠`UNMAPPED`)。
-- 下一步:阶段 B 回答 Q1(文档级裁决落点)与 Q2(阻断粒度对负载的影响)。
+- This stage **does not wire into** gates / routing / fingerprint.
+- Tests: `tests/test_doctype.py` (vocabulary order, boundaries, bbox merging, `NO_CLAIM`≠`UNMAPPED`).
+- Next step: Stage B answers Q1 (where document-level verdicts land) and Q2 (blocking granularity's effect on load).
 
-## 未了项(阻断本文数字进任何对外材料)
+## Open items (blocking this document's numbers from any external material)
 
-1. **`unmapped` 未曾在留出集上量过。** 去污只删掉了死票,污染仍在
-   (`\bcheck\b` / `donation` 载荷且语料派生)。要把 `unmapped=0` 从
-   构造变成测量,只有一条路:取一批**词表冻结后才见到**的文档,
-   跑 understand 拿 `invoice_type`,一次性记下 `unmapped` 率,不许回头改词表。
-   ~~词表去污~~ 已做(`doctype-v2`,见上节);`digest()` 已变 →
-   去污前后的 run 不同代,不许混算。
-2. 阻断名单里只有 **4/9** 逐份看过(表中标「抽查」的四份)。
-   其余 5 份**未逐份裁决**,不得当作已确认的误分类。
+1. **`unmapped` has never been measured on a held-out set.** Decontamination deleted only no-ops;
+   contamination remains (`\bcheck\b` / `donation` are payload and corpus-derived). There is only
+   one path to turn `unmapped=0` from construction into measurement: take a batch of documents
+   **first seen after the vocabulary froze**, run understand to get `invoice_type`, record the
+   `unmapped` rate once, and never go back to change the vocabulary.
+   ~~Vocab decontamination~~ done (`doctype-v2`, see the section above); `digest()` has changed →
+   runs before and after decontamination are different generations; do not mix them in one computation.
+2. Only **4/9** of the blocked list have been examined document by document (the four marked
+   "spot-checked" in the table).
+   The other 5 are **not adjudicated document by document** and must not be treated as confirmed
+   misclassifications.

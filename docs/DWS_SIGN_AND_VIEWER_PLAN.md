@@ -1,53 +1,59 @@
-# DWS 签名封缄 + Viewer 并存:实施方案(2026-08-06)
+# DWS Signature Sealing + Viewer Coexistence: Implementation Plan (2026-08-06)
 
-来源:官方文档实拉(非记忆),日期见各页 `last_updated`。
+Sources: pulled live from the official documentation (not from memory); dates in each page's
+`last_updated`.
 
-- 签名:`https://www.nutrient.io/guides/dws-processor/tools-and-api/pdf-digital-signature-api.md`(2026-07-06)
-- Viewer(app-provided 模式):`https://www.nutrient.io/guides/dws-viewer/developer-guides/open-client-provided-documents.md`(2026-06-10)
+- Signing: `https://www.nutrient.io/guides/dws-processor/tools-and-api/pdf-digital-signature-api.md` (2026-07-06)
+- Viewer (app-provided mode): `https://www.nutrient.io/guides/dws-viewer/developer-guides/open-client-provided-documents.md` (2026-06-10)
 
-两件事互不依赖,可分别落地。**签名优先。**
+The two items are independent of each other and can land separately. **Signatures first.**
 
 ---
 
-## 一、数字签名封缄(优先)
+## I. Digital signature sealing (priority)
 
-### 1.1 现状缺口(项目自己承认的)
+### 1.1 The current gap (the project's own admission)
 
-`adjudicate.py:430` 的 verify notes 原文:「包的真实性锚在带外公布的本包
-sha256 —— verify 不是自己的信任根」。四层校验证明的是**包自内洽**:
-成员哈希对得上、快照可重算、裁决绑定一致。但 `MANIFEST.sha256` 在包**里面**,
-攻击者改完成员再重算 MANIFEST 即可自洽。**整条链唯一的非密码学锚点就在这。**
+The verify notes at `adjudicate.py:430` say verbatim: "the bundle's authenticity is anchored in
+the out-of-band published bundle sha256 — verify is not its own root of trust". The four
+verification layers prove **the bundle is self-consistent**: member hashes add up, the snapshot
+is recomputable, verdict bindings agree. But `MANIFEST.sha256` sits **inside** the bundle; an
+attacker who tampers with a member can just recompute MANIFEST and be consistent again.
+**The chain's single non-cryptographic anchor is right here.**
 
-### 1.2 端点(实测文档,未跑通)
+### 1.2 Endpoint (verified against the documentation, not yet run through)
 
 ```
 POST https://api.nutrient.io/sign
 Authorization: Bearer $NUTRIENT_API_KEY
 -F file=@attestation.pdf
 -F 'data={"signatureType":"cades","cadesLevel":"b-lt"};type=application/json'
-→ 返回已签名 PDF
+→ returns a signed PDF
 ```
 
-省略 `appearance` / `position` / `formFieldName` = **不可见签名**,仍是密码学
-签名。`cades b-lt` = 长期验证档:嵌入吊销信息 + 可信时间戳 —— 正是审计包要的。
+Omitting `appearance` / `position` / `formFieldName` = an **invisible signature** that is still
+a cryptographic signature. `cades b-lt` = the long-term validation level: embedded revocation
+info + a trusted timestamp — exactly what an audit bundle wants.
 
-### 1.3 设计:加一层外封,不动确定性工件
+### 1.3 Design: add an outer envelope, touch nothing deterministic
 
-**关键约束**:attestation 不能进 `MANIFEST.sha256` —— 它证明的就是那份
-manifest,自我包含会成环。所以做成**外封**,不是成员。
+**Key constraint**: the attestation cannot enter `MANIFEST.sha256` — what it attests is
+precisely that manifest; self-containment would create a loop. So it is an **outer envelope**,
+not a member.
 
-拆成两个命令,`bundle` 保持离线确定性不变:
+Split into two commands, keeping `bundle` offline and deterministic as-is:
 
-| 命令 | 行为 |
+| Command | Behavior |
 |---|---|
-| `bundle --run R` | **完全不改**。仍是离线、零网络、同输入同字节 |
-| `seal --run R`(新) | 读 `audit_bundle.zip` → 造 attestation → 调 `/sign` → 写 `audit_bundle.sealed.zip` |
+| `bundle --run R` | **Completely unchanged.** Still offline, zero network, same input same bytes |
+| `seal --run R` (new) | reads `audit_bundle.zip` → builds the attestation → calls `/sign` → writes `audit_bundle.sealed.zip` |
 
-`seal` 的三步:
+`seal`'s three steps:
 
-1. `manifest_sha256 = sha256(zip 内 MANIFEST.sha256 的字节)` —— 它传递覆盖每个成员;
-2. `attestation.json`(canonical JSON,确定性,**不含我方时间戳** ——
-   时间由签名的可信时间戳提供,我方不自报时间):
+1. `manifest_sha256 = sha256(the bytes of MANIFEST.sha256 inside the zip)` — it transitively
+   covers every member;
+2. `attestation.json` (canonical JSON, deterministic, **containing no timestamp of ours** —
+   time is provided by the signature's trusted timestamp; we do not self-report time):
    ```json
    {
      "attests": "audit_bundle",
@@ -59,133 +65,151 @@ manifest,自我包含会成环。所以做成**外封**,不是成员。
      "signature_profile": "cades/b-lt"
    }
    ```
-3. 把 attestation.json 渲染成**一页极简 PDF**(手写 PDF 语法,~30 行,零新依赖,
-   确定性)→ POST `/sign` → 得 `attestation.signed.pdf`;
-   sealed zip = 原 zip 全部成员 + `attestation.json` + `attestation.signed.pdf`,
-   **MANIFEST 一个字节不动**。
+3. Render attestation.json into a **minimal one-page PDF** (handwritten PDF syntax, ~30 lines,
+   zero new dependencies, deterministic) → POST `/sign` → get `attestation.signed.pdf`;
+   sealed zip = all members of the original zip + `attestation.json` + `attestation.signed.pdf`,
+   **with not one byte of MANIFEST touched**.
 
-> 备选:用 Processor 的 Markdown-to-PDF 造 attestation PDF(多一次 DWS 深度使用),
-> 但会让 `seal` 多依赖一个端点。建议先手写 PDF,把网络面收到只有 `/sign` 一处。
+> Alternative: use the Processor's Markdown-to-PDF to build the attestation PDF (one more deep
+> DWS use), but it would make `seal` depend on one more endpoint. Recommendation: hand-write
+> the PDF first and shrink the network surface to `/sign` alone.
 
-### 1.4 verify 第五层
+### 1.4 The fifth verify layer
 
-`verify_bundle` 的 `layers` 加 `"signature"`,沿用现有三态(True/False/**None**):
+`verify_bundle`'s `layers` gains `"signature"`, keeping the existing three states
+(True/False/**None**):
 
-- 无 `attestation.signed.pdf` → `None`,notes 记「未封缄包」(与 v1 包无快照层同款处置);
-- 有:
-  1. 重算 `sha256(MANIFEST.sha256)`,比对 `attestation.json.manifest_sha256`;
-  2. 比对 `attestation.json` 的字节与签名 PDF 内嵌内容一致;
-  3. 密码学验签(CAdES 链 + 时间戳)。
-- 验签需要 `cryptography` / `asn1crypto` —— **做成可选依赖**
-  `pip install "invoiceloop[seal]"`。缺依赖时 `signature: None` +
-  notes「签名存在但本机无验签依赖,未验证」。
-  **按宪章四:记录缺口,不静默判过。**
+- no `attestation.signed.pdf` → `None`, notes record "unsealed bundle" (same handling as a v1
+  bundle without the snapshot layer);
+- present:
+  1. recompute `sha256(MANIFEST.sha256)` and compare against `attestation.json.manifest_sha256`;
+  2. compare `attestation.json`'s bytes for agreement with the content embedded in the signed
+     PDF;
+  3. cryptographic signature verification (CAdES chain + timestamp).
+- Verification needs `cryptography` / `asn1crypto` — **made an optional dependency**:
+  `pip install "invoiceloop[seal]"`. When missing, `signature: None` + the note "signature
+  present but no verification dependency on this machine; unverified".
+  **Per Charter Four: record the gap; never silently pass.**
 
-这样离线四层的故事完全不破,新增的第五层是纯增量。
+The offline four-layer story stays fully intact this way; the new fifth layer is pure addition.
 
-### 1.5 必须同时写进去的限定(宪章六)
+### 1.5 The caveat that must be written in alongside (Charter Six)
 
-DWS 用**它自己的证书**签。签名证明的是:
+DWS signs with **its own certificate**. The signature proves:
 
-> 这份 attestation 在时间 T 经过 DWS 签名,且此后未被改动。
+> this attestation was signed by DWS at time T and has not been altered since.
 
-它**不证明**「这个包是 InvoiceLoop 出的」—— 除非自带证书。所以 verify 的
-notes 应改成精确的说法,**不能改成「现在有信任根了」**:
+It does **not** prove "this bundle came from InvoiceLoop" — not without a brought-along
+certificate. So verify's notes should be reworded to the precise statement and **must not
+become "there is now a root of trust"**:
 
-> 第五层通过 = manifest 摘要被一份带可信时间戳的 DWS 签名固定;
-> 签发主体是 DWS,不是本项目 —— 「谁造的包」仍需带外身份。
+> Fifth layer passing = the manifest digest is fixed by a DWS signature carrying a trusted
+> timestamp; the signing entity is DWS, not this project — "who built the bundle" still
+> requires out-of-band identity.
 
-这条如果写飘了,失分比这个功能挣的多。
+If this wording drifts, it loses more points than the feature earns.
 
-### 1.6 改动清单与工作量
+### 1.6 Change list and effort
 
-| 文件 | 改动 |
+| File | Change |
 |---|---|
-| `invoiceloop/seal.py`(新) | attestation 构造 + 极简 PDF writer + `/sign` 客户端(key 只从 `NUTRIENT_API_KEY` 环境读,与 `dws_client.py:39-41` 同纪律) |
-| `invoiceloop/adjudicate.py` | `verify_bundle` 加 `signature` 层;notes 按 §1.5 改写 |
-| `invoiceloop/__main__.py` | `seal` 子命令 |
-| `tests/test_seal.py`(新) | 封缄后四→五层全过;改 MANIFEST → signature false;改成员 → members false;无 attestation → None;无验签依赖 → None + note |
+| `invoiceloop/seal.py` (new) | attestation construction + minimal PDF writer + `/sign` client (key read only from the `NUTRIENT_API_KEY` environment, same discipline as `dws_client.py:39-41`) |
+| `invoiceloop/adjudicate.py` | `verify_bundle` gains the `signature` layer; notes reworded per §1.5 |
+| `invoiceloop/__main__.py` | `seal` subcommand |
+| `tests/test_seal.py` (new) | after sealing, four→five layers all pass; tamper MANIFEST → signature false; tamper a member → members false; no attestation → None; no verification dependency → None + note |
 | `pyproject.toml` | `[seal]` extra |
 
-约 150 行 + 测试,**半天**。需要真 key 跑一次端到端(信用额度消耗未核实)。
+About 150 lines + tests, **half a day**. Needs one real-key end-to-end run (credit consumption
+unverified).
 
 ---
 
-## 二、DWS Viewer 并存(次优先)
+## II. DWS Viewer coexistence (second priority)
 
-### 2.1 一个之前没算到的事实:隐私顾虑不成立
+### 2.1 A fact not accounted for before: the privacy concern does not hold
 
-Viewer 有两种文档路径,官方原文:
+Viewer has two document paths; the official text:
 
 > **App-provided documents** — Keep documents in your app or browser. Your app
 > passes a file, URL, Blob, or ArrayBuffer directly to Web SDK, while DWS Viewer
 > API authorizes and meters the viewer session.
 > …In this app-provided flow, the document isn't uploaded to DWS.
 
-也就是说**发票 PDF 不出浏览器**,DWS 只发一个会话 jwt。C 项「全部本机处理」
-的隐私叙事不受损 —— 只需如实写「Viewer 会话向 DWS 认证,文档不上传」。
+That is, **the invoice PDF never leaves the browser**; DWS only issues a session JWT. The
+privacy narrative of item C, "all processing local", is unharmed — just state honestly that
+"the Viewer session authenticates to DWS; no document is uploaded".
 
-### 2.2 集成形状
+### 2.2 Integration shape
 
-后端(workbench 加一个路由):
+Backend (one new route in the workbench):
 
 ```
 POST https://api.nutrient.io/viewer/sessions
 Authorization: Bearer $NUTRIENT_DWS_VIEWER_API_KEY
-body: {}            # 省略 allowed_documents = app-provided 模式
+body: {}            # allowed_documents omitted = app-provided mode
 → {"jwt": "…"}
 ```
 
-前端(裁决页):
+Frontend (adjudication page):
 
 ```js
 await NutrientViewer.load({
   container: "#viewer",
   session: "<jwt>",
-  document: "/files/<run>/pages/<doc>.pdf",   // workbench 已有的本地路由
-});   // 省略 licenseKey —— 会话即授权
+  document: "/files/<run>/pages/<doc>.pdf",   // the workbench's existing local route
+});   // licenseKey omitted — the session is the authorization
 ```
 
-### 2.3 纪律:必须是可选面,默认不变
+### 2.3 Discipline: it must be an optional surface; defaults unchanged
 
-- **默认仍是自建面板**(整页渲染 + bbox overlay + 门禁 chip + 快路)——
-  那是 F 项 13 分的实体,不能被换掉;
-- Viewer 是裁决页上的一个切换按钮,`NUTRIENT_DWS_VIEWER_API_KEY`
-  未设置 / 无网络 → 按钮不出现,页面行为与今天逐字节一致;
-- **`demo` 路径零 API 的性质必须保住** —— 这是评委在自己机器上能跑通的前提。
+- **The default remains the self-built panel** (full-page render + bbox overlay + gate chips +
+  fast paths) — that is the substance of F's 13 points and cannot be swapped out;
+- Viewer is a toggle button on the adjudication page; `NUTRIENT_DWS_VIEWER_API_KEY`
+  unset / no network → the button does not appear and the page behaves byte-for-byte
+  identically to today;
+- **The `demo` path's zero-API nature must be preserved** — it is the precondition for judges
+  to run it through on their own machines.
 
-### 2.4 老实说的成本
+### 2.4 Costs, stated honestly
 
-- 每次加载消耗一个 viewer session(有月度配额);
-- 需要引入 Web SDK 的 JS 资源(CDN 或 vendored)—— workbench 目前是纯 stdlib
-  + 无外部资源,这会破坏离线性,**所以只能挂在开关后面**;
-- 官方明写:会话必须由后端创建,加载后不刷新,`setSession()` 在
-  app-provided 模式下不支持;
-- 功能上 Viewer 给的是标注/表单/协作,InvoiceLoop 并不需要;**真实收益是
-  多页文档的渲染与缩放体验,加上出题方点名的那面子。**
+- every load consumes a viewer session (monthly quota applies);
+- requires pulling in the Web SDK's JS assets (CDN or vendored) — the workbench is currently
+  pure stdlib with no external resources, and this would break offline capability, **which is
+  why it can only live behind a flag**;
+- the docs state plainly: the session must be created by the backend, is not refreshed after
+  load, and `setSession()` is unsupported in app-provided mode;
+- functionally, Viewer offers annotation/forms/collaboration, none of which InvoiceLoop needs;
+  **the real benefit is rendering and zoom for multi-page documents, plus the visibility of
+  being named by the organizer.**
 
-### 2.5 改动清单与工作量
+### 2.5 Change list and effort
 
-| 文件 | 改动 |
+| File | Change |
 |---|---|
-| `invoiceloop/workbench.py` | `POST /viewer-session` 路由(沿用现有 Host 白名单 + Origin 校验);裁决页加切换按钮与容器 div |
-| `invoiceloop/workbench_style.py` | viewer 容器样式 |
-| `tests/test_workbench.py` | 无 key 时按钮不渲染、页面与今天等价;有 key 时路由存在且不泄漏 key 到前端 |
+| `invoiceloop/workbench.py` | `POST /viewer-session` route (reusing the existing Host allowlist + Origin checks); a toggle button and a container div added to the adjudication page |
+| `invoiceloop/workbench_style.py` | viewer container styles |
+| `tests/test_workbench.py` | without a key the button does not render and the page is equivalent to today; with a key the route exists and no key leaks to the frontend |
 
-约 100 行,**半天**。风险集中在「别把离线 demo 弄坏」。
+About 100 lines, **half a day**. The risk concentrates on "don't break the offline demo".
 
 ---
 
-## 三、顺序与验收
+## III. Order and acceptance
 
-1. **先签名**:补的是自己承认的缺口,密码学升级,与 brief 两次点名的
-   "digitally sign the result so its authenticity is provable" 直接对上;
-2. **再 Viewer**:优化面 + 出题方偏好,默认路径零变化;
-3. 两者都要一次真 key 端到端,并把限定(§1.5、§2.3)与功能同屏写进 README。
+1. **Signatures first**: it fills a gap the project itself admits, is a cryptographic upgrade,
+   and lines up directly with the brief's twice-named "digitally sign the result so its
+   authenticity is provable";
+2. **Then Viewer**: an optimization surface + organizer preference; the default path changes
+   zero;
+3. Both need one real-key end-to-end run, and the caveats (§1.5, §2.3) written into the README
+   side by side with the feature.
 
-**验收判据**(先写后做):
+**Acceptance criteria** (written before doing):
 
-- 封缄包在**断网**机器上 `verify` 出五层,单字节篡改 MANIFEST → `signature: false`;
-- 缺可选依赖时 `signature: None` 且 notes 说明未验证,**不得报 true**;
-- `NUTRIENT_DWS_VIEWER_API_KEY` 未设置时,裁决页 HTML 与本次改动前**逐字节相同**;
-- `demo` 全流程仍零 API、零外部资源。
+- the sealed bundle `verify`es five layers on a **disconnected** machine; a single-byte tamper
+  of MANIFEST → `signature: false`;
+- with the optional dependency missing, `signature: None` and notes explaining unverified —
+  **it must never report true**;
+- with `NUTRIENT_DWS_VIEWER_API_KEY` unset, the adjudication page HTML is **byte-for-byte
+  identical** to before this change;
+- the `demo` flow remains zero API, zero external resources.

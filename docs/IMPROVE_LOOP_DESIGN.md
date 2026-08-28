@@ -1,104 +1,138 @@
-# `improve` 反馈循环 · 设计案(2026-08-05,待外部裁决)
+# `improve` feedback loop · design proposal (2026-08-05, pending external adjudication)
 
-**状态:已被 v0.2 取代。** 外部高级模型裁决(2026-08-05):方向正确但
-HOLD-RECUT —— Tax AI 前提误读、「无可学旋钮」不成立、第一刀提案与
-适应度函数不匹配。重切后的冻结基线见 `IMPROVE_LAYER_V0.2_DESIGN.md`。
-本文件保留存档(提案→裁决→取代的完整留痕,与项目自身纪律同构)。
+**Status: superseded by v0.2.** External senior-model adjudication (2026-08-05): direction
+correct but HOLD-RECUT — the Tax AI premise was misread, “no learnable knobs” does not
+hold, and the first-cut proposal does not match the fitness function. The re-cut frozen
+baseline is in `IMPROVE_LAYER_V0.2_DESIGN.md`.
+This file is kept as an archive (the full paper trail of proposal → adjudication →
+supersession, isomorphic to the project's own discipline).
 
-**状态**:设计待裁决,未实现。本文件自足,供高级模型/外部评审裁决用。
-裁决后无论采纳与否,结论记录在本文件末尾「裁决记录」节。
+**Status**: design awaiting adjudication, not implemented. This file is self-contained,
+for adjudication by a senior model / external reviewers.
+After adjudication, adopted or not, the conclusion is recorded in the “Adjudication
+record” section at the end of this file.
 
-## 1. 问题
+## 1. The problem
 
-「loop engineering」的本质是反馈-提升。InvoiceLoop 目前的环是**单 run 内闭环**
-(抽取 → 冻结 → 门禁 → 矩阵 → 人裁决 → 投影),跨 run 不学习。能不能引入
-真正的反馈循环,像 OpenAI Tax AI / Lilian Weng 的自进化 harness?
+The essence of “loop engineering” is feedback-improvement. InvoiceLoop's current loop is
+**closed within a single run** (extraction → freeze → gates → matrix → human adjudication
+→ projection), with no learning across runs. Can we introduce a real feedback loop, like
+OpenAI Tax AI / Lilian Weng's self-evolving harness?
 
-## 2. 为什么不是 harness 的形状(约束推导,不是立场)
+## 2. Why this is not the harness's shape (constraint derivation, not a stance)
 
-Tax AI 类 harness 自进化的前提:**廉价、可信、完备的自动评估器**
-(税务:法条是可计算规范,参考实现给出 100% 标准答案)。InvoiceLoop 三条都不满足:
+The premise of Tax-AI-style harness self-improvement: **cheap, trusted, complete
+automated evaluators** (tax: statutes are a computable specification, and a reference
+implementation yields 100% standard answers). InvoiceLoop fails all three:
 
-1. **神谕不完备**。发票的确定性检查(算术/形态/引用)是一致性检查,
-   只能看见「内部矛盾的错误」;自洽的编造(100+20=120 但三值皆假)全过。
-   实测:留出集 218 个偏差,算术门只产生 ~40 条 finding。
-   对召回不足两成的评估器做优化 = Goodhart,学到的是自洽编造。
-2. **没有可学的旋钮**。抽取器是 DWS 黑盒 API,无权重无梯度;
-   prompt/schema 调参已被六轮预注册实验亲手否决;读图模型当神谕
-   被第六轮否决(读者静默错误 8.6–15.8%、弃权 ~60%)。
-3. **真值在像素里**。「页面上印的是什么」就是被评估的感知任务本身,
-   不重读页面不存在参考实现;而重读页面 = 人或读图模型,都不可免费重放。
+1. **The oracle is incomplete.** Invoice deterministic checks (arithmetic / morphology /
+   citation) are consistency checks; they can only see “internally contradictory errors”.
+   Self-consistent fabrications (100+20=120 with all three values false) pass clean.
+   Measured: on the held-out set, 218 discrepancies, and the arithmetic gate produced
+   only ~40 findings. Optimizing an evaluator whose recall is below twenty percent =
+   Goodhart; what gets learned is self-consistent fabrication.
+2. **There are no learnable knobs.** The extractor is a DWS black-box API, no weights, no
+   gradients; prompt/schema tuning was rejected firsthand by six rounds of preregistered
+   experiments; using a reading model as the oracle was rejected in round six (reader
+   silent errors 8.6–15.8%, abstention ~60%).
+3. **Ground truth lives in the pixels.** “What is printed on the page” is itself the
+   perception task under evaluation; without re-reading the page there is no reference
+   implementation, and re-reading the page = a human or a reading model, neither of which
+   can be replayed for free.
 
-结论:机械检查只能当**特征**,人是唯一的**神谕**。循环存在,
-但闭环点必须是裁决账本,不是模型自身。
+Conclusion: mechanical checks can only serve as **features**; the human is the only
+**oracle**. The loop exists, but the closing point must be the adjudication ledger, not
+the model itself.
 
-## 3. 设计:验证门控的反馈循环
+## 3. Design: a verification-gated feedback loop
 
 ```
-人裁决(地面真值随每次使用累积)
-   ↓ 聚合
-候选改进提案(分诊排序/新门禁候选/阈值)—— 永远是草稿(单一写者纪律)
-   ↓ 反事实测量
-留出集重算:若采纳,风险—覆盖曲线怎么动
-   ↓ 预注册采纳线
-Pareto 改进才采纳;不采纳如实记录(与六轮毙提案同纪律)
+Human adjudication (ground truth accumulates with every use)
+   ↓ aggregate
+Candidate improvement proposals (triage ordering / new gate candidates / thresholds) —
+always drafts (single-writer discipline)
+   ↓ counterfactual measurement
+Held-out recomputation: if adopted, how does the risk–coverage curve move
+   ↓ preregistered adoption line
+Adopt only Pareto improvements; non-adoptions recorded as-is (same discipline as the
+six rounds of rejected proposals)
    ↓
-采纳 → 新口径 → 校准数字退役/重测声明(不悄悄漂移)
+Adoption → new calibre → calibration numbers retired / remeasurement declared (no
+silent drift)
 ```
 
-**适应度函数已存在**:`scripts/baseline_comparison.py` 的三方基线表
-(自动化覆盖 / 字段静默错误率 / 文档静默失败率 / 复核负载 / 路由召回)。
-候选改动的好坏不看直觉,看曲线动不动。
+**The fitness function already exists**: the three-way baseline table in
+`scripts/baseline_comparison.py` (automation coverage / field silent-error rate /
+document silent-failure rate / review load / routing recall).
+Whether a candidate change is good is judged not by intuition but by whether the curve
+moves.
 
-## 4. 第一刀(最小实现范围)
+## 4. The first cut (minimal implementation scope)
 
 `python3 -m invoiceloop improve --workspace ws/`:
 
-1. **聚合**:workspace 全部 run 的裁决账本 → 每字段 × 每来源的
-   修正率/拒绝率/弃权率(纯统计,零模型);
-2. **提案(草稿)**:`improve_proposals.json` —— 首个提案类型:
-   **同支持强度档内按历史修正率重排复核顺序**(只动排序,
-   不动 `requires_adjudication` —— 动它即作废 4.10×/3.04× 校准数字);
-3. **反事实报告**:该排序在 `runs/heldout-r2` 上重算 lift/coverage/recall,
-   与现状并排;**采纳与否由人决定,系统只给数字**。
+1. **Aggregate**: adjudication ledgers of all runs in the workspace → per-field ×
+   per-source correction rate / rejection rate / abstention rate (pure statistics, zero
+   models);
+2. **Propose (draft)**: `improve_proposals.json` — first proposal type:
+   **reorder review order within the same support-strength band by historical
+   correction rate** (touches ordering only, not `requires_adjudication` — touching it
+   invalidates the 4.10×/3.04× calibration numbers);
+3. **Counterfactual report**: recompute lift/coverage/recall for that ordering on
+   `runs/heldout-r2`, side by side with the status quo; **adoption is a human decision,
+   the system only supplies the numbers**.
 
-产出是报告与草稿,不改任何运行时行为。采纳动作 = 人改配置 + 新一轮
-预注册测量(新留出集),与六轮流程同构。
+The outputs are reports and drafts; no runtime behavior changes. Adoption = a human
+edits configuration + a new round of preregistered measurement (a new held-out set),
+isomorphic to the six-round process.
 
-## 5. 明确不做(写入提案的反面清单)
+## 5. Explicitly not done (the negative list written into the proposal)
 
-- 不自动改门禁参数、不自动采纳 —— 提案是草稿,采纳是人的决定;
-- 不在同一留出集上反复试到好看(自适应过拟合 = rubric 的指标作弊条款);
-- 不用读图模型的作答当标签(第六轮已证其噪声水平认证不了改进);
-- 不声称「系统在自我改进」—— 对外口径只有「裁决数据驱动的、
-  测量门控的分诊改进」。
+- No automatic gate-parameter changes, no automatic adoption — proposals are drafts,
+  adoption is a human decision;
+- No repeated trying on the same held-out set until it looks good (adaptive overfitting
+  = the rubric's metric-gaming clause);
+- No using reading-model answers as labels (round six already proved their noise level
+  cannot certify improvement);
+- No claim that “the system is self-improving” — the only external statement is
+  “adjudication-data-driven, measurement-gated triage improvement”.
 
-## 6. 已知风险(请裁决者重点攻击)
+## 6. Known risks (adjudicators, attack these first)
 
-1. **自适应过拟合**:反事实测量若反复用同一留出集,等于在测试集上
-   调参。缓解:反事实只用于「值不值得开新一轮」,采纳必须靠新数据。
-   这条缓解够不够?
-2. **小样本标签**:demo 量级使用产生的裁决只有几十条,每字段修正率的
-   置信区间极宽,提案可能纯噪声。是否该设最小样本门槛(如字段级 ≥30 裁决)?
-3. **排序改动的效应量可能为零**:requires_adjudication 集合不变时,
-   档内重排只影响人看的先后,lift/coverage 可能不动 —— 第一刀选的
-   提案可能证明不了任何东西。是否该换成更粗的提案(如调整档划分)?
-4. **裁决者漂移**:同人不同时间的裁决不一致会污染标签。是否记录
-   adjudicator 维度并检测一致性?
-5. **叙事风险**:「反馈循环」四字容易被读成「模型自我改进」——
-   对外文案若不收敛,会招 rubric G2(证据诚信)的审视。
+1. **Adaptive overfitting**: if the counterfactual measurement reuses the same held-out
+   set repeatedly, it amounts to tuning on the test set. Mitigation: the counterfactual
+   is used only to decide “is a new round worth starting”, and adoption must rely on new
+   data. Is this mitigation enough?
+2. **Small-sample labels**: usage at demo scale yields only a few dozen adjudications;
+   the confidence interval on each field's correction rate is extremely wide, and
+   proposals may be pure noise. Should there be a minimum-sample threshold (e.g.
+   field-level ≥30 adjudications)?
+3. **The effect size of an ordering change may be zero**: when the requires_adjudication
+   set is unchanged, reordering within a band only affects the order a human looks in,
+   and lift/coverage may not move — the proposal chosen for the first cut may prove
+   nothing. Should it be swapped for a coarser proposal (e.g. adjusting band
+   boundaries)?
+4. **Adjudicator drift**: the same person adjudicating inconsistently at different times
+   pollutes the labels. Should an adjudicator dimension be recorded and consistency
+   checked?
+5. **Narrative risk**: the four characters “feedback loop” are easily read as “the model
+   improves itself” — if external copy does not converge, it invites rubric G2 (evidence
+   integrity) scrutiny.
 
-## 7. 与赛期的关系
+## 7. Relation to the competition window
 
-若在 8/17 开赛后实现,它同时是「赛期内真实增量」(资格披露策略的一部分)。
-若裁决者认为设计有价值但实现应等开赛,本文件就是披露材料。
+If implemented after the competition opens on 8/17, it is at the same time “real
+in-competition incremental work” (part of the eligibility-disclosure strategy).
+If the adjudicators find the design valuable but think implementation should wait for
+the opening, this file is the disclosure material.
 
-## 裁决记录
+## Adjudication record
 
-2026-08-05,外部高级模型:**HOLD-RECUT**。三点推翻:① Tax AI 的关键不是
-完备神谕而是 trace→finding→targeted eval→human ship 的工程路径,InvoiceLoop
-已有其地基;②「DWS 黑盒故无可学旋钮」不成立 —— routing/escalation/schema/
-normalization 都是 harness;③ 档内重排不改变 requires 集合,与宣称的适应度
-函数(覆盖/静默错误/负载)不匹配。按裁决重切为 v0.2(见
-IMPROVE_LAYER_V0.2_DESIGN.md),本案归档。
-
+2026-08-05, external senior model: **HOLD-RECUT**. Three points overturned: ① the key
+to Tax AI is not a complete oracle but the engineering path
+trace→finding→targeted eval→human ship, and InvoiceLoop already has its foundations;
+② “DWS is a black box, therefore no learnable knobs” does not hold —
+routing/escalation/schema/normalization are all harness; ③ reordering within a band does
+not change the requires set, mismatching the claimed fitness function (coverage / silent
+errors / load). Per the adjudication this was re-cut as v0.2 (see
+IMPROVE_LAYER_V0.2_DESIGN.md), and this proposal was archived.

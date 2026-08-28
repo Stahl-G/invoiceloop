@@ -1,81 +1,112 @@
-# H0 完整性地基(2026-08-03)
+# H0 integrity foundation (2026-08-03)
 
-外部代码复核(对 `ff2e26c`)发现四个会瓦解核心承诺的问题,本轮按复核者
-收窄后的 14 条不变量修复,**不加门禁、不加模型、不复制 BriefLoop 控制面**。
+An external code review (against `ff2e26c`) found four problems that would
+dissolve the core promises; this round fixed them under the reviewer's
+narrowed 14 invariants — **no new gates, no new models, no copying of the
+BriefLoop control plane**.
 
-复核者原话定性的问题:冻结没被真正强制(重跑静默覆盖 → 裁决错绑)、
-audit bundle 不能独立复核上游证据、human loop 不闭环(裁决不回投影)、
-没有安装入口(clean clone 直接 3 个测试挂)。
+The reviewer's own characterisation: the freeze was not truly enforced
+(a re-run silently overwrote → adjudications mis-bound); the audit bundle
+could not independently verify upstream evidence; the human loop did not
+close (adjudications did not flow back into projections); there was no
+installation entry point (a clean clone immediately failed 3 tests).
 
-## 五条提交
+## The five (plus) commits
 
-| 提交 | 做了什么 |
+| Commit | What it did |
 |---|---|
-| 909fb6f | 安装层:pyproject(运行时仅 requests)、`doctor` 自检、clean-clone 安全的对拍测试导入、赞助商中立的 README 措辞 |
-| 0ef48fe | 不可变 run:非空目录永拒(无 `--force`);workspace 逐代 `runs/run-NNNN` + `current.json` 指针;同输入指纹重放;`input_manifest.json` + `review_snapshot.json` 落盘 |
-| 1d0798c | 裁决 v2:绑定完整复核快照(不只是账本);`claim_id↔doc_id↔field` 三元精确一致;缺值槽用稳定 `target_id`;决策语义冻结(correct 必带值,余者禁带);二次决定必须显式 supersede;panel 成为可重建投影,渲染失败不回滚裁决 |
-| e943412 | 自包含 bundle(方案 A):全量上游证据(PDF/OCR/raw×2)+ 抽取 schema + 范围元数据;`verify` 命令三层离线校验(成员哈希 → 快照成分重算 → 裁决绑定) |
-| 1133483 | 自查补洞:读图作答进输入指纹(否则重放会返回旧 run);panel 叠加层 label 转义 |
-| a044c09 | 内联对抗复核加固(6 项,见下「自查发现」) |
-| 后续 | 研究测试守卫统一为 `corpus_available()`(守卫与取数同一来源) |
+| 909fb6f | Installation layer: pyproject (runtime needs only requests), the `doctor` self-check, clean-clone-safe imports for parity tests, sponsor-neutral README wording |
+| 0ef48fe | Immutable runs: a non-empty directory is always refused (no `--force`); the workspace gains per-generation `runs/run-NNNN` plus a `current.json` pointer; same-input-fingerprint replay; `input_manifest.json` + `review_snapshot.json` written to disk |
+| 1d0798c | Adjudication v2: binds the full review snapshot (not just the ledger); `claim_id↔doc_id↔field` triple must match exactly; value-less slots get a stable `target_id`; decision semantics frozen (correct must carry a value, the others must not); a second decision must explicitly supersede; the panel becomes a rebuildable projection whose render failure never rolls back an adjudication |
+| e943412 | Self-contained bundle (option A): full upstream evidence (PDF/OCR/raw×2) + the extraction schema + scope metadata; the `verify` command's three-layer offline check (member hashes → snapshot-component recompute → adjudication binding) |
+| 1133483 | Self-audit hole-fixing: vision answers enter the input fingerprint (otherwise replay would return the old run); the panel overlay escapes labels |
+| a044c09 | Inline adversarial-review hardening (6 items — see "self-audit findings" below) |
+| Follow-up | research-test guards unified onto `corpus_available()` (guard and data source share one origin) |
 
-## 自查发现(子代理网关 503,内联对抗复核代替;每项带测试)
+## Self-audit findings (the sub-agent gateway returned 503, so an inline
+adversarial review stood in; every item carries a test)
 
-独立子代理评审两次尝试均被推理网关拒绝(503 auth_unavailable),改为内联
-逐维攻击自己的实现,发现并已修复:
+Both attempts at an independent sub-agent review were refused by the reasoning
+gateway (503 auth_unavailable); an inline dimension-by-dimension attack on our
+own implementation was done instead, which found and fixed:
 
-1. **追加裁决不校验快照与盘上工件仍一致** —— run 之后工件被动过,裁决会静默
-   绑到名存实亡的快照。现在不一致即阻断(`test_append_blocks_when_run_artifacts_were_altered`)。
-2. **绑定别快照的裁决静默不可见** —— 从另一个 run 复制账本,旧裁决不进链也不显示。
-   现在标 orphan:不投影(不许错投),但 panel 显式警告(历史不藏)。
-3. **`--docs` 截断在指纹之后** —— 「前 1 份的 run」会被当成「全部文档的 run」重放。
-   现在截断先于指纹(`test_docs_slice_precedes_fingerprint`)。
-4. **重放不验完整性** —— 跑到一半崩掉的 run(有 input_manifest 无 event_log)
-   会被当成果重放。现在半拉子 run 跳过重放,留在原地当现场。
-5. **bundle 上游证据只查存在性** —— run 之后被换掉的 PDF 会静默进包。现在按
-   input_manifest 记录的 sha 验收:被换/丢失 = 阻断;run 时就不存在 = 进 notes。
-6. **研究测试守卫与取数来源错位** —— 守卫查硬编码默认路径,取数走环境变量;
-   fresh-venv 验证脚本当场抓住 13 个失败。统一为 `corpus_available()`。
+1. **Appending an adjudication did not check that the snapshot still matches
+   the on-disk artifacts** — artifacts modified after the run would let an
+   adjudication silently bind to a snapshot in name only. A mismatch now
+   blocks (`test_append_blocks_when_run_artifacts_were_altered`).
+2. **Adjudications bound to a different snapshot were silently invisible** —
+   a ledger copied from another run left old decisions out of the chain and
+   out of view. They are now marked orphan: not projected (no
+   mis-attribution), but explicitly warned about on the panel (history is
+   not hidden).
+3. **`--docs` truncation happened after the fingerprint** — "the run of the
+   first document" would have been replayed as "the run of all documents".
+   Truncating to the first 1 document now precedes fingerprinting
+   (`test_docs_slice_precedes_fingerprint`).
+4. **Replay did not verify completeness** — a half-crashed run (input_manifest
+   present, no event_log) would have been replayed as a result. Half-runs are
+   now skipped by replay and left in place as the scene of the incident.
+5. **The bundle checked upstream evidence only for existence** — a PDF swapped
+   after the run would silently enter the package. Acceptance now goes by the
+   sha recorded in input_manifest: swapped/missing = blocking; absent already
+   at run time = recorded in notes.
+6. **Research-test guards and data reads used different sources** — the guard
+   checked a hard-coded default path while data reads followed the
+   environment variable; the fresh-venv verification script caught 13
+   failures on the spot. Unified onto `corpus_available()`.
 
-已知边界(记录,不修):bundle zip 的时间戳使两次打包字节不同(包内 MANIFEST
-与 verify 不受影响);并发 CLI 抢同一 run 代的理论窗口由 `mkdir(exist_ok=False)`
-压到最小,输家当场报错。
+Known boundary (recorded, not fixed): bundle-zip timestamps make two packagings
+byte-different (the in-package MANIFEST and verify are unaffected); the
+theoretical window of concurrent CLIs racing for the same run generation is
+minimised by `mkdir(exist_ok=False)` — the loser errors out on the spot.
 
-## 关键设计决定(为什么这样做)
+## Key design decisions (why this way)
 
-- **没有 `--force`,也不要求删除历史。** 销毁裁决账本不是显式 Human decision。
-  想重跑就开新代,旧代永远原样保留 —— 阻断不是障碍,是产品语义。
-- **裁决绑定 `review_snapshot_id`,不只是账本哈希。** 快照 = 输入清单 + 工件注册表
-  + 证据片段注册表 + 冻结账本 + 门禁报告 五个成分。只绑账本的话,同一账本配上
-  被替换的证据检测不到。
-- **current state 由 supersession 链投影,不是"最后一行赢"。** v1 旧条目
-  (2026-08-02 验收轮的两条真人裁决)给合成 `legacy-<sha8>` id 并按 seq 隐式
-  串链 —— 那是 v1 当时的语义,如实标注,不改写字节。链断了(只可能是手编账本)
-  显式标冲突并阻断新裁决,不替人猜。
-- **bundle 要么全量自包含,要么不打。** "整批派生物 + 只收被裁决文档的上游证据"
-  是假自包含:收包人看到结论却验不了来源。缺任一上游证据即阻断。
-- **panel 是投影,裁决是权威。** adjudicate 先落盘 fsync 再重渲;渲染失败返回
-  `decision_recorded=true, panel_refreshed=false`,`render --run` 随时可重建。
+- **No `--force`, and no requirement to delete history.** Destroying an
+  adjudication ledger is not an explicit Human decision. Re-running opens a
+  new generation; old generations stay untouched — blocking is not an
+  obstacle, it is the product semantics.
+- **Adjudications bind `review_snapshot_id`, not just a ledger hash.** The
+  snapshot = input manifest + artifact registry + evidence-span registry +
+  frozen ledger + gate report, five components. Binding only the ledger means
+  the same ledger paired with swapped evidence goes undetected.
+- **Current state is projected from the supersession chain, not "the last
+  row wins".** v1 legacy entries (the two real-human adjudications from the
+  2026-08-02 acceptance round) get synthetic `legacy-<sha8>` ids and are
+  chained implicitly by seq — that was v1's semantics at the time; labelled
+  honestly, bytes not rewritten. A broken chain (only possible with a
+  hand-edited ledger) is marked as a conflict and blocks new adjudications;
+  the system does not guess for you.
+- **The bundle is either fully self-contained or not shipped.** "Whole-batch
+  derivatives + upstream evidence only for adjudicated documents" is fake
+  self-containment: the recipient sees conclusions but cannot verify sources.
+  Any missing upstream evidence blocks.
+- **The panel is a projection; adjudications are the authority.** adjudicate
+  fsyncs to disk first, then re-renders; a render failure returns
+  `decision_recorded=true, panel_refreshed=false`, and `render --run` can
+  rebuild at any time.
 
-## 测试对照(复核者要求的八类)
+## Test mapping (the eight categories the reviewer required)
 
-| 要求 | 测试 |
+| Requirement | Test |
 |---|---|
-| 非空 run 不被覆盖,旧字节完全不变 | `test_run_immutability.py::test_nonempty_out_dir_is_refused_and_untouched` |
-| 新输入产生新 run | `test_fingerprint_changes_with_input` + `test_allocate_replay_and_new_run` |
-| decision 的 snapshot/claim/doc/field 错配全拒 | `test_adjudicate.py::TestValidation` 七条 |
-| supersession 投影确定 | `test_review.py::test_tip_follows_supersession_chain_not_row_order`(乱序输入同投影) |
-| panel 刷新失败不丢 decision | `test_render_failure_does_not_rollback_decision` |
-| bundle 缺任一上游证据即阻断 | `test_missing_upstream_evidence_blocks` |
-| bundle 任一字节被改,verify 失败 | `TestVerify` 四条(含"改了工件又同步改 MANIFEST"被快照重算抓住) |
-| clean clone 无 dws-derisk,产品路径仍能跑 | `scripts/fresh_venv_check.sh`(clone → venv → install → doctor → E2E → pytest) |
+| A non-empty run is never overwritten; old bytes fully unchanged | `test_run_immutability.py::test_nonempty_out_dir_is_refused_and_untouched` |
+| New input produces a new run | `test_fingerprint_changes_with_input` + `test_allocate_replay_and_new_run` |
+| Every snapshot/claim/doc/field mismatch on a decision is refused | `test_adjudicate.py::TestValidation`, seven cases |
+| Supersession projection is deterministic | `test_review.py::test_tip_follows_supersession_chain_not_row_order` (shuffled input, same projection) |
+| A failed panel refresh loses no decision | `test_render_failure_does_not_rollback_decision` |
+| A bundle missing any upstream evidence blocks | `test_missing_upstream_evidence_blocks` |
+| Any altered byte fails verify | `TestVerify`, four cases (including "artifact changed AND MANIFEST updated to match" caught by snapshot recompute) |
+| A clean clone without dws-derisk still runs the product path | `scripts/fresh_venv_check.sh` (clone → venv → install → doctor → E2E → pytest) |
 
-`fresh_venv_check.sh` 已于本日跑通:clean clone → 安装 → doctor →
-ingest → run → 裁决 → panel 投影 → bundle → verify → 重放 →
-pytest(129 过,40 研究测试跳过)= 全绿。
+`fresh_venv_check.sh` was run green on this day: clean clone → install →
+doctor → ingest → run → adjudicate → panel projection → bundle → verify →
+replay → pytest (129 passed, 40 research tests skipped) = all green.
 
-## 边界(这轮不做什么)
+## Boundaries (what this round does not do)
 
-- 不做 Web 服务 —— H1(Judge-facing Review Workbench)才是它,见复核者第六节。
-- 不做 blind usability 复测 —— 仍欠,录视频前做。
-- 不动 freeze/gates/matrix/fields 的语义 —— 回归由对拍与 byte-compare 套件看守。
+- No web service — that is H1 (the judge-facing review workbench), per the
+  reviewer's section six.
+- No blind usability retest — still owed; do it before recording the video.
+- No semantic changes to freeze/gates/matrix/fields — regressions are guarded
+  by the parity and byte-compare suites.
