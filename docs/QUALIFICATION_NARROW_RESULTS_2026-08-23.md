@@ -1,65 +1,65 @@
-# QUALIFICATION_NARROW_2026-08-22 结果(已污染、撤销资格晋升,n=200)
+# QUALIFICATION_NARROW_2026-08-22 Results (contaminated, qualification promotion revoked, n=200)
 
-> **2026-08-23 supersession:**本轮触发协议 §7 的废臂条款，状态为
-> `contaminated / blocking`。原数字保留为探索性测量；本页原先的「无阻断」与
-> 「产品能力四闸全过」已撤权。权威记录：
-> `docs/QUALIFICATION_NARROW_CONTAMINATION_2026-08-23.md`。
+> **2026-08-23 supersession:** This round triggered protocol §7's dirty-arm clause; its status is
+> `contaminated / blocking`. The original numbers are retained as exploratory measurements; this page's earlier "no blocking" and
+> "all four product-capability gates passed" claims are hereby revoked. Authoritative record:
+> `docs/QUALIFICATION_NARROW_CONTAMINATION_2026-08-23.md`.
 
-协议:`docs/QUALIFICATION_NARROW_PROTOCOL_2026-08-22.md`(冻结于 `b45f983`,先于任何 API 调用；提取期间在 `1afe7da` 改动，后于 `68a2701` 恢复冻结字节)
-运行日志:`docs/QUALIFICATION_NARROW_LOG_2026-08-23.md`
-数据:`docs/evidence/qual-narrow-2026-08-22/arms/doctouch_metrics.json`
-补充审计:`docs/evidence/qual-narrow-2026-08-22/analysis-audit-v2/doctouch_audit.v2.json`
-复算:零 API。四臂全部从存盘响应投影,`--doc-list` 锁死这 200 份。
+Protocol: `docs/QUALIFICATION_NARROW_PROTOCOL_2026-08-22.md` (frozen at `b45f983`, before any API call; modified at `1afe7da` during extraction, frozen bytes restored after `68a2701`)
+Run log: `docs/QUALIFICATION_NARROW_LOG_2026-08-23.md`
+Data: `docs/evidence/qual-narrow-2026-08-22/arms/doctouch_metrics.json`
+Supplementary audit: `docs/evidence/qual-narrow-2026-08-22/analysis-audit-v2/doctouch_audit.v2.json`
+Recompute: zero API. All four arms are projected from stored responses; `--doc-list` locks down these 200 documents.
 
-## 0. 阻断状态
+## 0. Blocking status
 
-**阻断。** 提取期间协议正文被修改，命中冻结协议 §7 明文废臂条件。文件恢复为原字节
-不能撤销已经发生的污染 transition。本轮不得作为 qualification 或产品晋升证据。
+**Blocked.** The protocol body was modified during extraction, hitting the frozen protocol §7's explicit dirty-arm condition. Restoring the file to its original bytes
+cannot undo the contamination transition that has already taken place. This round may not serve as qualification or product-promotion evidence.
 
-抽取本身完整：聚合审计确认 200 份、400/400 次调用、全部 http 200、10,491 credits；
-四臂各测满 200 份、缺件 0。它们保证描述性数字可复算，但不能越过污染阻断。
+The extraction itself is complete: the aggregate audit confirms 200 documents, 400/400 calls, all http 200, 10,491 credits;
+each of the four arms tested the full 200 documents, with 0 missing items. These guarantee the descriptive numbers are recomputable, but they cannot override the contamination block.
 
-## 1. 这一轮跟 08-18 那轮差在哪
+## 1. How this round differs from the 08-18 round
 
-| | doctouch 2026-08-18 | 本轮 |
+| | doctouch 2026-08-18 | This round |
 |---|---|---|
 | n | 660 | 200 |
-| 曝光状态 | **全部开发期曝光过** | **一份都没被碰过** |
-| 抽样 | 盘上凡有双模式响应即入 | 未曝光池 4,831 最小哈希取 200 |
-| 闸定义 | 同 | 同 |
-| 指标 | 同 | 同 |
-| D 臂零触达 | 10.8% | **12.5%** |
+| Exposure status | **All exposed during development** | **Not a single one touched** |
+| Sampling | Everything on disk with a dual-mode response enters | Min-hash take of 200 from the 4,831-document unexposed pool |
+| Gate definition | Same | Same |
+| Metrics | Same | Same |
+| Arm D zero-touch | 10.8% | **12.5%** |
 
-08-18 的 10.8% 只能当上限参考。本轮的描述性点估计是 12.5%，但因污染不得解释为
-qualification，也不得升级为产品能力。
+The 08-18 10.8% can serve only as an upper-bound reference. This round's descriptive point estimate is 12.5%, but due to contamination it may not be interpreted as
+qualification, nor upgraded to a product capability.
 
-分层:strong 106 / weak 60 / none 34。
+Tiering: strong 106 / weak 60 / none 34.
 
-## 2. 预注册对照
+## 2. Pre-registration comparison
 
-| # | 预测 | 实测 | 判定 |
+| # | Prediction | Measured | Verdict |
 |---|---|---|---|
-| P1 | A 臂零触达 = 0% | 0/200 = **0.0%** | **成立** |
-| P2 | D 臂零触达 5–20% | 25/200 = **12.5%**(95% CI 8.6–17.8) | **成立** |
-| P3 | C ≥ D | C 14.5% ≥ D 12.5% | **成立** |
-| P4 | 真静默 ≤ 3 | 四臂全为 **0** | **成立** |
-| P5 | 三闸全自动 15–19% | 34/200 = **17.0%** | **成立** |
-| P6 | D 臂 `silent_wrong` ≤ B 臂 | D 110 ≤ B 111 | **成立** |
+| P1 | Arm A zero-touch = 0% | 0/200 = **0.0%** | **Holds** |
+| P2 | Arm D zero-touch 5–20% | 25/200 = **12.5%** (95% CI 8.6–17.8) | **Holds** |
+| P3 | C ≥ D | C 14.5% ≥ D 12.5% | **Holds** |
+| P4 | True silent ≤ 3 | **0** across all four arms | **Holds** |
+| P5 | All-three-gates fully automatic 15–19% | 34/200 = **17.0%** | **Holds** |
+| P6 | Arm D `silent_wrong` ≤ arm B | D 110 ≤ B 111 | **Holds** |
 
-六条预测在数值上全中；污染状态不因此改变。**这不是一句可以拿来邀功的话,其中三条本来就很难落空:**
+All six predictions hit numerically; the contamination status does not change on that account. **This is not a sentence to claim credit with — three of them were nearly impossible to miss:**
 
-- **P1 是结构性的**,不是预测:普查闸把每份文档都送进人队列,零触达按定义只能是 0。
-  协议里就标了「结构性锚点」。它证明的是测量管道接对了,不是策略有效。
-- **P4 落在一个几乎无法失败的区间**:四臂真静默全是 0,08-18 各臂也接近 0。
-  预测「≤3」等于没设门槛。下一轮该换一个真能落空的判据。
-- **P6 只差一个槽**:110 vs 111,分母 ~660。方向对,但这个差值区分不了任何东西 ——
-  它能说的只是「窄放行没让静默错误变多」,不能说「更少」。
+- **P1 is structural**, not a prediction: the census gate routes every document into the human queue, so zero-touch is 0 by definition.
+  The protocol itself labeled it "structural anchor." What it proves is that the measurement pipeline is wired correctly, not that the policy works.
+- **P4 falls in a range where failure is nearly impossible**: true silent is 0 across all four arms, and each 08-18 arm was also near 0.
+  Predicting "≤3" amounts to setting no threshold at all. Next round should switch to a criterion that can actually fail.
+- **P6 differs by a single slot**: 110 vs 111, over a denominator of ~660. The direction is right, but this difference discriminates nothing —
+  all it can say is "narrow release did not make silent errors more numerous," not "fewer."
 
-真正有信息量的是 P2、P3、P5,三条都是先划区间再看数,且都不宽。
+The genuinely informative ones are P2, P3, and P5 — all three drew the interval first and only then looked at the numbers, and none of the intervals is wide.
 
-## 3. 四臂 × 三层
+## 3. Four arms × three tiers
 
-| 臂 | 闸 | 层 | 文档 | 零触达 | 未决放行槽 | QA 探针 | 人队列槽 | 真静默 | 口径争议 |
+| Arm | Gate | Tier | Documents | Zero-touch | Undecided release slots | QA probes | Human-queue slots | True silent | Caliber disputes |
 |---|---|---|---|---|---|---|---|---|---|
 | A HAR-0001 | census | strong | 106 | 0 (0.0%) | 627 | 0 | 627 | 0 | 0 |
 | A HAR-0001 | census | weak | 60 | 0 (0.0%) | 383 | 0 | 383 | 0 | 0 |
@@ -78,52 +78,52 @@ qualification，也不得升级为产品能力。
 | D HAR-0023 | payment_required_v1 | none | 34 | 3 (8.8%) | 51 | 14 | 179 | 0 | 3 |
 | D HAR-0023 | payment_required_v1 | **ALL** | 200 | **25 (12.5%)** | 274 | 78 | 997 | 0 | 5 |
 
-每臂 2,000 槽(200 份 × 10 个记分字段)。
+Each arm has 2,000 slots (200 documents × 10 scored fields).
 
-**C 与 D 的差 = `release_tier1_explicit: false` 的代价**:D 多开 22 个 QA 探针
-(78 vs 56),换来 2.0 个百分点的零触达下降(12.5% vs 14.5%)。P3 预判的方向。
+**The C-vs-D gap = the cost of `release_tier1_explicit: false`**: arm D opens 22 more QA probes
+(78 vs 56), buying a 2.0-percentage-point drop in zero-touch (12.5% vs 14.5%). The direction P3 predicted.
 
-**分层单调**:零触达随广播 OCR 强度递减(strong 14.2% > weak 11.7% > none 8.8%)。
-页面上能定位的东西越多,越容易达到免复核的证据门槛 —— 与机制预期一致。
+**Monotone across tiers**: zero-touch declines as broadcast OCR strength declines (strong 14.2% > weak 11.7% > none 8.8%).
+The more locatable content a page has, the easier it clears the no-review evidence threshold — consistent with the mechanism's expectation.
 
-## 4. 产品能力晋升已撤销
+## 4. Product-capability promotion revoked
 
-| # | 闸 | 结果 |
+| # | Gate | Result |
 |---|---|---|
-| 1 | 无阻断 | **不过：协议 §7 污染** |
-| 2 | 样本完整(四臂各 200,缺件 0) | **过** |
-| 3 | 原安全闸(P4 **且** P6) | 数值成立，但终点不足以支撑零触碰子集安全 |
-| 4 | 效果(P2 落在 5–20%) | **过** |
+| 1 | No blocking | **Fail: protocol §7 contamination** |
+| 2 | Sample complete (200 per arm, 0 missing) | **Pass** |
+| 3 | Original safety gates (P4 **and** P6) | Hold numerically, but the endpoints are insufficient to support the safety of the zero-touch subset |
+| 4 | Effect (P2 falls in 5–20%) | **Pass** |
 
-第一条硬阻断已失败，所以**不得写四条全过，也不得晋升产品能力**。此外，事后补充审计
-在 D 臂 25 份零触碰文档的 75 个付款闸槽中发现：71 个可对拍槽有 12 个与 DocILE
-标注不符（分布在 10 份文档），另有 4 个 auto-accept 槽不可对拍。原 P6 的全臂比较
-没有单列产品句子所指的风险子集。
+The first hard gate has already failed, so **it is forbidden to write that all four passed, and product capability may not be promoted**. In addition, the post-hoc supplementary audit
+found, among the 75 payment-gate slots of arm D's 25 zero-touch documents: of the 71 cross-checkable slots, 12 disagree with the DocILE
+annotations (spread over 10 documents), plus 4 auto-accept slots that cannot be cross-checked. The original P6 whole-arm comparison
+did not isolate the risk subset that the product sentence refers to.
 
-本轮唯一允许的描述性说法是：
+The only descriptive statement permitted for this round is:
 
-> 在一轮后来按其自身协议判为污染的 200 份 DocILE 探索性测量中，HAR-0023 的
-> 路由时零触碰为 **25/200（12.5%，95% Wilson CI 8.6–17.8）**。该结果不是
-> qualification，不支持安全、准确率或产品晋升主张。
+> In a 200-document DocILE exploratory measurement later judged contaminated under its own protocol, HAR-0023's
+> routing-time zero-touch was **25/200 (12.5%, 95% Wilson CI 8.6–17.8)**. This result is not
+> qualification and supports no claims of safety, accuracy, or product promotion.
 
-三条限定(ARCHITECTURE §8)照挂:单一语料(DocILE)、单一供应商(Nutrient DWS)、
-单一真值口径(DocILE 标注 + truth-caliber-v1 重分类)。
+The three limitations (ARCHITECTURE §8) stay attached: single corpus (DocILE), single vendor (Nutrient DWS),
+single ground-truth caliber (DocILE annotations + truth-caliber-v1 reclassification).
 
-## 5. 这句话证明不了什么
+## 5. What this statement does not prove
 
-- **零触碰子集并不等于零风险。** 25 份文档的 75 个付款槽中，12/71 个可对拍值
-  与 DocILE 标注不符，另有 4 个 auto-accept 槽不可对拍。这个事后审计不重写
-  预注册预测，但阻止把路由属性包装成安全结论。
-- **不是「抽取更准了」。** 零触达是**路由时属性**,与抽取正确性无关。同一批响应里,
-  被自动接受且有真值可比的槽中,**约 16.6–16.9% 的值与 DocILE 标注不符**
-  (A 111/668、B 111/668、C 111/668、D 110/651)—— 四臂几乎一模一样。
-  窄放行改变的是「人要打开几张单」,不是「机器错多少」。这正是本项目的论点:
-  抽取的正确性不可信,可验证的是支持关系。
-- **不是「这三个字段一定是对的」。** 原路由只表明这三个字段在该策略下越过了
-  证据门槛；补充审计已经证明这不等于与 DocILE 标注一致。其余七个字段照旧进
-  支持矩阵、照旧进人队列。
-- **12.5% 不等于「省了 12.5% 的人力」。** 它是**文档零触达率**,不是槽位数。
-  D 臂的人队列仍有 997 槽;省掉的是那 25 份完全不用打开的文档。
-- **单一语料。** DocILE 是一个语料。换域名、换版式、换语言,这个数字不迁移。
-- **n=200 的精度有限。** 12.5% 的 95% 区间是 8.6–17.8%,宽 9 个百分点。
-  区间与点估计必须一起说。
+- **The zero-touch subset is not zero-risk.** Across those 25 documents' 75 payment slots, 12/71 cross-checkable values
+  disagree with the DocILE annotations, plus 4 auto-accept slots that cannot be cross-checked. This post-hoc audit does not rewrite
+  the pre-registered predictions, but it does prevent dressing up a routing property as a safety conclusion.
+- **It is not "extraction got more accurate."** Zero-touch is a **routing-time property**, unrelated to extraction correctness. Within the same batch of responses,
+  among slots that were auto-accepted and comparable against ground truth, **roughly 16.6–16.9% of values disagree with the DocILE annotations**
+  (A 111/668, B 111/668, C 111/668, D 110/651) — the four arms are nearly identical.
+  What narrow release changes is "how many documents a human must open," not "how much the machine gets wrong." This is precisely this project's thesis:
+  extraction correctness cannot be trusted; what is verifiable is the support relation.
+- **It is not "these three fields are necessarily right."** The original routing only shows these three fields cleared the
+  evidence threshold under that policy; the supplementary audit has already shown that this does not equal agreement with the DocILE annotations. The other seven fields still enter
+  the support matrix and still enter the human queue.
+- **12.5% does not mean "12.5% of labor saved."** It is the **document zero-touch rate**, not a slot count.
+  Arm D's human queue still holds 997 slots; what is saved is the 25 documents that need not be opened at all.
+- **Single corpus.** DocILE is one corpus. Change the domain, the layout, or the language, and this number does not transfer.
+- **n=200 has limited precision.** The 95% interval around 12.5% is 8.6–17.8%, 9 percentage points wide.
+  The interval and the point estimate must be stated together.

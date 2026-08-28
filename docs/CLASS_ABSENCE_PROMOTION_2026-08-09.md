@@ -1,39 +1,41 @@
-# 16 条类别缺席规则:propose → evaluate → promote 全过(2026-08-09)
+# 16 Class Absence Rules: propose → evaluate → promote All Passed (2026-08-09)
 
-依据表:[`DOCTYPE_ABSENCE_DEV_2026-08-09.md`](DOCTYPE_ABSENCE_DEV_2026-08-09.md)。
-全程零 API。结果 harness **HAR-0017**,policy digest
+Basis table: [`DOCTYPE_ABSENCE_DEV_2026-08-09.md`](DOCTYPE_ABSENCE_DEV_2026-08-09.md).
+Zero API throughout. Resulting harness **HAR-0017**, policy digest
 `9b6df44236d1e22d19b760e1b1d786906f88c8d5a7d6ba58e5895982a699c7c7`,
-文件已钉进 `docs/evidence/class_absence_2026-08-09/`。
+files pinned into `docs/evidence/class_absence_2026-08-09/`.
 
-## 结论
+## Conclusions
 
-开发集 300 份 / 3,000 槽,HAR-0001 → HAR-0017:
+Development set 300 documents / 3,000 slots, HAR-0001 → HAR-0017:
 
 | | HAR-0001 | HAR-0017 |
 |---|---:|---:|
-| 人工队列 | 1,806(60.2%) | **1,736(57.9%)** |
+| human queue | 1,806 (60.2%) | **1,736 (57.9%)** |
 | `auto_absent` | 0 | 70 |
-| **silent_absent(对 DocILE 真值)** | 0/0 | **0/70** |
+| **silent_absent (vs DocILE ground truth)** | 0/0 | **0/70** |
 | silent_wrong | 179/1,015 | **179/1,015** |
 
-**−70 槽 = −2.33pp,两类静默错都没升。** 16 条候选全部通过
-propose → evaluate → promote,没有一条被门拒。
+**−70 slots = −2.33pp, with neither class of silent error rising.** All 16 candidates passed
+propose → evaluate → promote; not one was refused by the gate.
 
-## 数字是怎么合上的
+## How the numbers reconcile
 
-规则匹配到 **107** 个槽(与 `absence_by_class.py` 预测的 107 完全一致),
-其中:
+The rules matched **107** slots (exactly the 107 predicted by `absence_by_class.py`), of which:
 
-- **70** 变成 `auto_absent` —— 这就是省下的人工;
-- **29** 被 20% QA 探针送回人工 —— 设计如此,缺席是否成立要持续观测;
-- **8** 仍留在队列 —— 这些槽另有门禁硬失败,缺席规则不越过 `slot_blocking`。
+- **70** became `auto_absent` — this is the human work saved;
+- **29** were sent back to humans by the 20% QA probe — by design; whether an absence holds
+  must be observed continuously;
+- **8** remain in the queue — these slots have other hard gate failures; absence rules do not
+  override `slot_blocking`.
 
-所以 107 条匹配换来 70 槽净省。**探针不是损耗,是这条路能走的前提**:被误判
-成缺席的槽再也不会有人看到,没有事后发现的机会,只能靠抽检维持观测。
+So 107 matches buy 70 slots of net savings. **The probe is not waste; it is the precondition for
+this path to exist at all**: a slot wrongly judged absent will never be seen by anyone again;
+there is no after-the-fact discovery, only sampling keeps observation alive.
 
-## 晋升谱系(每步对 HAR-0001 的累计 Δ)
+## Promotion lineage (cumulative Δ vs HAR-0001 at each step)
 
-| # | 规则 | Δpp | # | 规则 | Δpp |
+| # | Rule | Δpp | # | Rule | Δpp |
 |---|---|---:|---|---|---:|
 | HAR-0002 | `AE-purchase_order-seller_vat_id` | −0.40 | HAR-0010 | `AE-contract-due_date` | −1.63 |
 | HAR-0003 | `AE-purchase_order-due_date` | −0.63 | HAR-0011 | `AE-receipt-seller_vat_id` | −1.80 |
@@ -44,51 +46,56 @@ propose → evaluate → promote,没有一条被门拒。
 | HAR-0008 | `AE-purchase_order-total_vat` | −1.37 | HAR-0016 | `AE-estimate-total_net` | −2.27 |
 | HAR-0009 | `AE-contract-seller_vat_id` | −1.47 | HAR-0017 | `AE-estimate-total_vat` | −2.33 |
 
-每一步的 `absent_rule_truth_conflicts_candidate` 都是 0 —— 这是 QA 抽检**之前**
-的真值检查,一条会吞掉真有值槽的规则在这里就被拒,不靠探针碰运气。逐条记录见
-`docs/evidence/class_absence_2026-08-09/promotion_log.json`。
+`absent_rule_truth_conflicts_candidate` is 0 at every step — this is the ground-truth check
+that runs **before** any QA sampling; a rule that would swallow slots with real values is
+refused right here, not left to probe luck. The step-by-step record is in
+`docs/evidence/class_absence_2026-08-09/promotion_log.json`.
 
-## 复算
+## Recompute
 
-`runs/absence-dev-2026-08-09/runs/`(不在 git 里,在 invoiceloop-data 下):
+`runs/absence-dev-2026-08-09/runs/` (not in git; under invoiceloop-data):
 
-- `run-0001` —— HAR-0001 基线
-- `run-0002` —— HAR-0017,同一份证据、同一份 schema 重跑完整确定性流水线
+- `run-0001` — HAR-0001 baseline
+- `run-0002` — HAR-0017, the full deterministic pipeline re-run on the same evidence and schema
 
-两个 run 的 `silent_absent` / `silent_wrong` 由 DocILE 标注独立复算,不经
-`improve` 的 scorer。语料是 `runs/absence-dev-corpus`:sealed1 / sealed2 /
-heldout 三个工作区的 raw 汇成一处 + `data` 指向校准语料,**不含任何促销记录**,
-所以基线一定是包内 HAR-0001。
+Both runs' `silent_absent` / `silent_wrong` are recomputed independently from DocILE
+annotations, not via `improve`'s scorer. The corpus is `runs/absence-dev-corpus`: raw from the
+three workspaces sealed1 / sealed2 / heldout merged into one place + `data` pointing at the
+calibration corpus, **containing no promotion records**, so the baseline is necessarily the
+in-package HAR-0001.
 
-重跑 `run-0002`(HAR-0017 那一臂)要临时把工作区的 harness 状态挂进语料根,
-**跑完就摘掉**:
+Re-running `run-0002` (the HAR-0017 arm) requires temporarily mounting the workspace harness
+state into the corpus root and **unlinking it the moment the run finishes**:
 
 ```bash
 ln -sfn ../absence-dev-2026-08-09/improve   runs/absence-dev-corpus/improve
 ln -sfn ../absence-dev-2026-08-09/harnesses runs/absence-dev-corpus/harnesses
-# … 跑 pipeline …
+# … run pipeline …
 rm -f runs/absence-dev-corpus/improve runs/absence-dev-corpus/harnesses
 ```
 
-摘掉是纪律不是洁癖:`pipeline.run` 的 active harness 取自**语料根**
-(`load_active(derisk_root())`),不是输出目录。让促销记录长期挂在语料根上,
-下一个人跑「基线」时拿到的就不是基线 —— 本文档最后一节记的正是这个坑。
+Unlinking is discipline, not fastidiousness: `pipeline.run`'s active harness comes from the
+**corpus root** (`load_active(derisk_root())`), not the output directory. Leave promotion
+records hanging on the corpus root long-term, and the next person running the "baseline" does
+not get a baseline — the pitfall recorded in this document's last section is exactly this.
 
-## 两条限定
+## Two caveats
 
-- **这是开发集。** sealed1 / sealed2 / heldout 全部在开发期被读过、被调过。
-  −2.33pp 与 0 silent_absent 都**不是未见集上的结论**。
-- **SEALED-3 不能用来验它。** 那批已被一次性开箱用掉
-  (`SEALED3_RESULTS.md` §7),而且这 16 条规则正是由它的失败启发的。
-  要资格,得另抽 SEALED-4 —— 见 `SEALED4_PROTOCOL.md`。
+- **This is the development set.** sealed1 / sealed2 / heldout were all read and tuned during
+  development. −2.33pp and 0 silent_absent are **not conclusions on unseen data**.
+- **SEALED-3 cannot be used to validate this.** That batch was consumed by its one-time
+  unsealing (`SEALED3_RESULTS.md` §7), and these 16 rules were inspired precisely by its
+  failure. Eligibility requires a separate SEALED-4 draw — see `SEALED4_PROTOCOL.md`.
 
-## 途中踩到的两个坑(记下来,别再踩)
+## Two pitfalls hit along the way (recorded so we don't step in them again)
 
-1. **第一次建开发 run 时三个语料各跑一次,其中 sealed2-workspace 里有促销
-   记录**,于是那 100 份是在 HAR-0004 下跑的,而另外 200 份在 HAR-0001 下。
-   `pipeline.run` 的 active harness 来自**语料根**(`load_active(derisk_root())`),
-   不是输出目录。混合基线让 16 条候选全部被拒,且拒绝理由一模一样 ——
-   十六条不同的规则给出同一个数字,那就不是规则在起作用。改成一个不含促销
-   记录的合并语料根之后才有意义。
-2. `improve.gate_verdict` 返回的键是 `ok`,不是 `promotable`。读错键会把
-   「全部通过」读成「全部拒绝」。
+1. **When first building the development runs, each of the three corpora ran once, and
+   sealed2-workspace contained promotion records**, so those 100 documents ran under HAR-0004
+   while the other 200 ran under HAR-0001.
+   `pipeline.run`'s active harness comes from the **corpus root**
+   (`load_active(derisk_root())`), not the output directory. The mixed baseline got all 16
+   candidates refused, with identical rejection reasons —
+   sixteen different rules producing the same number means the rules are not what is acting.
+   It only became meaningful after switching to a merged corpus root without promotion records.
+2. The key `improve.gate_verdict` returns is `ok`, not `promotable`. Reading the wrong key
+   turns "all passed" into "all refused".

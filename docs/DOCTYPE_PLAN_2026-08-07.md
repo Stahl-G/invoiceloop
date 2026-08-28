@@ -1,205 +1,202 @@
-# 单据类别体系:计划(2026-08-07)
+# Document Class System: Plan (2026-08-07)
 
-## 0. 先记下我在提案里说错的两处
+## 0. Two things I got wrong in the proposal, recorded up front
 
-写这份计划的直接原因是两个被数据推翻的判断。留在这里,免得后面又照着它们决策。
+The immediate cause of this plan is two judgments overturned by data. Recorded here so nobody decisions off them again later.
 
-1. **「类型条件确定性检查打那 22%」—— 假。** SEALED-2 上付款三字段零触达的 23 份里
-   13 个静默错值,逐个看过:`seller_name` 6、`amount_due` 4、`invoice_number` 3,
-   **零个与贷项符号有关**。唯一那份贷项通知单不在零触达集里。
-2. **「22%」虚高。** 13 个里约 5 个是 DocILE 标注/口径问题($0.00 两处、
-   多行主体名两处、日期段被标成单号一处),真错约 8 个 → **约 13%**。
-   对外只能说 13%,而且要带「口径未逐条裁决」的限定。
+1. **"Type-conditional deterministic checks hit that 22%" — false.** Of the 23 SEALED-2 documents where the three payment fields were zero-touch, 13 had silent wrong values; I examined each: `seller_name` 6, `amount_due` 4, `invoice_number` 3, **zero related to credit-note sign**. The single credit note is not in the zero-touch set.
+2. **The "22%" was inflated.** Of the 13, about 5 are DocILE annotation/caliber issues ($0.00 in two, multi-line party names in two, a date segment labeled as an invoice number in one), leaving about 8 real errors → **about 13%**.
+   Externally we may only say 13%, and it must carry the caveat "calibers not adjudicated item by item".
 
-数据真正指向的是 **主体识别(谁是卖方)**:6/13,广告代理 vs 电台倒置。
-与人工在 `0c56b86a` 上判的 `WRONG_FIELD_MAPPING`(贷项通知开具方/被抵扣方
-倒置)是同一类错。**第 3 项应改为主体方向检查,不是符号检查。**
+What the data actually points to is **party identification (who is the seller)**: 6/13, advertising agency vs radio station inverted.
+This is the same class of error as the human-judged `WRONG_FIELD_MAPPING` on `0c56b86a`
+(credit note issuer / offset recipient inverted). **Item 3 should become a party-direction check, not a sign check.**
 
-## 1. 已经确定的事实(实测,零 API)
+## 1. Established facts (measured, zero API)
 
-- `invoice_type` 在 DWS 响应里一直有,系统从未使用。
-- 8 类受控词表覆盖两个集上全部自由文本拼法,零个映不进 —— **但这是样本内的**:
-  词表冻结时扫过 SEALED-2,五个 token 因此进表(见
-  `docs/DOCTYPE_EVIDENCE_2026-08-07.md` 覆盖率节的污染披露)。
-- 类型声明的页面字面证据(词级 OCR,词序列匹配 + bbox 合并):
-  88 份 81/86 = 94.2%,SEALED-2 90/99 = 90.9%(同样带样本内污染)。
-- 被阻断的 14 份里**抽查了 4 份,都是真的误分类**,不是分词假象:
-  `40532c4e` 实为 new traffic order form(页面只有 "billing"),
-  `9a529262` 实为 makegood form,`6a6b6a39`/`b45c2725` 整页无 invoice 字样。
-  **其余 10 份未逐份裁决** —— 不得当成已确认。
-- 类型级真值缺席率显示:8 条候选「不适用」规则**已被现有字段级 cohort 覆盖**,
-  真正新增的只有 `due_date ×(订单/合同/报价/形式发票/确认单)`+`total_net × 报价`,
-  SEALED-2 上约 19–20 槽 = **≈2pp**,零静默错代价。
-- 本计划起草时 `invoiceloop/doctype.py` 已写好但尚未接线;随后阶段 A–C 已落地
-  (门禁冻结 `document_checks`,执行指纹含词表 digest,有回归测试),阶段 D 按预注册
-  判据作废。2026-08-08 的 HITL 接线见下方阶段 F。保留这条时序,不把后来的能力
-  倒写成当时已经存在。
+- `invoice_type` has always been present in DWS responses; the system has never used it.
+- The 8-class controlled vocabulary covers every free-text spelling on both sets, zero failures to map — **but this is in-sample**:
+  the vocabulary was frozen after scanning SEALED-2, and five tokens entered the table for that reason (see
+  the contamination disclosure in the coverage section of
+  `docs/DOCTYPE_EVIDENCE_2026-08-07.md`).
+- Literal page evidence for type claims (word-level OCR, word-sequence matching + bbox merging):
+  88 docs 81/86 = 94.2%, SEALED-2 90/99 = 90.9% (same in-sample contamination).
+- Of the 14 blocked documents, **4 were spot-checked; all are genuine misclassifications**,
+  not tokenization artifacts:
+  `40532c4e` is actually a new traffic order form (the page says only "billing"),
+  `9a529262` is actually a makegood form, `6a6b6a39`/`b45c2725` have no "invoice" wording anywhere on the page.
+  **The other 10 have not been adjudicated document by document** — they must not be treated as confirmed.
+- Type-level ground-truth absence rates show: the 8 candidate "not applicable" rules **are already covered by existing field-level cohorts**;
+  the genuinely new ones are only `due_date ×(order/contract/quote/proforma/confirmation)` and `total_net × quote`,
+  about 19–20 slots on SEALED-2 = **≈2pp**, at zero silent-error cost.
+- When this plan was drafted, `invoiceloop/doctype.py` was written but not yet wired in; Stages A–C subsequently landed
+  (gates freeze `document_checks`, the execution fingerprint includes the vocabulary digest, regression tests exist), and Stage D was scrapped per the preregistered
+  criteria. For the 2026-08-08 HITL wiring see Stage F below. Keep this timeline as-is; do not retro-write later capabilities as having existed at the time.
 
-## 2. 为什么这件事难(动手前必须先答的四个问题)
+## 2. Why this is hard (four questions that must be answered before touching anything)
 
-### Q1 文档级裁决放在哪?现有 gate_report 没有它的位置
+### Q1 Where do document-level verdicts live? The current gate_report has no place for them
 
-`gate_report["evaluations"][doc_id][field][gate_id]` 是**字段级三层结构**。
-类型检查是**文档级**的,不属于 10 个字段中的任何一个。
+`gate_report["evaluations"][doc_id][field][gate_id]` is a **field-level three-layer structure**.
+The type check is **document-level** and belongs to none of the 10 fields.
 
-C8 跨文档查重的先例只解决了一半:它是文档集级检查,但它把裁决**盖回
-invoice_number 这个已存在的槽**。类型检查没有这样一个自然归属的槽。
+The C8 cross-document duplicate-check precedent solves only half the problem: it is a document-set-level check, but it stamps its verdict **back onto
+invoice_number, a slot that already exists**. The type check has no such natural home slot.
 
-候选:
-- (a) `evaluations[doc_id]["__document__"]` —— 会打断所有按字段遍历 evaluations 的消费方
-- (b) 新增顶层 `gate_report["document_checks"][doc_id]` —— 加性,但每个消费方都要知道
-- (c) 独立工件 `doctype_report.json` —— 不碰 gate_report,但脱离了门禁事务的输入签名
+Candidates:
+- (a) `evaluations[doc_id]["__document__"]` — breaks every consumer that iterates evaluations by field
+- (b) new top-level `gate_report["document_checks"][doc_id]` — additive, but every consumer has to know about it
+- (c) standalone artifact `doctype_report.json` — does not touch gate_report, but escapes the gate transaction's input signature
 
-**待办**:枚举 `gate_report["evaluations"]` 的全部消费方(matrix / panel / verify /
-audit bundle / improve / heldout),确认哪个方案不破坏历史工件重放。
-**判据**:`test_binding_regression` 的 454 行冻结判定与 heldout 零 diff 必须仍成立。
+**To-do**: enumerate every consumer of `gate_report["evaluations"]` (matrix / panel / verify /
+audit bundle / improve / heldout) and confirm which option does not break historical artifact replay.
+**Criterion**: `test_binding_regression`'s 454 frozen verdicts and the heldout zero diff must still hold.
 
-### Q2 「无证据 → 阻断」会让复核负载**上升**多少?没量过
+### Q2 How much does "no evidence → block" **raise** review load? Never measured
 
-按宪章四,跑不了的检查不算通过。但如果文档级阻断 → `doc_blocked` →
-routing 给全部 10 槽 `block`,那 SEALED-2 上 8 份 × 10 槽 = **80 槽**从
-平均 4.7 槽/份变成 10 槽/份,**负载净增约 4pp**。
+Per Charter Four, a check that cannot run does not count as passed. But if a document-level block → `doc_blocked` →
+routing gives all 10 slots `block`, then on SEALED-2, 8 docs × 10 slots = **80 slots** go from
+an average of 4.7 slots/doc to 10 slots/doc, a **net load increase of about 4pp**.
 
-这可能是正确的代价(它抓的是真误判),但**必须先量再决定**,不能事后发现。
+That may be the correct price (it catches real misjudgments), but it must be **measured before deciding**, not discovered afterward.
 
-候选粒度:
-- 文档级阻断(最严,+4pp)
-- 只阻断**依赖类型的判定**(适用性规则不生效,回落到字段级默认)—— 负载不变,
-  但「类型不可信」这件事必须在交付物上可见
-- 非阻断 finding + 交付物标注
+Candidate granularities:
+- document-level block (strictest, +4pp)
+- block only **type-dependent verdicts** (applicability rules don't fire, fall back to field-level defaults) — load unchanged,
+  but "the type is untrusted" must be visible on the deliverable
+- non-blocking finding + deliverable annotation
 
-**待办**:三种粒度各跑一次 SEALED-2,报负载与静默错。
-**倾向**:第二种。它满足宪章四(检查跑了、结论是"类型不可信")而不惩罚
-与类型无关的字段。但这是要论证的,不是默认。
+**To-do**: run SEALED-2 once per granularity; report load and silent errors.
+**Leaning**: the second. It satisfies Charter Four (the check ran; the conclusion is "the type is untrusted") without punishing
+fields unrelated to type. But this has to be argued, not assumed by default.
 
-### Q3 主体方向能不能确定性地检查?这是第 3 项的生死线
+### Q3 Can party direction be checked deterministically? This is item 3's kill line
 
-6/13 的静默错是卖方认错(代理商 vs 电台)。能不能不靠模型判?
+6/13 of the silent errors are seller misidentifications (agency vs radio station). Can this be judged without a model?
 
-已知可用的确定性信号:
-- 页面上 "Remit to" / "Pay to" / "Bill to" / "Advertiser" / "Agency" / "Station"
-  这些标签词的位置(词级 OCR 有几何)
-- 抽出的 `seller_name` 值落在页面哪一块(`evidence_span_registry` 有 bbox)
-- 两者的空间关系:卖方名应当靠近 "Remit to"/抬头,而不是靠近 "Agency"
+Known usable deterministic signals:
+- positions of the label words "Remit to" / "Pay to" / "Bill to" / "Advertiser" / "Agency" / "Station"
+  on the page (word-level OCR has geometry)
+- which block of the page the extracted `seller_name` value falls in (`evidence_span_registry` has bbox)
+- the spatial relation between the two: the seller name should sit near "Remit to"/the letterhead, not near "Agency"
 
-**待办(原型,不进产品)**:在 SEALED-2 的 100 份上量
-「`seller_name` 的 span 距离哪个标签词最近」与真值是否一致。
-**判据**:若这个规则在 100 份上准确率 < 80%,**第 3 项作废**,主体问题
-只能走「进人工队列」而不是「机检」。CLAUDE.md 记的 PARTY 原型 137/151 失败
-是个警告:这条路以前走过,没走通。
+**To-do (prototype, not into the product)**: on SEALED-2's 100 documents, measure whether
+"which label word the `seller_name` span is nearest to" agrees with ground truth.
+**Criterion**: if this rule's accuracy on the 100 documents is < 80%, **item 3 is void** and the party problem
+can only go to "the human queue", not "machine checking". The PARTY prototype failure of 137/151 recorded in CLAUDE.md
+is a warning: this road was walked before and did not go through.
 
-### Q4 类型能不能进策略语言?anti-hardcoding 白名单怎么改
+### Q4 Can type enter the policy language? How to change the anti-hardcoding allowlist
 
-`_ABSENT_KEYS = ("id","field")` 与 `suggest._ALLOWED_COHORT_KEYS` 是防
-「单文档特征进策略」的闸门。`doc_class` 是**类**不是文档,原则上可以进 ——
-但它派生自**被监督的模型自己写的字符串**。
+`_ABSENT_KEYS = ("id","field")` and `suggest._ALLOWED_COHORT_KEYS` are the gatekeeping against
+"single-document features entering policy". `doc_class` is a **class**, not a document, so in principle it may enter —
+but it is derived from **strings written by the supervised model itself**.
 
-规则草案:`doc_class` 允许作 cohort 键,**当且仅当**该 cohort 覆盖的每一份
-文档都通过了类型证据门禁。没通过的文档不享受任何类型级放宽。
+Draft rule: `doc_class` is allowed as a cohort key **if and only if** every document covered by that cohort
+passed the type evidence gate. Documents that did not get no type-level relaxation.
 
-**待办**:确认这条规则能在 lint 层面确定性判定(需要 lint 能看到 gate 结果,
-现在它看不到 —— 这是个真的耦合问题)。
+**To-do**: confirm this rule can be decided deterministically at the lint layer (lint needs to see gate results;
+today it cannot — this is a real coupling problem).
 
-## 3. 分阶段计划(每阶段独立完整,阶段间有判据)
+## 3. Staged plan (each stage independently complete; criteria between stages)
 
-### 阶段 A — 词表 + 证据(纯函数,不碰流水线)
-- `tests/test_doctype.py`:分词边界、词表顺序(`credit_note` 必须先于 `invoice`,
-  否则 "Credit Note against Invoice 12345" 被 invoice 抢走 —— 2026-08-07 去污
-  前这条用的例子是 "billing discrepancy/credit request",靠的是 `billing` 在
-  invoice 侧,而那两个 token 都是语料派生且已删,见 DOCTYPE_EVIDENCE §词表去污)、
-  无证据返回 None、多词短语的 bbox 合并、`NO_CLAIM` 与 `UNMAPPED` 语义不同。
-- 落一份 `docs/DOCTYPE_EVIDENCE_2026-08-07.md`:两个集上的覆盖率与 13 份阻断名单,
-  附零 API 复算脚本。
-- **判据**:466 + 新增测试全绿;不改任何既有工件。
-- **产出即使后面全停也有价值**:抽取器的类型声明有 8–9% 在页面上
-  找不到字面支撑,这是可复算的。**不要说成「8% 是错的」** —— 无字面
-  支撑 ≠ 分类错(宪章六)。
+### Stage A — vocabulary + evidence (pure functions, pipeline untouched)
+- `tests/test_doctype.py`: tokenization boundaries, vocabulary order (`credit_note` must precede `invoice`,
+  otherwise "Credit Note against Invoice 12345" is snatched by invoice — before the 2026-08-07 decontamination
+  this used the examples "billing discrepancy/credit request", relying on `billing` being on the
+  invoice side, and both of those tokens are corpus-derived and deleted; see DOCTYPE_EVIDENCE §vocab decontamination),
+  returns None with no evidence, bbox merging for multi-word phrases, `NO_CLAIM` and `UNMAPPED` differ in meaning.
+- Produce a `docs/DOCTYPE_EVIDENCE_2026-08-07.md`: coverage on both sets and the list of 13 blocked docs,
+  with a zero-API recomputation script.
+- **Criterion**: 466 + new tests all green; no existing artifact changed.
+- **The output is valuable even if everything stops after this**: 8–9% of the extractor's type claims find no
+  literal support on the page, and that is recomputable. **Do not state this as "8% are wrong"** — no literal
+  support ≠ misclassification (Charter Six).
 
-### 阶段 B — 回答 Q1/Q2(调查,不落产品代码)
-- 枚举 gate_report 消费方;三种阻断粒度各跑一次 SEALED-2。
-- **判据**:选定方案后,历史工件重放零 diff 可复现。
-- **出口**:若三种粒度都让负载净增 > 5pp 且抓不回静默错,**阶段 C 暂停**,
-  类型只进交付物不进门禁。
-- **2026-08-07 结论**(见 `docs/DOCTYPE_STAGE_B_2026-08-07.md`):
-  Q1 → (b) `document_checks`;Q2 → typedep/finding(文档级 +4.5pp,不取);
-  **C 不暂停**。
+### Stage B — answer Q1/Q2 (investigation, no product code)
+- Enumerate gate_report consumers; run SEALED-2 once for each of the three blocking granularities.
+- **Criterion**: once an option is chosen, historical artifact replay with zero diff must be reproducible.
+- **Exit**: if all three granularities net-increase load by > 5pp and recover no silent errors, **Stage C pauses**;
+  type enters only the deliverable, not the gates.
+- **2026-08-07 conclusions** (see `docs/DOCTYPE_STAGE_B_2026-08-07.md`):
+  Q1 → (b) `document_checks`; Q2 → typedep/finding (document-level +4.5pp, not taken);
+  **C does not pause**.
 
-### 阶段 C — 接入门禁(按 B 的结论)
-- 照 B 选定的方案接入;`snapshot` 执行指纹加 `doctype_digest` 分量
-  (改了检查 = 新 run 代,不许与旧 run 撞车)。
-- **判据**:`test_port_fidelity` / `test_binding_regression` / heldout 零 diff 全过。
-- **2026-08-07 落地**:
-  - `gates.run_gates` → `document_checks` + 非阻断 `doctype_evidence` finding;
-  - `input_signature.doctype_digest` + `execution_fingerprint` 含 digest;
+### Stage C — wire into the gates (per B's conclusions)
+- Wire in per the option B selected; `snapshot` execution fingerprint gains a `doctype_digest` component
+  (a changed check = a new run generation; no colliding with old runs).
+- **Criterion**: `test_port_fidelity` / `test_binding_regression` / heldout zero diff all pass.
+- **2026-08-07 landed**:
+  - `gates.run_gates` → `document_checks` + non-blocking `doctype_evidence` finding;
+  - `input_signature.doctype_digest` + `execution_fingerprint` includes the digest;
   - `deliverable.docs[*].type_trust` ∈ {evidenced, untrusted, no_claim,
-    unmapped, ocr_unavailable, unknown}(旧 run = unknown)。
+    unmapped, ocr_unavailable, unknown} (old runs = unknown).
 
-### 阶段 D — 主体方向原型(Q3 的答案决定做不做)
-- 先跑原型量准确率,再决定是机检还是仅路由。
-- **判据**:100 份上 ≥80% 才进产品;否则登记为负面结果并停。
-- **2026-08-07 结论**(见 `docs/DOCTYPE_STAGE_D_2026-08-07.md`):
-  主指标 49/95 = **51.6%** < 80% → **KILL**;旁证变体全 ≤ 52.5%;
-  且只覆盖 51/100 份。**KILL 的是这条冻结的标签几何规则**,
-  不是「主体方向不可机验」。主体方向不做机检,只走人工队列。不接线 gates。
+### Stage D — party direction prototype (Q3's answer decides whether to do it)
+- Run the prototype to measure accuracy first, then decide between machine checking and routing only.
+- **Criterion**: ≥80% on 100 documents to enter the product; otherwise register as a negative result and stop.
+- **2026-08-07 conclusion** (see `docs/DOCTYPE_STAGE_D_2026-08-07.md`):
+  primary metric 49/95 = **51.6%** < 80% → **KILL**; corroborating variants all ≤ 52.5%;
+  and it covers only 51/100 documents. **What is KILLed is this frozen label-geometry rule**,
+  not "party direction cannot be machine-verified". Party direction gets no machine check; human queue only. Not wired into gates.
 
-### 阶段 E — 类型级适用性矩阵(最后,值 ≈2pp)
-- 只上真值提名的 6 条新规则,**每条人签字**(真值只能提名,判「这类单据
-  没这个概念」是人的事,宪章五)。
-- 需要 Q4 的白名单规则先落地。
+### Stage E — type-level applicability matrix (last, worth ≈2pp)
+- Only the 6 rules nominated by ground truth, **each signed off by a human** (ground truth can only nominate;
+  judging "this class of document has no such concept" is a human matter, Charter Five).
+- Requires Q4's allowlist rule to land first.
 
-### 阶段 F — HITL 展示接线(2026-08-08 已落地,E 仍未落地)
+### Stage F — HITL display wiring (landed 2026-08-08; E still not landed)
 
-工作台只读当前 run 冻结的 `gate_report.document_checks`,不在打开页面时重跑
-`doctype.check_document`:
+The workbench reads only the current run's frozen `gate_report.document_checks`; it does not re-run
+`doctype.check_document` when a page is opened:
 
-- `pass`:右栏显示受控类别、OCR 命中的字面短语与页码;左栏用独立点线框圈出
-  合并 bbox。措辞明确「字段是否适用仍由人判断」;
-- `fail` / `unmapped` / `ocr_unavailable` / `no_claim`:显示各自的缺口,不把模型
-  自报类型画成证据;
-- 旧 run 没有 `document_checks` 顶层键:显示 **NOT MEASURED**,不拿今天的检查
-  回填成旧 run 当时的结果;
-- 所有状态均不改变决策按钮、不预选答案、不删队列槽、不写任何 run 工件。
+- `pass`: the right pane shows the controlled class, the literal phrase hit by OCR and the page number; the left pane outlines the
+  merged bbox with an independent dotted box. Wording is explicit that "whether a field applies is still a human judgment";
+- `fail` / `unmapped` / `ocr_unavailable` / `no_claim`: shows each gap; the model's self-reported type is never drawn as evidence;
+- old runs lack the top-level `document_checks` key: show **NOT MEASURED**; today's check must not be backfilled as an old run's
+  result at the time;
+- no state changes decision buttons, preselects answers, removes queue slots, or writes any run artifact.
 
-这一步解决的是「每张单据先重新辨认类别」与「类型证据藏在 JSON 里」,不是
-阶段 E 的类别适用性裁决。当前可审计边界如下:
+What this step solves is "re-identifying every document's class first" and "type evidence buried in the JSON", not
+Stage E's class-applicability adjudication. The current auditable boundary is as follows:
 
-| 条件维度 | 当前规则 | 对运行的影响 |
+| Condition dimension | Current rule | Effect on runs |
 |---|---|---|
-| `doctype_evidence == pass` | 类别可作为人读上下文 | 仅 UI 文案 + bbox |
-| 类型检查非 `pass` | 不得用类别判断字段适用性 | UI 明示缺口 |
-| `doc_class × field` | **尚无人签规则** | 全部继续人工判断 |
+| `doctype_evidence == pass` | the class may serve as human-readable context | UI copy + bbox only |
+| type check not `pass` | the class must not be used to judge field applicability | UI states the gap explicitly |
+| `doc_class × field` | **no human-signed rules yet** | everything stays human-judged |
 
-已经形成的三条美国 AP 口径也没有伪装成纯 doctype 规则:「美国发票无 VAT」
-还依赖辖区;「单一 Total 归 amount_due」还依赖页面标签/布局;「相对条款不推导
-due_date」是支持关系规则。只拿 `doc_class` 作键会过度泛化。它们要进入自动
-策略,必须分别补足机器可检查的条件,再走阶段 E 的人签与 QA 探针,不能借本次
-HITL 展示接线偷渡成按钮默认值。
+The three US-AP caliber statements already formed are also not disguised as pure doctype rules: "US invoices have no VAT"
+still depends on jurisdiction; "single Total maps to amount_due" still depends on page labels/layout; "relative terms do not derive
+due_date" is a support-relation rule. Using `doc_class` alone as the key would overgeneralize. For them to enter automatic
+policy, each must first acquire machine-checkable conditions, then go through Stage E's human sign-off and QA probes; they must not
+smuggle in as button defaults via this HITL display wiring.
 
-## 4. 不做
+## 4. Not doing
 
-- 不用读图模型做类型判读 —— OCR 确定性检查已达 92–94%,一个能确定性跑的
-  检查不该换成要联网才能跑的。
-- 不把 `doc_class` 写进任何自动放行路径,除非该文档的类型证据门禁通过。
-- 不因为结果不好看回调词表 —— 词表在阶段 A 冻结,后续只能扩不能改判据。
-- 贷项符号检查**不做**(实测打不到任何已知静默错;若将来贷项样本变多再议)。
+- No vision models for type interpretation — the OCR deterministic check already reaches 92–94%; a check that can run
+  deterministically should not be swapped for one that needs network access.
+- `doc_class` is never written into any automatic release path unless that document's type evidence gate passed.
+- The vocabulary is never retuned because results look bad — it froze in Stage A; afterwards it can only extend, criteria cannot change.
+- The credit-note sign check is **not done** (measured to hit none of the known silent errors; revisit if credit-note samples grow).
 
-## 5. 与参赛的关系
+## 5. Relation to the competition
 
-这五个阶段**全部零 API**,与 Gemini / Google Cloud 的强制项**没有依赖关系**,
-两条轨可并行。但要注意:强制项一件都还没做,仓库也还没有 remote。
-若时间只够一条,先补强制项 —— 阶段 A 的产出(类型声明有 8–9%
-在页面上找不到字面支撑)本身已经是个可讲的发现,不必等整个体系做完。
-**讲之前先去污**,否则那个百分比是样本内的。
+These five stages are **all zero API**, with **no dependency** on the Gemini / Google Cloud mandatory items;
+the two tracks can run in parallel. But note: not one mandatory item has been done, and the repo has no remote.
+If time allows only one track, fill the mandatory items first — Stage A's output (type claims have 8–9%
+with no literal support on the page) is already a presentable finding on its own; no need to wait for the whole system.
+**Decontaminate before presenting**, otherwise that percentage is in-sample.
 
-## 6. 阶段 A 开工时拍板的词表决定(2026-08-07)
+## 6. Vocabulary decisions locked at Stage A kickoff (2026-08-07)
 
-计划原文等用户三答;开工默认如下并冻结进 `doctype.CLASSES`(可在
-`docs/DOCTYPE_EVIDENCE_2026-08-07.md` 复算):
+The plan proper awaits three user answers; the working defaults at kickoff, frozen into `doctype.CLASSES` (recomputable in
+`docs/DOCTYPE_EVIDENCE_2026-08-07.md`), are:
 
-1. **`proforma` 单独成类**(不并进 invoice)。
-2. **`check` 归 `receipt`**(不拆新类)。
-3. **Q2 倾向**:只阻断依赖类型的判定(阶段 B 先量再定;默认不是文档级全槽 block)。
-4. **阶段顺序**:先完成 A(本文件 + 测试 + 证据文档),再 B;强制项并行不堵 A。
+1. **`proforma` is its own class** (not merged into invoice).
+2. **`check` maps to `receipt`** (no new class split).
+3. **Q2 leaning**: block only type-dependent verdicts (Stage B measures before deciding; the default is not document-level all-slot block).
+4. **Stage order**: finish A first (this file + tests + evidence doc), then B; mandatory items run in parallel and do not block A.
 
-另:`confirmation` 匹配顺序调到 `purchase_order` 之前 —— 否则
-"Order Confirmation" 被 `\border\b` 抢走(阶段 A 词表顺序修正,有测试钉死)。
+Also: `confirmation`'s match order was moved ahead of `purchase_order` — otherwise
+"Order Confirmation" gets snatched by `\border\b` (a Stage A vocabulary-order fix, pinned by a test).

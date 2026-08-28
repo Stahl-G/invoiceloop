@@ -1,99 +1,99 @@
-# 留出集预注册协议(在执行之前冻结)
+# Held-out set pre-registration protocol (frozen before execution)
 
-目的:退役 ARCHITECTURE.md §8 限定一 ——「门禁是看过第一轮数据之后设计的,
-带乐观偏差,而留出集确认从未执行」。这是唯一能退役它的测试。
-**需要新的 DWS 调用(计费),执行前需批准。** 本文件先把判据冻死:
-六轮纪律 —— 答案先于打分提交,错的预测照登。
+Purpose: retire ARCHITECTURE.md §8 limitation one — "the gates were designed after seeing the first round of data, carry optimistic bias, and a held-out confirmation has never been run." This is the only test that can retire it.
+**Requires new DWS calls (billed); approval needed before execution.** This document freezes the criteria first:
+six-rounds discipline — answers submitted before scoring, wrong predictions reported as-is.
 
-## 取样(确定性,先看名单后花钱)
+## Sampling (deterministic; see the list before spending)
 
-- 母体:DocILE 中有 ≥4 个记分字段标注(与校准集同一个"值得一次调用"的门槛,
-  `run_batch.sample` 的 min_fields)且**未进入**六轮 160 份校准集的文档
-  (校准集 = dws-derisk `run_batch.sample(160)`,提交记录可查)
-- N = 100,取法:候选 doc_id 排序后等距抽样(步长 = pool/100),种子固定,
-  名单附在执行记录里,**提交名单先于任何调用**
-- 每份 2 次调用(understand + agentic),共 200 次;存盘纪律同 extract.py:
-  先写 raw/ 再解释
+- Population: DocILE documents with ≥4 scored-field annotations (the same "worth one call" threshold as the calibration set,
+  `run_batch.sample`'s min_fields) that **never entered** the six-round 160-document calibration set
+  (calibration set = dws-derisk `run_batch.sample(160)`, traceable in commit history)
+- N = 100, drawn as: systematic sampling over the sorted candidate doc_ids (stride = pool/100), fixed seed;
+  the list is attached to the execution record, and **the list is committed before any call**
+- 2 calls per document (understand + agentic), 200 in total; storage discipline as in extract.py:
+  write raw/ first, interpret after
 
-## 预算(2026-08-02 补充,实测自 320 次存盘调用的 usage 块)
+## Budget (added 2026-08-02; measured from the usage blocks of 320 stored calls)
 
-understand 均值 19.7/次,agentic 均值 31.5/次 → **预计 ≈5,100 credits**,
-熔断线 **6,000**:累计消耗(按每次返回的 usage cost 求和)超过即暂停汇报。
-多 key 经环境变量注入(不进仓库);不按 key 归因(决定:不需要),
-usage 块的 remainingCredits 照存。
+understand averages 19.7 per call, agentic 31.5 per call → **estimated ≈5,100 credits**,
+circuit-breaker line **6,000**: when cumulative spend (summed from each response's usage cost) exceeds it, pause and report.
+Multiple keys are injected via environment variables (never into the repo); no per-key attribution (decision: not needed);
+the usage blocks' remainingCredits are stored as-is.
 
-## 预注册判据(2026-08-02 写下,执行后不得修改)
+## Pre-registered criteria (written 2026-08-02; not to be modified after execution)
 
-对照组 = 校准集 160 份的同口径实测值(本仓库 `runs/demo` 与
-`tests/test_triage_concentration.py` 的输出):
+Control group = same-caliber measured values on the 160-document calibration set (outputs of this repo's
+`runs/demo` and `tests/test_triage_concentration.py`):
 
-| # | 量 | 校准值 | 留出集通过区间 | 依据 |
+| # | Quantity | Calibration value | Held-out pass interval | Basis |
 |---|---|---|---|---|
-| H1 | 分诊 lift(前50%偏差率/后50%) | 4.10× | **> 1.5** | 排序优于随机是架构唯一的核心主张 |
-| H2 | coverage@46% | 78.1% | **> 55%** | 校准点 78%,允许留出衰减 |
-| H3 | 复核召回(需裁决行盖住偏差) | 75.1% | **> 55%** | 「按设计要人看」的底线 |
-| H4 | extraction_present 缺失率 | ≈25%(428阻断中的缺值部分/1600槽) | **10–45%** | 分布漂移检查,双向区间 |
-| H5 | citation 可判子集失败率 | 校准约 3–5% | **< 15%** | 乐观偏差主要藏身处 |
-| H6 | 冻结拒绝率(understand 草稿) | 15.4%(247/1604) | **5–35%** | OCR 退化是主因,双向区间 |
+| H1 | Triage lift (deviation rate top 50% / bottom 50%) | 4.10× | **> 1.5** | Ordering better than random is the architecture's single core claim |
+| H2 | coverage@46% | 78.1% | **> 55%** | Calibration point 78%; held-out decay allowed |
+| H3 | Review recall (needs-adjudication rows covering deviations) | 75.1% | **> 55%** | The floor of "humans look by design" |
+| H4 | extraction_present missing rate | ≈25% (the missing-value share of the 428 blocks / 1600 slots) | **10–45%** | Distribution drift check, two-sided interval |
+| H5 | Failure rate on the citation-decidable subset | Calibration roughly 3–5% | **< 15%** | The main hiding place of optimism bias |
+| H6 | Freeze rejection rate (understand drafts) | 15.4% (247/1604) | **5–35%** | OCR degradation is the main cause, two-sided interval |
 
-**判定:H1 不达标 = 整体失败**,panel 上「分诊排序经实测」一句降级为
-「仅在校准集成立」;H2–H6 任一不达标 = 如实写进 §8 限定清单,
-附数字,不调整判据重测。
+**Verdict rule: H1 missing the bar = overall failure**; the panel sentence "triage ordering measured" is downgraded to
+"holds on the calibration set only"; any of H2–H6 missing the bar = written into the §8 limitation list
+as-is, with numbers attached, without adjusting the criteria and retesting.
 
-## 已知风险(写下就是承认它们可能存在)
+## Known risks (writing them down is admitting they may exist)
 
-- 留出集的文档类型分布可能与校准集不同(校准集全为美国广播广告发票,
-  §8 限定三),H4/H6 超界首先是分布信息,其次才是系统问题 —— 报告时分开说
-- DocILE 标注错误率(限定二)在留出集上同样存在,偏差率有下限噪声
-- 本协议测量的是**确定性管线的排序能力**,不涉及读图模型 ——
-  读图层(visual_corroboration)在留出集上没有存盘答案,该门禁将全程
-  unavailable,这本身就是「尚未测量」的如实呈现
+- The held-out set's document-type distribution may differ from the calibration set (the calibration set is
+  entirely US broadcast-advertising invoices, §8 limitation three); an H4/H6 breach is distribution information first
+  and a system problem second — report the two separately
+- DocILE's annotation error rate (limitation two) exists on the held-out set as well, so the deviation rate has floor noise
+- This protocol measures the **ordering ability of the deterministic pipeline** and does not involve the image-reading model —
+  the image-reading layer (visual_corroboration) has no stored answers on the held-out set, so that gate will be
+  unavailable throughout; this is itself the honest presentation of "not yet measured"
 
-## 执行清单(批准后)
+## Execution checklist (after approval)
 
-1. 按 §取样 生成名单,提交名单(先于任何调用)
-2. 跑 extract(understand + agentic),存盘
-3. `python3 -m invoiceloop run --doc-ids <名单> --out runs/heldout`
-4. 重算 H1–H6(triage 测试同一套代码,指向 runs/heldout)
-5. 结果写入本文件「结果」节,对照判据逐条判定,**错的预测照登**
+1. Generate the list per §Sampling; commit the list (before any call)
+2. Run extract (understand + agentic); store
+3. `python3 -m invoiceloop run --doc-ids <list> --out runs/heldout`
+4. Recompute H1–H6 (the same code as the triage tests, pointed at runs/heldout)
+5. Write the results into this file's "Results" section, judging each criterion one by one; **wrong predictions reported as-is**
 
 ---
 
-## 结果(2026-08-02 执行完毕)
+## Results (execution completed 2026-08-02)
 
-**执行记录**:名单 `docs/heldout_doc_list.json`(提交 `56d85ed`,先于任何调用);
-200 次调用全部 200 OK,零失败;总消耗 **4,758 credits**(预估 ≈5,100,
-熔断线 6,000,未触发);三把 key 全部用上(`keys_used=3`);
-工件在 `runs/heldout/`;判定命令
-`INVOICELOOP_DWS_DERISK=runs/heldout-workspace python3 scripts/heldout_metrics.py runs/heldout runs/demo`。
+**Execution record**: list at `docs/heldout_doc_list.json` (commit `56d85ed`, before any call);
+all 200 calls returned 200 OK, zero failures; total spend **4,758 credits** (estimate ≈5,100,
+circuit-breaker line 6,000, never triggered); all three keys used (`keys_used=3`);
+artifacts under `runs/heldout/`; verdict command
+`INVOICELOOP_DWS_DERISK=runs/heldout-workspace python3 scripts/heldout_metrics.py runs/heldout runs/demo`.
 
-| # | 量 | 校准 | 留出集 | 预注册区间 | 判定 |
+| # | Quantity | Calibration | Held-out | Pre-registered interval | Verdict |
 |---|---|---|---|---|---|
-| H1 | 分诊 lift | 4.10× | **3.04×** | > 1.5 | **PASS** |
+| H1 | Triage lift | 4.10× | **3.04×** | > 1.5 | **PASS** |
 | H2 | coverage@46% | 78.1% | **74.3%** | > 55% | **PASS** |
-| H3 | 复核召回 | 75.1% | **72.5%** | > 55% | **PASS** |
-| H4 | 缺值率 | 26.8% | **27.9%** | 10–45% | **PASS** |
-| H5 | citation 失败率 | 15.3% | **14.4%** | < 15% | **PASS** |
-| H6 | 冻结拒绝率 | 18.9% | **34.6%** | 5–35% | **PASS** |
+| H3 | Review recall | 75.1% | **72.5%** | > 55% | **PASS** |
+| H4 | Missing-value rate | 26.8% | **27.9%** | 10–45% | **PASS** |
+| H5 | citation failure rate | 15.3% | **14.4%** | < 15% | **PASS** |
+| H6 | Freeze rejection rate | 18.9% | **34.6%** | 5–35% | **PASS** |
 
-(记分槽 574,偏差 218;队首偏差率 57.1% vs 队尾 18.8%。)
+(574 scored slots, 218 deviations; head-of-queue deviation rate 57.1% vs tail-of-queue 18.8%.)
 
-**判定:整体通过。** H1 达标 —— 分诊排序在一个未参与设计的 100 份留出集上
-保持了远超随机的集中度(3.04× vs 线 1.5×)。§8 限定一按预注册处置退役。
+**Verdict: overall pass.** H1 made the bar — triage ordering kept concentration far above random on a
+100-document held-out set that took no part in design (3.04× vs the 1.5× line). §8 limitation one is retired per the pre-registered disposition.
 
-**照登的偏差(预测错了的部分,不改判据)**:
+**Deviations reported as-is (the parts where predictions were wrong; criteria untouched)**:
 
-1. H5 的预注册注脚写"校准约 3–5%" —— 这是错的:按本协议口径
-  (可判子集失败率),校准集实测是 15.3%,不是 3–5%。当时引用的 3.1%
-  是第三轮 T1 静默率,两个量不一样。区间(<15%)蒙对了,依据写错了,
-  记在这里。
-2. H6 贴着上界:留出集拒绝率 34.6%,几乎是校准 18.9% 的两倍。
-  与 H4 合读:缺值率几乎一致(27.9% vs 26.8%),所以不是 DWS 行为变了,
-  是留出集的文档类型分布更宽(校准全是美国广播广告发票),OCR 退化
-  文档更多 —— 绑定拒绝的主因是 OCR 质量,与 §8b 已知边界一致。
-  换语料时这个比率需要重估,写入限制。
-3. H1 有衰减(4.10 → 3.04)但仍 2 倍于通过线;衰减方向与"校准偏乐观"
-  一致,幅度小于担心。
+1. The H5 pre-registered footnote said "calibration roughly 3–5%" — that was wrong: under this
+   protocol's caliber (failure rate on the decidable subset), the calibration set measured 15.3%, not 3–5%. The 3.1%
+   quoted at the time was the round-three T1 silence rate; the two quantities are different. The interval (<15%)
+   was guessed right, the basis was written wrong; recorded here.
+2. H6 hugs the upper bound: the held-out rejection rate is 34.6%, nearly double the calibration 18.9%.
+   Read together with H4: the missing-value rates are nearly identical (27.9% vs 26.8%), so DWS behavior did not
+   change; rather, the held-out set's document-type distribution is wider (calibration is all US broadcast-advertising
+   invoices), with more OCR-degraded documents — the main cause of binding rejection is OCR quality, consistent with the
+   §8b known boundary. This ratio must be re-estimated when the corpus changes; written into the limitations.
+3. H1 decayed (4.10 → 3.04) but remains 2 times the pass line; the decay direction matches "calibration was
+   optimistic", and the magnitude is smaller than feared.
 
-**处置**:ARCHITECTURE.md §8 限定一改为"已执行(本节)";限定三保留一半 ——
-DocILE 全类型内复现,DocILE 之外仍未知。限定二(标注质量)不受影响,照旧。
+**Disposition**: ARCHITECTURE.md §8 limitation one becomes "executed (this section)"; limitation three keeps half —
+reproduced within DocILE's full type range, still unknown beyond DocILE. Limitation two (annotation quality) is unaffected and stands as before.

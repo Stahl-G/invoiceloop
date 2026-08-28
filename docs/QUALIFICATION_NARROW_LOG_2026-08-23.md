@@ -1,45 +1,45 @@
-# QUALIFICATION_NARROW_2026-08-22 运行日志
+# QUALIFICATION_NARROW_2026-08-22 Run Log
 
-协议正文:`docs/QUALIFICATION_NARROW_PROTOCOL_2026-08-22.md`,冻结于 `b45f983`。
-当前文件已恢复为该 commit 的逐字节副本，但提取期间确实在 `1afe7da` 改过；这个历史
-事实触发 §7，不能被“最终字节相同”抵销。本文是协议之外的运行记录。
+Protocol body: `docs/QUALIFICATION_NARROW_PROTOCOL_2026-08-22.md`, frozen at `b45f983`.
+The file has since been restored to a byte-for-byte copy of that commit, but it was indeed modified at `1afe7da` during extraction; that historical
+fact triggers §7 and cannot be offset by "the final bytes are identical." This document is a run record kept outside the protocol.
 
-## 1. 施工记录：预算参数过低，提取分两段完成
+## 1. Construction note: budget parameter too low, extraction completed in two segments
 
-这是施工记录，不是实验事件：第一段以默认 `--budget 6000` 在第 222 次调用、累计
-6006 credits 时按设计熔断（0 failures），第二段以 `--budget 15000` 断点续跑并补完
-余下 178 次。
-两段使用同一冻结名单与 schema，已有 `(doc, mode)` 全部跳过；400 个 200 响应完整，
-指标输入不变，根因只是没有按约 27 credits/次为 400 次调用预留约 10,800 credits。
+This is a construction note, not an experimental event: the first segment tripped the circuit breaker by design at the 222nd call with the default `--budget 6000`, having accumulated
+6006 credits (0 failures); the second segment resumed from checkpoint with `--budget 15000` and completed the
+remaining 178 calls.
+Both segments used the same frozen list and schema; every existing `(doc, mode)` was skipped; all 400 responses with status 200 are complete,
+the metric inputs are unchanged, and the root cause is simply that roughly 10,800 credits were not reserved for 400 calls at about 27 credits per call.
 
-## 2. 一次需要声明的协议正文改动(已还原)
+## 2. One protocol-body modification that had to be declared (reverted)
 
-2026-08-23,提取进行中,我把上面第 1 节的内容**直接写进了协议正文 §3** 并提交
-(`1afe7da`)。协议 §7 废臂条款点名「本协议正文」的任何改动 = 臂不干净。
+On 2026-08-23, mid-extraction, I wrote the content of section 1 above **directly into protocol body §3** and committed it
+(`1afe7da`). Protocol §7's dirty-arm clause names any change to "the body of this protocol" = dirty arm.
 
-处理:立刻用 `git checkout b45f983 --` 还原,协议文件与冻结 commit **逐字节一致**
-(`git diff b45f983 -- docs/QUALIFICATION_NARROW_PROTOCOL_2026-08-22.md` 为空),
-记录移到本文。
+Handling: immediately restored with `git checkout b45f983 --`; the protocol file is **byte-for-byte identical** to the frozen commit
+(`git diff b45f983 -- docs/QUALIFICATION_NARROW_PROTOCOL_2026-08-22.md` is empty),
+and the record was moved to this document.
 
-**为什么仍然照登而不是当没发生**:那条改动确实只是加了一段运行记录,不碰抽样盐、
-名单、臂策略、指标定义或任何预测,不可能影响结果。但「这次改动无害所以不算」正是
-废臂条款要挡住的推理方式 —— 条款写得宽,就是为了不让人在事后自己判定哪次改动无害。
-所以:声明、还原、把判断留给读者。
+**Why it is still reported rather than treated as if it never happened**: that change really did only add a run note, touching neither the sampling salt,
+the list, the arm policies, the metric definitions, nor any prediction — it could not have affected the results. But "this change was harmless, so it does not count" is exactly
+the style of reasoning the dirty-arm clause exists to block — the clause is written broadly precisely so that no one gets to judge after the fact which changes were harmless.
+So: declare, revert, and leave the judgment to the reader.
 
-改动窗口内没有任何臂被跑过(四臂在提取完成之后才开始),`1afe7da` 与其还原都在
-git 历史里可查。
+No arm was run during the modification window (the four arms began only after extraction completed); `1afe7da` and its revert are both
+traceable in git history.
 
-## 3. 时间线
+## 3. Timeline
 
-| 时间(本地) | 事 |
+| Time (local) | Event |
 |---|---|
-| 2026-08-22 | 协议与 200 份名单冻结(`b45f983`),`raw/` 为空 |
-| 2026-08-23 | 提取第一段:222/400,0 失败,预算熔断 |
-| 2026-08-23 | 协议正文被改(`1afe7da`)→ 同日还原,记录移入本文 |
-| 2026-08-23 | 提取第二段:补完 400/400 |
+| 2026-08-22 | Protocol and the 200-document list frozen (`b45f983`); `raw/` empty |
+| 2026-08-23 | Extraction segment one: 222/400, 0 failures, budget circuit breaker |
+| 2026-08-23 | Protocol body modified (`1afe7da`) → reverted the same day, record moved into this document |
+| 2026-08-23 | Extraction segment two: completed 400/400 |
 
-## 4. 后续状态裁定
+## 4. Subsequent status ruling
 
-恢复冻结字节不撤销协议 §7 已经触发的污染。后续审计据此把本轮状态正式裁定为
-`contaminated / blocking`，撤销 qualification / 产品能力晋升；原数字保留为
-探索性测量。见 `docs/QUALIFICATION_NARROW_CONTAMINATION_2026-08-23.md`。
+Restoring the frozen bytes does not undo the contamination protocol §7 already triggered. A subsequent audit on that basis formally ruled this round's status
+`contaminated / blocking`, revoking the qualification / product-capability promotion; the original numbers are retained as
+exploratory measurements. See `docs/QUALIFICATION_NARROW_CONTAMINATION_2026-08-23.md`.

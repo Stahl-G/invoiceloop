@@ -1,52 +1,57 @@
-# 人类验收协议(GOAL.md「完成的样子」的操作化)
+# Human acceptance protocol (operationalizing GOAL.md's "what done looks like")
 
-GOAL.md 说完成是可证伪的:一个**不了解内情的复核者**能回答四个问题。
-这份协议把那四个问题变成五个计时任务。被试:没参与构建的人
-(同事、另一个模型、三个月后的自己)。材料只有 `runs/demo/` 目录
-(先 `python3 -m invoiceloop run --out runs/demo --crops` 生成)。
+GOAL.md says done is falsifiable: an **uninvolved reviewer** can answer four questions. This protocol
+turns those four questions into five timed tasks. Subject: someone who took no part in the build
+(a colleague, another model, or yourself three months from now). The only materials are the `runs/demo/`
+directory (generate first with `python3 -m invoiceloop run --out runs/demo --crops`).
 
-> **主持用 `docs/TESTING_FACILITATOR.md`**(含具体锚点文档、答案 key、
-> 记录表)。本文件是原则;那份是拿来就用的执行包。
+> **Facilitation uses `docs/TESTING_FACILITATOR.md`** (contains the specific anchor documents, the
+> answer key, and the recording sheet). This document is the principles; that one is a ready-to-use
+> execution kit.
 
-## 纪律
+## Discipline
 
-- 被试**不许问构建者**。答案必须来自工件本身。问了一次 = 该任务失败。
-- 每个任务记录:答案、找到答案用的工件、耗时。
-- 通过线:5 任务中 ≥4 答对,且无一人对「这套东西在承诺什么」产生
-  根本误解(任务 5)。
+- The subject **may not ask the builder**. Answers must come from the artifacts themselves. One question
+  asked = that task fails.
+- Record for each task: the answer, the artifact used to find it, elapsed time.
+- Pass line: ≥4 of the 5 tasks answered correctly, and no one fundamentally misreads "what this thing
+  is promising" (task 5).
 
-## 五个任务
+## The five tasks
 
-**T1 —— 为什么这一行是「无支持」?**(GOAL 问题 1)
-指向矩阵队首任意一行。被试应能说出:值被冻结事务拒了(或 DWS 没返回值)、
-事件在哪、OCR 缺失还是绑定失败。
-*通过:说出的原因与 event_log / limitations 一致。*
+**T1 — Why is this row "unsupported"?** (GOAL question 1)
+Point at any row at the head of the matrix. The subject should be able to say: the value was rejected by
+the freeze transaction (or DWS returned no value), where the event is, and whether it is missing OCR or a
+binding failure.
+*Pass: the stated cause is consistent with event_log / limitations.*
 
-**T2 —— 重算这个数。**(GOAL 问题 2)
-给被试 panel 总览带上的「草稿被冻结事务拒绝」数字。
-被试应能从 `event_log.jsonl` 数出同一数字,并说出 `field_ledger.json`
-的 sha256 是怎么来的。
-*通过:数字一致,且说出「内容寻址,claims 规范化序列化的哈希」。*
+**T2 — Recompute this number.** (GOAL question 2)
+Give the subject the "drafts rejected by the freeze transaction" number from the panel overview strip.
+The subject should be able to count the same number out of `event_log.jsonl` and say how the sha256 of
+`field_ledger.json` arises.
+*Pass: the numbers match, and the subject says "content addressing — the hash of the claims' canonicalized
+serialization".*
 
-**T3 —— 系统在哪里明确表示自己不知道?**(GOAL 问题 3)
-被试应找到:unsupported 行、dws_returned_no_value、
-visual_not_measured(尚未测量)、阻断发现与修复路由。
-*通过:至少指出两类,且明白「不知道」是被显式标注的,不是缺数据。*
+**T3 — Where does the system explicitly say it doesn't know?** (GOAL question 3)
+The subject should find: unsupported rows, dws_returned_no_value, visual_not_measured (not yet measured),
+blocking findings and repair routes.
+*Pass: at least two classes pointed out, and the understanding that "doesn't know" is explicitly labeled,
+not missing data.*
 
-**T4 —— 这份发票的 Gross 能不能直接进错误率?**(口径争议)
-挑一份 `label_convention_disputed` 文档(队列里搜「口径争议」)。
-*通过:说出两种读法(纸面 Gross=刊例价,Net=扣佣实付;EN 16931 方向相反),
-且说明为什么它进人工裁决、不进错误率。*
+**T4 — Can this invoice's Gross go straight into the error rate?** (caliber dispute)
+Pick a `label_convention_disputed` document (search the queue for "caliber dispute").
+*Pass: state the two readings (paper Gross = list price, Net = actual pay after commission deduction;
+EN 16931 the other way around), and explain why it goes to human adjudication, not into the error rate.*
 
-**T5 —— 这套东西在承诺什么?**(GOAL 问题 4,最容易被磨掉的一条)
-直接问:这个 demo 证明了 DWS 的抽取可信吗?
-*通过:答「不 —— 它交付可验证的支持关系,不承诺抽得准」,
-并能指出 panel 上写着这句话的位置。答「是」= 整个验收失败,
-panel 的表述必须改。*
+**T5 — What is this thing promising?** (GOAL question 4, the item most easily sanded away)
+Ask directly: does this demo prove DWS extraction is trustworthy?
+*Pass: answer "no — it delivers verifiable support relations and does not promise accurate extraction",
+and point to where the panel states this sentence. Answering "yes" = the whole acceptance fails,
+and the panel's phrasing must change.*
 
-## 评分表
+## Scoring sheet
 
-| 任务 | 答案正确 | 工件找对 | 耗时 | 备注 |
+| Task | Answer correct | Artifact found | Elapsed | Notes |
 |---|---|---|---|---|
 | T1 | | | | |
 | T2 | | | | |
@@ -54,4 +59,5 @@ panel 的表述必须改。*
 | T4 | | | | |
 | T5 | | | | |
 
-失败处置:不是被试的错,是 panel/工件的错 —— 改呈现,再换被试重测。
+Failure handling: it is not the subject's fault, it is the panel's/artifacts' fault — change the
+presentation, then re-test with a new subject.

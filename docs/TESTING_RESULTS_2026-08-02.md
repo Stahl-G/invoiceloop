@@ -1,77 +1,87 @@
-# 人类验收记录 —— 2026-08-02(warm-subject 版)
+# Human acceptance record — 2026-08-02 (warm-subject edition)
 
-- **被试**:项目所有者。**污染声明**:被试读过构建过程的全部汇报,
-  不是 GOAL.md 意义上的"不了解内情的复核者";本记录是 warm 版,
-  之后应用 `docs/TESTING_FACILITATOR.md` 对不知情被试复测。
-- **污染处置**:汇报中出现过的锚点(00134dd3 amount_due、0079863f、
-  拒绝数 623)全部弃用,改用工件中同类型的新锚点。
-- **主持**:Claude(按 `docs/TESTING_FACILITATOR.md` 执行)。
-- **材料**:`runs/demo/`(生成于 2026-08-02,与最新代码逐字节一致)。
+- **Subject**: the project owner. **Contamination statement**: the subject had read all the build
+  reports and is not the "uninvolved reviewer" in GOAL.md's sense; this record is the warm edition;
+  a re-test on a naïve subject with `docs/TESTING_FACILITATOR.md` should follow.
+- **Contamination handling**: anchors that had appeared in the reports (00134dd3 amount_due, 0079863f,
+  rejection count 623) were all abandoned, replaced with new anchors of the same type from the artifacts.
+- **Facilitator**: Claude (running per `docs/TESTING_FACILITATOR.md`).
+- **Materials**: `runs/demo/` (generated 2026-08-02, byte-for-byte identical to the latest code).
 
-## 锚点(本版)
+## Anchors (this edition)
 
-- T1:doc `002e3cf97973428f905671b3`,invoice_number,值 `t 096084`
-- T2:重算「阻断发现 428 条」(总发现 1098 条)
-- T3:实例 doc `00136a27` due_date(dws_returned_no_value)
-- T4:doc `0096d69f865b443290705bee`(net=due=$2,737.00,gross=$3,220.00)
-- T5:panel 表述判断
+- T1: doc `002e3cf97973428f905671b3`, invoice_number, value `t 096084`
+- T2: recompute "428 blocking findings" (1098 total findings)
+- T3: example doc `00136a27` due_date (dws_returned_no_value)
+- T4: doc `0096d69f865b443290705bee` (net=due=$2,737.00, gross=$3,220.00)
+- T5: panel phrasing judgment
 
-## 逐任务记录
+## Per-task record
 
-**T1 第一轮(失败,呈现缺陷)**:被试面对 `00134dd3/amount_due`(无支持,
-值 21,900.66 被冻结拒)无法作答,原话「没有原图,人类理解不了」。
-**判定:不是被试的错,是呈现的失败** —— 被拒的行没有入账声明,panel 只按
-"值落在哪个片段"渲染证据,于是最需要人类裁决的行反而没有图。
-DWS 指向的片段(ES-0003,区域 OCR 为 21,000.00)一直存在,只是没给复核者看。
-**处置**:矩阵行新增 `cited_span_ids`(按字段归,与值是否落入无关),
-panel 对被拒行渲染「DWS 指向这里(复核用)」裁剪图 + 独立 OCR + 标签;
-无引用区的行(典型:缺值)给整页渲染图链接;整页渲染进 pipeline 与 audit bundle。
-测试 3 条(被拒行有图 / 无引用有整页 / cited 不随 claim)。demo 已重生成。
+**T1 round one (failure, presentation defect)**: facing `00134dd3/amount_due` (unsupported; the value
+21,900.66 rejected at freeze) the subject could not answer, verbatim: "no source image — a human can't
+understand it". **Verdict: not the subject's fault, a presentation failure** — rejected rows carried no
+admitted claim, and the panel rendered evidence only by "which span the value falls in", so the rows most
+in need of human adjudication were precisely the ones without an image. The span DWS pointed to (ES-0003,
+regional OCR 21,000.00) had existed all along; it simply was never shown to the reviewer.
+**Handling**: matrix rows gained `cited_span_ids` (grouped by field, regardless of whether the value falls
+inside); the panel renders rejected rows with the "DWS points here (for review)" crop + independent OCR +
+label; rows with no cited region (typically missing values) get a full-page render link; full-page renders
+entered the pipeline and the audit bundle. 3 tests (rejected rows have images / no-citation rows get a
+full page / cited does not follow the claim). The demo was regenerated.
 
-**T1 第二轮(修复后,通过)**:被试对照 ES-0003 的裁剪图与独立 OCR,
-自行判出"实际价格 21,000,DWS 的 21,900.66 不对,系统拒得对";
-并说出机制(binding coverage 0.3333 < 0.8)。理由+机制+证据位置三项齐。
+**T1 round two (after the fix, pass)**: comparing the ES-0003 crop with the independent OCR, the subject
+judged unaided: "the actual price is 21,000; DWS's 21,900.66 is wrong; the system was right to reject";
+and stated the mechanism (binding coverage 0.3333 < 0.8). Reason + mechanism + evidence location, all
+three present.
 
-**附带产出(超纲)**:被试在浏览中主动发现 `00134dd3/buyer_name` 的
-DWS 值两处转写错(GREENSBORG 漏 O、邮编 67405 应为 27405),
-纸面、独立 OCR、裁剪图三方一致。以 `python3 -m invoiceloop adjudicate`
-记为正式裁决(adjudication_ledger seq 1,decision=correct)——
-M4 第一次被真人使用,"机器拒错 + 人改对"闭环走通。
+**Incidental output (beyond scope)**: while browsing, the subject unprompted found two transcription
+errors in the DWS value of `00134dd3/buyer_name` (GREENSBORG missing an O; zip 67405 should be 27405),
+with the paper, the independent OCR, and the crop all in agreement. Recorded as a formal adjudication via
+`python3 -m invoiceloop adjudicate` (adjudication_ledger seq 1, decision=correct) — M4's first use by a
+real human; the "machine rejects wrong + human corrects" loop walked end to end.
 
-**T2 第一部分(通过)**:被试用
-`grep -c '"blocking": true' runs/demo/gate_report.json` 重算出 428,
-与权威计数一致。主持包措辞修正:"自己数出"易被读成逐条人工数,
-改为"用一行命令从 gate_report.json 重算"(被试原话:「你不要让人类数428条,这不可能」)。
+**T2 part one (pass)**: the subject recomputed 428 with
+`grep -c '"blocking": true' runs/demo/gate_report.json`, matching the authoritative count.
+Facilitator-kit wording fix: "count them yourself" reads easily as counting line by line by hand;
+changed to "recompute from gate_report.json with a one-line command" (subject, verbatim: "don't make a
+human count 428 lines — that's impossible").
 
-| 任务 | 对/错 | 工件找对? | 耗时 | 被试原话(关键句) |
+| Task | Right/Wrong | Artifact found? | Elapsed | Subject's verbatim words (key sentence) |
 |---|---|---|---|---|
-| T1 | 第一轮:呈现失败(已修);第二轮:**对** | panel 行 + ES-0003 | ~6min | 「这里的价格实际是21000啊」「没有原图,人类理解不了」 |
-| T2 | **对**(两部分) | gate_report.json / field_ledger.json | ~4min | 「grep -c '\"blocking\": true'」「这是整个ledger的hash,改一个字符就会变化」 |
-| T3 | **对** | panel 行 + GF-0048 + 整页 p2 | ~4min | 「buyer name不应该是harry huge吗」「大模型读图没有读出来?」 |
-| T4 | **对** | 争议行限制文字 | ~4min | 「不应该进错误不是吗」「放进口径冲突不放进错误识别」 |
-| T5 | **对** | panel 论点块 | ~1min | 「没证明可信,只能证明"系统抽取到了xx信息"」 |
+| T1 | Round one: presentation failure (fixed); round two: **right** | panel row + ES-0003 | ~6min | "the price here is actually 21000" / "no source image — a human can't understand it" |
+| T2 | **right** (both parts) | gate_report.json / field_ledger.json | ~4min | "grep -c '\"blocking\": true'" / "this is the hash of the whole ledger; change one character and it changes" |
+| T3 | **right** | panel row + GF-0048 + full page p2 | ~4min | "shouldn't the buyer name be harry huge" / "the big model didn't read it out of the image?" |
+| T4 | **right** | the disputed row's limitation text | ~4min | "shouldn't go into errors, right" / "put it into the caliber-conflict bucket, not error detection" |
+| T5 | **right** | panel thesis block | ~1min | "doesn't prove trustworthiness, only that 'the system extracted such-and-such information'" |
 
-**T3(通过)**:被试找到缺值行 `003cc916/buyer_name`(阻断发现 GF-0048,
-修复路由 vision_reread),并按路由打开整页 p2 找到 `For Harry Huge, Esq.`
-——"阻断 → 路由 → 人看图补值"链路被空手走通,记为裁决 seq 2。
-第二类:说出 `visual_not_measured` 是"尚未测量"而非"没问题",
-横杠与"过""拒"的三分含义准确。
+**T3 (pass)**: the subject found the missing-value row `003cc916/buyer_name` (blocking finding GF-0048,
+repair route vision_reread), and following the route opened full page p2 and found
+`For Harry Huge, Esq.` — the "block → route → human reads the image and adds the value" chain walked
+bare-handed; recorded as adjudication seq 2. Second class: stated that `visual_not_measured` means
+"not yet measured" rather than "no problem", with the three-way meaning of dash vs "pass" vs "reject"
+stated accurately.
 
-**T4(通过)**:doc `0096d69f`。被试先给对结论(不进错误率),
-经两轮追问说全机制:纸面 Gross=刊例价(客户侧)、Net=扣 15% 佣后代理实付;
-due = net = $2,737.00 → 页面把应付额落在 Net 一侧 → 两套词汇方向相反,
-"gross 抽错了"是误诊。最终答出"进口径争议(人工裁决),不进错误率"。
+**T4 (pass)**: doc `0096d69f`. The subject gave the correct conclusion first (not into the error rate),
+and after two rounds of follow-up stated the full mechanism: paper Gross = list price (client side),
+Net = the agency's actual pay after the 15% commission; due = net = $2,737.00 → the page places the amount
+payable on the Net side → the two vocabularies point in opposite directions; "gross was extracted wrong"
+is a misdiagnosis. Final answer: "goes into the caliber dispute (human adjudication), not into the error
+rate".
 
-**T5(通过,否决线避开)**:被试答"没证明可信,只能证明系统抽取到了 xx 信息",
-经校准后认可交付物为"可机械验证的支持关系",并指出表述位置:
-panel 首页论点块(「抽取的正确性不可信,支持关系可验证……它不说这个值是对的」)。
+**T5 (pass, veto line avoided)**: the subject answered "doesn't prove trustworthiness, only that the
+system extracted such-and-such information"; after calibration, accepted the deliverable as "mechanically
+verifiable support relations", and pointed to where the phrasing lives: the panel front-page thesis block
+("extraction correctness cannot be trusted, support relations are verifiable … it does not say this value
+is right").
 
-## 判定
+## Verdict
 
-**通过(warm-subject 版)**:T1–T4 全对(≥3 线)且 T5 答对。
-发现一处真实呈现缺陷(T1 第一轮:被拒行无复核证据),已修复并重生成 demo;
-两处主持包措辞已修订。遗留:以 `docs/TESTING_FACILITATOR.md` 对
-不知情被试复测(本版被试读过构建汇报,污染范围见文件头声明)。
+**Pass (warm-subject edition)**: T1–T4 all correct (line ≥3) and T5 answered correctly.
+One real presentation defect found (T1 round one: rejected rows had no review evidence), fixed, and the
+demo regenerated; two facilitator-kit wordings revised. Outstanding: a naïve-subject re-test with
+`docs/TESTING_FACILITATOR.md` (this edition's subject had read the build reports; contamination scope
+stated in the file header).
 
-**附带产出**:两条真人裁决入 `runs/demo/adjudication_ledger.jsonl`
-(seq 1 邮编修正、seq 2 买方名补值),M4 全链路首演。
+**Incidental output**: two real-human adjudications entered `runs/demo/adjudication_ledger.jsonl`
+(seq 1 zip correction, seq 2 buyer-name value add) — M4's first full-pipeline run.

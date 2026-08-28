@@ -1,137 +1,154 @@
-# 页面证据缺席:开发集测量与一条晋升(2026-08-09)
+# Page-Evidence Absence: Development-Set Measurement and One Promotion (2026-08-09)
 
-前一份是 [`DOCTYPE_ABSENCE_DEV_2026-08-09.md`](DOCTYPE_ABSENCE_DEV_2026-08-09.md)
-(类别条件缺席,16 条晋升为 HAR-0017)。这一份接着它往下走:类别规则**进不去
-invoice 类**,而剩余缺值槽的 568/722 正是 invoice。
+The previous document is [`DOCTYPE_ABSENCE_DEV_2026-08-09.md`](DOCTYPE_ABSENCE_DEV_2026-08-09.md)
+(class-conditional absence; 16 rules promoted into HAR-0017). This one continues from it: class
+rules **cannot enter the invoice class**, and 568/722 of the remaining missing-value slots are
+invoice.
 
-全程零 API。结果 harness **HAR-0018**,policy digest
+Zero API throughout. Resulting harness **HAR-0018**, policy digest
 `30797d4e9edda174524a3f45cf4e1744b057d64908c0f2ba60a6dae941241d65`;
-词表版本 `c90cf8df16d82c2d…`(引擎 `absence-evidence-v2`)。
-工件钉在 `docs/evidence/absence_evidence_2026-08-09/`。
+vocabulary version `c90cf8df16d82c2d…` (engine `absence-evidence-v2`).
+Artifacts pinned at `docs/evidence/absence_evidence_2026-08-09/`.
 
-## 结论
+## Conclusions
 
-开发集 300 份 / 3,000 槽,三臂各跑一次完整确定性流水线:
+Development set 300 documents / 3,000 slots, one full deterministic pipeline run per arm:
 
 | | HAR-0001 | HAR-0017 | **HAR-0018** |
 |---|---:|---:|---:|
-| 人工队列 | 1,806(60.20%) | 1,736(57.87%) | **1,670(55.67%)** |
+| human queue | 1,806 (60.20%) | 1,736 (57.87%) | **1,670 (55.67%)** |
 | `auto_absent` | 0 | 70 | **136** |
 | **silent_absent** | 0/0 | 0/70 | **0/136** |
 | silent_wrong | 179/1,015 | 179/1,015 | **179/1,015** |
 
-**在 16 条类别规则之上再省 66 槽(−2.20pp),对基线 −4.53pp,两类静默错都没升。**
+**Another 66 slots saved on top of the 16 class rules (−2.20pp), −4.53pp vs baseline, with
+neither class of silent error rising.**
 
-HAR-0001 与 HAR-0017 这两个数字是在**新代码下重跑**出来的,与 2026-08-09 上午
-的旧记录逐位一致(1,806 / 1,736)—— 加了缺席探针没有改动任何既有 harness 的
-路由。这不是顺带一提:探针是新加进门禁事务的一项检查,它若动了旧臂,三臂对照
-就不是同一把尺。
+The HAR-0001 and HAR-0017 figures were **re-run under the new code** and match the morning-of-
+2026-08-09 records digit for digit (1,806 / 1,736) — adding the absence probe changed no
+existing harness's routing. This is not a side note: the probe is a new check added to the gate
+transaction, and had it moved the old arms, the three-arm comparison would no longer be the same
+ruler.
 
-## 机制:押注换成证据
+## Mechanism: swapping the bet for evidence
 
-类别条件规则问的是「这一类单据通常有没有这个字段」——一个对同类文档的统计押注。
-本机制问的是另一个问题,**关于这一份**:页面上到底印没印过这个字段的标签?
+The class-conditional rule asks "does this class of document usually have this field" — a
+statistical bet over same-class documents. This mechanism asks a different question, **about
+this one document**: did the page ever print this field's label?
 
-一个槽只有在 DWS 没返回值时才落到缺席规则手里。此时:
+A slot falls into an absence rule's hands only when DWS returns no value. Then:
 
-- 页面印着 `VAT` / `Tax` / `MwSt` 之类 → 这不是缺席,是**漏抽**,留给人;
-- 页面上一个税额标签都没有 → 缺席由**这一页纸**背书,不是由同类文档背书。
+- the page prints `VAT` / `Tax` / `MwSt` and the like → this is not absence, it is a **missed
+  extraction**; leave it to humans;
+- the page has not one tax-amount label → the absence is vouched for by **this sheet of paper**,
+  not by same-class documents.
 
-所以它能进 invoice 类,而类别规则不能:`AE-invoice-total_vat` 省 96 吞 3,
-`AE-invoice-seller_vat_id` 省 184 吞 7。
+That is why it can enter the invoice class while class rules cannot: `AE-invoice-total_vat`
+saves 96 and swallows 3; `AE-invoice-seller_vat_id` saves 184 and swallows 7.
 
-### 单调安全性:这套东西敢在开发集上定词表的理由
+### Monotone safety: why this apparatus dares to fix a vocabulary on the development set
 
-往词表里**加**一个 token,只能把某份文档从「缺席成立」变成「缺席不成立」,
-反向不可能。所以更宽的词表严格更安全:**加词永远不会造出静默错,只会少省几槽。**
-拟合压力只有在**删词**时才走向不安全的一侧。纪律因此是:
+**Adding** a token to the vocabulary can only move a document from "absence holds" to "absence
+does not hold"; the reverse is impossible. So a wider vocabulary is strictly safer: **adding
+words can never create a silent error; it only forgoes a few saved slots.**
+Fitting pressure pushes toward the unsafe side only when **deleting** words. The discipline is
+therefore:
 
-> 看过结果之后加词随意,删词等于拟合。
+> After seeing results, adding words is unconstrained; deleting words equals fitting.
 
-`tests/test_absence_evidence.py::TestMonotoneSafety` 把这个方向钉住了。
+`tests/test_absence_evidence.py::TestMonotoneSafety` pins this direction down.
 
-## 词表两版,两版都照登
+## Two vocabulary versions, both recorded as-is
 
-**v1 是盲测**(commit `da5337e`,写在任何 saves/silent 数字之前)。
-**v2 是事后的**:看过 v1 台账才补的词。两版都登,因为只有 v1 那一列是盲的。
+**v1 is a blind test** (commit `da5337e`, written before any saves/silent numbers).
+**v2 is post hoc**: words added after reading the v1 ledger. Both versions are recorded because
+only the v1 column is blind.
 
-| field | 缺值 | held | v1 saves | v1 silent | v2 saves | v2 silent |
+| field | missing | held | v1 saves | v1 silent | v2 saves | v2 silent |
 |---|---:|---:|---:|---:|---:|---:|
 | `total_vat` | 143 | 19 | **124** | **0** | **124** | **0** |
 | `seller_vat_id` | 266 | 4 → 27 | 256 | **6** | 238 | **1** |
 | `due_date` | 207 | 115 | 84 | **8** | 84 | **8** |
 | `total_net` | 80 | 28 | 51 | **1** | 51 | **1** |
 
-v2 补的是 `seller_vat_id` 上美国税号标签的**拼写形式**:v1 只收了缩写
-(`ein` / `fein` / `tin`),而美国发票实际印的是 "Federal ID"。v1 漏掉的 6 个
-税号,5 个紧跟在 `federal` 后面,第 6 个是 OCR 把 "USt-IdNr" 读成 "ush id nr"。
-补词走的是单调安全那一侧,代价是 18 槽 saves。
+What v2 added were **spelling forms** of US tax-ID labels on `seller_vat_id`: v1 collected only
+abbreviations (`ein` / `fein` / `tin`), while US invoices actually print "Federal ID". Of the 6
+tax IDs v1 missed, 5 sit right after `federal`; the 6th is OCR reading "USt-IdNr" as "ush id
+nr". The additions went to the monotone-safe side, at the cost of 18 slots of saves.
 
-**只有 `AV-total_vat` 两版都通过**,而且是在盲的那一版上通过的 —— 这是本文件里
-唯一一条强主张。
+**Only `AV-total_vat` passes in both versions**, and it passed in the blind one — that is the
+single strong claim in this document.
 
-### 没有跨过去的那条线
+### The line not crossed
 
-v2 之后 `seller_vat_id` 还剩 1 个静默,原因是 OCR 把 "Federal" 读成 "federai"
-(`5da5a0e2bded40ad8948d5eb`)。**没有把 `federai` 加进词表。** 那是某一份文档上
-的某一个 OCR 错字,不是应付账款词汇;加它只能压住这一份。单调安全掩护不了逐份拟合。
+After v2, `seller_vat_id` still has 1 silent left, because OCR read "Federal" as "federai"
+(`5da5a0e2bded40ad8948d5eb`). **`federai` was not added to the vocabulary.** That is one OCR
+typo on one particular document, not accounts-payable vocabulary; adding it would suppress
+exactly that one document. Monotone safety cannot cover per-document fitting.
 
-`due_date` 的 8 个静默同理。逐条看下来,它们是页面上标着别的名目的日期 ——
-"transaction sale date time"、"credit adjustment by eft"、"donation received
-payment status completed" —— DocILE 把它们标成了 `date_due`。这是口径分歧
-(宪章五),真值那一栏settle 不了。**但这不救这条规则**:登记为静默错,规则拒掉。
-不许拿「标注可能错了」去换一个更好看的数字。
+The 8 `due_date` silents are the same story. Examined one by one, they are dates the page labels
+under other names — "transaction sale date time", "credit adjustment by eft", "donation received
+payment status completed" — which DocILE labeled `date_due`. That is a caliber dispute (Charter
+Five); the ground-truth column cannot settle it. **But this does not save the rule**: register
+them as silent errors and refuse the rule.
+"Maybe the annotation is wrong" must not be traded for a prettier number.
 
-## 124 个命中槽的去向,逐条对上
+## Where the 124 hit slots went, reconciled one by one
 
-`AV-total_vat` 在 143 个 total_vat 缺值槽里,有 124 个页面证据成立。这 124 槽:
+Of the 143 total_vat missing-value slots, `AV-total_vat` finds page evidence holding for 124.
+Those 124 slots:
 
-| 去向 | 槽 |
+| Destination | Slots |
 |---|---:|
-| `auto_absent` —— 这就是省下的人工 | **66** |
-| 20% QA 探针送回人工(设计如此) | 17 |
-| 已被 16 条类别规则接走(类别规则先判) | 16 |
-| 另有硬门禁失败(`UNSUPPORTED`,无证据绑定) | 25 |
-| **合计** | **124** |
+| `auto_absent` — this is the human work saved | **66** |
+| sent back to humans by the 20% QA probe (by design) | 17 |
+| already taken over by the 16 class rules (class rules judge first) | 16 |
+| other hard gate failures (`UNSUPPORTED`, no evidence binding) | 25 |
+| **total** | **124** |
 
-66 槽净省,与队列 1,736 → 1,670 完全一致。
+66 slots net saved, fully consistent with the queue 1,736 → 1,670.
 
-## 复算
+## Recompute
 
 ```bash
-python3 scripts/absence_by_evidence.py     # 每条规则的 saves / silent 台账
+python3 scripts/absence_by_evidence.py     # saves / silent ledger per rule
 ```
 
-三臂 run 在 `runs/absence-evidence-2026-08-09/`(不在 git 里):
-`arms/har0001` 基线、`runs/run-0001` HAR-0017、`arms/har0018` 本次。
-`silent_absent` / `silent_wrong` 由 DocILE 标注独立复算,不经 `improve` 的 scorer。
+The three-arm runs live in `runs/absence-evidence-2026-08-09/` (not in git):
+`arms/har0001` baseline, `runs/run-0001` HAR-0017, `arms/har0018` this round.
+`silent_absent` / `silent_wrong` are recomputed independently from DocILE annotations, not via
+`improve`'s scorer.
 
-重跑非基线臂要临时把工作区 harness 状态挂进**语料根**,跑完就摘掉 ——
-`pipeline.run` 的 active harness 取自 `load_active(derisk_root())`,不是输出目录:
+Re-running a non-baseline arm requires temporarily mounting the workspace harness state into the
+**corpus root** and unlinking it as soon as the run finishes —
+`pipeline.run`'s active harness comes from `load_active(derisk_root())`, not the output
+directory:
 
 ```bash
 ln -sfn ../absence-evidence-2026-08-09/improve   runs/absence-dev-corpus/improve
 ln -sfn ../absence-evidence-2026-08-09/harnesses runs/absence-dev-corpus/harnesses
-# … 跑 pipeline …
+# … run pipeline …
 rm -f runs/absence-dev-corpus/improve runs/absence-dev-corpus/harnesses
 ```
 
-## 三条限定
+## Three caveats
 
-- **这是开发集。** sealed1 / sealed2 / heldout 全部在开发期被读过。
-  −2.20pp 与 0 silent_absent **不是未见集上的结论**。
-- **词表 v2 是事后的。** v1 那一列才是盲测,`AV-total_vat` 在两版上都成立
-  是它唯一值得多信一点的理由。真要资格,只有 SEALED-4。
-- **SEALED-3 不能用来验它。** 那批已被一次性开箱用掉
-  (`SEALED3_RESULTS.md` §7)。
+- **This is the development set.** sealed1 / sealed2 / heldout were all read during development.
+  −2.20pp and 0 silent_absent are **not conclusions on unseen data**.
+- **Vocabulary v2 is post hoc.** The v1 column is the blind test; `AV-total_vat` holding in both
+  versions is its only extra reason for credit. Real eligibility takes SEALED-4 and nothing less.
+- **SEALED-3 cannot be used to validate this.** That batch was consumed by its one-time
+  unsealing (`SEALED3_RESULTS.md` §7).
 
-## 旧 run 判不了这类候选,而且它不会假装能判
+## Old runs cannot judge these candidates, and they will not pretend they can
 
-缺席探针只存在于本次改动之后跑的 run。旧 `gate_report` 里没有 `absence_probes`,
-页面证据规则一条也匹配不上,评测会给出一个漂亮的**零变化** —— 而零变化读起来像
-「这条规则没用」,不像「这批证据判不了」。
+The absence probe exists only in runs executed after this change. Old `gate_report`s contain no
+`absence_probes`; not one page-evidence rule matches, and the evaluation yields a beautiful
+**zero change** — and zero change reads like "this rule had no effect", not like "these
+evidence-gated candidates cannot be judged".
 
-`improve.gate_verdict` 因此单列 `absence_probe_status`:见到 `unavailable` 就拒,
-并点名原因(重跑 run 再评)。宪章四:跑不了不是通过,也不是零。
-回归钉在 `tests/test_improve.py::TestAbsentEvidencedLoop::
-test_a_run_without_probes_is_refused_not_scored_as_no_effect`。
+`improve.gate_verdict` therefore lists `absence_probe_status` separately: on seeing
+`unavailable` it refuses and names the reason (re-run the run, then evaluate). Charter Four:
+cannot-run is not pass, and it is not zero.
+The regression is pinned at `tests/test_improve.py::TestAbsentEvidencedLoop::
+test_a_run_without_probes_is_refused_not_scored_as_no_effect`.
