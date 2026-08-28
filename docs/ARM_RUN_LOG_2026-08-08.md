@@ -1,430 +1,557 @@
-# 对照实验运行日志(2026-08-08,随发生随记)
+# Controlled-experiment run log (2026-08-08, written down as it happened)
 
-协议:`docs/ARM_AGENT_VS_HUMAN_PREREG_2026-08-08.md`(冻结于 `a667b6b`)。
-名单:`docs/arm_slot_sample.json`(drand 6356437,冻结于 `f648df2`)。
+Protocol: `docs/ARM_AGENT_VS_HUMAN_PREREG_2026-08-08.md` (frozen at `a667b6b`).
+Roster: `docs/arm_slot_sample.json` (drand 6356437, frozen at `f648df2`).
 
-**这份文件的用途**:把两条臂**真实发生过的事**记下来,结果文档必须照登这些。
-不记的话,`docs/ARM_AGENT_VS_HUMAN_RESULTS_*.md` 读起来会像一切顺利 —— 它不是。
+**This file's purpose**: to record what **actually happened** in the two arms; the
+results document must record these as-is. Without them,
+`docs/ARM_AGENT_VS_HUMAN_RESULTS_*.md` would read as if everything went smoothly —
+it did not.
 
-## 样本构成(抽样后即记,先于任何裁决)
+## Sample composition (recorded right after sampling, before any adjudication)
 
-| 维度 | 值 |
+| Dimension | Value |
 |---|---|
-| 池 | `runs/sealed2` 中 `route == review` 的 468 槽(harness HAR-0004) |
-| 抽中 | 200 槽 / 87 份文档 / 全部 10 个字段 |
-| 空值槽 | 60 |
-| QA 探针 | 5(`mine` 按设计排除) |
+| Pool | the 468 `route == review` slots in `runs/sealed2` (harness HAR-0004) |
+| Drawn | 200 slots / 87 documents / all 10 fields |
+| Empty slots | 60 |
+| QA probes | 5 (`mine` excludes them by design) |
 | support_strength | corroborated 101 · unsupported 94 · single_source 5 |
-| 有 span 可画框 | 144;两者皆无 56 |
-| **DocILE 有该字段标注** | **113(56%)** |
-| **DocILE 无该字段标注** | **87(44%)**,其中 41 槽抽取器也没给值 |
+| Have a span to draw a box on | 144; neither kind 56 |
+| **DocILE has an annotation for the field** | **113 (56%)** |
+| **DocILE has no annotation for the field** | **87 (44%)**, of which 41 slots also got no value from the extractor |
 
-> `seller_vat_id` 只抽中 4 槽,贴着 `mine` 的 `absentish >= 3` 门槛 ——
-> 该类 cohort 若不点火,可能是**样本量**而非任一臂的判断所致。
-> 抽样当天记下,不是事后找的理由。
+> `seller_vat_id` drew only 4 slots, right at `mine`'s `absentish >= 3` threshold —
+> if that cohort does not ignite, it may be **sample size** rather than either
+> arm's judgment. Recorded on sampling day, not a reason found after the fact.
 
-## TA 臂(agent:gemini-3.6-flash)
+## TA arm (agent:gemini-3.6-flash)
 
-最终:**193 已判 + 7 写入口拒绝 = 200 / 200**。
+Final: **193 adjudicated + 7 write-entry rejections = 200 / 200**.
 ledger sha256 `4a7b6f7e52a91e87939426e3fef3d27526fc80389d16bef3daab7f581168be5b`
-(该哈希为 193 行时的值;7 次拒绝未写入账本)。
+(that hash is the value at 193 lines; the 7 rejections were never written to the
+ledger).
 
-### 1. 27 次失败必须分成两类,分类决定了能不能重试
+### 1. The 27 failures must be split into two classes; the classification decides whether retrying is allowed
 
-| 类 | n | 处置 |
+| Class | n | Disposition |
 |---|---|---|
-| 写入口拒绝(对无声明的槽判 `accept`) | 6 → 后补 1 = **7** | **永久记录,不重试**。重试等于摇到一个能过的答案为止,是拿结果调参(预注册 §7) |
-| 传输层(429 spend cap / 5xx) | 21 | 断点续跑重试。改的不是 prompt / 判据 / 抽样,只是让槽真的被问一次 |
+| Write-entry rejections (an `accept` on a slot with no claim) | 6 → 1 added later = **7** | **Recorded permanently, no retry.** Retrying means shaking until an answer that passes comes out — tuning on results (preregistration §7) |
+| Transport layer (429 spend cap / 5xx) | 21 | Resume-and-retry. What changed is not the prompt / criteria / sampling, only making sure each slot actually gets asked once |
 
-### 2. 一处我的接口失误,照登,且这条臂内改不了
+### 2. One interface mistake of mine, recorded as-is, and unfixable within this arm
 
-workbench 给人的按钮是**按槽裁剪过的** —— 无冻结声明的槽不显示「接受」。
-而我给 agent 的 prompt 每次都列全六个决策。所以那 7 次拒绝里**有我的接口成分,
-不纯是 agent 的判断失误**。
+The workbench's buttons for humans are **trimmed per slot** — slots without a
+frozen claim are not shown "accept". Yet the prompt I gave the agent listed all
+six decisions every time. So those 7 rejections **contain my interface's share;
+they are not purely the agent's judgment failures**.
 
-看到结果之后改 prompt 会让整条 TA 臂作废(预注册 §7),所以本臂不改。
-要修只能重抽新名单、开新臂。
+Changing the prompt after seeing results would void the entire TA arm
+(preregistration §7), so this arm stays unchanged. Fixing it means drawing a new
+roster and opening a new arm.
 
-### 3. 配额中断与换 key
+### 3. Quota interruption and key switch
 
-- 首轮跑完 173 槽后,Gemini 项目撞**月度支出上限**,116 次退避全撞硬 429;
-- 换过一个新项目的 key,报错变成**预付余额为 0**($300 Cloud 试用额度 ≠
-  AI Studio 预付余额,且项目一旦挂计费就不再适用免费层);
-- 最终用回原 key(额度已恢复),补完 21 槽。
-- **换凭证不作废本臂**:§7 的作废条件是 prompt / 判据 / 抽样,传输凭证不在其列。
-  但本臂横跨两个时段完成,记在这里。
+- After the first pass finished 173 slots, the Gemini project hit its **monthly
+  spend cap**; 116 backoff attempts all hit hard 429s;
+- Switched to a new project's key; the error became **prepaid balance of 0** (the
+  $300 Cloud trial credit ≠ an AI Studio prepaid balance, and once a project is on
+  billing it no longer qualifies for the free tier);
+- Ended up going back to the original key (quota had recovered) and finishing the
+  21 remaining slots.
+- **Switching credentials does not void this arm**: §7's voiding conditions are
+  the prompt / criteria / sampling; transport credentials are not among them.
+  But this arm was completed across two time windows; recorded here.
 
-## H2 臂(人工,复核者 stahl)
+## H2 arm (human, reviewer stahl)
 
-**决定(2026-08-08):照预注册做满 200 槽。** 曾评估过重抽一批按真值有无分层的
-方案(可让人的时间花在信息密度更高的槽上),未采纳。
+**Decision (2026-08-08): do the full 200 slots per the preregistration.** A
+redraw stratified by ground-truth presence was considered (it would spend the
+human's time on higher-information-density slots) and not adopted.
 
-### 复核过程中暴露的一道设计缝(不是缺陷报告,是发现)
+### A design seam exposed during review (not a defect report — a discovery)
 
-**页面上真的没有这个字段,但抽取器编了一个值** —— 这种槽的缺席信号
-**永远进不了缺席 cohort**。
+**The page genuinely lacks this field, but the extractor fabricated a value** —
+for slots like these, the absence signal **can never reach the absence cohort**.
 
-链条:
-- 槽有冻结声明时,写入口拒绝 `confirm_absent` / `not_applicable`
-  (`adjudicate.py:132`:「声明错了用 reject 或 correct」),复核者只能判 `reject`;
-- 而 `improve.mine` 的 `absence_candidates` 只数
-  `confirm_absent` 与 `not_applicable`(`improve.py:113`)。
+The chain:
+- When a slot has a frozen claim, the write entry refuses `confirm_absent` /
+  `not_applicable` (`adjudicate.py:132`: "if the claim is wrong, use reject or
+  correct"), so the reviewer can only judge `reject`;
+- and `improve.mine`'s `absence_candidates` counts only `confirm_absent` and
+  `not_applicable` (`improve.py:113`).
 
-于是「这个字段这类文档常常没有」这条信息,只有在**抽取器也没给值**时才传得到
-挖掘臂。本批 200 槽里空值槽 60 个,那是缺席 cohort 的唯一来源;抽取器幻觉出
-一个值的槽,信号掉在地上。
+So the information "this field is often absent in this kind of document" reaches
+the mining arm only when **the extractor also gave no value**. Of this batch's 200
+slots, 60 are empty slots — that is the sole source of the absence cohort; for
+slots where the extractor hallucinated a value, the signal falls on the floor.
 
-2026-08-08 由复核者在 `1925d1e1|buyer_name` 上撞到:页面 `Buyer:` 栏为空,
-DWS 交回了同一行的 AE 名字。**这不是填写错误,是词表与挖掘判据之间的缝。**
-本实验不改(改了两臂不可比),记录待议。
+Hit on 2026-08-08 by the reviewer on `1925d1e1|buyer_name`: the page's `Buyer:`
+column is empty, and DWS returned the AE's name from the same line. **This is not
+a fill-in error; it is a seam between the vocabulary and the mining criteria.**
+This experiment does not change it (changing it would make the arms
+incomparable); recorded for discussion.
 
-### 口径裁定之三:单总额单据(复核者定于 2026-08-08,第 24 槽后,全 200 槽适用)
+### Measurement ruling three: single-total documents (set by the reviewer on 2026-08-08, after slot 24, applying to all 200 slots)
 
-**情况**:页面只印一个 `Total`(或等价的单一总额),不区分净额 / 含税额 /
-应付额。实例 `265763b2…`:线目表底部一行 `Total $1,160.00`,无税行。
-本批 87 份抽样文档里,抽取器填不齐四个金额字段的至少 21 份。
+**Situation**: the page prints only one `Total` (or an equivalent single total),
+with no net / tax-inclusive / amount-due distinction. Example `265763b2…`: one
+line `Total $1,160.00` at the bottom of the line-item table, no tax line. Among
+this batch's 87 sampled documents, at least 21 have four amount fields the
+extractor cannot fully fill.
 
-**裁定(B2):`Total` 归 `amount_due`,`total_net` / `total_gross` /
-`total_vat` 走 `confirm_absent`。**
+**Ruling (B2): `Total` goes to `amount_due`; `total_net` / `total_gross` /
+`total_vat` take `confirm_absent`.**
 
-**规模:本裁定治理 76 / 200 槽(38%)** —— total_net 29、total_vat 24、
-total_gross 23。这是三条裁定里影响面最大的一条,后果按比例放大。
+**Scale: this ruling governs 76 / 200 slots (38%)** — total_net 29, total_vat 24,
+total_gross 23. It is the widest-impact of the three rulings; the consequences
+scale proportionally.
 
-**代价一:算术门在这类单据上完全沉默。** 只有 `amount_due` 有值时,
-C1(`net+vat==gross`)与 C2(`gross==due`)输入不全,判 `unavailable`
-([gates.py:86](../invoiceloop/gates.py:86) 的 `None not in (...)`)。而
-`amount_due` 是 TIER1 付款金额 —— 它在这类单据上将**没有任何算术交叉验证**,
-支持只剩 span 绑定、独立 OCR 与双模式。
+**Cost one: the arithmetic gates go completely silent on this kind of document.**
+When only `amount_due` has a value, C1 (`net+vat==gross`) and C2 (`gross==due`)
+have incomplete inputs and judge `unavailable` (the `None not in (...)` at
+[gates.py:86](../invoiceloop/gates.py:86)). But `amount_due` is the TIER1 payment
+amount — on this kind of document it will have **no arithmetic cross-validation at
+all**; its support reduces to span binding, independent OCR, and dual-mode.
 
-这是自愿的交换,理由是另一半更坏:一个数填进三个槽时,C1 检查的是
-`1160 == 1160`,门显示「算术:过」而实际零信息。**沉默的检查好过假通过的
-检查**(宪章四)。裁定选了沉默。
+This is a voluntary trade, on the grounds that the other half is worse: when one
+number is filled into three slots, C1 checks `1160 == 1160`, the gate shows
+"arithmetic: pass" with zero actual information. **A silent check beats a check
+that fake-passes** (charter rule four). The ruling chose silence.
 
-**代价二(预注册,写在开封之前):M2 会把口径分歧记成判错。**
-`confirm_absent` 对真值只能被否证 —— 若 DocILE 对这些槽有标注(把单一
-`Total` 标进 `amount_total_gross` 是很可能的标注惯例),
-`arm_score.truth_verdict` 会一律返回 `disagree`,而它**没有第三个桶**来表达
-「这是 applicability 争议,不是判错」。CLAUDE.md 的硬约束写着「口径冲突
-不进错误率」,现有打分器做不到这件事。
+**Cost two (preregistered, written before unsealing): M2 will book
+measurement-convention disagreements as wrong judgments.** A `confirm_absent`
+can only be falsified against the ground truth — if DocILE has annotations for
+these slots (annotating the single `Total` into `amount_total_gross` is a quite
+likely annotation convention), `arm_score.truth_verdict` will return `disagree`
+across the board, and it has **no third bucket** to express "this is an
+applicability dispute, not a wrong judgment". CLAUDE.md's hard constraint says
+"measurement-convention conflicts do not enter the error rate"; the current
+scorer cannot do that.
 
-**因此结果文档必须报三个 M2 数字**,判据现在写死,不等看到结果再定:
+**So the results document must report three M2 numbers**; the criteria are locked
+now, not decided after seeing results:
 
-1. **全计错**:所有 `disagree` 一律算人的判错(最不利口径);
-2. **口径分歧单列**:槽 ∈ {total_net, total_gross, total_vat} ∧ 裁决 =
-   `confirm_absent` ∧ 真值非空 → 归入「口径分歧」桶,单独报数;
-3. **剔除**:上述槽整体排除后的 M2。
+1. **Count all as wrong**: every `disagree` counts as the human's wrong judgment
+   (least favorable measure);
+2. **Measurement-convention disagreements listed separately**: slot ∈ {total_net,
+   total_gross, total_vat} ∧ judgment = `confirm_absent` ∧ ground truth non-empty
+   → goes into the "convention disagreement" bucket, reported separately;
+3. **Exclusion**: M2 after dropping those slots entirely.
 
-三个都登,不许只挑一个说。**不修改 `arm_score.py`** —— 在看到部分 H2
-结果之后改打分器,与拿结果调参无法区分(预注册 §7)。
+Report all three; picking only one to tell is not allowed. **Do not modify
+`arm_score.py`** — changing the scorer after seeing part of the H2 results is
+indistinguishable from tuning on results (preregistration §7).
 
-**已判槽的复查清单**(第 24 槽时全量扫,塌缩代理 = 该文档 net/gross/due
-中至少两个抽取值完全相同):
+**Re-check list of already-judged slots** (full scan at slot 24; collapse proxy =
+at least two of the document's net/gross/due extraction values are exactly
+identical):
 
-| 槽 | 现裁决 | 塌缩 |
+| Slot | Current judgment | Collapsed |
 |---|---|---|
-| `0cac4923…\|total_gross` | correct | 是 |
-| `132ccb35…\|total_gross` | correct | 是 |
-| `265763b2…\|total_gross` | accept | 是 |
-| `61a429b2…\|total_net` | accept | 是 |
-| `c8d26800…\|total_net` | correct | 是 |
+| `0cac4923…\|total_gross` | correct | yes |
+| `132ccb35…\|total_gross` | correct | yes |
+| `265763b2…\|total_gross` | accept | yes |
+| `61a429b2…\|total_net` | accept | yes |
+| `c8d26800…\|total_net` | correct | yes |
 
-塌缩只是**代理**,不是判据:两个字段值相同也可能是页面上分别印了净额与
-含税额而恰好无税。是否 supersede,取决于**那份页面上是不是只有一个总额栏**,
-由复核者逐份复查后决定。其余 5 条(`2b1312db`、`34fe381b`、`a76630d6`、
-`b45c2725`、`c8146d48`)代理为否,不在清单内。
+Collapse is only a **proxy**, not a criterion: two fields with equal values can
+also be a page that prints net and tax-inclusive separately with exactly zero
+tax. Whether to supersede depends on **whether that document's page has only one
+total column**, decided by the reviewer after re-checking each document. The
+other 5 entries (`2b1312db`, `34fe381b`, `a76630d6`, `b45c2725`, `c8146d48`)
+proxy negative and are not on the list.
 
-**未决的规则交叉**:第一条裁定说「页面上标了 `0.00` 当作有值」,本条说
-「只有一个总额时其余缺席」。当页面某处有 `$0.00`(如线目表空行)但**没有
-税额栏**时,两条规则给出相反答案。第二条裁定的措辞倾向于本条优先
-(「页面上没有写着**该字段名**的栏」—— 线目单元格不是税额栏),但这一点
-复核者尚未明确裁定,`total_vat` 的 24 槽悬在这里。
+**Unresolved rule crossing**: ruling one says "a `0.00` printed on the page
+counts as having a value"; this ruling says "when there is only one total, the
+rest are absent". When the page has a `$0.00` somewhere (e.g. an empty line-item
+row) but **no tax column**, the two rules give opposite answers. Ruling two's
+wording leans toward this ruling taking precedence ("no column on the page
+bearing **this field's name** — a line-item cell is not a tax column"), but the
+reviewer has not explicitly ruled on this point; total_vat's 24 slots hang here.
 
-### 第四道缝:这批 run 里 doctype 根本没跑过,复核者在为每份文档手工重做类别判断
+### Seam four: doctype never ran in these runs; the reviewer is manually redoing the category judgment for every document
 
-2026-08-08 由复核者在 `e879f9c7…`(页头印 `ORDER`)上提出:
-「HITL 必须接入 doctype,不然每张票都要来问一遍」。核查结果比「没接」更基础:
+Raised on 2026-08-08 by the reviewer on `e879f9c7…` (page header printed
+`ORDER`): "HITL must be wired to doctype, or every single invoice has to be
+asked about again". What the verification found is more basic than "not wired":
 
-| 核查项 | 结果 |
+| Check | Result |
 |---|---|
-| `grep doctype invoiceloop/workbench.py` | **0 命中** —— 工作台从不显示单据类别 |
-| `runs/sealed2/gate_report.json` 的 `document_checks` | **键整个不存在** |
-| 同上,`doctype_evidence` findings | **0 条** |
-| `runs/arm-h2/runs/run-0001` 同上 | 同样缺失(它是 sealed2 的拷贝) |
+| `grep doctype invoiceloop/workbench.py` | **0 hits** — the workbench never shows document category |
+| `document_checks` in `runs/sealed2/gate_report.json` | **the key does not exist at all** |
+| Same file, `doctype_evidence` findings | **0 entries** |
+| `runs/arm-h2/runs/run-0001`, same check | equally missing (it is a copy of sealed2) |
 
-sealed2 的门禁跑在 doctype 落地(2026-08-07)**之前**。所以这 200 槽的复核
-全程,系统对「这是不是发票」一无所知。
+sealed2's gates ran **before** doctype landed (2026-08-07). So throughout the
+review of these 200 slots, the system knew nothing about "is this an invoice".
 
-**规模实测**(按 DWS 自报 `invoice_type` 归类,`doctype.classify`,
-纯自由文本、尚无页面证据背书):抽样 87 份里 **20 份(23%)不是发票** ——
-采购单 6、确认单 6、合同 2、收据 2、贷记单 1、形式发票 1、报价 1、
-无类型声明 1。与 `doctype.py` 开头记的「约四分之一」独立吻合。
+**Scale measured** (classified by DWS self-reported `invoice_type`,
+`doctype.classify`, pure free text, not yet backed by page evidence): of the 87
+sampled documents, **20 (23%) are not invoices** — purchase orders 6,
+confirmations 6, contracts 2, receipts 2, credit notes 1, pro formas 1, quotes 1,
+no type declaration 1. This independently matches the "about one quarter" noted
+at the top of `doctype.py`.
 
-**这正是复核者感到浪费的来源**:三条口径裁定本质上全是**类别条件规则**
-(「美国发票没有 VAT 概念」「单总额单据不分净额含税额」),而系统既不告诉
-复核者类别、也无法把裁定复用到同类的下一份。
+**This is exactly the source of the waste the reviewer felt**: the three
+measurement rulings are essentially all **category-conditional rules** ("US
+invoices have no VAT concept", "single-total documents do not split net and
+tax-inclusive"), yet the system neither tells the reviewer the category nor can
+it reuse a ruling on the next document of the same kind.
 
-**doctype 不会替人裁定**「订单类单据有没有到期日」—— 那是宪章五划给人的。
-它省掉的是另外三件:每份重新辨认类别、同类单据裁定不一致、裁定无法复用。
+**doctype will not adjudicate on the human's behalf** whether "order-type
+documents have a due date" — the charter reserves that for humans (rule five).
+What it saves is three other things: re-identifying the category per document,
+inconsistent rulings across same-kind documents, and rulings being impossible to
+reuse.
 
-分层与风险(留待实验后):
+Tiering and risk (left until after the experiment):
 
-1. **显示类别 + 页面字面证据框**。`doctype.find_evidence` 已产出合并 bbox,
-   可直接画框。零权威,只是把已算出的工件搬上页面。
-2. **任务措辞随类别变**。仍不改判定,改的是提问方式。
-3. **决策按钮 / 预填随类别变** —— 开始暗示答案。**不做。**
-4. **类别级 cohort**:`_ABSENT_KEYS` 由 `("id","field")` 扩为带 `doc_class`,
-   让这类槽根本不进队列。省时最多、风险最大;`doctype.py` 已论证必须绑死
-   「类型声明有页面字面证据」,且 `propose(kind="absent_expected")` 强制
-   `qa.absent_expected_rate = 0.20`([improve.py:362](../invoiceloop/improve.py:362)),
-   20% 仍抽人工探针。
+1. **Show the category + literal page-evidence box.** `doctype.find_evidence`
+   already produces merged bboxes that can be boxed directly. Zero authority;
+   it only puts already-computed artifacts on the page.
+2. **Task wording varies by category.** Judgment still unchanged; what changes is
+   how the question is asked.
+3. **Decision buttons / prefill vary by category** — starts suggesting the
+   answer. **Not doing it.**
+4. **Category-level cohorts**: `_ABSENT_KEYS` widened from `("id","field")` to
+   carry `doc_class`, so these slots never enter the queue at all. Most time
+   saved, most risk; `doctype.py` already argues it must be hard-bound to "the
+   type declaration has literal page evidence", and `propose(kind="absent_expected")`
+   forces `qa.absent_expected_rate = 0.20`
+   ([improve.py:362](../invoiceloop/improve.py:362)); 20% still draws human
+   probes.
 
-**实验期一律不做**:重跑门禁虽是零 API(gates 只读存盘 understand + OCR),
-但会改变复核者看到的东西,两臂立刻不可比。
+**None of it during the experiment**: re-running the gates is zero-API (gates
+only read saved understand + OCR), but it would change what the reviewer sees,
+and the two arms immediately become incomparable.
 
-### 第二道缝:门禁标签说了「哪一层拒」,没说「哪条恒等式、拿什么数拒的」
+### Seam two: gate labels said "which layer rejected" but not "which identity, on what numbers"
 
-2026-08-08 在 `2cf882ed…|amount_due` 上撞到。页面给复核者的全部信息是
-`门禁未过:arithmetic_consistency` 与一枚「算术:拒」徽章 —— 矩阵行里
-也只有 `reason_codes: ["GATE_FAIL:arithmetic_consistency"]`。
+Hit on 2026-08-08 on `2cf882ed…|amount_due`. All the information the page gave
+the reviewer was `gate failed: arithmetic_consistency` and an "arithmetic:
+reject" badge — the matrix row carried only
+`reason_codes: ["GATE_FAIL:arithmetic_consistency"]`.
 
-而真正的成因在同文档另外三个槽上:
+But the real causes sat on three other slots of the same document:
 
-| 字段 | 冻结值 | 页面 |
+| Field | Frozen value | Page |
 |---|---|---|
-| total_gross | `$1,096.96` | Total Charge 写的是 `$1,096.00` |
-| total_vat | `$164.40` | 是 agency commission credit,不是税 |
-| total_net | `$931.60` | 是 balance,不是净额 |
+| total_gross | `$1,096.96` | Total Charge reads `$1,096.00` |
+| total_vat | `$164.40` | it is an agency commission credit, not tax |
+| total_net | `$931.60` | it is a balance, not the net |
 
-于是 C1(`net + vat == gross`)差 0.96 而失败,C2(`gross == due`)也失败。
-**门禁抓对了 —— 它抓的是隔壁槽的抽取错位。** 但复核者在
-`amount_due` 页面上看不到 C1、看不到那 0.96,合理地把它读成
-「算术规则需要修改」,并准备把这条当作改进线索写进 `rationale`。
+So C1 (`net + vat == gross`) fails by 0.96, and C2 (`gross == due`) fails too.
+**The gate caught the right thing — what it caught is a neighboring slot's
+extraction misbinding.** But the reviewer, on the `amount_due` page, cannot see
+C1, cannot see the 0.96, and reasonably read it as "the arithmetic rule needs
+changing", about to write it into `rationale` as an improvement lead.
 
-链条:`_c1_c3` 的 finding 是**文档级**的(`gates.py:297`,`field=None`),
-带着「C1 失败,涉及 [total_gross, total_net, total_vat]」这句话;
-而槽位行只继承一个无参数的 `GATE_FAIL:<gate_id>` 标签。文档级证据没有
-下沉到字段级页面。
+The chain: `_c1_c3`'s finding is **document-level** (`gates.py:297`,
+`field=None`), carrying the sentence "C1 failed, involving [total_gross,
+total_net, total_vat]"; while the slot row inherits only an argument-less
+`GATE_FAIL:<gate_id>` label. Document-level evidence never sank to the
+field-level page.
 
-后果不只是困惑:按现有通道,这条误诊会原样进 `mine_report` 的 cohort
-`notes`(`improve.py:81` 原文透传),成为一条指向不存在问题的提案线索。
+The consequence is more than confusion: through the current channel, this
+misdiagnosis would enter `mine_report`'s cohort `notes` verbatim (`improve.py:81`
+passes the text through), becoming a proposal lead pointing at a nonexistent
+problem.
 
-**复核者裁定(2026-08-08):这是缺陷,下个版本修**,已开为
-`task_e6febe85`(门禁标签下沉:`GATE_FAIL` 要带恒等式 ID 与入参)。
-与另两个界面缺陷同处置 —— **实验期不合入**,它改的正是复核者看到的证据。
+**Reviewer's ruling (2026-08-08): this is a defect; fix it next version**;
+opened as `task_e6febe85` (sink gate labels: `GATE_FAIL` must carry the identity
+ID and its inputs). Same disposition as the other two UI defects — **not merged
+during the experiment**; what it changes is exactly the evidence the reviewer
+sees.
 
-助手向复核者说明了实际成因,已记入 `runs/arm-h2/advised_slots.json`,
-M3 须同时报含/不含该槽的数字。
+The assistant explained the real cause to the reviewer; recorded in
+`runs/arm-h2/advised_slots.json`; M3 must report the numbers with and without
+that slot.
 
-### 第三道缝:C3 结构性看不见「到期日被绑到开票日」
+### Seam three: C3 is structurally blind to "due date bound to the issue date"
 
-2026-08-08 在 `f40eef50…|due_date` 上撞到。该文档:
+Hit on 2026-08-08 on `f40eef50…|due_date`. That document:
 
-| 字段 | 冻结值 | span_ids | 算术门 | 双模式门 |
+| Field | Frozen value | span_ids | Arithmetic gate | Dual-mode gate |
 |---|---|---|---|---|
 | issue_date | `June 30, 1999` | `ES-0743, ES-0744` | pass | pass |
 | due_date | `June 30, 1999` | `ES-0743, ES-0744` | **pass** | **fail** |
 
-两个槽绑在**同一对 span** 上 —— 页面上那处是 `Invoice Date: June 30, 1999`,
-没有任何到期日栏。
+The two slots are bound to **the same pair of spans** — that spot on the page is
+`Invoice Date: June 30, 1999`; there is no due-date column at all.
 
-C3 的判据是 `date_ymd(issued) > date_ymd(expires)`([gates.py:96](../invoiceloop/gates.py:96)),
-用的是严格大于。两个日期**相等**时 `>` 为假,C3 判 pass。也就是说
-「到期日被绑到开票日」这一类错位,C3 **在结构上永远抓不到**,不是这次漏了。
+C3's criterion is `date_ymd(issued) > date_ymd(expires)`
+([gates.py:96](../invoiceloop/gates.py:96)), strict greater-than. When the two
+dates are **equal**, `>` is false and C3 judges pass. In other words, C3 is
+**structurally never able to catch** this class of misbinding where the due date
+is bound to the issue date; this was not a one-time miss.
 
-抓住它的是 `cross_mode_agreement`(双模式:拒)。**多门禁设计在这里被实测
-验证了一次**:一道门对某类错位天然失明,另一道门补上 —— 这正是六门并列
-而不是择优的理由。值得写进交付材料。
+What caught it was `cross_mode_agreement` (dual-mode: reject). **The multi-gate
+design was validated by measurement here once**: one gate is naturally blind to
+a class of misbinding; another gate covers it — precisely the reason for six
+gates side by side instead of picking a winner. Worth writing into the delivery
+material.
 
-要不要把 C3 改成 `>=` 是另一件事,**不在本实验里动**:C3 是预注册冻结的
-判据,改它会让所有既有数字失去可比性。且 `>=` 会误伤合法的「货到付款
-/ 当日到期」单据 —— 那是需要证据支持的判断,不是一个符号。
+Whether to change C3 to `>=` is a separate matter and **is not touched in this
+experiment**: C3 is a preregistered, frozen criterion; changing it would strip
+comparability from every existing number. And `>=` would false-positive
+legitimate "payment on receipt / same-day due" documents — that judgment needs
+evidence, not a symbol.
 
-### 循环处理不了「按付款条款推算到期日」(2026-08-08 记)
+### The loop cannot handle "deriving the due date from payment terms" (recorded 2026-08-08)
 
-同一槽引出的问题:页面条款写「Interest will be charged monthly on invoices
-unpaid after 30 days from date of receipt」。复核者问这条规则能不能进循环。
+A question raised by the same slot: the page's terms read "Interest will be
+charged monthly on invoices unpaid after 30 days from date of receipt". The
+reviewer asked whether this rule can enter the loop.
 
-**不能,三层都不能:**
+**No, on none of the three layers:**
 
-1. `lint_policy` 只放行 cohort 条目与 `qa.absent_expected_rate`
-   ([improve.py:240](../invoiceloop/improve.py:240)),表达不了任何计算;
-2. `propose_schema` 只能改字段 description —— 那是让**抽取器**去推算,
-   而项目的立场恰恰是抽取器的推算不可信;且 schema 候选必须走
-   `evaluate --reextract` 烧 credits 重抽([improve.py:1061](../invoiceloop/improve.py:1061));
-3. 派生逻辑属于 `gates.py` / `matrix.py` 的代码,不属于策略面。
+1. `lint_policy` admits only cohort entries and `qa.absent_expected_rate`
+   ([improve.py:240](../invoiceloop/improve.py:240)); it cannot express any
+   computation;
+2. `propose_schema` can only change field descriptions — that sends the
+   **extractor** to derive, and the project's stance is precisely that the
+   extractor's derivations cannot be trusted; and schema candidates must go
+   through `evaluate --reextract`, burning credits to re-extract
+   ([improve.py:1061](../invoiceloop/improve.py:1061));
+3. Derivation logic belongs in the code of `gates.py` / `matrix.py`, not on the
+   policy plane.
 
-**更硬的理由:输入本身不在页面上。** 条款的起算点是 *date of receipt*,
-不是开票日;页面上没有收到日。所以「开票日 + 30 天」这个推算连输入都
-凑不齐,推出来的日期既没有 span、也没有可点验的起点。按宪章六,这个值
-系统不能说。业务规则层可以有这条规则,验证层不能。
+**The harder reason: the input itself is not on the page.** The term's anchor is
+*date of receipt*, not the issue date; the page has no receipt date. So the
+"issue date + 30 days" derivation cannot even assemble its inputs; the derived
+date has neither a span nor a checkable anchor. Per charter rule six, the system
+may not assert this value. The business-rules layer may have this rule; the
+verification layer may not.
 
-### 复核者中途发现的两个界面缺陷
+### Two UI defects the reviewer found mid-course
 
-两个都已开为独立后台任务,**实验期间不合入** —— 中途改变复核者看到的东西,
-这条臂就前后不一致了。
+Both have been opened as separate background tasks and **will not be merged
+during the experiment** — changing what the reviewer sees mid-course would make
+this arm inconsistent before and after.
 
-1. **`rationale` 必填的 UI / 写入口不一致**(`task_302b518a`)。
-   textarea 带 `required` 且标签写「(必填)」,但 `append_adjudication`
-   从不校验非空;对比 `improve.promote` 是真校验的。浏览器拦,API 不拦。
-2. **高亮框挡住被复核的值**(`task_57cd0bbc`)。
-   span 的 bbox 是又扁又宽的整行条带时,`border` 正好压在字形上。
-   **此问题 2026-08-06 修过一次没修透** —— 当时把边框从 3px 降到 1.5px,
-   但降粗细治不了扁框。绕法:直接开无框原图
-   `/files/run-0001/pages/<doc_id>-<页码>.png`。
+1. **`rationale`-required inconsistency between UI and write entry**
+   (`task_302b518a`). The textarea has `required` and the label says
+   "(required)", but `append_adjudication` never validates non-emptiness;
+   contrast `improve.promote`, which really validates. The browser blocks; the
+   API does not.
+2. **The highlight box covers the value under review** (`task_57cd0bbc`). When
+   a span's bbox is a flat, wide full-line strip, the `border` sits right on the
+   glyphs. **This was "fixed" once on 2026-08-06 without fixing it through** —
+   the border was thinned from 3px to 1.5px then, but thinning does not cure
+   flat boxes. Workaround: open the unboxed original directly at
+   `/files/run-0001/pages/<doc_id>-<page>.png`.
 
-**2026-08-11 增补(hitl-r1 S1,run-0002 复核中途):**
+**2026-08-11 addendum (hitl-r1 S1, mid-review of run-0002):**
 
-3. **建议值分裂时只有一个一键采用钮。** 当冻结层有被拒草稿值、
-   且读图建议是分歧(split)状态时,裁决页只给「采用被拒草稿」
-   一个快路;读者建议的值(可能不同于被拒草稿)只能手打进修正值。
-   实例:槽 `91b7c668/seller_vat_id` —— 被拒草稿 `94-0036494`,
-   kimi / xmode-a 均建议 `94-6036494`(与 xmode-u 分歧),
-   页面只有「✓ 原值正确 —— 采用被拒草稿「94-0036494」」一个钮。
-   应为每个不同的候选值各留一个一键采用钮。
-   **同处置:实验期不合入**,hitl-r1 全程结束后随上面两条一起修。
+3. **Only one one-click adopt button when suggested values split.** When the
+   frozen layer holds a rejected draft value and the vision suggestions are in a
+   split (divergent) state, the adjudication page offers only "adopt the
+   rejected draft" as the fast path; the readers' suggested value (which may
+   differ from the rejected draft) can only be typed into the correction value.
+   Example: slot `91b7c668/seller_vat_id` — rejected draft `94-0036494`, both
+   kimi / xmode-a suggest `94-6036494` (diverging from xmode-u), and the page
+   has only one button, "✓ original value correct — adopt the rejected draft
+   '94-0036494'". Each distinct candidate value should get its own one-click
+   adopt button. **Same disposition: not merged during the experiment**; fix
+   together with the two above once hitl-r1 fully ends.
 
-### 口径裁定(复核者定于 2026-08-08,第 13 槽后,全 200 槽适用)
+### Measurement ruling (set by the reviewer on 2026-08-08, after slot 13, applying to all 200 slots)
 
-`$0.00` 金额「有值且为零」还是「没有这个字段」,在本项目是已知争议
-(`DOCTYPE_PLAN_2026-08-07.md` §0:13 个静默错里两处是 `$0.00` 标注问题)。
-按宪章五保持显式、进人工裁决。**复核者的裁定:**
+Whether a `$0.00` amount is "has a value, and it is zero" or "does not have this
+field" is a known dispute in this project (`DOCTYPE_PLAN_2026-08-07.md` §0: of 13
+silent errors, two are `$0.00` annotation issues). Per charter rule five, keep it
+explicit and route it to human adjudication. **The reviewer's ruling:**
 
-| 页面情况 | 决策 |
+| Page situation | Decision |
 |---|---|
-| 页面上标了 `0.00` | 当作**有值**,值就是 `0.00` |
-| 页面上确实没有这个字段 | `confirm_absent` |
-| 确实在对**单据类别**下判断(如「美国发票没有 VAT 概念」) | `not_applicable` |
+| The page prints a `0.00` | counts as **having a value**; the value is `0.00` |
+| The page truly lacks this field | `confirm_absent` |
+| Genuinely judging the **document category** (e.g. "US invoices have no VAT concept") | `not_applicable` |
 
-**中途修正的一版**:复核者最初拟定「不标就写 `not_applicable`」,经提示后改回
-`confirm_absent`。改的理由是测量后果,不是风格:`not_applicable` 对真值
-**不可打分**(真值表达不了类别适用性),缺席若都走它,M2 会基本清空 ——
-而 M2(复核者自身错误率)是本项目从未测过、且这 200 槽最独有的产出。
-同时 agent 的 `confirm_absent` 是可打分的,两臂会变成不同口径。
+**A mid-course corrected version**: the reviewer first drafted "if not printed,
+write `not_applicable`", then changed it back to `confirm_absent` after a prompt.
+The reason for the change was measurement consequence, not style:
+`not_applicable` **cannot be scored** against the ground truth (the ground truth
+cannot express category applicability); if all absences went through it, M2
+would mostly empty out — and M2 (the reviewer's own error rate) is this project's
+never-yet-measured and most distinctive output from these 200 slots. Meanwhile
+the agent's `confirm_absent` is scoreable; the two arms would become different
+measures.
 
-值得记的是**这个坑不会自己暴露**:`improve.mine` 的缺席候选把
-`confirm_absent` 与 `not_applicable` 一起数(`improve.py:113`),
-循环那侧看不出区别,只有打分那侧看得出。
+Worth recording: **this trap does not expose itself**. `improve.mine`'s absence
+candidates count `confirm_absent` and `not_applicable` together
+(`improve.py:113`); the loop side cannot see the difference; only the scoring
+side can.
 
-裁定时已判 13 槽(`correct` 9 / `accept` 3 / `confirm_absent` 1),
-新规则尚未应用,无需 supersede 既有裁决。
+At ruling time, 13 slots were already judged (`correct` 9 / `accept` 3 /
+`confirm_absent` 1); the new rule had not yet applied; no existing adjudications
+needed superseding.
 
-口径理由须写进 `rationale` —— 那是 `mine` 唯一会原样带出来的东西。
+The convention rationale must go into `rationale` — that is the only thing
+`mine` carries out verbatim.
 
-### 口径裁定之二:推导值(复核者定于 2026-08-08,第 19 槽后,全 200 槽适用)
+### Measurement ruling two: derived values (set by the reviewer on 2026-08-08, after slot 19, applying to all 200 slots)
 
-**情况**:页面上没有写着该字段名的栏,但另一栏的数在概念上可以顶替它
-(实例 `c8146d48…|total_gross`:页面只有 `AMOUNT DUE $800.00`,
-没有任何 Total / Gross 栏)。旧的 `$0.00` 裁定只覆盖「标了 / 没标」,
-不覆盖「没标这个名字但推得出来」。
+**Situation**: the page has no column bearing the field's name, but another
+column's number could conceptually stand in for it (example
+`c8146d48…|total_gross`: the page has only `AMOUNT DUE $800.00`, no Total /
+Gross column of any kind). The old `$0.00` ruling covered only "printed / not
+printed", not "the name is not printed but it can be derived".
 
-**裁定:走 `confirm_absent`。不从别的栏推导补录。**
+**Ruling: take `confirm_absent`. Do not backfill by deriving from another
+column.**
 
-理由与项目论点一致:补录出来的值**没有 span 绑定** —— 页面上不存在写着
-该字段名的那一栏,写进去下游的来源就是复核者而不是页面。宪章一句
-「抽取的正确性不可信,支持关系可验证」在这里落到具体一格上。
+The reason aligns with the project's thesis: a backfilled value has **no span
+binding** — the column bearing the field's name does not exist on the page, so
+once written in, the downstream source is the reviewer, not the page. The
+charter's one line — "extraction correctness cannot be trusted; support
+relations are verifiable" — lands here on one concrete cell.
 
-**这条规则的代价,现在记下,结果文档照登:**
-这类槽对真值**永远不会 agree**,只会是 `unfalsified`(真值也没标)或
-`disagree`(真值标了值)。也就是说,若 DocILE 对这些槽有标注,这条裁定会
-把它们计成**人的判错**,而不是落进 `no_truth` 被豁免。这是自愿承担的
-代价,不是疏漏 —— 换来的是缺席主张始终可被否证(与 `arm_score` 对缺席的
-既有口径同向,见 2026-08-06 泛化分析 3/85 = 3.5%)。
+**This rule's cost, recorded now, and the results document records it as-is:**
+these slots will **never agree** with the ground truth; they can only be
+`unfalsified` (the ground truth also lacks the label) or `disagree` (the ground
+truth has a value). That is, if DocILE has annotations for these slots, this
+ruling will book them as **the human's wrong judgments** rather than exempting
+them into `no_truth`. This is a voluntarily borne cost, not an oversight — what
+it buys is that absence claims stay falsifiable (same direction as `arm_score`'s
+existing measure for absences; see the 2026-08-06 generalization analysis, 3/85
+= 3.5%).
 
-与第一条裁定的区别值得记:上一条我劝阻了 `not_applicable`,因为它对真值
-**完全不可打分**,M2 会清空;这一条不劝阻,因为 `confirm_absent` 至少
-**可被否证**。判据是「能不能被证伪」,不是「保守与否」。
+The contrast with ruling one is worth recording: there I talked the reviewer out
+of `not_applicable` because it is **entirely unscoreable** against the ground
+truth and would empty M2; here I did not, because `confirm_absent` is at least
+**falsifiable**. The criterion is "can it be falsified", not "is it
+conservative".
 
-**已判槽的影响**:第 19 槽时全量复查,空值槽上的 `correct` 只有一条 ——
-`2b1312db…|total_gross → 145658.9`(理由「值不对」)。它是否属于本规则
-所指的推导补录,取决于那份文档页面上有没有字面的 Total / 总额栏;
-由复核者复查后决定是否 supersede。其余 18 槽不受影响。
+**Impact on already-judged slots**: full re-check at slot 19; on empty slots
+there is exactly one `correct` — `2b1312db…|total_gross → 145658.9` (reason
+"value is wrong"). Whether it falls under this rule's derived backfill depends
+on whether that document's page has a literal Total / total column; the reviewer
+decides after re-checking whether to supersede. The other 18 slots are
+unaffected.
 
-## 盲法状态
+## Blinding status
 
-TA 已冻结。**在 H2 完成之前,TA 的任何裁决内容不得出现在对话、文档或
-任何输出里**(预注册 §8),只报结构量与 sha256。本文件遵守同一条。
+TA is frozen. **Until H2 finishes, no TA adjudication content may appear in
+conversation, documents, or any output** (preregistration §8); only structural
+quantities and the sha256 are reported. This file follows the same rule.
 
-## 实验终止(2026-08-08,H2 第 32 槽后)
+## Experiment terminated (2026-08-08, after H2 slot 32)
 
-用户明确决定 H2 复核流程「太卡手」,停止 H2 臂并授权立即修复
-`append_adjudication` 的空 `rationale` 写入口。冻结断点:
+The user explicitly decided the H2 review flow was "too sticky", stopped the H2
+arm, and authorized immediately fixing `append_adjudication`'s empty-`rationale`
+write entry. Frozen breakpoint:
 
-- `runs/arm-h2/runs/run-0001/adjudication_ledger.jsonl`:32 行、32 个当前 tip;
-- 其中预注册 200 槽内 31 个,样本外 1 个
-  (`132ccb35754a4c2791fc03d5|total_gross`),正是工作台导航越出抽样范围留下的
-  可审计痕迹;预注册样本仍有 169 槽未裁决;
-- sha256:`0ddabf8f62f71794616009d2d2c3d1a3505c0f38637ce64adbf8f40e159e62b2`。
+- `runs/arm-h2/runs/run-0001/adjudication_ledger.jsonl`: 32 lines, 32 current
+  tips;
+- of these, 31 are within the preregistered 200 slots and 1 is outside the sample
+  (`132ccb35754a4c2791fc03d5|total_gross`) — exactly the auditable trace left by
+  the workbench navigation escaping the sampling scope; 169 preregistered sample
+  slots remain unadjudicated;
+- sha256: `0ddabf8f62f71794616009d2d2c3d1a3505c0f38637ce64adbf8f40e159e62b2`.
 
-后果照登:H2 没有完成预注册的 200 槽,本次 TA vs H2 对照实验**终止而非完成**,
-不得从这批工件报告预注册的配对结果。既有 32 条不改、不删,继续作为审计工件;
-从此刻起共用写入口的校验发生变化,后续裁决不得拼回原实验。若重启对照实验,
-须另开预注册与新臂,不能续写本 run 冒充同一协议。
+Consequences recorded as-is: H2 did not complete the preregistered 200 slots;
+this TA vs H2 controlled experiment is **terminated, not completed**; the
+preregistered paired results may not be reported from these artifacts. The
+existing 32 entries are neither changed nor deleted and remain audit artifacts;
+from this moment the shared write entry's validation has changed, and later
+adjudications may not be spliced back into the original experiment. If the
+controlled experiment restarts, it needs a new preregistration and new arms; it
+cannot continue writing this run under the guise of the same protocol.
 
-## 终止后的工作台修复(2026-08-08)
+## Workbench fixes after termination (2026-08-08)
 
-修复发生在实验终止之后,不回写、不挽救上述 H2。四个已由人工流程暴露的
-摩擦点进入确定性控制面:
+The fixes happened after the experiment terminated; nothing is written back and
+the H2 above is not rescued. Four friction points exposed by the human process
+went into the deterministic control plane:
 
-1. `workbench --review-scope <json>` 把冻结槽位清单变成写权限边界,而不再
-   只是静态链接页。队列、计数、上一条/下一条与 `/decide` 共用同一白名单;
-   旧标签页或手改 URL 的样本外写入返回 409。页面持续显示清单名、槽数与
-   sha256 前缀;
-2. 提交被拒时在原槽返回 HTTP 400,保留决策、修正值、理由、原因码、置信度
-   与署名;组合错误改用界面词汇说明。原因码选项从后端唯一组合表生成并随
-   决策联动,不再让人拼出必然失败的组合;
-3. `rationale` 的必填约束下沉到 `append_adjudication`,所有写入口一致;
-   旧账本若缺理由,carry 明示 `skipped_missing_rationale`,不伪造一段理由;
-4. bbox 覆盖层改为透明底、框外描边,另给「隐藏高亮框」与「打开无框原图」。
+1. `workbench --review-scope <json>` turns the frozen slot list into a write
+   permission boundary, no longer just a static link page. Queue, counters,
+   previous/next, and `/decide` share the same allowlist; out-of-sample writes
+   from stale tabs or hand-edited URLs return 409. The page persistently shows
+   the list name, slot count, and sha256 prefix;
+2. A refused submission returns HTTP 400 on the original slot, preserving the
+   decision, corrected value, reason, reason code, confidence, and signature;
+   combination errors are explained in UI vocabulary. Reason-code options are
+   generated from the backend's unique combination table and follow the decision,
+   so a human can no longer assemble a combination doomed to fail;
+3. `rationale`'s required constraint sinks into `append_adjudication`,
+   consistent across all write entries; if an old ledger lacks a reason, carry
+   states `skipped_missing_rationale` explicitly rather than forging one;
+4. The bbox overlay becomes a transparent fill with an outline outside the box,
+   plus "hide highlight boxes" and "open the unboxed original".
 
-真实 `runs/arm-h2` 只读验收使用预注册的 `docs/arm_slot_sample.json`:页面显示
-31/200、169 待复核;已知样本外槽的直接 GET 被 409 阻断;隐藏按钮切换后
-`aria-pressed=true`,恢复后冻结框计算样式为透明底、1.5px outline、
-2px outline-offset。验收期间启用 `--read-only`,账本仍为上述 32 行与同一
-sha256。相对日期推导、doctype cohort 与跨字段 span collision 不属于本次
-可用性修复,没有夹带修改。
+The real `runs/arm-h2` read-only acceptance used the preregistered
+`docs/arm_slot_sample.json`: the page shows 31/200 with 169 pending review; a
+direct GET of a known out-of-sample slot is blocked with 409; after toggling the
+hide button `aria-pressed=true`, and on restore the frozen box's computed style
+is transparent fill, 1.5px outline, 2px outline-offset. During acceptance
+`--read-only` was enabled; the ledger remains the 32 lines above and the same
+sha256. Relative-date derivation, doctype cohorts, and cross-field span collision
+are not part of this usability fix; nothing was smuggled in.
 
-### 实验终止后的 doctype → HITL 接线
+### Post-termination doctype → HITL wiring
 
-用户指出人工复核没有看到单据类别,导致订单、合同、收据等每张都要先重复辨认。
-工作台现只读新 run 已冻结的 `gate_report.document_checks`:通过时在右栏显示受控
-类别与字面短语,并在左栏圈出 OCR 合并 bbox;未通过时明确不得用模型自报类型判断
-字段适用性。旧 run(包括本 H2)缺少该顶层键,页面如实显示「本 run 未执行单据
-类型检查」,不补跑、不回写。
+The user pointed out that human review never saw the document category, so
+orders, contracts, receipts and the like each had to be re-identified first. The
+workbench now read-only reads the new run's frozen `gate_report.document_checks`:
+on pass, the right column shows the controlled category and the literal phrase
+and the left column circles the merged OCR bbox; on fail, it is explicitly
+forbidden to judge field applicability from the model's self-reported type. Old
+runs (including this H2) lack that top-level key; the page honestly shows "this
+run did not run document type checks" — no re-running, nothing written back.
 
-这不是 doctype cohort:按钮集合、预选状态、队列成员和 `/decide` 写入口均未改变。
-`doc_class × field` 仍没有任何人签适用性规则;三个美国 AP 口径分别还依赖辖区、
-页面标签/布局或支持关系,不能只靠单据类别过度泛化。回归测试同时钉住「类别证据
-可见」与「类别不能替人裁决」两面。
+This is not a doctype cohort: the button set, preselected state, queue
+membership, and the `/decide` write entry are all unchanged. `doc_class × field`
+still has no human-signed applicability rule; the three US AP conventions each
+still depend on jurisdiction, page labels/layout, or support relations, and
+cannot be over-generalized from document category alone. Regression tests pin
+both sides at once: "category evidence is visible" and "the category may not
+adjudicate for the human".
 
-### 复核任务措辞改版(2026-08-09,记录在案)
+### Review-task wording revision (2026-08-09, recorded on file)
 
-队列与单槽页的任务行文案改了。旧版:
+The task-line copy on the queue and single-slot pages changed. Old version:
 
-> 任务:在页面上核对{字段} —— DWS 读到「{值}」。是这个吗?对不对?
+> Task: check {field} on the page — DWS read "{value}". Is this it? Right or
+> wrong?
 
-新版分两种。无类别证据时:
+The new version comes in two forms. Without category evidence:
 
-> 任务:DWS 把「{值}」读成{字段}。请确认该值确实属于{字段},不只是出现在页面上。
-> 任务:DWS 没给出{字段}。请检查页面是否明确写出;不要从相邻字段或付款条款推算。
+> Task: DWS read "{value}" as {field}. Please confirm the value really belongs to
+> {field}, not merely that it appears on the page.
+> Task: DWS gave no {field}. Please check whether the page states it explicitly;
+> do not derive it from neighboring fields or payment terms.
 
-有页面字面类别证据时,前面加一句「页面字面证据支持这是{类别}」,并追加
-「不要仅凭单据类别假定缺失」。
+When there is literal page category evidence, the prefix "literal page evidence
+supports this being a {category}" is added, plus "do not presume absence from
+the document category alone".
 
-改的理由是它把这一轮已经裁定的两条口径写进了指示语本身:值出现在页面上不
-等于映射对(`WRONG_FIELD_MAPPING`);缺的字段不许从邻栏或付款条款推导出来
-(本文件「口径裁定之二」)。最后那句针对的是 SEALED-3 主臂唯一那次静默缺席
-—— doctype 正确认出 credit note,而「这类单据没有税号」这个假设吞掉了一个真
-有值的 seller_vat_id(`SEALED3_RESULTS.md` §4)。类别是上下文,不是答案。
+The reason for the change is that it bakes this round's two already-ruled
+conventions into the instructions themselves: a value appearing on the page does
+not mean the mapping is right (`WRONG_FIELD_MAPPING`); a missing field may not be
+derived from a neighboring column or payment terms (this file's "measurement
+ruling two"). The last sentence targets SEALED-3 main arm's only silent absence —
+doctype correctly recognized the credit note, and the assumption "this kind of
+document has no tax number" swallowed a seller_vat_id that truly had a value
+(`SEALED3_RESULTS.md` §4). Category is context, not the answer.
 
-**对本实验的影响:没有新增不可比性,因为对照实验已经终止**(见上「H2 提前
-终止」:账本停在 32 行,不得从这批工件报告预注册的配对结果)。TA 臂已跑完,
-不受文案影响。这条只是把边界记清楚:
+**Impact on this experiment: no new incomparability, because the controlled
+experiment is already terminated** (see "H2 early termination" above: the ledger
+stopped at 32 lines; the preregistered paired results may not be reported from
+these artifacts). The TA arm already ran to completion and is unaffected by the
+wording. This entry only makes the boundary clear:
 
-- `runs/arm-h2` 那 32 条裁决是在**旧文案**下做出的;
-- `runs/arm-ta` 全部在旧文案下;
-- 之后任何一次复核都在新文案下,重启对照实验时必须在预注册里写明用哪一版
-  指示语 —— 指示语是实验材料的一部分,换了就要说。
+- the 32 adjudications in `runs/arm-h2` were made under the **old wording**;
+- all of `runs/arm-ta` is under the old wording;
+- any later review is under the new wording; a restarted controlled experiment
+  must state in its preregistration which version of the instructions it uses —
+  the instructions are part of the experiment's materials, and a change must be
+  declared.
 
-顺带记另一条同批改动:交付层现在区分 `ready_for_approval` 与
-`approved_for_export`,槽全部处置完毕不再等于可外发。工作台交付页多出批准卡,
-但**不进复核队列**,与本实验的槽级裁决无关。
+Also recording another change from the same batch: the delivery layer now
+distinguishes `ready_for_approval` from `approved_for_export`; all slots
+dispositioned no longer equals exportable. The workbench delivery page gained an
+approval card, but it **does not enter the review queue** and is unrelated to
+this experiment's slot-level adjudications.

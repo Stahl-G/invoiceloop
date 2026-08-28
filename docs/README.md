@@ -43,13 +43,14 @@ The judge-cited records were translated into English in place on 2026-08-28
 for the two hackathon submissions (`CLOUD_RUN.md`, `ARM_UNATTENDED.md`,
 `QUALIFICATION_NARROW_V2_RESULTS_2026-08-23.md`,
 `QUALIFICATION_NARROW_CONTAMINATION_2026-08-23.md`). The Chinese originals of
-those four remain in git history. One file is byte-pinned by the machine
-decision chain and is **never** edited: the v2 protocol
-(`sha256 08a540b6…`, pinned in `qualification_decision.json`) — its English
-version lives beside it as `QUALIFICATION_NARROW_V2_PROTOCOL_2026-08-23.en.md`
-and is a translation only, not an authority. The remaining dated records stay
-in Chinese as written laboratory notes; this index states in English what each
-contains.
+those four remain in git history. Two files are never edited in place: the v2 protocol
+(`sha256 08a540b6…`, byte-pinned in `qualification_decision.json`) and the
+self-frozen internal rubric (`HACKATHON_RUBRIC_v0.1.md`, whose header declares
+its body verbatim-frozen) — each carries an English companion beside it
+(`*.en.md`, translation only, not an authority). All other dated records were
+translated in place on 2026-08-28; the Chinese originals remain in git
+history, and every number, hash, and identifier was preserved verbatim
+(checked mechanically file by file).
 
 ## HITL and the payment-posting contract (2026-08-14)
 
