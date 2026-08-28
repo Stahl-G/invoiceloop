@@ -87,11 +87,11 @@ def load_ocr(doc_id: str) -> dict:
     """
     path = ocr_path(doc_id)
     if not path.exists():
-        raise OcrUnavailable(f"OCR 不存在:{path}(doc {doc_id})")
+        raise OcrUnavailable(f"independent OCR missing: {path} (doc {doc_id})")
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        raise OcrUnavailable(f"OCR 不可读:{path}(doc {doc_id}):{exc}") from exc
+        raise OcrUnavailable(f"independent OCR unreadable: {path} (doc {doc_id}): {exc}") from exc
 
 
 def iter_words(doc_id: str) -> Iterator[tuple[int, str, tuple]]:

@@ -150,7 +150,8 @@ def ocr_pdf(pdf_path: Path, *, work_dir: Path | None = None) -> dict:
         pages = _tesseract_pages(pdf_path, scratch)
     if not pages or not any(p["blocks"][0]["lines"][0]["words"] for p in pages):
         raise OcrUnavailable(
-            f"{pdf_path.name}: 无文字层且 tesseract 不可用或取不到词 —— "
-            f"这份文档的独立 OCR 产不出,按宪章四阻断"
+            f"{pdf_path.name}: no text layer and tesseract unavailable or yields "
+            f"no words — independent OCR cannot be produced for this document; "
+            f"blocked per charter rule four"
         )
     return {"pages": pages}

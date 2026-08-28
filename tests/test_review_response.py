@@ -137,12 +137,12 @@ class TestPanelLedgerRecheck:
         out = ws / "runs" / "run-0001"
         run([DOC], out, include_vision=False, out_of_calibration=True)
         render_panel_from_run(out)
-        assert "与声明一致" in (out / "support_panel.html").read_text()
+        assert "matches the declared digest" in (out / "support_panel.html").read_text()
         ledger = json.loads((out / "field_ledger.json").read_text())
         ledger["claims"][0]["value"] = "999.99"  # 自报 sha 不动,内容改掉
         (out / "field_ledger.json").write_text(json.dumps(ledger))
         render_panel_from_run(out)
-        assert "与文件自报不符" in (out / "support_panel.html").read_text(), \
+        assert "does not match the declared digest" in (out / "support_panel.html").read_text(), \
             "页脚只打印自报哈希 = 让被改的账本自证清白(评审 P1)"
 
 
@@ -180,5 +180,5 @@ class TestCliErrorUx:
             "--doc", DOC, "--field", "total_gross", "--claim-id", "FC-9999",
             "--decision", "accept", "--rationale", "r", "--adjudicator", "y",
             "--decided-at", "2026-08-04T00:00:00"])
-        with pytest.raises(SystemExit, match="错误"):
+        with pytest.raises(SystemExit, match="error:"):
             main()

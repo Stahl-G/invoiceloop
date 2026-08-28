@@ -19,9 +19,9 @@ VENV=./.venv/bin
 "$VENV/pip" install -q ".[dev]"
 
 echo "== doctor =="
-"$VENV/python" -m invoiceloop doctor > /dev/null || { echo "doctor 未过"; exit 1; }
+"$VENV/python" -m invoiceloop doctor > /dev/null || { echo "doctor failed"; exit 1; }
 
-echo "== 产品路径 E2E:ingest(本地 OCR)→ 合成存盘响应 → run =="
+echo "== Product-path E2E: ingest (local OCR) -> synthetic stored responses -> run =="
 WS="$WORK/ws"
 mkdir -p "$WS/input/pdfs"
 cp tests/fixtures/mini-invoice.pdf "$WS/input/pdfs/acme-001.pdf"
@@ -48,27 +48,27 @@ PY
 "$VENV/python" -m invoiceloop run --workspace "$WS" --no-vision > /dev/null
 RUN="$WS/runs/run-0001"
 test -f "$RUN/support_panel.html"
-grep -q "输入不在校准集内" "$RUN/support_panel.html"
+grep -q "outside the calibration set" "$RUN/support_panel.html"
 test -f "$RUN/review_snapshot.json" && test -f "$RUN/input_manifest.json"
 
-echo "== 裁决 → panel 投影(闭环)=="
+echo "== Adjudication -> panel projection (closed loop) =="
 CLAIM=$("$VENV/python" -c "import json; print(next(c['claim_id'] for c in json.load(open('$RUN/field_ledger.json'))['claims'] if c['field'] == 'total_gross'))")
 "$VENV/python" -m invoiceloop adjudicate --run "$RUN" --doc acme-001 --field total_gross \
   --claim-id "$CLAIM" --decision correct --corrected-value "100.00" \
-  --rationale "独立 OCR 与纸面一致" --adjudicator fresh-venv \
+  --rationale "independent OCR matches the printed page" --adjudicator fresh-venv \
   --decided-at 2026-08-03T00:00:00 | grep -q '"panel_refreshed": true'
-grep -q "人工修正" "$RUN/support_panel.html"
+grep -q "human-corrected" "$RUN/support_panel.html"
 grep -q "100.00" "$RUN/support_panel.html"
 
 echo "== bundle → verify =="
 "$VENV/python" -m invoiceloop bundle --run "$RUN" > /dev/null
 "$VENV/python" -m invoiceloop verify "$RUN/audit_bundle.zip" | grep -q '"ok": true'
 
-echo "== 同输入重跑 = 重放,不开新代 =="
+echo "== Same input re-run = replay, no new generation =="
 "$VENV/python" -m invoiceloop run --workspace "$WS" --no-vision | grep -q '"replayed": true'
 test ! -d "$WS/runs/run-0002"
 
-echo "== demo 命令:内嵌语料(wheel 里的 samples)跑通全流程 =="
+echo "== demo command: vendored samples (from the wheel) run the full pipeline =="
 "$VENV/python" -m invoiceloop demo --out "$WORK/demo-ws" > /dev/null
 DEMO_RUN="$WORK/demo-ws/runs/run-0001"
 test -f "$DEMO_RUN/support_panel.html"
@@ -82,7 +82,7 @@ assert any(f["gate_id"] == "visual_corroboration" for f in gate["findings"]), \
     "demo 的读图门 warning(买卖双方抽反)必须在"
 PY
 
-echo "== pytest(研究数据缺失时研究测试自动跳过;agent 测试需要 [gemini],此处不装)=="
+echo "== pytest (research tests auto-skip without the research archive; agent tests need [gemini], not installed here) =="
 INVOICELOOP_DWS_DERISK=/nonexistent "$VENV/python" -m pytest tests/ -q --ignore-glob='tests/test_agents_*.py'
 
 echo "fresh-venv check OK"

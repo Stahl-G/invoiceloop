@@ -47,19 +47,22 @@ class TestDeterminism:
 class TestDeliverableHonesty:
     def test_panel_states_extraction_is_not_trusted(self, two_runs):
         panel = (two_runs[0] / "support_panel.html").read_text(encoding="utf-8")
-        assert "抽取的正确性不可信" in panel
-        assert "不主张 DWS 可信" in panel
+        assert "Extraction correctness is untrustworthy" in panel
+        assert "No claim that DWS is trustworthy" in panel
 
     def test_panel_gate_chips_explain_themselves(self, two_runs):
         panel = (two_runs[0] / "support_panel.html").read_text(encoding="utf-8")
-        assert "算术一致性:验算" in panel, "悬停说明要进静态 panel(bundle 里的评委也看得到)"
-        assert "引用区里有这个值" in panel or "没有引用区或没有 OCR" in panel
+        assert "arith:pass" in panel
+        assert "The identities hold" in panel, \
+            "hover explanations must reach the static panel (judges in the bundle see them too)"
+        assert "The value is in the cited region" in panel or \
+            "No cited region or not applicable" in panel
 
     def test_panel_carries_all_three_qualifiers(self, two_runs):
         panel = (two_runs[0] / "support_panel.html").read_text(encoding="utf-8")
-        assert "带乐观偏差" in panel and "留出集确认已于" in panel
-        assert "8 例是标注错" in panel
-        assert "DocILE 之外的表现仍未知" in panel
+        assert "an optimistic bias" in panel and "held-out confirmation ran" in panel
+        assert "8 of 14 cases were annotation errors" in panel
+        assert "outside DocILE remains unknown" in panel
 
     def test_every_blocking_finding_has_a_repair_route(self, two_runs):
         report = json.loads((two_runs[0] / "gate_report.json").read_text(encoding="utf-8"))

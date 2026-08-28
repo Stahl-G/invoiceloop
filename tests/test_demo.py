@@ -47,7 +47,7 @@ class TestDemoEndToEnd:
         try:
             run_dir = ws / "runs" / "run-0001"
             panel = (run_dir / "support_panel.html").read_text(encoding="utf-8")
-            assert "输入不在校准集内" in panel
+            assert "outside the calibration set" in panel
             gate = json.loads((run_dir / "gate_report.json").read_text())
             assert any(f["gate_id"] == "visual_corroboration"
                        for f in gate["findings"]), \
@@ -76,7 +76,7 @@ class TestDemoEndToEnd:
         ws = tmp_path / "demo-ws"
         ws.mkdir()
         (ws / "anything").write_text("x")
-        with pytest.raises(SystemExit, match="非空"):
+        with pytest.raises(SystemExit, match="not empty"):
             cmd_demo(ws)
 
     def test_demo_restores_corpus_env(self, tmp_path, monkeypatch):

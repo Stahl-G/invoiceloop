@@ -95,6 +95,32 @@ def critic_reason_code(decision: str) -> str:
     }[decision]
 
 
+#: 执行失败字段:任一非空 → CLI 退出码 1(Cloud Run Job 据此报失败)。
+#: **approval_refusals 不在其中** —— 策略/approver 拒绝是正常业务结果,
+#: 不是执行失败;"没批"永远不许被当成"没跑"。例外见 failed() 的
+#: approval_error 分支。panel_error 在列:Job 的证据契约是「落桶即完整」,
+#: 面板渲染炸 = 证据不完整 = 阻断(panel 本身可重建,但 rc 必须喊出来)。
+_FAILURE_FIELDS = (
+    "drive_fatal", "gate_error", "deliverable_error", "panel_error",
+    "clerk_failures", "clerk_binding_failures",
+    "critic_failures", "critic_binding_failures",
+    "approver_failures",
+)
+
+
+def failed(report: dict) -> bool:
+    """unattended_run 报告里有没有执行失败(宪章四:跑不了 ≠ 通过)。
+
+    PR 审查的 P1:批准**写入异常**会被 binder3 记进 approval_refusals 的
+    approval_error 键 —— 那是执行失败躲在业务字段里,不揪出来就是
+    exit 0 + 绿色 Job。真正的策略拒绝(无该键)仍不算失败。
+    """
+    if any(report.get(field) for field in _FAILURE_FIELDS):
+        return True
+    return any(entry.get("approval_error")
+               for entry in report.get("approval_refusals") or [])
+
+
 def build_unattended_pipeline(
     run_dir: Path,
     *,

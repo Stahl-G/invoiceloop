@@ -15,7 +15,7 @@ REGION="${REGION:-asia-southeast1}"
 SERVICE="${SERVICE:-invoiceloop}"
 
 if [[ -z "${PROJECT}" || "${PROJECT}" == "(unset)" ]]; then
-  echo "需要 PROJECT=... 或 gcloud config set project" >&2
+  echo "PROJECT=... or gcloud config set project is required" >&2
   exit 1
 fi
 

@@ -16,7 +16,7 @@ WS=/data/job-ws
 RUN_DIR="${WS}/runs/run-0001"
 
 if [[ -z "${BUCKET:-}" || -z "${GOOGLE_CLOUD_PROJECT:-}" ]]; then
-  echo "fatal: BUCKET 与 GOOGLE_CLOUD_PROJECT 必须由 Job 环境注入" >&2
+  echo "fatal: BUCKET and GOOGLE_CLOUD_PROJECT must be injected by the Job environment" >&2
   exit 1
 fi
 
@@ -42,13 +42,16 @@ set -e
 
 echo "== job: upload artifacts to ${BUCKET} =="
 # google-cloud-storage 不在镜像依赖里;用 ADC token + JSON API 直传(仅标准库+requests)
-python3 - "${RUN_DIR}" "${BUCKET}" "${UNATTENDED_RC}" <<'PYEOF'
+# 上传根是**整个工作区**而不只是 run 目录:agent_calls(模型调用录音,
+# 零 API 重放的依据)、input/pdfs(源单据)、raw(DWS 存盘响应)、ocr
+# 都在工作区层 —— 只传 run 目录会让 artifact_registry.json 指向桶里
+# 不存在的文件,一份断链的证据清单比不上传更糟。
+python3 - "${WS}" "${BUCKET}" "${UNATTENDED_RC}" <<'PYEOF'
 import json, sys, time
 from pathlib import Path
 import requests
 
-from pathlib import Path as _P
-run_dir, bucket = _P(sys.argv[1]), sys.argv[2].removeprefix("gs://")
+ws, bucket = Path(sys.argv[1]), sys.argv[2].removeprefix("gs://")
 unattended_rc = int(sys.argv[3])
 # Cloud Run 的 SA token 从元数据服务器来;本地 docker 验证时可 GOOGLE_OAUTH_ACCESS_TOKEN 注入
 token = None
@@ -64,15 +67,20 @@ except Exception:
 import os
 token = token or os.environ.get("GOOGLE_OAUTH_ACCESS_TOKEN")
 if not token:
-    raise SystemExit("fatal: 无 ADC token,工件上不了桶 —— 阻断(见脚本头注)")
+    raise SystemExit("fatal: no ADC token — artifacts cannot reach the bucket; blocking (see script header)")
 
 stamp = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
 prefix = f"arm-u-runs/{stamp}"
 uploaded = []
-for path in sorted(run_dir.rglob("*")):
-    if not path.is_file() or "pages/" in path.as_posix() or "crops/" in path.as_posix():
-        continue  # 渲染图体积大且可从 PDF 重建;账本/报告/投影必须全量
-    obj = f"{prefix}/{path.relative_to(run_dir)}"
+for path in sorted(ws.rglob("*")):
+    rel = path.relative_to(ws).as_posix()
+    if not path.is_file():
+        continue
+    # 渲染图体积大且可从 PDF 重建;锁文件与字节码不是证据 —— 都不上传
+    if any(part in ("pages", "crops", "__pycache__") for part in Path(rel).parts) \
+            or rel.endswith(".lock"):
+        continue
+    obj = f"{prefix}/{rel}"
     url = (f"https://storage.googleapis.com/upload/storage/v1/b/"
            f"{bucket}/o?uploadType=media&name={obj}")
     resp = requests.post(
@@ -80,7 +88,7 @@ for path in sorted(run_dir.rglob("*")):
         headers={"Authorization": f"Bearer {token}",
                  "Content-Type": "application/octet-stream"})
     if resp.status_code not in (200, 201):
-        raise SystemExit(f"fatal: 上传失败 {obj}: {resp.status_code} {resp.text[:200]}")
+        raise SystemExit(f"fatal: upload failed for {obj}: {resp.status_code} {resp.text[:200]}")
     uploaded.append(obj)
 print(json.dumps({"bucket": bucket, "prefix": prefix, "files": len(uploaded),
                   "unattended_rc": int(sys.argv[3]) if len(sys.argv) > 3 else None},

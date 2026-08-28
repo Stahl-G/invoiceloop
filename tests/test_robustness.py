@@ -196,14 +196,14 @@ class TestPanelShowsReviewEvidence:
         (tmp_path / "crops").mkdir()
         (tmp_path / "crops" / "ES-0003-1.png").write_bytes(b"\x89PNG")
         panel = self._render(tmp_path, self.REJECTED_ROW, self.CITED_SPAN)
-        assert "DWS 指向这里(复核用)" in panel
+        assert "DWS points here (for review)" in panel
         assert "crops/ES-0003-1.png" in panel
         assert "21,000.00" in panel  # 引用区的独立 OCR,复核者要对照的就是它
 
     def test_row_without_any_citation_gets_full_page_link(self, tmp_path):
         row = {**self.REJECTED_ROW, "cited_span_ids": []}
         panel = self._render(tmp_path, row, [], make_pages=True)
-        assert "看整页" in panel and f"pages/{row['doc_id']}-1.png" in panel
+        assert "see the full page" in panel and f"pages/{row['doc_id']}-1.png" in panel
 
 
 @pytest.mark.skipif(not REAL_CORPUS, reason="存盘证据不在")

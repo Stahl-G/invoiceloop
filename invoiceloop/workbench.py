@@ -841,6 +841,11 @@ _T = {
 }
 
 
+def _join_names(lang: str, names: list[str]) -> str:
+    """列举连接符跟语言走:zh 用顿号,en 用逗号。"""
+    return ("、" if lang == "zh" else ", ").join(names)
+
+
 def _t(lang: str, key: str, **kw) -> str:
     text = _T.get(lang, _T["en"]).get(key, _T["en"].get(key, key))
     return text.format(**kw) if kw else text
@@ -1275,18 +1280,18 @@ def load_review_scope(path: Path | str) -> ReviewScope:
     try:
         payload = json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise ValueError(f"review scope 不是合法 JSON:{source}") from exc
+        raise ValueError(f"review scope is not valid JSON: {source}") from exc
     values = payload.get("slots") if isinstance(payload, dict) else payload
     if not isinstance(values, list) or not values:
-        raise ValueError("review scope 必须含非空 slots 列表")
+        raise ValueError("review scope requires a non-empty slots list")
     slots: list[tuple[str, str]] = []
     seen: set[tuple[str, str]] = set()
     for value in values:
         if not isinstance(value, str) or value.count("|") != 1:
-            raise ValueError(f"review scope 槽位必须是 doc|field,收到 {value!r}")
+            raise ValueError(f"review scope slots must be doc|field, got {value!r}")
         doc, field = value.split("|", 1)
         if not doc or not field or value != value.strip():
-            raise ValueError(f"review scope 槽位必须是非空 doc|field,收到 {value!r}")
+            raise ValueError(f"review scope slots must be non-empty doc|field, got {value!r}")
         key = (doc, field)
         if key in seen:
             raise ValueError(f"review scope 有重复槽位:{value}")
@@ -3139,11 +3144,11 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
             unreviewed = doc.get("policy_disposed_fields") or []
             tier1 = doc.get("tier1_policy_disposed_fields") or []
             if unreviewed:
-                names = "、".join(_pw.field(f, lang) for f in unreviewed)
+                names = _join_names(lang, [_pw.field(f, lang) for f in unreviewed])
                 who = (f'<p class="wb-approve-unreviewed">'
                        f'{_esc(_t(lang, "approve_unreviewed", fields=names))}')
                 if tier1:
-                    key = "、".join(_pw.field(f, lang) for f in tier1)
+                    key = _join_names(lang, [_pw.field(f, lang) for f in tier1])
                     who += (f' <b>'
                             f'{_esc(_t(lang, "approve_unreviewed_tier1", fields=key))}'
                             f'</b>')
@@ -3308,14 +3313,15 @@ class _Handler(BaseHTTPRequestHandler):
             if public:
                 # 公开绑定:若调用方显式给了白名单则强制;否则交给 Cloud Run 入口层
                 if allowed and host not in allowed and not _host_suffix_ok(host, allowed):
-                    raise _HttpError(403, f"Host {host!r} 不在公开白名单")
+                    raise _HttpError(403, f"Host {host!r} is not on the public allowlist")
             elif host not in allowed:
-                raise _HttpError(403, f"Host {host!r} 不在 loopback 白名单 —— "
-                                      f"这通常是 DNS rebinding 的特征,已拒")
+                raise _HttpError(403, f"Host {host!r} is not on the loopback allowlist — "
+                                      f"this is the signature of DNS rebinding; refused")
         if method == "POST" and getattr(self.server, "read_only", False):
             raise _HttpError(
-                403, "read-only demo —— 本实例不接受任何写入。"
-                     "裁决账本只在本地可写运行的工作台上追加。")
+                403, "read-only demo — this instance accepts no writes. "
+                     "The adjudication ledger is only appended to on a locally "
+                     "writable workbench.")
         if method == "POST":
             origin = self._host_of(self.headers.get("Origin"))
             if origin is None:
@@ -3323,11 +3329,11 @@ class _Handler(BaseHTTPRequestHandler):
             if public:
                 # 同页 POST:Origin 主机必须等于 Host(Cloud Run URL 可变)
                 if host is not None and origin != host:
-                    raise _HttpError(403, f"跨源 POST(Origin {origin!r})已拒 —— "
-                                          f"本服务只接受本页发起的写操作")
+                    raise _HttpError(403, f"cross-origin POST (Origin {origin!r}) refused — "
+                                          f"this service only accepts writes from its own pages")
             elif origin not in allowed:
-                raise _HttpError(403, f"跨源 POST(Origin {origin!r})已拒 —— "
-                                      f"本服务只接受本页发起的写操作")
+                raise _HttpError(403, f"cross-origin POST (Origin {origin!r}) refused — "
+                                      f"this service only accepts writes from its own pages")
 
     def _body(self, limit: int = 10 * 1024 * 1024) -> bytes:
         length = int(self.headers.get("Content-Length") or 0)
@@ -3483,7 +3489,7 @@ class _Handler(BaseHTTPRequestHandler):
     def _require_run(self, params: dict) -> Path:
         run = self.bench.get_run(params.get("run", [None])[0])
         if run is None:
-            raise _HttpError(404, f"run 不存在或不完整:{params.get('run', ['?'])[0]}")
+            raise _HttpError(404, f"run missing or incomplete: {params.get('run', ['?'])[0]}")
         return run
 
     # ---- 动作
@@ -3498,10 +3504,11 @@ class _Handler(BaseHTTPRequestHandler):
             lang = form_lang
         if not run_name:
             raise _HttpError(
-                400, "run 不能为空 —— 裁决必须绑到提交那一页的 run,不许回落到 current")
+                400, "run must not be empty — an adjudication binds to the run of the "
+                     "page it was submitted from; no falling back to current")
         run = self.bench.get_run(run_name)
         if run is None:
-            raise _HttpError(404, f"run 不存在:{run_name}")
+            raise _HttpError(404, f"run does not exist: {run_name}")
         if is_terminated(self.bench.ws):
             raise _HttpError(403, _t(lang, "terminated_decide"), run=run_name)
         state = budget_state(self.bench.ws, run)
@@ -3517,9 +3524,9 @@ class _Handler(BaseHTTPRequestHandler):
         adjudicator = form.get("adjudicator", [""])[0].strip()
         try:
             if not rationale:
-                raise ValueError("rationale 不能为空 —— 把发现的问题或理由写出来")
+                raise ValueError("rationale must not be empty — write the problem found or the reason")
             if not adjudicator:
-                raise ValueError("adjudicator 不能为空 —— 裁决要署名")
+                raise ValueError("adjudicator must not be empty — adjudications are signed")
             result = adjudicate_and_render(
                 run,
                 claim_id=form.get("claim_id", [""])[0] or None,
@@ -3597,12 +3604,12 @@ class _Handler(BaseHTTPRequestHandler):
     def _upload(self, params: dict) -> None:
         filename = Path(params.get("filename", [""])[0]).name
         if not filename.lower().endswith(".pdf"):
-            raise _HttpError(400, f"只接受 .pdf:{filename!r}")
+            raise _HttpError(400, f"only .pdf files are accepted: {filename!r}")
         body = self._body(limit=MAX_UPLOAD)
         if not body:
-            raise _HttpError(400, "空文件")
+            raise _HttpError(400, "empty file")
         if not body.startswith(b"%PDF"):
-            raise _HttpError(400, f"{filename!r} 不是 PDF(魔数不符)")
+            raise _HttpError(400, f"{filename!r} is not a PDF (magic bytes mismatch)")
         doc_id = sanitise_doc_id(Path(filename).stem)
         target = self.bench.ws / "input" / "pdfs" / f"{doc_id}.pdf"
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -3657,7 +3664,7 @@ class _Handler(BaseHTTPRequestHandler):
         # 文档集 = input/pdfs ∪ raw:抽取失败的文档不许从 run 里隐身(评审 P1)
         doc_ids = sorted(set(discover(self.bench.ws)) | set(dws.stored_docs()))
         if not doc_ids:
-            raise _HttpError(400, "raw/ 里没有存盘响应 —— 先放 PDF 并勾选 DWS 抽取")
+            raise _HttpError(400, "no stored responses in raw/ — put a PDF in first and enable DWS extraction")
         fingerprint = build_input_manifest(doc_ids)["execution_fingerprint"]
         existing = find_run_by_fingerprint(self.bench.ws / "runs", fingerprint)
         if existing is not None:
@@ -3704,7 +3711,7 @@ class _Handler(BaseHTTPRequestHandler):
         self._last_run = run.name
         doc_id = (form.get("doc", [""])[0] or "").strip()
         if not doc_id:
-            raise _HttpError(400, "没说批准哪一份单据")
+            raise _HttpError(400, "no document named for approval")
         append_approval(
             run, doc_id=doc_id,
             approved_by=(form.get("approved_by", [""])[0] or "").strip(),
@@ -3760,7 +3767,7 @@ class _Handler(BaseHTTPRequestHandler):
         form = self._form()
         run, lang = self._imp_form_run(form)
         if not (self.bench.ws / "improve" / "mine_report.json").exists():
-            raise _HttpError(400, "还没有挖掘报告 —— 先点「关账并挖掘」")
+            raise _HttpError(400, "no mining report yet — click \"close out and mine\" first")
         backend = _advisory_backend(self.bench.ws)
         if _advisory_unavailable_reason(backend):
             raise _HttpError(
@@ -3800,7 +3807,7 @@ class _Handler(BaseHTTPRequestHandler):
         cohort = {k[2:]: v[0] for k, v in form.items()
                   if k.startswith("c_") and v and v[0]}
         if not cohort:
-            raise _HttpError(400, "草稿没有 cohort 特征 —— 采纳不了")
+            raise _HttpError(400, "the draft has no cohort features — cannot adopt")
         kind = form.get("kind", ["auto_accept"])[0]
         if kind == "absent_expected":
             # 类别缺席规则的 ID 由 Python 从 doc_class × field 生成(宪章一:
@@ -3808,13 +3815,13 @@ class _Handler(BaseHTTPRequestHandler):
             # 递了就是 propose 的白名单外键,必被拒。
             if not cohort.get("doc_class"):
                 raise _HttpError(
-                    400, "缺席规则要说清是哪一类单据 —— 不带类别就是"
-                         "「所有单据都没有这个字段」,那条规则会静默吞掉"
-                         "真有值的槽")
+                    400, "an absence rule must name the document class — without "
+                         "one it means \"no document of any kind has this field\", "
+                         "and that rule would silently swallow slots that do")
         else:
             cohort_id = (form.get("cohort_id", [""])[0] or "").strip()
             if not cohort_id:
-                raise _HttpError(400, "给候选起个名字")
+                raise _HttpError(400, "give the candidate a name")
             cohort = {"id": cohort_id, **cohort}
         cand_dir = improve.propose(
             self.bench.ws, cohort=cohort,
@@ -3845,7 +3852,7 @@ class _Handler(BaseHTTPRequestHandler):
         run, lang = self._imp_form_run(form)
         candidate = (form.get("candidate", [""])[0] or "").strip()
         if not candidate:
-            raise _HttpError(400, "没给候选 id")
+            raise _HttpError(400, "no candidate id given")
         reextract = bool(form.get("reextract", [""])[0])
         improve.evaluate(
             self.bench.ws, candidate, reextract=reextract,
@@ -3875,7 +3882,7 @@ class _Handler(BaseHTTPRequestHandler):
 
         body = self._body(limit=MAX_UPLOAD)
         if not body:
-            raise _HttpError(400, "先选一个 .zip 文件")
+            raise _HttpError(400, "choose a .zip file first")
         with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
             tmp.write(body)
             tmp_path = Path(tmp.name)
@@ -3895,7 +3902,7 @@ class _Handler(BaseHTTPRequestHandler):
             raise _HttpError(404, "bad path")
         run = self.bench.get_run(parts[0])
         if run is None:
-            raise _HttpError(404, "run 不存在")
+            raise _HttpError(404, "run does not exist")
         target = (run / urllib.parse.unquote(parts[1])).resolve()
         if not target.is_relative_to(run.resolve()) or target.suffix not in (".png", ".html", ".json"):
             raise _HttpError(404, "not found")
@@ -3913,7 +3920,7 @@ class _Handler(BaseHTTPRequestHandler):
         run = self.bench.get_run(parts[0])
         target = (run or Path(".")) / parts[1]
         if run is None or not target.exists():
-            raise _HttpError(404, f"{parts[1]} 不存在")
+            raise _HttpError(404, f"{parts[1]} does not exist")
         mime = ("application/zip" if parts[1].endswith(".zip")
                 else "application/json")
         self._send(200, target.read_bytes(), mime)
@@ -4019,18 +4026,18 @@ def cmd_workbench(
                          read_only=read_only, review_scope=review_scope)
     addr_host = "127.0.0.1" if host in PUBLIC_BIND_HOSTS else host
     url = f"http://{addr_host}:{server.server_address[1]}"
-    mode = "公开绑定(Cloud Run/容器)" if server.public else "仅本机 loopback"
+    mode = "public bind (Cloud Run/container)" if server.public else "loopback only"
     if read_only:
-        mode += ",只读(POST 一律 403)"
+        mode += ", read-only (every POST gets 403)"
     if server.bench.review_scope is not None:
         scope = server.bench.review_scope
-        mode += f",限定复核 {len(scope.slots)} 槽({scope.source.name})"
-    print(f"InvoiceLoop 工作台:{url}({mode},Ctrl-C 停止)")
+        mode += f", review-scoped to {len(scope.slots)} slots ({scope.source.name})"
+    print(f"InvoiceLoop workbench: {url} ({mode}, Ctrl-C to stop)")
     backend = _advisory_backend(workspace)
     if _advisory_unavailable_reason(backend):
         import sys
 
-        print(_advisory_unavailable_text("zh", backend), file=sys.stderr)
+        print(_advisory_unavailable_text("en", backend), file=sys.stderr)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

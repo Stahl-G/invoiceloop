@@ -132,7 +132,8 @@ def _copy_samples(ws: Path) -> None:
 def cmd_demo(out: Path) -> None:
     out = Path(out)
     if out.exists() and any(out.iterdir()):
-        raise SystemExit(f"{out} 已存在且非空 —— run 不可变同样适用于 demo,换个目录")
+        raise SystemExit(f"{out} already exists and is not empty — immutability "
+                         f"applies to demo runs too; pick another directory")
     _copy_samples(out)
 
     # 语料指针只在本命令内改向,用完还回 —— 库调用不许留下环境副作用
@@ -166,11 +167,34 @@ def cmd_demo(out: Path) -> None:
     blocked = summary.get("ocr_blocked", [])
     blocked_ids = [b["doc_id"] for b in blocked]
     if blocked_ids:
-        note = (f"OCR 受阻:{', '.join(blocked_ids)} —— 诚实阻断展品;"
-                f"046e0c49 的读图门「买卖双方抽反」warning 两份展品都在")
+        note = (f"OCR blocked for {', '.join(blocked_ids)} — the honest-blocking "
+                f"exhibit; the vision-gate warning on 046e0c49 (buyer and seller "
+                f"extracted the wrong way round) is present in both shapes")
     else:
-        note = ("本机 poppler 从退化扫描件也抽出了文字层,三份全流程正常;"
-                "046e0c49 的展品是读图门对「买卖双方抽反」的 warning(数据决定)")
+        note = ("this poppler build recovered a text layer from the degraded scan, "
+                "so all three documents flowed normally; the 046e0c49 exhibit is "
+                "the vision-gate warning on buyer/seller being swapped (determined "
+                "by the vendored data)")
+
+    # DWS 可见段(API World 硬规则:评委跑 demo 时要能看见 DWS 在链路里的
+    # 位置与产出)。零 API:读的是 samples 里随仓库分发的存盘响应。
+    dws_example = None
+    try:
+        raw = json.loads(
+            (out / "raw" / "002e3cf97973428f905671b3.understand.json")
+            .read_text(encoding="utf-8"))["body"]["output"]
+        meta = raw["metadata"]["total_gross"]
+        dws_example = {
+            "doc_id": "002e3cf97973428f905671b3",
+            "field": "total_gross",
+            "value": raw["data"]["total_gross"],
+            "page": meta.get("pageNumber"),
+            "bbox_px": meta["bbox"],
+            "confidence": meta.get("confidence"),
+            "grounding": (meta.get("confidenceComponents") or {}).get("source"),
+        }
+    except Exception:  # noqa: BLE001 —— 展示段缺席不阻断 demo 本体
+        pass
     from .deliver import build_deliverable
 
     delivered = build_deliverable(run_dir)
@@ -184,6 +208,15 @@ def cmd_demo(out: Path) -> None:
         "seeded_by": DEMO_ADJUDICATOR,
         "delivery_status": delivered["summary"]["by_status"],
         "deliverable": str(run_dir / "deliverable.json"),
+        "dws": {
+            "role": ("Nutrient DWS is the extraction layer: these vendored "
+                     "responses are what it produced from the PDFs — field "
+                     "values with page groundings. InvoiceLoop freezes them, "
+                     "runs six deterministic gates, routes the unresolved "
+                     "slots to review, and leaves approval to a named human"),
+            "stored_responses": "samples/raw/*.json (vendored; this demo path is zero-API)",
+            "example": dws_example,
+        },
         "next": f"python3 -m invoiceloop workbench --workspace {out}",
         "note": note,
     }, ensure_ascii=False, indent=1))

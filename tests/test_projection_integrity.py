@@ -73,7 +73,7 @@ class TestProjectionIsNotAuthority:
         claim = next(c for c in ledger["claims"]
                      if c["doc_id"] == DOC and c["field"] == "total_gross"
                      and c["drafted_by"] == "dws_understand")
-        with pytest.raises(ValueError, match="投影与权威分叉"):
+        with pytest.raises(ValueError, match="diverged"):
             adjudicate.append_adjudication(
                 ws, claim_id=claim["claim_id"], doc_id=DOC, field="total_gross",
                 decision="accept", rationale="r", adjudicator="t",
@@ -227,7 +227,7 @@ class TestProjectionIsNotAuthority:
 
 class TestDecisionSemantics:
     def test_accept_requires_claim(self, ws):
-        with pytest.raises(ValueError, match="必须带 claim_id"):
+        with pytest.raises(ValueError, match="requires claim_id"):
             adjudicate.append_adjudication(
                 ws, claim_id=None, doc_id=DOC, field="total_gross",
                 decision="accept", rationale="r", adjudicator="t",
@@ -255,7 +255,7 @@ class TestDecisionSemantics:
         claim = next(c for c in ledger["claims"]
                      if c["doc_id"] == DOC and c["field"] == "total_gross"
                      and c["drafted_by"] == "dws_understand")
-        with pytest.raises(ValueError, match="声明错了用 reject 或 correct"):
+        with pytest.raises(ValueError, match="use reject or correct when the claim itself is wrong"):
             adjudicate.append_adjudication(
                 ws, claim_id=claim["claim_id"], doc_id=DOC, field="total_gross",
                 decision="confirm_absent", rationale="r", adjudicator="t",

@@ -80,7 +80,7 @@ class TestFeedbackAndMine:
         assert e["doc_class"] == "invoice"
 
     def test_reason_code_must_be_from_minimal_set(self, ws):
-        with pytest.raises(ValueError, match="最小心码集"):
+        with pytest.raises(ValueError, match="minimal reason-code set"):
             adjudicate.append_adjudication(
                 ws / "runs" / "run-0001", claim_id=None, doc_id=DOC,
                 field="buyer_name", decision="abstain", rationale="r",
@@ -89,7 +89,7 @@ class TestFeedbackAndMine:
     def test_reason_decision_combo_is_checked(self, ws):
         """评审裁决六:CONFIRMED_ABSENT 心码不能挂在 accept 上 —— 点错的
         心码会把错误监督喂给 mining。"""
-        with pytest.raises(ValueError, match="只能搭配"):
+        with pytest.raises(ValueError, match="may only combine with"):
             adjudicate.append_adjudication(
                 ws / "runs" / "run-0001",
                 claim_id=_claim_id(ws / "runs" / "run-0001", "total_gross"),

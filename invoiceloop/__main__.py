@@ -25,27 +25,27 @@ def _main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_run = sub.add_parser("run", help="extract → freeze → gates → matrix → panel")
-    p_run.add_argument("--docs", type=int, default=None, help="只跑前 N 份(默认全部存盘文档)")
-    p_run.add_argument("--doc-ids", nargs="*", default=None, help="指定 doc_id 列表")
-    p_run.add_argument("--out", type=Path, default=None, help="run 目录(--workspace 时不用)")
+    p_run.add_argument("--docs", type=int, default=None, help="run only the first N documents (default: all stored documents)")
+    p_run.add_argument("--doc-ids", nargs="*", default=None, help="explicit list of doc_ids")
+    p_run.add_argument("--out", type=Path, default=None, help="run directory (unused with --workspace)")
     p_run.add_argument("--workspace", type=Path, default=None,
-                       help="输入契约工作区:读 ws/raw + ws/ocr + ws/input/pdfs,写到 ws/output")
-    p_run.add_argument("--crops", action="store_true", help="渲染证据裁剪图(需 poppler + PDF 语料)")
-    p_run.add_argument("--no-vision", action="store_true", help="不并入第六轮读图作答")
+                       help="input-contract workspace: reads ws/raw + ws/ocr + ws/input/pdfs, writes ws/output")
+    p_run.add_argument("--crops", action="store_true", help="render evidence crops (needs poppler + the PDF corpus)")
+    p_run.add_argument("--no-vision", action="store_true", help="do not merge the round-six vision answers")
     p_run.add_argument("--new-run", action="store_true",
-                       help="输入未变也开新 run(默认重放同指纹的既有 run;旧 run 永远原样保留)")
+                       help="open a new run even if input is unchanged (default: replay the run with the same fingerprint; old runs are never touched)")
 
-    p_ing = sub.add_parser("ingest", help="输入契约:input/pdfs → ocr/ + raw/")
+    p_ing = sub.add_parser("ingest", help="input contract: input/pdfs -> ocr/ + raw/")
     p_ing.add_argument("--workspace", type=Path, required=True)
-    p_ing.add_argument("--no-ocr", action="store_true", help="跳过本地独立 OCR")
-    p_ing.add_argument("--no-extract", action="store_true", help="跳过 DWS 抽取(先只产 OCR)")
+    p_ing.add_argument("--no-ocr", action="store_true", help="skip local independent OCR")
+    p_ing.add_argument("--no-extract", action="store_true", help="skip DWS extraction (produce OCR only)")
     p_ing.add_argument(
         "--adaptive", action="store_true",
-        help="L1 opt-in:understand 先跑,仅风险文档再调 agentic"
-             "(默认仍双模式全跑;密封评测勿开)",
+        help="L1 opt-in: run understand first, call agentic only for risky documents "
+             "(default: both modes for all; do not enable in sealed evaluations)",
     )
 
-    p_adj = sub.add_parser("adjudicate", help="追加人工裁决(随后自动重渲 panel)")
+    p_adj = sub.add_parser("adjudicate", help="append one human adjudication (panel is then re-rendered)")
     p_adj.add_argument("--run", type=Path, required=True)
     p_adj.add_argument("--doc", required=True)
     p_adj.add_argument("--field", required=True)
@@ -53,190 +53,191 @@ def _main() -> None:
     p_adj.add_argument("--decision", required=True)
     p_adj.add_argument("--rationale", required=True)
     p_adj.add_argument("--adjudicator", required=True)
-    p_adj.add_argument("--decided-at", required=True, help="ISO 时间,由人给出")
+    p_adj.add_argument("--decided-at", required=True, help="ISO timestamp, supplied by a human")
     p_adj.add_argument("--corrected-value", default=None,
-                       help="decision=correct 时必填,其余决策禁带")
+                       help="required when decision=correct, forbidden otherwise")
     # 反馈平面(v0.2 §5.2)此前只有网页表单能填 —— 改进循环在命令行上
     # 不可测、不可脚本化。两个都是可选:不给就是不给,系统不代填
     p_adj.add_argument("--reason-code", default=None,
-                       help="最小心码集之一(可选;与裁决的合法组合有校验)")
+                       help="one of the minimal reason codes (optional; legal combinations with the decision are validated)")
     p_adj.add_argument("--reviewer-confidence", default=None,
                        choices=["high", "medium", "low"],
-                       help="只在没把握时标 low —— 未填不影响挖掘资格")
+                       help="mark low only when unsure — leaving it empty does not affect mining eligibility")
     p_adj.add_argument("--supersedes", dest="supersedes_decision_id", default=None,
-                       help="该字段槽已有裁决时必填:当前 tip 的 decision_id")
+                       help="required when this slot already has a decision: the current tip decision_id")
 
     p_app = sub.add_parser(
         "approve",
-        help="批准一份单据外发(槽全部处置完之后的最后一步,只有人能做)")
+        help="approve one document for export (the final step after every slot is dealt with; only a human can do it)")
     p_app.add_argument("--run", type=Path, required=True)
     p_app.add_argument("--doc", required=True)
-    p_app.add_argument("--approved-by", required=True, help="署名,系统不代签")
-    p_app.add_argument("--rationale", required=True, help="批准理由,进审计轨迹")
-    p_app.add_argument("--approved-at", required=True, help="ISO 时间,由人给出")
+    p_app.add_argument("--approved-by", required=True, help="signature; the system never signs on your behalf")
+    p_app.add_argument("--rationale", required=True, help="approval rationale; enters the audit trail")
+    p_app.add_argument("--approved-at", required=True, help="ISO timestamp, supplied by a human")
 
-    p_ren = sub.add_parser("render", help="从盘上工件重渲 panel(纯投影,可重算)")
+    p_ren = sub.add_parser("render", help="re-render the panel from on-disk artifacts (pure projection, recomputable)")
     p_ren.add_argument("--run", type=Path, required=True)
 
-    p_bun = sub.add_parser("bundle", help="打 audit_bundle.zip(全量自包含)")
+    p_bun = sub.add_parser("bundle", help="build audit_bundle.zip (fully self-contained)")
     p_bun.add_argument("--run", type=Path, required=True)
 
-    p_ver = sub.add_parser("verify", help="离线校验 audit bundle(成员/快照/绑定/语义/签名)")
+    p_ver = sub.add_parser("verify", help="verify an audit bundle offline (members/snapshot/binding/semantics/signature)")
     p_ver.add_argument("bundle", type=Path)
 
-    p_seal = sub.add_parser("seal", help="DWS 签名封缄 audit bundle(需 NUTRIENT_API_KEY)")
+    p_seal = sub.add_parser("seal", help="have DWS countersign an audit bundle (needs NUTRIENT_API_KEY)")
     p_seal.add_argument("--run", type=Path, required=True)
 
-    p_carry = sub.add_parser("carry", help="同证据裁决携带:旧 run 的裁决搬进最新 run")
+    p_carry = sub.add_parser("carry", help="carry adjudications across runs on identical evidence: from the old run into the latest")
     p_carry.add_argument("--run", type=Path, required=True)
     p_carry.add_argument("--decided-at", default=None,
-                         help="ISO 时间(默认当前 UTC —— 执行 carry 即人在给时间)")
+                         help="ISO timestamp (default: current UTC — running carry is a human supplying the time)")
 
-    p_wb = sub.add_parser("workbench", help="H1 复核工作台(默认 127.0.0.1;Cloud Run 用 --host 0.0.0.0)")
+    p_wb = sub.add_parser("workbench", help="H1 review workbench (default 127.0.0.1; use --host 0.0.0.0 on Cloud Run)")
     p_wb.add_argument("--workspace", type=Path, required=True)
     p_wb.add_argument("--port", type=int, default=None,
-                      help="默认读环境变量 PORT(Cloud Run),否则 8765")
+                      help="defaults to the PORT env var (Cloud Run), else 8765")
     p_wb.add_argument("--host", default="127.0.0.1",
-                      help="绑定地址;容器/Cloud Run 传 0.0.0.0")
+                      help="bind address; pass 0.0.0.0 in containers/Cloud Run")
     p_wb.add_argument("--allowed-host", action="append", default=[],
                       dest="allowed_hosts",
-                      help="公开绑定时可选 Host 白名单(可重复;支持 .run.app 后缀)")
+                      help="optional Host allowlist when binding publicly (repeatable; .run.app suffix supported)")
     p_wb.add_argument("--read-only", action="store_true",
-                      help="拒绝全部 POST(403)。公开演示必须开 —— 裁决账本是"
-                           "人的证词,公网可写等于允许伪造")
+                      help="reject every POST (403). Required for public demos — the adjudication ledger is "
+                           "human testimony; a writable public endpoint would allow forging it")
     p_wb.add_argument(
         "--review-scope", type=Path, default=None,
-        help="JSON 槽位白名单({slots:[doc|field,...]}):同时限制队列、导航和"
-             "裁决写入口;用于抽样复核")
+        help="JSON slot allowlist ({slots:[doc|field,...]}): constrains queue, navigation, and "
+             "the adjudication write path at once; used for sampled review")
 
-    p_demo = sub.add_parser("demo", help="内嵌示例语料 → 完整 run(零 API、零外部数据)")
-    p_demo.add_argument("--out", type=Path, required=True, help="demo workspace 落点(必须不存在或为空)")
+    p_demo = sub.add_parser("demo", help="vendored sample corpus -> a full run (zero API, zero external data)")
+    p_demo.add_argument("--out", type=Path, required=True, help="demo workspace target (must not exist or be empty)")
 
-    p_vis = sub.add_parser("vision", help="读图 ingest:整页渲染 → 读图模型作答 → vision/answers6 tsv")
+    p_vis = sub.add_parser("vision", help="vision ingest: full-page renders -> a vision model answering -> vision/answers6 tsv")
     p_vis.add_argument("--workspace", type=Path, required=True)
     p_vis.add_argument(
         "--tag", default=None,
-        help="兼容旧工件的读者 tag;缺省使用最终调用的真实模型名",
+        help="reader tag for older artifacts; default is the real model name of the final call",
     )
     p_vis.add_argument(
         "--model", default=None,
-        help="读图模型;缺省读取 ANTHROPIC_MODEL,未配置则明确失败",
+        help="vision model; defaults to ANTHROPIC_MODEL, failing explicitly if unset",
     )
-    p_vis.add_argument("--api-key", default=None, help="默认读 ANTHROPIC_API_KEY")
+    p_vis.add_argument("--api-key", default=None, help="defaults to ANTHROPIC_API_KEY")
 
-    sub.add_parser("doctor", help="环境自检:poppler/tesseract/requests/研究数据")
+    sub.add_parser("doctor", help="environment self-check: poppler/tesseract/requests/research data")
 
-    p_ho = sub.add_parser("heldout", help="留出集(docs/HELDOUT.md)")
+    p_ho = sub.add_parser("heldout", help="held-out set (docs/HELDOUT.md)")
     ho_sub = p_ho.add_subparsers(dest="heldout_command", required=True)
-    p_hop = ho_sub.add_parser("plan", help="生成并落盘名单(先于任何调用)")
+    p_hop = ho_sub.add_parser("plan", help="generate and write the list to disk (before any call)")
     p_hop.add_argument("--workspace", type=Path, required=True)
     p_hop.add_argument("--n", type=int, default=100)
-    p_hoe = ho_sub.add_parser("extract", help="按名单跑双模式,断点续跑,预算熔断")
+    p_hoe = ho_sub.add_parser("extract", help="run both modes over the list, resumable, with a budget breaker")
     p_hoe.add_argument("--workspace", type=Path, required=True)
     p_hoe.add_argument("--budget", type=float, default=6000.0)
 
     p_se = sub.add_parser(
-        "sealed", help="封箱留出集(docs/SEALED3_PROTOCOL.md;复算旧批用对应 --context)")
+        "sealed", help="sealed held-out set (docs/SEALED3_PROTOCOL.md; use the matching --context to recompute an old batch)")
     se_sub = p_se.add_subparsers(dest="sealed_command", required=True)
-    p_sep = se_sub.add_parser("plan", help="种子抽样并落盘名单(先于任何调用)")
+    p_sep = se_sub.add_parser("plan", help="seed-sample and write the list to disk (before any call)")
     p_sep.add_argument("--workspace", type=Path, required=True)
     p_sep.add_argument("--seed", required=True,
-                       help="外部随机源的十六进制熵(drand 轮次 randomness)")
+                       help="hexadecimal entropy from an external randomness source (drand round randomness)")
     p_sep.add_argument("--seed-source", required=True,
-                       help="随机源承诺标识(协议文档 + 轮次)")
+                       help="commitment identifier of the randomness source (protocol doc + round)")
     # 语境词表只有一处权威(heldout.SEALED_CONTEXTS)。这里原先手抄了一份,
     # 于是加 sealed4-v1 时 CLI 不认 —— 抄一份就会有一天两份不一样。
     p_sep.add_argument("--context", default=_DEFAULT_SEALED_CONTEXT,
                        choices=tuple(sorted(_SEALED_CONTEXTS)),
-                       help=f"PRNG 语境(默认 {_DEFAULT_SEALED_CONTEXT})")
+                       help=f"PRNG context (default {_DEFAULT_SEALED_CONTEXT})")
     p_sep.add_argument("--scope", default=None,
                        choices=tuple(sorted(_SEALED_SCOPES)),
-                       help="范围过滤器:给则从该范围子池抽(如 broadcast-pilot-v1,"
-                            "SEALED-4 增补件 A1);缺省全池")
+                       help="scope filter: sample from that scope sub-pool when given (e.g. broadcast-pilot-v1, "
+                            "SEALED-4 addendum A1); default is the full pool")
     p_sep.add_argument("--n", type=int, default=100)
-    p_see = se_sub.add_parser("extract", help="按名单跑双模式,断点续跑,预算熔断")
+    p_see = se_sub.add_parser("extract", help="run both modes over the list, resumable, with a budget breaker")
     p_see.add_argument("--workspace", type=Path, required=True)
     p_see.add_argument("--budget", type=float, default=6000.0)
 
     p_q = sub.add_parser(
         "qualify",
-        help="资格集(未曝光确认轮;docs/QUALIFICATION_NARROW_PROTOCOL_*.md)")
+        help="qualification set (unexposed confirmation round; docs/QUALIFICATION_NARROW_PROTOCOL_*.md)")
     q_sub = p_q.add_subparsers(dest="qualify_command", required=True)
-    p_qp = q_sub.add_parser("plan", help="最小哈希抽样并落盘名单(先于任何调用)")
+    p_qp = q_sub.add_parser("plan", help="min-hash sample and write the list to disk (before any call)")
     p_qp.add_argument("--workspace", type=Path, required=True)
     p_qp.add_argument("--n", type=int, default=200)
     p_qp.add_argument("--context", default=_DEFAULT_QUAL_CONTEXT,
                       choices=tuple(sorted(_QUAL_CONTEXTS)),
-                      help=f"抽样盐语境(默认 {_DEFAULT_QUAL_CONTEXT})")
-    p_qe = q_sub.add_parser("extract", help="按名单跑双模式,断点续跑,预算熔断")
+                      help=f"sampling salt context (default {_DEFAULT_QUAL_CONTEXT})")
+    p_qe = q_sub.add_parser("extract", help="run both modes over the list, resumable, with a budget breaker")
     p_qe.add_argument("--workspace", type=Path, required=True)
     p_qe.add_argument("--budget", type=float, default=6000.0)
     p_qe.add_argument("--round", required=True,
-                      help="冻结 evidence round 名(用来查 plan manifest)")
+                      help="frozen evidence round name (used to look up the plan manifest)")
     p_qe.add_argument("--protocol", type=Path, required=True,
-                      help="已提交且已进入 plan manifest 的冻结协议")
+                      help="frozen protocol that is committed and listed in the plan manifest")
 
     # suggest 刻意**不在** improve 之下:改进控制面仍是全确定性零模型,
     # 顾问层旁挂,输出 advisory 草稿,采纳与否走人 —— 与 vision 同款位置
-    p_sg = sub.add_parser("suggest", help="顾问层:模型读复核笔记出提案草稿(需人复核)")
+    p_sg = sub.add_parser("suggest", help="advisory layer: a model reads review notes and drafts proposals (needs human review)")
     p_sg.add_argument("--workspace", type=Path, required=True)
     p_sg.add_argument("--model", default=None)
 
     p_un = sub.add_parser(
         "unattended",
-        help="Arm U 实验臂:clerk→critic→策略闸→approver 无人裁决+批准"
-             "(显式可选,非产品默认;默认路径的批准仍只有人能签)")
+        help="Arm U experimental arm: clerk->critic->policy gate->approver, unattended "
+             "adjudication + approval (explicit opt-in, not the product default; the "
+             "default path still requires a human signature to approve)")
     p_un.add_argument("--run", type=Path, required=True,
-                      help="既有 run 目录(裁决与批准追加进它的账本)")
+                      help="an existing run directory (adjudications and approvals append to its ledgers)")
     p_un.add_argument("--model", default=None,
-                      help="缺省 gemini-3.7-flash;INVOICELOOP_REPLAY=1 走录音")
+                      help="defaults to gemini-3.7-flash; INVOICELOOP_REPLAY=1 uses recordings")
     p_un.add_argument("--decided-at", required=True,
-                      help="ISO 时间,由操作者/作业触发器注入 —— 工件不读墙钟")
+                      help="ISO timestamp, injected by the operator/job trigger — artifacts never read the wall clock")
     p_un.add_argument("--docs", nargs="*", default=None,
-                      help="只处理这些 doc_id(缺省 run 内全部复核槽)")
+                      help="process only these doc_ids (default: every review slot in the run)")
     p_un.add_argument("--gcloud-oauth-project", default=None,
-                      help="走内存态 gcloud OAuth + Vertex AI 端点(演示/验收"
-                           "用凭据通路;token 不落盘,详见 agents/vertex_oauth.py)")
+                      help="in-memory gcloud OAuth + the Vertex AI endpoint (a demo/acceptance "
+                           "credential route; the token never touches disk, see agents/vertex_oauth.py)")
 
     p_ag = sub.add_parser(
-        "agents", help="ADK 层:改进循环由 Runner 执行(纯建议,不写账本)")
+        "agents", help="ADK layer: the improvement loop executed by a Runner (advice only, never writes a ledger)")
     ag_sub = p_ag.add_subparsers(dest="agents_command", required=True)
     p_agl = ag_sub.add_parser(
         "improve-loop",
-        help="跑 ADK SequentialAgent(miner→proposer→evaluator→critic)")
+        help="run the ADK SequentialAgent (miner->proposer->evaluator->critic)")
     p_agl.add_argument("--workspace", type=Path, required=True)
     p_agl.add_argument("--model", default=None,
-                       help="缺省 gemini-3.7-flash;INVOICELOOP_REPLAY=1 走录音")
+                       help="defaults to gemini-3.7-flash; INVOICELOOP_REPLAY=1 uses recordings")
 
-    p_imp = sub.add_parser("improve", help="改进控制面(v0.2 收窄版,全确定性零模型)")
+    p_imp = sub.add_parser("improve", help="improvement control plane (v0.2 narrowed, fully deterministic, zero models)")
     imp_sub = p_imp.add_subparsers(dest="improve_command", required=True)
-    p_im = imp_sub.add_parser("mine", help="cohort 统计:找高频复核零修正")
+    p_im = imp_sub.add_parser("mine", help="cohort statistics: find frequently-reviewed zero-correction cohorts")
     p_im.add_argument("--workspace", type=Path, required=True)
-    p_ip = imp_sub.add_parser("propose", help="生成候选 harness(只加一条 cohort)")
+    p_ip = imp_sub.add_parser("propose", help="generate a candidate harness (adds exactly one cohort)")
     p_ip.add_argument("--workspace", type=Path, required=True)
     p_ip.add_argument("--cohort-id", required=True)
     p_ip.add_argument("--field", default=None)
     p_ip.add_argument("--tier", default=None, choices=["TIER1", "TIER2"])
     p_ip.add_argument("--strength", default=None,
                       choices=["unsupported", "single_source", "corroborated"])
-    p_ip.add_argument("--finding", required=True, help="来源 finding id")
+    p_ip.add_argument("--finding", required=True, help="source finding id")
     p_ip.add_argument("--prediction", required=True,
-                      help="预测合同:预计改什么指标、可能伤害什么")
-    p_ie = imp_sub.add_parser("evaluate", help="反事实重路由,与现状并排")
+                      help="prediction contract: which metric it should move, what it might hurt")
+    p_ie = imp_sub.add_parser("evaluate", help="counterfactual re-routing, side by side with the status quo")
     p_ie.add_argument("--workspace", type=Path, required=True)
     p_ie.add_argument("--candidate", required=True)
-    p_pr = imp_sub.add_parser("promote", help="人工晋升(唯一写 active 的入口)")
+    p_pr = imp_sub.add_parser("promote", help="human promotion (the only entry point that writes active)")
     p_pr.add_argument("--workspace", type=Path, required=True)
     p_pr.add_argument("--candidate", required=True)
     p_pr.add_argument("--approved-by", required=True)
     p_pr.add_argument("--rationale", required=True)
-    p_pr.add_argument("--approved-at", required=True, help="ISO 时间,由人给出")
-    p_rb = imp_sub.add_parser("rollback", help="回滚到既有 harness(新 PROM 记录,append-only)")
+    p_pr.add_argument("--approved-at", required=True, help="ISO timestamp, supplied by a human")
+    p_rb = imp_sub.add_parser("rollback", help="roll back to an existing harness (a new PROM record, append-only)")
     p_rb.add_argument("--workspace", type=Path, required=True)
-    p_rb.add_argument("--to", required=True, help="回滚目标 harness id")
+    p_rb.add_argument("--to", required=True, help="target harness id to roll back to")
     p_rb.add_argument("--approved-by", required=True)
     p_rb.add_argument("--rationale", required=True)
-    p_rb.add_argument("--approved-at", required=True, help="ISO 时间,由人给出")
+    p_rb.add_argument("--approved-at", required=True, help="ISO timestamp, supplied by a human")
 
     args = parser.parse_args()
 
@@ -264,7 +265,7 @@ def _main() -> None:
             doc_ids = args.doc_ids or sorted(
                 set(discover(args.workspace)) | set(dws.stored_docs()))
             if not doc_ids:
-                parser.error(f"{args.workspace} 里没有文档 —— 先放 PDF 进 input/pdfs/ 再 ingest")
+                parser.error(f"{args.workspace} has no documents — put PDFs into input/pdfs/ and run ingest first")
             if args.docs is not None:
                 doc_ids = doc_ids[: args.docs]
             # 指纹必须在 --docs/--doc-ids 截断之后算 —— 否则「5 份文档的 run」
@@ -277,19 +278,20 @@ def _main() -> None:
             out_dir = snapshot.allocate_run_dir(runs_dir)
         else:
             if args.out is None:
-                parser.error("run 需要 --out 或 --workspace")
+                parser.error("run needs --out or --workspace")
             out_dir = args.out
             doc_ids = args.doc_ids or dws.stored_docs()
             if not doc_ids:
-                parser.error("存盘证据里没有文档 —— 检查 INVOICELOOP_DWS_DERISK 指向")
+                parser.error("no documents in the stored evidence — check where INVOICELOOP_DWS_DERISK points")
             if args.docs is not None:
                 doc_ids = doc_ids[: args.docs]
         if replayed is not None:
             print(json.dumps({
                 "replayed": True,
                 "run_dir": str(replayed),
-                "note": "执行指纹(输入+代码+harness)与既有 run 一致,重放不重跑;"
-                        "输入或 harness 变化或 --new-run 才开新 run(旧 run 永远原样保留)",
+                "note": "execution fingerprint (input+code+harness) matches an existing run; "
+                        "replaying it instead of re-running. A new run opens only when input or "
+                        "the harness changes, or with --new-run (old runs are never touched)",
             }, ensure_ascii=False, indent=1))
             return
         paths = run(doc_ids, out_dir, render_crops=args.crops,
@@ -322,8 +324,8 @@ def _main() -> None:
             reviewer_confidence=args.reviewer_confidence,
         )
         if not result["panel_refreshed"]:
-            result["hint"] = ("panel 未刷新,但裁决已落盘(fsync)。"
-                              f"修好渲染后跑:python3 -m invoiceloop render --run {args.run}")
+            result["hint"] = ("the panel was not refreshed, but the adjudication is on disk (fsynced). "
+                              f"Fix rendering, then run: python3 -m invoiceloop render --run {args.run}")
         print(json.dumps(result, ensure_ascii=False, indent=1))
     elif args.command == "approve":
         from .approve import append_approval
@@ -418,7 +420,7 @@ def _main() -> None:
                          ensure_ascii=False, indent=1))
     elif args.command == "unattended":
         from .agents.runtime import DEFAULT_GEMINI_MODEL
-        from .agents.unattended import run_unattended
+        from .agents.unattended import failed, run_unattended
 
         oauth_meta = None
         if args.gcloud_oauth_project:
@@ -449,9 +451,14 @@ def _main() -> None:
             "adk_executed": report["adk"]["executed"],
             "stages": report["adk"]["event_authors"],
             "file": str(Path(args.run) / "unattended_run.json"),
-            "note": "实验臂,非产品默认 —— 批准署名 "
-                    + report["policy_id"] + "+agent:critic:" + report["model"],
+            "note": "experimental arm, not the product default — approvals "
+                    "are signed " + report["policy_id"] + "+agent:critic:"
+                    + report["model"],
         }, ensure_ascii=False, indent=1))
+        # 宪章四:执行失败(drive_fatal / 任一 *_failures)必须反映在退出码
+        # 上 —— 否则 Vertex 全挂时 Cloud Run Job 照样报 successfully
+        # completed。approval_refusals 是业务结果,不算失败(failed 的定义)。
+        raise SystemExit(1 if failed(report) else 0)
     elif args.command == "agents":
         from .agents.improve_loop import run_improve_loop
 
@@ -466,7 +473,7 @@ def _main() -> None:
             "recommended_for_human_review":
                 report["recommended_for_human_review"],
             "file": str(args.workspace / "improve" / "adk_loop_report.json"),
-            "note": "建议而已 —— 晋升仍由 Gate 2 + 人签字决定",
+            "note": "advice only — promotion is still decided by Gate 2 plus a human signature",
         }, ensure_ascii=False, indent=1))
     elif args.command == "improve":
         from . import improve
@@ -489,7 +496,7 @@ def _main() -> None:
             cand = improve.propose(args.workspace, cohort=cohort,
                                    finding=args.finding,
                                    prediction=args.prediction)
-            print(f"候选已建:{cand}(status=candidate,未生效)")
+            print(f"candidate created: {cand} (status=candidate, not in effect)")
         elif args.improve_command == "evaluate":
             result = improve.evaluate(args.workspace, args.candidate)
             print(json.dumps(result, ensure_ascii=False, indent=1))
@@ -517,7 +524,7 @@ def main() -> None:
     try:
         _main()
     except Exception as exc:  # noqa: BLE001
-        raise SystemExit(f"错误:{exc}") from None
+        raise SystemExit(f"error: {exc}") from None
 
 
 if __name__ == "__main__":
