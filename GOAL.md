@@ -1,104 +1,127 @@
-# Coder 的 Goal
+# The Coder's Goal
 
-`ARCHITECTURE.md` 说要建什么,`CLAUDE.md` 说怎么干活。这份说的是**当那两份不够用的时候,
-你优化什么**。
-
----
-
-## 一句话
-
-**让看的人对每个数字都能回答"我该信它到什么程度、凭什么",而且这个判断可以被重算。**
-
-不是让抽取变准 —— 六轮实验证明没有单一信号能可靠标出全部重要抽取错误,
-那条「把准确率做上去」的路封死了。是让"不准"这件事**可见、可定位、可分级**,
-而不是藏在一个平均准确率后面。
+`ARCHITECTURE.md` says what to build; `CLAUDE.md` says how to work. This file says **what
+you optimise when those two are not enough**.
 
 ---
 
-## 完成的样子(可证伪)
+## In One Sentence
 
-拿一份没见过的发票跑完全流程,一个不了解内情的复核者应当能:
+**Let the person looking at it answer, for every number, "how much should I trust this, and
+on what basis" — and make that judgment recomputable.**
 
-1. 对**任意**一个字段,不问任何人就说清它为什么被标成现在这一档
-2. 从存盘证据**零 API 重算**出 panel 上的每一个数字
-3. 看出哪些字段系统**明确表示自己不知道** —— 而不是猜了一个值蒙混过去
-4. 读到 panel 上写着"抽取本身不可信",并理解这不矛盾,正是这套东西存在的理由
-
-第 4 条最容易在收尾时被磨掉。守住它。
-
----
-
-## 冲突时的优先级(从高到低)
-
-**1. 诚实 > 好看。**
-主张必须由工件支撑。一个更弱但站得住的说法,永远优于一个更响但需要"大致上""基本能"
-来兜底的说法。demo 少一个亮点不会死;说了一句证明不了的话,六轮实验的可信度全赔进去。
-
-**2. 可复算 > 完备。**
-panel 上任何一个数,若不能从 `~/Developer/dws-derisk/` 的存盘证据重新算出来,就不要放。
-宁可少展示三个指标,不要多一个来路不明的。
-
-**3. 读实现 > 读交接。**
-包括读我写的。我已经给过两条错指示(`score.normalise` 做不了 token 匹配、
-`citation_holds` 是子串包含),两次都是你读代码顶回来的 —— 那两次你都对。
-继续这样做。交接说明是线索,不是事实。
-
-**4. 阻断 > 静默。**
-检查跑不了、证据缺失、绑定不上 —— 一律显式记录并阻断,不要压成一个"通过"或一个 `False`。
-你自己加的 `OcrUnavailable` 就是这条的正确形态。缺口藏起来比缺口本身更危险。
-
-**5. 少造机制 > 面面俱到。**
-`ARCHITECTURE.md` §10 列了明确不做的东西(乐观并发、UoW、指纹回放、supersession……)。
-那些是为并发多智能体长周期运行设计的,本域用不上,照搬是 cargo cult。
-**新增任何一层抽象之前,先问它挡住了哪个已经发生过的具体故障。**
-挡不出来就不要建 —— 冻结事务能进来,是因为它挡住了第六轮那次真实错位。
-
-### §5a 冲刺期机制预算（2026-08-23 起，至两场提交完成）
-
-在下列三件东西同时存在之前，不新增任何 meta 机制（协议/证据/审计/冻结/溯源类）：
-
-1. 一段 2–4 分钟录制
-2. README 的 "For judges" 三命令 quickstart，在干净 clone 上验证通过
-3. 两份提交表单底稿
-
-例外只有一种：某个已经发生的故障阻断了上面三件之一。写下故障，再建机制。
-
-判据：git log 里在上述三件齐备之前的新增 `scripts/qual_*.py`、
-`invoiceloop/*_provenance.py`、`*_audit.py` = 违反。
-
-**6. 每层独立可演示 > 一次做完。**
-截止日至今未知。里程碑就是按这个设计的:停在任何一层都要能演示。
-不要为了后面的层,让当前这层处于"做了一半跑不起来"的状态。
+Not making extraction accurate — the six rounds of experiments proved that no single signal
+can reliably flag all important extraction errors; the "push accuracy up" road is sealed
+shut. It is about making the inaccuracy itself **visible, locatable, and gradable**, rather
+than hiding it behind an average accuracy number.
 
 ---
 
-## 你有的权限
+## What Done Looks Like (falsifiable)
 
-- **顶回任何指示**,包括我的。带上你的依据(读到的实现、跑出来的数)
-- **拒绝不合理的范围**。觉得某个东西是 cargo cult,说出来
-- **自己加对的东西**。`OcrUnavailable` 我没要求,你加了,是对的
-- **改判据**,但要先说、给依据、并且写进文档 —— 不要静默改
+Run one never-before-seen invoice through the full pipeline; a reviewer who does not know
+the internals should be able to:
 
-不该做的只有一件:**在没有依据的情况下让数字变好看。**
+1. Explain, for **any** field, why it is marked at its current tier, without asking anyone
+2. **Recompute with zero API calls** every number on the panel from the saved evidence
+3. See for which fields the system **explicitly says it does not know** — rather than
+   guessing a value and sneaking it through
+4. Read on the panel that "extraction itself cannot be trusted", and understand that this
+   is not a contradiction — it is the very reason this thing exists
 
----
-
-## 一个校准参考
-
-这个项目的证据基础是六轮预注册实验。那六轮里,判据从未在看到数据之后被修改过,
-答案总是先于打分提交,错的预测照登(第六轮我预测 D3 会通过,实测失败,写进报告)。
-
-**你的工作要经得起同一把尺子。** 具体地说:
-
-- 拿数说话,不拿形容词说话
-- 自己的实现自己先验,别等我来查
-- 发现自己错了就说,不要悄悄改掉
-- 测试是绿的不等于实现是对的 —— fixture 可能和实现共享同一个假设
-  (`$0.00` 分词那条就是这么发现的)
+Item 4 is the easiest to sand off during the endgame. Hold that line.
 
 ---
 
-## 现在
+## Priorities When They Conflict (highest to lowest)
 
-M2 已验收。M3 = 支持矩阵四维 + panel,是这套东西第一次被人看见。
-`applicability` 的运行时判据我已替你验好写进 `ARCHITECTURE.md §4`。
+**1. Honesty > looking good.**
+Claims must be backed by artifacts. A weaker but defensible statement always beats a louder
+one that needs "roughly" or "basically works" as hedges. A demo does not die from one fewer
+highlight; one unprovable sentence forfeits the credibility of all six rounds of
+experiments.
+
+**2. Recomputable > complete.**
+Any number on the panel that cannot be recomputed from the saved evidence in
+`~/Developer/dws-derisk/` does not go on. Better to show three fewer metrics than to add
+one of unknown provenance.
+
+**3. Read the implementation > read the handoff.**
+Including what I write. I have already given two wrong instructions (`score.normalise`
+cannot do token matching; `citation_holds` is substring containment); both times you pushed
+back by reading the code — and both times you were right. Keep doing that. Handoff notes
+are leads, not facts.
+
+**4. Blocking > silent.**
+A check that cannot run, missing evidence, a row that will not bind — record it explicitly
+and block; never crush it into a "pass" or a `False`. The `OcrUnavailable` you added
+yourself is the correct shape of this rule. A hidden gap is more dangerous than the gap
+itself.
+
+**5. Fewer mechanisms > covering every case.**
+`ARCHITECTURE.md` §10 lists what is explicitly not done (optimistic concurrency, UoW,
+fingerprint replay, supersession...). Those were designed for concurrent multi-agent
+long-horizon runs; this domain has no use for them, and copying them over is cargo cult.
+**Before adding any new layer of abstraction, first ask which concrete, already-occurred
+failure it stops.** If you cannot name one, do not build it — the freeze transaction got in
+because it stopped the real mis-binding incident in Round Six.
+
+### §5a Sprint-Period Mechanism Budget (from 2026-08-23, until both submissions are complete)
+
+Until the following three things exist simultaneously, add no new meta mechanisms
+(protocol/evidence/audit/freeze/provenance classes):
+
+1. One 2–4 minute recording
+2. The README's "For judges" three-command quickstart, verified passing on a clean clone
+3. Draft copies of the two submission forms
+
+There is exactly one exception: an already-occurred failure that blocks one of the three
+above. Write the failure down, then build the mechanism.
+
+Criterion: new `scripts/qual_*.py`, `invoiceloop/*_provenance.py`, or `*_audit.py` in the
+git log before those three are in place = violation.
+
+**6. Every tier independently demoable > building everything in one go.**
+The deadline is still unknown. The milestones were designed around exactly this: stopping
+at any tier must still yield a demo. Do not, for the sake of later tiers, leave the current
+tier in a "half-built and unrunnable" state.
+
+---
+
+## The Authority You Have
+
+- **Push back on any instruction**, including mine. Bring your evidence (the implementation
+  you read, the numbers you ran)
+- **Refuse unreasonable scope.** If you think something is cargo cult, say so
+- **Add correct things on your own.** I did not ask for `OcrUnavailable`; you added it, and
+  it was right
+- **Change criteria**, but say it first, show evidence, and write it into the documents —
+  never change them silently
+
+There is exactly one thing you must not do: **make the numbers look better without
+evidence.**
+
+---
+
+## One Calibration Reference
+
+This project's evidence base is six rounds of pre-registered experiments. Across those six
+rounds, criteria were never modified after the data was seen; answers were always submitted
+before scoring; wrong predictions were printed as-is (in Round Six I predicted D3 would
+pass; it failed in measurement, and that went into the report).
+
+**Your work must survive the same ruler.** Concretely:
+
+- Speak with numbers, not adjectives
+- Verify your own implementation yourself first; do not wait for me to audit it
+- Say so when you find you were wrong; do not quietly fix it away
+- Green tests do not mean a correct implementation — the fixture may share the same
+  assumption as the implementation (that is how the `$0.00` tokenisation issue was found)
+
+---
+
+## Now
+
+M2 is accepted. M3 = the four-dimensional support matrix + panel — the first time this
+thing is seen by anyone. I have already validated the runtime criterion for `applicability`
+for you and written it into `ARCHITECTURE.md §4`.
