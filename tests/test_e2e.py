@@ -52,8 +52,11 @@ class TestDeliverableHonesty:
 
     def test_panel_gate_chips_explain_themselves(self, two_runs):
         panel = (two_runs[0] / "support_panel.html").read_text(encoding="utf-8")
-        assert "arith:pass" in panel, "悬停说明要进静态 panel(bundle 里的评委也看得到)"
-        assert "The value is in the cited region" in panel or "No cited region or not applicable" in panel
+        assert "arith:pass" in panel
+        assert "The identities hold" in panel, \
+            "hover explanations must reach the static panel (judges in the bundle see them too)"
+        assert "The value is in the cited region" in panel or \
+            "No cited region or not applicable" in panel
 
     def test_panel_carries_all_three_qualifiers(self, two_runs):
         panel = (two_runs[0] / "support_panel.html").read_text(encoding="utf-8")

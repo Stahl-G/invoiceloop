@@ -77,7 +77,7 @@ class TestRefuseOverwrite:
         out = workspace / "runs" / "run-0001"
         run([DOC], out, include_vision=False, out_of_calibration=True)
         before = _tree_bytes(out)
-        with pytest.raises(RunExistsError, match="runs are\simmutable"):
+        with pytest.raises(RunExistsError, match="immutable"):
             run([DOC], out, include_vision=False, out_of_calibration=True)
         assert _tree_bytes(out) == before, "被拒的重跑不许改动旧 run 的任何一个字节"
 

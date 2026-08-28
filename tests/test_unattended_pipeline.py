@@ -188,6 +188,16 @@ class TestExitSemantics:
             assert failed({field: "boom"}) is True, field
         assert failed({}) is False
 
+    def test_an_approval_write_error_hidden_in_refusals_fails(self):
+        """PR 审查 P1:批准写入的异常记在 approval_refusals.approval_error
+        —— 那是执行失败;纯策略拒绝(无该键)仍不算。"""
+        from invoiceloop.agents.unattended import failed
+
+        assert failed({"approval_refusals": [
+            {"doc_id": "x", "approval_error": "ValueError: boom"}]}) is True
+        assert failed({"approval_refusals": [
+            {"doc_id": "x", "approver_release": False}]}) is False
+
 
 class TestThePipelineRuns:
     def test_all_seven_stages_executed_under_a_real_runner(self, run_dir):

@@ -143,7 +143,7 @@ class TestValidation:
             _append(run_dir, field="address")
 
     def test_doc_outside_run_is_refused(self, run_dir):
-        with pytest.raises(ValueError, match="run.s document set"):
+        with pytest.raises(ValueError, match="must target a run document"):
             _append(run_dir, claim_id=None, doc_id="doc-b", decision="abstain")
 
     def test_empty_decided_at_is_refused(self, run_dir):
