@@ -1,0 +1,372 @@
+
+Container called exit(0).
+== job: done (run complete and evidenced; approvals are the policy's call) ==
+
+== job: upload artifacts to invoiceloop-airy-decorator-361514-arm-u ==
+}
+ "note": "实验臂,非产品默认 —— 批准署名 unattended-policy-v3+agent:critic:gemini-3.7-flash"
+ "file": "/data/job-ws/runs/run-0001/unattended_run.json",
+ ],
+  "binder3"
+  "approver",
+  "gate",
+  "binder2",
+  "critic",
+  "binder",
+  "clerk",
+ "stages": [
+ "adk_executed": true,
+ "approval_refusals": [],
+ ],
+  }
+   "approval_id": "AP-0001"
+   "doc_id": "046e0c4924044de09f6d9e7b",
+  {
+ "approvals": [
+ ],
+  "046e0c4924044de09f6d9e7b"
+ "gate_ready_docs": [
+ "critic_failed": 0,
+ "critic_overrides": 1,
+ "clerk_failed": 0,
+ "clerk_written": 25,
+ "queue_slots": 25,
+ "model": "gemini-3.7-flash",
+ "arm": "unattended",
+{
+Direct use of automatic function calling (AFC) in AsyncModels.generate_content is not recommended. Instead, we recommend to use AFC in AsyncChat.send_message. Similarly, direct use of AFC in AsyncModels.generate_content_stream is not recommended. Instead, we recommend to use AFC in AsyncChat.send_message_stream.
+== job: run the unattended arm ==
+== job: reset ledgers to a clean review state ==
+}
+ "note": "本机 poppler 从退化扫描件也抽出了文字层,三份全流程正常;046e0c49 的展品是读图门对「买卖双方抽反」的 warning(数据决定)"
+ "next": "python3 -m invoiceloop workbench --workspace /data/job-ws",
+ "deliverable": "/data/job-ws/runs/run-0001/deliverable.json",
+ },
+  "approved_for_export": 3
+ "delivery_status": {
+ "seeded_by": "demo-fixture (not a human review)",
+ "seeded_decisions": 25,
+ "ocr_blocked": [],
+ ],
+  "046e0c4924044de09f6d9e7b"
+  "003cc91637994b7d9566ac41",
+  "002e3cf97973428f905671b3",
+ "docs": [
+ "panel": "/data/job-ws/runs/run-0001/support_panel.html",
+ "run_dir": "/data/job-ws/runs/run-0001",
+ "workspace": "/data/job-ws",
+{
+}
+ "skipped_clean": 0
+ "escalated": 0,
+ "adaptive": false,
+ "extract_failed": [],
+ "extract_skipped": 0,
+ "extracted": 0,
+ "ocr_blocked": [],
+ "ocred": 3,
+ "docs": 3,
+{
+== job: build fresh demo workspace (zero API) ==
+
+
+
+Container called exit(1).
+Traceback (most recent call last):
+  File "<stdin>", line 26, in <module>
+AttributeError: 'str' object has no attribute 'rglob'
+== job: upload artifacts to invoiceloop-airy-decorator-361514-arm-u ==
+}
+ "note": "实验臂,非产品默认 —— 批准署名 unattended-policy-v3+agent:critic:gemini-3.7-flash"
+ "file": "/data/job-ws/runs/run-0001/unattended_run.json",
+ ],
+  "binder3"
+  "approver",
+  "gate",
+  "binder2",
+  "critic",
+  "binder",
+  "clerk",
+ "stages": [
+ "adk_executed": true,
+ "approval_refusals": [],
+ ],
+  }
+   "approval_id": "AP-0001"
+   "doc_id": "046e0c4924044de09f6d9e7b",
+  {
+ "approvals": [
+ ],
+  "046e0c4924044de09f6d9e7b"
+ "gate_ready_docs": [
+ "critic_failed": 0,
+ "critic_overrides": 1,
+ "clerk_failed": 0,
+ "clerk_written": 25,
+ "queue_slots": 25,
+ "model": "gemini-3.7-flash",
+ "arm": "unattended",
+{
+Direct use of automatic function calling (AFC) in AsyncModels.generate_content is not recommended. Instead, we recommend to use AFC in AsyncChat.send_message. Similarly, direct use of AFC in AsyncModels.generate_content_stream is not recommended. Instead, we recommend to use AFC in AsyncChat.send_message_stream.
+== job: run the unattended arm ==
+== job: reset ledgers to a clean review state ==
+}
+ "note": "本机 poppler 从退化扫描件也抽出了文字层,三份全流程正常;046e0c49 的展品是读图门对「买卖双方抽反」的 warning(数据决定)"
+ "next": "python3 -m invoiceloop workbench --workspace /data/job-ws",
+ "deliverable": "/data/job-ws/runs/run-0001/deliverable.json",
+ },
+  "approved_for_export": 3
+ "delivery_status": {
+ "seeded_by": "demo-fixture (not a human review)",
+ "seeded_decisions": 25,
+ "ocr_blocked": [],
+ ],
+  "046e0c4924044de09f6d9e7b"
+  "003cc91637994b7d9566ac41",
+  "002e3cf97973428f905671b3",
+ "docs": [
+ "panel": "/data/job-ws/runs/run-0001/support_panel.html",
+ "run_dir": "/data/job-ws/runs/run-0001",
+ "workspace": "/data/job-ws",
+{
+}
+ "skipped_clean": 0
+ "escalated": 0,
+ "adaptive": false,
+ "extract_failed": [],
+ "extract_skipped": 0,
+ "extracted": 0,
+ "ocr_blocked": [],
+ "ocred": 3,
+ "docs": 3,
+{
+== job: build fresh demo workspace (zero API) ==
+Container called exit(1).
+Traceback (most recent call last):
+  File "<stdin>", line 26, in <module>
+AttributeError: 'str' object has no attribute 'rglob'
+== job: upload artifacts to invoiceloop-airy-decorator-361514-arm-u ==
+}
+ "note": "实验臂,非产品默认 —— 批准署名 unattended-policy-v3+agent:critic:gemini-3.7-flash"
+ "file": "/data/job-ws/runs/run-0001/unattended_run.json",
+ ],
+  "binder3"
+  "approver",
+  "gate",
+  "binder2",
+  "critic",
+  "binder",
+  "clerk",
+ "stages": [
+ "adk_executed": true,
+ "approval_refusals": [],
+ ],
+  }
+   "approval_id": "AP-0001"
+   "doc_id": "046e0c4924044de09f6d9e7b",
+  {
+ "approvals": [
+ ],
+  "046e0c4924044de09f6d9e7b"
+ "gate_ready_docs": [
+ "critic_failed": 0,
+ "critic_overrides": 1,
+ "clerk_failed": 0,
+ "clerk_written": 25,
+ "queue_slots": 25,
+ "model": "gemini-3.7-flash",
+ "arm": "unattended",
+{
+429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Resource exhausted. Please try again later. Please refer to https://cloud.google.com/vertex-ai/generative-ai/docs/error-code-429 for more details.', 'status': 'RESOURCE_EXHAUSTED'}}
+https://google.github.io/adk-docs/agents/models/google-gemini/#error-code-429-resource_exhausted
+On how to mitigate this issue, please refer to:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/google/adk/runners.py", line 1061, in _cleanup_root_task
+    await task
+  File "/usr/local/lib/python3.12/site-packages/google/adk/runners.py", line 757, in _drive_root_node
+    raise e.error
+  File "/usr/local/lib/python3.12/site-packages/google/adk/workflow/_node_runner.py", line 136, in run
+    await self._execute_node(ctx, node_input)
+  File "/usr/local/lib/python3.12/site-packages/google/adk/workflow/_node_runner.py", line 274, in _execute_node
+    await self._run_node_loop(ctx, node_input)
+  File "/usr/local/lib/python3.12/site-packages/google/adk/workflow/_node_runner.py", line 288, in _run_node_loop
+    async for event in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/workflow/_base_node.py", line 170, in run
+    async for item in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/agents/llm_agent.py", line 627, in _run_impl
+    async for event in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/workflow/_llm_agent_wrapper.py", line 484, in run_llm_agent_as_node
+    async for event in run_iter:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/agents/base_agent.py", line 339, in run_async
+    async for event in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/agents/base_agent.py", line 100, in _with_caller_context
+    async for item in a:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/agents/base_agent.py", line 326, in _run
+    async for event in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/agents/llm_agent.py", line 576, in _run_async_impl
+    async for event in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/flows/llm_flows/base_llm_flow.py", line 1278, in run_async
+    async for event in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/flows/llm_flows/base_llm_flow.py", line 1359, in _run_one_step_async
+    async for llm_response in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/flows/llm_flows/base_llm_flow.py", line 1836, in _call_llm_async
+    async for event in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/flows/llm_flows/base_llm_flow.py", line 1814, in _call_llm_with_tracing
+    async for llm_response in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/flows/llm_flows/base_llm_flow.py", line 1897, in _run_and_handle_error
+    async for response in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/flows/llm_flows/base_llm_flow.py", line 465, in _run_and_handle_error
+    raise model_error
+  File "/usr/local/lib/python3.12/site-packages/google/adk/flows/llm_flows/base_llm_flow.py", line 442, in _run_and_handle_error
+    async for llm_response in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/models/google_llm.py", line 342, in generate_content_async
+    raise _ResourceExhaustedError(ce) from ce
+google.adk.models.google_llm._ResourceExhaustedError: 
+The above exception was the direct cause of the following exception:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/google/adk/models/google_llm.py", line 322, in generate_content_async
+    response = await self.api_client.aio.models.generate_content(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/google/genai/models.py", line 8451, in generate_content
+    response = await self._generate_content(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/google/genai/models.py", line 6905, in _generate_content
+    response = await self._api_client.async_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/google/genai/_api_client.py", line 1793, in async_request
+    result = await self._async_request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/google/genai/_api_client.py", line 1726, in _async_request
+    return await self._async_retry(  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/tenacity/asyncio/__init__.py", line 112, in __call__
+    do = await self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/tenacity/asyncio/__init__.py", line 157, in iter
+    result = await action(retry_state)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/tenacity/_utils.py", line 111, in inner
+    return call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/tenacity/__init__.py", line 413, in exc_check
+    raise retry_exc.reraise()
+          ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/tenacity/__init__.py", line 184, in reraise
+    raise self.last_attempt.result()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/usr/local/lib/python3.12/site-packages/tenacity/asyncio/__init__.py", line 116, in __call__
+    result = await fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/google/genai/_api_client.py", line 1654, in _async_request_once
+    await errors.APIError.raise_for_async_response(response)
+  File "/usr/local/lib/python3.12/site-packages/google/genai/errors.py", line 265, in raise_for_async_response
+    await cls.raise_error_async(status_code, response_json, response)
+  File "/usr/local/lib/python3.12/site-packages/google/genai/errors.py", line 287, in raise_error_async
+    raise ClientError(status_code, response_json, response)
+google.genai.errors.ClientError: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Resource exhausted. Please try again later. Please refer to https://cloud.google.com/vertex-ai/generative-ai/docs/error-code-429 for more details.', 'status': 'RESOURCE_EXHAUSTED'}}
+Root node adjudicator failed.
+429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Resource exhausted. Please try again later. Please refer to https://cloud.google.com/vertex-ai/generative-ai/docs/error-code-429 for more details.', 'status': 'RESOURCE_EXHAUSTED'}}
+https://google.github.io/adk-docs/agents/models/google-gemini/#error-code-429-resource_exhausted
+On how to mitigate this issue, please refer to:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/google/adk/workflow/_node_runner.py", line 136, in run
+    await self._execute_node(ctx, node_input)
+  File "/usr/local/lib/python3.12/site-packages/google/adk/workflow/_node_runner.py", line 274, in _execute_node
+    await self._run_node_loop(ctx, node_input)
+  File "/usr/local/lib/python3.12/site-packages/google/adk/workflow/_node_runner.py", line 288, in _run_node_loop
+    async for event in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/workflow/_base_node.py", line 170, in run
+    async for item in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/agents/llm_agent.py", line 627, in _run_impl
+    async for event in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/workflow/_llm_agent_wrapper.py", line 484, in run_llm_agent_as_node
+    async for event in run_iter:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/agents/base_agent.py", line 339, in run_async
+    async for event in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/agents/base_agent.py", line 100, in _with_caller_context
+    async for item in a:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/agents/base_agent.py", line 326, in _run
+    async for event in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/agents/llm_agent.py", line 576, in _run_async_impl
+    async for event in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/flows/llm_flows/base_llm_flow.py", line 1278, in run_async
+    async for event in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/flows/llm_flows/base_llm_flow.py", line 1359, in _run_one_step_async
+    async for llm_response in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/flows/llm_flows/base_llm_flow.py", line 1836, in _call_llm_async
+    async for event in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/flows/llm_flows/base_llm_flow.py", line 1814, in _call_llm_with_tracing
+    async for llm_response in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/flows/llm_flows/base_llm_flow.py", line 1897, in _run_and_handle_error
+    async for response in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/flows/llm_flows/base_llm_flow.py", line 465, in _run_and_handle_error
+    raise model_error
+  File "/usr/local/lib/python3.12/site-packages/google/adk/flows/llm_flows/base_llm_flow.py", line 442, in _run_and_handle_error
+    async for llm_response in agen:
+  File "/usr/local/lib/python3.12/site-packages/google/adk/models/google_llm.py", line 342, in generate_content_async
+    raise _ResourceExhaustedError(ce) from ce
+google.adk.models.google_llm._ResourceExhaustedError: 
+The above exception was the direct cause of the following exception:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/google/adk/models/google_llm.py", line 322, in generate_content_async
+    response = await self.api_client.aio.models.generate_content(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/google/genai/models.py", line 8451, in generate_content
+    response = await self._generate_content(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/google/genai/models.py", line 6905, in _generate_content
+    response = await self._api_client.async_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/google/genai/_api_client.py", line 1793, in async_request
+    result = await self._async_request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/google/genai/_api_client.py", line 1726, in _async_request
+    return await self._async_retry(  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/tenacity/asyncio/__init__.py", line 112, in __call__
+    do = await self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/tenacity/asyncio/__init__.py", line 157, in iter
+    result = await action(retry_state)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/tenacity/_utils.py", line 111, in inner
+    return call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/tenacity/__init__.py", line 413, in exc_check
+    raise retry_exc.reraise()
+          ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/tenacity/__init__.py", line 184, in reraise
+    raise self.last_attempt.result()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/usr/local/lib/python3.12/site-packages/tenacity/asyncio/__init__.py", line 116, in __call__
+    result = await fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/google/genai/_api_client.py", line 1654, in _async_request_once
+    await errors.APIError.raise_for_async_response(response)
+  File "/usr/local/lib/python3.12/site-packages/google/genai/errors.py", line 265, in raise_for_async_response
+    await cls.raise_error_async(status_code, response_json, response)
+  File "/usr/local/lib/python3.12/site-packages/google/genai/errors.py", line 287, in raise_error_async
+    raise ClientError(status_code, response_json, response)
+google.genai.errors.ClientError: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Resource exhausted. Please try again later. Please refer to https://cloud.google.com/vertex-ai/generative-ai/docs/error-code-429 for more details.', 'status': 'RESOURCE_EXHAUSTED'}}
+Node execution failed with exception
+Direct use of automatic function calling (AFC) in AsyncModels.generate_content is not recommended. Instead, we recommend to use AFC in AsyncChat.send_message. Similarly, direct use of AFC in AsyncModels.generate_content_stream is not recommended. Instead, we recommend to use AFC in AsyncChat.send_message_stream.
+== job: run the unattended arm ==
+== job: reset ledgers to a clean review state ==
+}
+ "note": "本机 poppler 从退化扫描件也抽出了文字层,三份全流程正常;046e0c49 的展品是读图门对「买卖双方抽反」的 warning(数据决定)"
+ "next": "python3 -m invoiceloop workbench --workspace /data/job-ws",
+ "deliverable": "/data/job-ws/runs/run-0001/deliverable.json",
+ },
+  "approved_for_export": 3
+ "delivery_status": {
+ "seeded_by": "demo-fixture (not a human review)",
