@@ -1,139 +1,165 @@
-# SEALED-4 封箱评测协议(2026-08-09,执行前冻结)
+# SEALED-4 sealed evaluation protocol (2026-08-09, frozen before execution)
 
-SEALED-3 已被 2026-08-08 那次一次性开箱用掉(`SEALED3_RESULTS.md` §7),并且
-**本批要考的 16 条类别缺席规则正是由它的失败启发的** —— 拿它复考等于用同一批
-数据既出题又改卷。所以再抽一批,作当前唯一未见晋升资格集。
+SEALED-3 was consumed by the one-shot unsealing of 2026-08-08 (`SEALED3_RESULTS.md` §7),
+and **the 16 class-absence rules this batch is to examine were inspired precisely by its
+failure** — re-examining on it would mean using the same batch of data to both set the
+exam and grade it. So another batch is drawn, as the current sole unseen
+promotion-qualification set.
 
-## 0. 冻结对象(本文件首次提交即冻结)
+## 0. Frozen objects (frozen at this file's first commit)
 
-- 产品代码:本文件首次提交时的 HEAD;
-- 排除池:`docs/development_exposure_manifest.json`(**已含 sealed3-100**,
-  unique 560);
-- 抽样实现:`invoiceloop/heldout.py::sealed_list(..., context="sealed4-v1")`;
-- 主臂策略:**HAR-0017**,policy digest
+- Product code: the HEAD at this file's first commit;
+- Exclusion pool: `docs/development_exposure_manifest.json` (**already contains
+  sealed3-100**, unique 560);
+- Sampling implementation: `invoiceloop/heldout.py::sealed_list(..., context="sealed4-v1")`;
+- Primary-arm policy: **HAR-0017**, policy digest
   `9b6df44236d1e22d19b760e1b1d786906f88c8d5a7d6ba58e5895982a699c7c7`,
-  文件已钉在 `docs/evidence/class_absence_2026-08-09/HAR-0017.routing_policy.json`;
-- 基线策略:包内 **HAR-0001**(`invoiceloop/harnesses/HAR-0001/`)。
+  the file is pinned at `docs/evidence/class_absence_2026-08-09/HAR-0017.routing_policy.json`;
+- Baseline policy: in-package **HAR-0001** (`invoiceloop/harnesses/HAR-0001/`).
 
-## 1. 随机种子承诺
+## 1. Random seed commitment
 
-- 随机源:drand 主网 beacon(`https://api.drand.sh/public/{round}`);
-- **本批轮次**:`6360483`;
-- **种子(hex)**:`1e3119dd512be9b86f1f1db49687704a3856ae5331f4ced7232258a8aa58cbd7`(该轮 `randomness` 字段原文);
-- 取种时间(UTC):`2026-08-09T03:18:31Z`;
-- 抽样 = `heldout.sealed_list(seed, context="sealed4-v1")`:
+- Randomness source: drand mainnet beacon (`https://api.drand.sh/public/{round}`);
+- **Round for this batch**: `6360483`;
+- **Seed (hex)**: `1e3119dd512be9b86f1f1db49687704a3856ae5331f4ced7232258a8aa58cbd7`
+  (the verbatim `randomness` field of that round);
+- Seed time (UTC): `2026-08-09T03:18:31Z`;
+- Sampling = `heldout.sealed_list(seed, context="sealed4-v1")`:
   `random.Random("invoiceloop-sealed4-v1|" + seed).sample(sorted(pool), 100)`,
-  pool = ≥4 记分字段标注 ∧ 不在暴露清单(本次 4,931 份);
-- 名单落盘 `docs/sealed4_doc_list.json`,任何人可公开复算。
+  pool = ≥4 scored-field annotations ∧ not in the exposure manifest (4,931 documents
+  this time);
+- The list is written to disk at `docs/sealed4_doc_list.json`; anyone can recompute it
+  publicly.
 
-## 1.1 当前状态(2026-08-09)
+## 1.1 Current status (2026-08-09)
 
-**名单已冻结,尚未抽取。** §2 的第 1–4 步全部完成:
+**The list is frozen; extraction has not happened.** Steps 1–4 of §2 are all complete:
 
-| 步骤 | commit |
+| Step | commit |
 |---|---|
-| 暴露清单并入 sealed3-100 + 本协议冻结 | `175f1e6` |
-| drand 轮次与种子落盘 | `2d27558` |
-| `docs/sealed4_doc_list.json` 落盘 | `d0852b4` |
+| Exposure manifest merged with sealed3-100 + this protocol frozen | `175f1e6` |
+| drand round and seed written to disk | `2d27558` |
+| `docs/sealed4_doc_list.json` written to disk | `d0852b4` |
 
-第 5 步(`sealed extract`,200 次调用,按 SEALED-3 实测约 5,000 credits)
-**未执行** —— 预算授权尚未给出。名单不会因为放着而失效:它的未见性来自
-「开发期从未接触」,与何时抽取无关。开箱仍是另一个一次性决定。
+Step 5 (`sealed extract`, 200 calls, ~5,000 credits by SEALED-3's measured spend) is
+**not executed** — budget authorization has not been given. The list does not expire from
+sitting there: its unseenness comes from "never touched during development", independent
+of when extraction happens. Unsealing is still a separate one-shot decision.
 
-## 1.2 代码钉子已过期,主臂待定(2026-08-09,抽取前)
+## 1.2 The code pin has expired, the primary arm is pending (2026-08-09, before extraction)
 
-§0 把产品代码钉在本文件首次提交时的 HEAD(`175f1e6`),主臂钉在 HAR-0017。
-之后落地了页面证据缺席(`ABSENCE_EVIDENCE_DEV_2026-08-09.md`):门禁事务里多了
-一项缺席探针,`input_signature` 多了 `absence_evidence_digest`,并晋升出
-**HAR-0018**(= HAR-0017 + `AV-total_vat`),开发集人工队列 57.87% → 55.67%。
+§0 pinned the product code to the HEAD at this file's first commit (`175f1e6`) and the
+primary arm to HAR-0017. Afterwards, page-evidence absence landed
+(`ABSENCE_EVIDENCE_DEV_2026-08-09.md`): the gate transaction gained an absence probe,
+`input_signature` gained `absence_evidence_digest`, and promotion produced
+**HAR-0018** (= HAR-0017 + `AV-total_vat`), with the development-set human queue
+57.87% → 55.67%.
 
-**这不触发 §5 作废。** §5 管的是「结果出来**之后**再改」;SEALED-4 至今
-未抽取、未开箱,不存在任何结果。名单本身也没受影响 —— 抽样只依赖暴露清单与
-drand 种子,两者都没动,`sealed_list` 复算仍逐份一致(pool 4,931,100 份全同)。
+**This does not trigger §5 voiding.** §5 governs "changes made **after** results
+appear"; SEALED-4 has not been extracted or unsealed to this day, and no results exist.
+The list itself is also unaffected — sampling depends only on the exposure manifest and
+the drand seed, neither of which has moved; `sealed_list` recomputation still matches
+document by document (pool 4,931; all 100 identical).
 
-**但两个钉子必须在抽取前重定:**
+**But the two pins must be reset before extraction:**
 
-| 项 | 冻结时 | 现在 |
+| Item | At freeze | Now |
 |---|---|---|
-| 产品代码 | `175f1e6` | 需重钉为抽取前的 HEAD |
-| 主臂 | HAR-0017 | HAR-0017 还是 **HAR-0018**? |
+| Product code | `175f1e6` | must be re-pinned to the pre-extraction HEAD |
+| Primary arm | HAR-0017 | HAR-0017, or **HAR-0018**? |
 
-主臂是**人的决定**。两条路各有代价:
+The primary arm is **a human decision**. Both paths have costs:
 
-- **考 HAR-0018**(建议):考的是当前最好的、也是真会上线的那一版,
-  对基线 −4.53pp。`AV-total_vat` 在盲测的词表 v1 上同样通过(该文档「两版都
-  照登」一节),所以它不是靠事后补词才成立的。
-- **考 HAR-0017**:与原协议一致,但它已不是会上线的那一版;考完要验 HAR-0018
-  还得再抽一批,而语料池每抽一次少 100 份(现剩 4,931)。
+- **Examine HAR-0018** (recommended): what gets examined is the current best version and
+  the one that would actually ship, −4.53pp versus baseline. `AV-total_vat` likewise
+  passes on the blind-tested vocabulary v1 (the "both versions recorded as-is" section
+  of that document), so it does not stand only by virtue of after-the-fact vocabulary
+  additions.
+- **Examine HAR-0017**: consistent with the original protocol, but it is no longer the
+  version that would ship; after examining it, validating HAR-0018 would require drawing
+  another batch, and the corpus pool loses 100 documents per draw (4,931 remaining now).
 
-无论选哪个,基线仍是包内 HAR-0001,§3 的 P1–P3 与 §5 原样不动。
-选定后**先 commit 再抽取**,顺序不许倒过来。
+Whichever is chosen, the baseline is still in-package HAR-0001, and §3's P1–P3 and §5
+stand unchanged. Once decided, **commit first, then extract**; the order must not be
+reversed.
 
-## 1.3 增补件:广播范围 + 真值口径规则(2026-08-10)
+## 1.3 Amendment: broadcast scope + truth-caliber rules (2026-08-10)
 
-本节被 [`SEALED4_AMENDMENT_BROADCAST_2026-08-10.md`](SEALED4_AMENDMENT_BROADCAST_2026-08-10.md)
-整体取代:名单范围换成广播子池(原名单作废留盘),主臂 = 抽取前的广播
-harness(当前 HAR-0019),新增真值口径规则 T1/T2(经 stahl 采纳),
-指标在 strong 子集报告、weak 单列。§2/§3/§4/§5 未被套改的部分原样有效,
-以增补件 A5 的对照表为准。
+This section is superseded in full by
+[`SEALED4_AMENDMENT_BROADCAST_2026-08-10.md`](SEALED4_AMENDMENT_BROADCAST_2026-08-10.md):
+the list scope is switched to the broadcast subpool (original list voided, kept on
+disk), the primary arm = the pre-extraction broadcast harness (currently HAR-0019),
+truth-caliber rules T1/T2 are added (adopted via stahl), and metrics are reported on the
+strong subset with weak in its own column. The parts of §2/§3/§4/§5 not overridden
+remain in force, per the crosswalk table in amendment A5.
 
-## 2. 步骤
+## 2. Steps
 
-1. 暴露清单并入 SEALED-3 的 100 → commit;
-2. 本协议 commit(**先于开奖**),§1 的三个空位留白;
-3. 取 drand 公开轮次 → 填入 §1 → commit;
+1. Merge SEALED-3's 100 into the exposure manifest → commit;
+2. Commit this protocol (**before the round is drawn**), leaving §1's three blanks open;
+3. Take a public drand round → fill into §1 → commit;
 4. `python3 -m invoiceloop sealed plan --workspace runs/sealed4-workspace
    --context sealed4-v1 --seed <hex> --seed-source "drand round <N>"`
-   → 复制为 `docs/sealed4_doc_list.json` → **单独 commit**(先于任何 DWS 调用);
-5. **仅在明确预算授权后**:`sealed extract` —— 200 次调用
-   (understand + agentic × 100),预算熔断 6000 credits;
-6. **封箱不读**:extract 完成后只记 ops 摘要;不得 `run`、不得读 raw、
-   不得用本批调词表或策略;
-7. 开箱一次 → `docs/SEALED4_RESULTS.md`,数字照登。
+   → copy to `docs/sealed4_doc_list.json` → **commit separately** (before any DWS call);
+5. **Only after explicit budget authorization**: `sealed extract` — 200 calls
+   (understand + agentic × 100), budget circuit breaker 6000 credits;
+6. **Sealed and unread**: after extract completes, record only the ops summary; no `run`,
+   no reading raw, no tuning vocabularies or strategies on this batch;
+7. Unseal once → `docs/SEALED4_RESULTS.md`, numbers recorded as-is.
 
-## 3. 预注册终点
+## 3. Pre-registered endpoints
 
-主终点沿用 H1–H7 区间(`docs/SEALED1_PROTOCOL.md` §3),主臂为 HAR-0017。
+The primary endpoints carry over the H1–H7 intervals (`docs/SEALED1_PROTOCOL.md` §3),
+with HAR-0017 as the primary arm.
 
-晋升门,**基线 = HAR-0001**,两臂在同一批证据上各跑一次完整确定性流水线:
+Promotion gate, **baseline = HAR-0001**; the two arms each run one full deterministic
+pipeline on the same batch of evidence:
 
-| # | 量 | 通过线 |
+| # | Quantity | Pass line |
 |---|---|---|
-| P1 | `silent_absent`(对 DocILE 真值) | 相对基线**不上升** |
-| P2 | `silent_wrong` | 相对基线**不上升** |
-| P3 | `human_queue`(route ∉ auto_accept/auto_absent) | 相对基线**下降** |
+| P1 | `silent_absent` (against DocILE truth) | **no increase** vs baseline |
+| P2 | `silent_wrong` | **no increase** vs baseline |
+| P3 | `human_queue` (route ∉ auto_accept/auto_absent) | **decrease** vs baseline |
 
-P1 单列而不与 P2 合并,是因为 SEALED-3 就死在这一项上:主臂 `silent_absent`
-0 → 1,`silent_wrong` 持平。合并成一条「静默错不升」会让那次失败读起来像
-一次擦边,而它不是 —— 被误判成缺席的槽再也不会有人看到,没有事后发现的机会。
+P1 is listed separately rather than merged with P2 because SEALED-3 died on exactly this
+item: the primary arm's `silent_absent` went 0 → 1 while `silent_wrong` stayed flat.
+Merging them into one "silent errors do not rise" line would make that failure read like
+a near miss, and it is not — a slot misjudged as absent will never be seen by anyone
+again; there is no chance of after-the-fact discovery.
 
-### 3.1 结果前就写死的预测
+### 3.1 Prediction written in stone before results
 
-开发集(300 份)上 HAR-0001 → HAR-0017 的实测是:人工队列
-1,806 → 1,736(−2.33pp),`auto_absent` 0 → 70,`silent_absent` 0/70,
-`silent_wrong` 179/1,015 不变(`CLASS_ABSENCE_PROMOTION_2026-08-09.md`)。
+On the development set (300 documents), the measured HAR-0001 → HAR-0017 change is:
+human queue 1,806 → 1,736 (−2.33pp), `auto_absent` 0 → 70, `silent_absent` 0/70,
+`silent_wrong` 179/1,015 unchanged (`CLASS_ABSENCE_PROMOTION_2026-08-09.md`).
 
-**预测**:SEALED-4 上人工队列下降 1–4pp,`silent_absent` ≤ 2。
+**Prediction**: on SEALED-4 the human queue drops 1–4pp, `silent_absent` ≤ 2.
 
-写下这条是为了让偏差可见。偏差本身**不是**作废条件,照登即可;
-真正的作废条件在 §5。
+This was written to make deviation visible. Deviation itself is **not** a voiding
+condition — record it as-is; the real voiding conditions are in §5.
 
-## 4. 主张纪律
+## 4. Claim discipline
 
-- 未开箱前 ⇒ 只可报告抽取 ops(调用次数 / 失败 / 花费),
-  **不得**声称未见集减负或资格;
-- 开箱通过 ⇒ 可以说「在一个开发期未见的 100 份封箱集上,16 条类别缺席规则
-  减少了人工队列且两类静默错都没上升」;
-- 开箱未通过 ⇒ 数字照登,不写资格标记,不换基线、不删规则、不再跑第二次;
-- SEALED-1 / SEALED-2 / SEALED-3 / 旧 heldout-100 **一律不得**再称 final held-out。
+- Before unsealing ⇒ only extraction ops may be reported (call counts / failures /
+  spend); **must not** claim unseen-set load reduction or qualification;
+- If unsealing passes ⇒ it may be said that "on a 100-document sealed set unseen during
+  development, the 16 class-absence rules reduced the human queue with neither
+  silent-error class rising";
+- If unsealing does not pass ⇒ numbers recorded as-is, no qualification marker written,
+  no switching the baseline, no deleting rules, no second run;
+- SEALED-1 / SEALED-2 / SEALED-3 / the old heldout-100 **may never again** be called
+  final held-out.
 
-## 5. 作废条件(结果出来之后再改任何一项 = 本批作废)
+## 5. Voiding conditions (changing any one of these after results appear = this batch is void)
 
-- 改动 HAR-0017 的 policy(增删规则、改 QA 率、改 sampler 版本);
-- 改动门禁、规范化规则、路由代码或 scorer;
-- 换基线、换名单、换种子、重抽;
-- 看过本批结果之后再调上述任何一项 —— SEALED-4 自动降级为回归集,
-  另批新种子重来。
+- Changing HAR-0017's policy (adding/removing rules, changing QA rates, changing the
+  sampler version);
+- Changing gates, normalization rules, routing code, or the scorer;
+- Switching the baseline, the list, or the seed, or redrawing;
+- Touching any of the above after seeing this batch's results — SEALED-4 is
+  automatically demoted to a regression set, and a new batch must be drawn with a fresh
+  seed.
 
-**用完就没了。** 本批之后若还要未见资格,得再抽 SEALED-5;而语料池
-(4,931 份)是有限的,每抽一次少 100 份。
+**Once used, it is gone.** If further unseen qualification is needed after this batch, a
+SEALED-5 must be drawn; and the corpus pool (4,931 documents) is finite — each draw
+removes 100.

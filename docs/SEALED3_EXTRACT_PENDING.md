@@ -1,17 +1,17 @@
-# SEALED-3 抽取状态(已完成 2026-08-07 · 封箱不读)
+# SEALED-3 extraction status (completed 2026-08-07 · sealed, unread)
 
-名单:`docs/sealed3_doc_list.json`(drand round 6356175, context=`sealed3-v1`)。
-协议:`docs/SEALED3_PROTOCOL.md`。
+List: `docs/sealed3_doc_list.json` (drand round 6356175, context=`sealed3-v1`).
+Protocol: `docs/SEALED3_PROTOCOL.md`.
 
-**纪律:**只记 ops 摘要;`不得` `run` / 开箱评测 / 读 raw /
-用本批调词表或策略。开箱须另裁决并写 `SEALED3_RESULTS.md`。
+**Discipline:** record the ops summary only; `must not` `run` / unseal-evaluate / read raw /
+tune vocabularies or strategies on this batch. Unsealing requires a separate adjudication and a written `SEALED3_RESULTS.md`.
 
-**已完成(ops only):**
+**Completed (ops only):**
 
-1. 双模式抽取 → `runs/sealed3-workspace/raw/`
+1. Dual-mode extraction → `runs/sealed3-workspace/raw/`
    - `done=200` `skipped=0` `failed=0`
    - `spent_estimate≈4992` credits · `keys_used=1`
-   - 核验:200 份 `http_status=200`,缺件/非 200 = 0
-2. **未**跑主臂 `run`、未写 RESULTS、未挂资格标记。
+   - Verified: 200 documents with `http_status=200`, missing/non-200 = 0
+2. Did **not** run the primary-arm `run`, did not write RESULTS, did not attach any qualification marker.
 
-本批已封存为当前唯一未见候选集;开箱前不得称 final held-out 已通过。
+This batch is now sealed as the current sole unseen candidate set; before unsealing, it must not be claimed that the final held-out has passed.
