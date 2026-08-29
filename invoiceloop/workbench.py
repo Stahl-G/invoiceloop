@@ -1294,7 +1294,7 @@ def load_review_scope(path: Path | str) -> ReviewScope:
             raise ValueError(f"review scope slots must be non-empty doc|field, got {value!r}")
         key = (doc, field)
         if key in seen:
-            raise ValueError(f"review scope 有重复槽位:{value}")
+            raise ValueError(f"review scope has duplicate slots: {value}")
         seen.add(key)
         slots.append(key)
     return ReviewScope(source=source, slots=tuple(slots),
@@ -1589,7 +1589,7 @@ class Workbench:
 <nav class="wb-tabs">{''.join(tabs)}</nav>
 {runs_nav}
 {search_nav}
-<span class="wb-lang"><a href="{lang_href}">{"中文" if other == "zh" else "EN"}</a></span>
+<span class="wb-lang"><a href="{lang_href}">{"Chinese" if other == "zh" else "EN"}</a></span>
 </div></div>
 <div class="wb-thesis">{_esc(_t(lang, 'thesis'))}</div>
 {self._scope_banner(lang, nav_run)}{notice_html}{ooc_html}
@@ -2270,7 +2270,7 @@ field_ledger sha256={_esc(ctx.ledger.get('sha256', ''))} · invoiceloop {__versi
                 raise _HttpError(
                     409, _t(lang, "scope_outside", doc=doc, field=field),
                     run=ctx.name)
-            raise _HttpError(404, f"槽位不存在:{doc}/{field}", run=ctx.name)
+            raise _HttpError(404, f"slot does not exist: {doc}/{field}", run=ctx.name)
         idx = next(i for i, r in enumerate(ordered)
                    if r["doc_id"] == doc and r["field"] == field)
         slot = ctx.slot(doc, field)
@@ -3362,9 +3362,9 @@ class _Handler(BaseHTTPRequestHandler):
     _READ_ONLY_BANNER = (
         '<div style="background:#7a2e00;color:#fff;padding:8px 14px;'
         'font:600 13px/1.5 system-ui,sans-serif" role="status">'
-        'read-only demo · 只读演示 —— 这个实例不接受任何写入。'
-        '裁决、采纳、晋升都会被拒(403)。'
-        '真实 HITL 只在本地可写运行的工作台上进行。</div>'
+        'read-only demo — this instance accepts no writes of any kind. '
+        'Adjudications, adoptions, and promotions are all refused (403). '
+        'Real HITL happens only on a locally writable workbench.</div>'
     )
 
     def _html(self, status: int, text: str, cookies=None) -> None:

@@ -437,7 +437,11 @@ class TestIngestFailureSurfacing:
 
         empty = tmp_path / "empty-ws"
         empty.mkdir()
-        prev = os.environ.get("INVOICELOOP_DWS_DERISK")
+        # make_server 会把 INVOICELOOP_CORPUS / INVOICELOOP_DWS_DERISK 指到
+        # 这个空 workspace —— 两个都要照原样还原(原先缺的删掉),否则
+        # 同进程里后跑的 test_e2e 会拿被污染的根建 run(顺序依赖假失败)。
+        saved = {key: os.environ.get(key)
+                 for key in ("INVOICELOOP_CORPUS", "INVOICELOOP_DWS_DERISK")}
         srv = make_server(empty, 0)
         threading.Thread(target=srv.serve_forever, daemon=True).start()
         try:
@@ -450,8 +454,11 @@ class TestIngestFailureSurfacing:
         finally:
             srv.shutdown()
             srv.server_close()
-            if prev is not None:
-                os.environ["INVOICELOOP_DWS_DERISK"] = prev
+            for key, prev in saved.items():
+                if prev is not None:
+                    os.environ[key] = prev
+                else:
+                    os.environ.pop(key, None)
 
 
 class TestNoJsFallback:
@@ -1746,7 +1753,7 @@ class TestReviewScope:
         path = workspace / "bad-scope.json"
         path.write_text(json.dumps({"slots": ["a|b", "a|b"]}),
                         encoding="utf-8")
-        with pytest.raises(ValueError, match="重复"):
+        with pytest.raises(ValueError, match="duplicate"):
             load_review_scope(path)
 
     def test_scope_run_mismatch_is_blocking(self, workspace):

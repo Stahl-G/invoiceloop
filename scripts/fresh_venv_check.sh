@@ -72,14 +72,14 @@ echo "== demo command: vendored samples (from the wheel) run the full pipeline =
 "$VENV/python" -m invoiceloop demo --out "$WORK/demo-ws" > /dev/null
 DEMO_RUN="$WORK/demo-ws/runs/run-0001"
 test -f "$DEMO_RUN/support_panel.html"
-grep -q "输入不在校准集内" "$DEMO_RUN/support_panel.html"
+grep -q "outside the calibration set" "$DEMO_RUN/support_panel.html"
 "$VENV/python" - "$DEMO_RUN" <<'PY'
 import json, sys
 from pathlib import Path
 
 gate = json.loads((Path(sys.argv[1]) / "gate_report.json").read_text())
 assert any(f["gate_id"] == "visual_corroboration" for f in gate["findings"]), \
-    "demo 的读图门 warning(买卖双方抽反)必须在"
+    "the demo's vision-gate warning (buyer/seller swapped) must be present"
 PY
 
 echo "== pytest (research tests auto-skip without the research archive; agent tests need [gemini], not installed here) =="

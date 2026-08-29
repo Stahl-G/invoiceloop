@@ -80,8 +80,8 @@ def _policy_bytes(root: Path, harness_id: str) -> bytes:
     if harness_id == DEFAULT_HARNESS:
         return _builtin_policy_bytes()
     raise RuntimeError(
-        f"harness {harness_id} 没有 routing_policy.json —— "
-        f"晋升记录指向的策略必须落盘可查")
+        f"harness {harness_id} has no routing_policy.json — the policy a "
+        f"promotion record points at must exist on disk and be verifiable")
 
 
 def _replay_promotions(root: Path) -> tuple[str, bytes, bytes, list[dict]]:
@@ -101,39 +101,46 @@ def _replay_promotions(root: Path) -> tuple[str, bytes, bytes, list[dict]]:
     for i, path in enumerate(files, start=1):
         if path.stem != f"PROM-{i:04d}":
             raise RuntimeError(
-                f"晋升记录文件名不连续:{path.name}(期望 PROM-{i:04d}.json)"
-                f" —— 链被插删,拒绝加载")
+                f"promotion record filenames are not contiguous: {path.name} "
+                f"(expected PROM-{i:04d}.json) — records were inserted into "
+                f"or deleted from the chain; refusing to load")
         rec = json.loads(path.read_text(encoding="utf-8"))
         if rec.get("promotion_id") != path.stem:
             raise RuntimeError(
-                f"{path.name}:记录内 promotion_id={rec.get('promotion_id')}"
-                f" 与文件名不符 —— 拒绝加载")
+                f"{path.name}: promotion_id inside the record = "
+                f"{rec.get('promotion_id')} does not match the filename — "
+                f"refusing to load")
         if rec.get("previous_promotion_digest") != prev_digest:
             raise RuntimeError(
-                f"{path.name}:previous_promotion_digest 与上一条文件字节不符"
-                f" —— 哈希链断裂,拒绝加载")
+                f"{path.name}: previous_promotion_digest does not match the "
+                f"previous record's file bytes — hash chain broken, "
+                f"refusing to load")
         if rec.get("from_harness_id") != current:
             raise RuntimeError(
-                f"{path.name}:from={rec.get('from_harness_id')},重放到这里 "
-                f"active 是 {current} —— 链断裂,拒绝加载")
+                f"{path.name}: from={rec.get('from_harness_id')}, but "
+                f"replaying to this point active is {current} — chain "
+                f"broken, refusing to load")
         from_sha = hashlib.sha256(current_bytes).hexdigest()
         if rec.get("from_policy_digest") != from_sha:
             raise RuntimeError(
-                f"{path.name}:from_policy_digest 与 {current} 的实际字节不符"
-                f" —— 政策文件被改过,拒绝加载")
+                f"{path.name}: from_policy_digest does not match the actual "
+                f"bytes of {current} — the policy file was modified; "
+                f"refusing to load")
         target_bytes = _policy_bytes(root, rec["to_harness_id"])
         if rec.get("to_policy_digest") != hashlib.sha256(target_bytes).hexdigest():
             raise RuntimeError(
-                f"{path.name}:目标 {rec['to_harness_id']} 的 policy 字节与记录"
-                f"不符 —— 晋升后政策被改过,拒绝加载")
+                f"{path.name}: the policy bytes of target "
+                f"{rec['to_harness_id']} do not match the record — the "
+                f"policy was modified after promotion; refusing to load")
         target_schema = _schema_bytes(root, rec["to_harness_id"])
         expected_schema = rec.get("to_schema_digest")
         if expected_schema is not None:
             actual = hashlib.sha256(target_schema).hexdigest()
             if expected_schema != actual:
                 raise RuntimeError(
-                    f"{path.name}:目标 {rec['to_harness_id']} 的 schema 字节与记录"
-                    f"不符 —— 晋升后 schema 被改过,拒绝加载")
+                    f"{path.name}: the schema bytes of target "
+                    f"{rec['to_harness_id']} do not match the record — the "
+                    f"schema was modified after promotion; refusing to load")
         records.append(rec)
         current = rec["to_harness_id"]
         current_bytes = target_bytes
@@ -157,9 +164,10 @@ def load_active(root: Path | None = None) -> dict:
             rec = json.loads(pointer.read_text(encoding="utf-8"))
             if not records:
                 raise RuntimeError(
-                    "存在 active_harness.json 指针但没有任何晋升记录 —— "
-                    "指针是缓存不是权威,伪造的指针拒绝加载"
-                    "(要换 harness 走 improve promote/rollback)")
+                    "an active_harness.json pointer exists but there are no "
+                    "promotion records — the pointer is a cache, not the "
+                    "authority; a forged pointer is refused (to switch "
+                    "harness use improve promote/rollback)")
             last = records[-1]
             last_digest = hashlib.sha256(
                 (root / "improve" / "promotions"
@@ -168,12 +176,14 @@ def load_active(root: Path | None = None) -> dict:
                     or rec.get("promotion_id") != last["promotion_id"] \
                     or rec.get("promotion_digest") != last_digest:
                 raise RuntimeError(
-                    "active_harness.json 与晋升链重放结果不一致 —— "
-                    "指针是缓存不是权威,被手改过的指针拒绝加载")
+                    "active_harness.json disagrees with the promotion-chain "
+                    "replay — the pointer is a cache, not the authority; "
+                    "a hand-edited pointer is refused")
         elif records:
             raise RuntimeError(
-                "有晋升记录但缺 active_harness.json 缓存 —— "
-                "状态不完整,拒绝猜测(重新 promote 或删 promotions/)")
+                "promotion records exist but the active_harness.json cache "
+                "is missing — state is incomplete, refusing to guess "
+                "(re-run promote or delete promotions/)")
         policy = json.loads(active_bytes)
         schema = json.loads(schema_bytes)
         return {"harness_id": active_id, "policy": policy,
