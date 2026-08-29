@@ -142,8 +142,8 @@ def build_deliverable(run_dir: Path) -> dict:
                     entry = {"value": None, "status": "accepted_unbound",
                              "source": tip["decision_id"]}
                     doc["blocking_reasons"].append(
-                        f"裁决 {tip['decision_id']} 指向不存在的 "
-                        f"claim {tip.get('claim_id')}")
+                        f"adjudication {tip['decision_id']} points at a "
+                        f"claim that does not exist: {tip.get('claim_id')}")
             elif decision == "confirm_absent":
                 entry = {"value": None, "status": "confirmed_absent",
                          "source": tip["decision_id"]}
@@ -155,7 +155,7 @@ def build_deliverable(run_dir: Path) -> dict:
                          "source": tip["decision_id"]}
                 if reject_blocks_document(field, policy=policy, tier1=TIER1):
                     doc["blocking_reasons"].append(
-                        f"关键字段 {field} 被 {tip['decision_id']} 拒绝")
+                        f"key field {field} rejected by {tip['decision_id']}")
             else:  # abstain:人也无法判定 —— 未决,不许带着它放行
                 entry = {"value": None, "status": "abstained",
                          "source": tip["decision_id"]}
@@ -307,18 +307,25 @@ def build_deliverable(run_dir: Path) -> dict:
         "harness_id": harness_id,
         "docs": dict(sorted(docs.items())),
         "summary": summary,
-        "note": ("harness_id 是产生本次路由的策略;冻结账本由 review_snapshot_id "
-                 "绑定,不在此重记。"
-                 "纯投影:最终值只来自 field_ledger 与裁决账本(support_matrix "
-                 "不参与取值);unreviewed_corroborated = 多方印证但未逐个人看的 "
-                 "TIER2 槽,由 harness 处置,source 指回该策略;"
-                 "残余风险见 panel 校准限定;"
-                 "字段级人工队列用 in_human_queue(不含 auto_absent),"
-                 "勿把文档级 pending 当成「机器一点忙没帮上」。"
-                 "**只有 approved_for_export 可以外发**:ready_for_approval "
-                 "是自动化能到的终点,机器不批准单据。"
-                 "decision_load_for_release = 非策略处置槽占比,与本文件的 "
-                 "fields 状态同源复算"),
+        "note": ("harness_id is the policy that produced this run's routing; "
+                 "the frozen ledger is bound by review_snapshot_id and is "
+                 "not restated here. "
+                 "Pure projection: final values come only from field_ledger "
+                 "and the adjudication ledger (support_matrix contributes "
+                 "no values); unreviewed_corroborated = a TIER2 slot "
+                 "corroborated from multiple sides but not individually "
+                 "reviewed, disposed of by the harness, with source pointing "
+                 "back to that policy; "
+                 "residual risk: see the panel calibration caveats; "
+                 "for the field-level human queue use in_human_queue "
+                 "(auto_absent excluded) — do not read document-level "
+                 "pending as 'the machine contributed nothing'. "
+                 "**Only approved_for_export may be sent outward**: "
+                 "ready_for_approval is as far as automation can go; the "
+                 "machine does not approve documents. "
+                 "decision_load_for_release = the share of slots not "
+                 "disposed by policy, recomputed from the same source as "
+                 "the fields statuses in this file"),
     }
 
 

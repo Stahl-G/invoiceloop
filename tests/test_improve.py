@@ -476,7 +476,7 @@ class TestPromoteSafetyGate:
         (ws / "improve").mkdir(exist_ok=True)
         (ws / "improve" / "active_harness.json").write_text(json.dumps(
             {"harness_id": "HAR-9999", "promotion_id": "PROM-0009"}))
-        with pytest.raises(RuntimeError, match="伪造的指针"):
+        with pytest.raises(RuntimeError, match="forged pointer"):
             harness.load_active(ws)
 
     def test_policy_tamper_after_promote_detected(self, ws):
@@ -491,7 +491,7 @@ class TestPromoteSafetyGate:
         policy = json.loads(policy_path.read_text())
         policy["auto_accept_cohorts"].append({"id": "EVIL"})
         policy_path.write_text(json.dumps(policy, indent=1) + "\n")
-        with pytest.raises(RuntimeError, match="被改过"):
+        with pytest.raises(RuntimeError, match="modified after promotion"):
             harness.load_active(ws)
 
     def test_hash_chain_gap_detected(self, ws):
@@ -505,7 +505,7 @@ class TestPromoteSafetyGate:
         improve.rollback(ws, to_harness_id="HAR-0001", approved_by="y",
                          rationale="演示", approved_at=DECIDED)
         (ws / "improve" / "promotions" / "PROM-0001.json").unlink()
-        with pytest.raises(RuntimeError, match="不连续"):
+        with pytest.raises(RuntimeError, match="not contiguous"):
             harness.load_active(ws)
 
     def test_rollback_to_never_active_refused(self, ws):

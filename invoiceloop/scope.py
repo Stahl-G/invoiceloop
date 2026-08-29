@@ -76,9 +76,9 @@ def canonical_doc_ids(doc_ids: Sequence[str]) -> list[str]:
     """Return a duplicate-free, deterministic document-id list."""
     values = [str(doc_id) for doc_id in doc_ids]
     if any(not value for value in values):
-        raise ValueError("domain scope 不能包含空 doc_id")
+        raise ValueError("domain scope must not contain an empty doc_id")
     if len(values) != len(set(values)):
-        raise ValueError("domain scope 的 doc_id 不能重复")
+        raise ValueError("domain scope doc_ids must not contain duplicates")
     return sorted(values)
 
 
@@ -106,7 +106,7 @@ def build_scope(
 ) -> dict[str, Any]:
     """Build a human-attested scope; Python owns the membership digest."""
     if not domain or not approved_by or not approved_at:
-        raise ValueError("domain、approved_by、approved_at 都不能为空")
+        raise ValueError("domain, approved_by, and approved_at must all be non-empty")
     ordered = canonical_doc_ids(doc_ids)
     return {
         "scope_version": SCOPE_VERSION,
@@ -127,25 +127,26 @@ def validate_scope(
 ) -> dict[str, Any]:
     """Validate scope and exact batch membership, failing closed."""
     if not isinstance(scope, Mapping):
-        raise ValueError("domain scope 必须是 JSON object")
+        raise ValueError("domain scope must be a JSON object")
     if scope.get("scope_version") != SCOPE_VERSION:
-        raise ValueError("domain scope 版本不受支持")
+        raise ValueError("domain scope version is not supported")
     domain = scope.get("domain")
     if not isinstance(domain, str) or not domain:
-        raise ValueError("domain scope 缺少 domain")
+        raise ValueError("domain scope is missing domain")
     if required_domain is not None and domain != required_domain:
         raise ValueError(
-            f"domain scope={domain!r} 与 harness 要求的 {required_domain!r} 不符"
+            f"domain scope={domain!r} does not match the "
+            f"{required_domain!r} required by the harness"
         )
     ordered = canonical_doc_ids(doc_ids)
     if scope.get("n_docs") != len(ordered):
-        raise ValueError("domain scope 的 n_docs 与当前批次不符")
+        raise ValueError("domain scope n_docs does not match the current batch")
     expected = doc_ids_digest(ordered)
     if scope.get("doc_ids_sha256") != expected:
-        raise ValueError("domain scope 的 doc_ids_sha256 与当前批次不符")
+        raise ValueError("domain scope doc_ids_sha256 does not match the current batch")
     for key in ("approved_by", "approved_at", "evidence_basis"):
         if not isinstance(scope.get(key), str) or not scope[key]:
-            raise ValueError(f"domain scope 缺少 {key}")
+            raise ValueError(f"domain scope is missing {key}")
     return dict(scope)
 
 
@@ -157,9 +158,9 @@ def load_workspace_scope(root: Path) -> dict[str, Any] | None:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise ValueError(f"domain scope 不可读:{path}:{exc}") from exc
+        raise ValueError(f"domain scope is unreadable: {path}: {exc}") from exc
     if not isinstance(value, dict):
-        raise ValueError("domain scope 顶层必须是 object")
+        raise ValueError("domain scope top level must be an object")
     return value
 
 
@@ -174,7 +175,8 @@ def require_workspace_scope(
     scope = load_workspace_scope(root)
     if scope is None:
         raise ValueError(
-            f"当前 harness 要求 domain={required_domain!r},但 workspace 没有 "
-            f"{SCOPE_FILENAME};请先完成批次署名"
+            f"the current harness requires domain={required_domain!r}, but "
+            f"the workspace has no {SCOPE_FILENAME}; complete the batch "
+            f"attestation first"
         )
     return validate_scope(scope, doc_ids, required_domain=required_domain)

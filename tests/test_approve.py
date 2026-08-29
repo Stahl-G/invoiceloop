@@ -151,7 +151,7 @@ class TestTheApproverIsToldWhatNobodyLookedAt:
 
 class TestApprovalRefusals:
     def test_cannot_approve_a_document_with_a_pending_slot(self, ws):
-        with pytest.raises(ValueError, match="还有槽没处置"):
+        with pytest.raises(ValueError, match="undisposed slots"):
             approve.append_approval(
                 ws, doc_id=DOC, approved_by="alice", rationale="先批了再说",
                 approved_at=APPROVED)
@@ -165,10 +165,10 @@ class TestApprovalRefusals:
 
     def test_signature_and_reason_are_both_required(self, ws):
         _dispose_every_slot(ws)
-        with pytest.raises(ValueError, match="署名"):
+        with pytest.raises(ValueError, match="signed act"):
             approve.append_approval(ws, doc_id=DOC, approved_by="  ",
                                     rationale="r", approved_at=APPROVED)
-        with pytest.raises(ValueError, match="理由"):
+        with pytest.raises(ValueError, match="rationale"):
             approve.append_approval(ws, doc_id=DOC, approved_by="alice",
                                     rationale="", approved_at=APPROVED)
 
@@ -180,7 +180,7 @@ class TestApprovalRefusals:
 
     def test_document_must_belong_to_this_run(self, ws):
         _dispose_every_slot(ws)
-        with pytest.raises(ValueError, match="不在本次 run"):
+        with pytest.raises(ValueError, match="not in this run"):
             approve.append_approval(ws, doc_id="not-in-run",
                                     approved_by="alice", rationale="r",
                                     approved_at=APPROVED)
@@ -265,7 +265,7 @@ class TestCaveatsSurviveApproval:
         body["claims"][0]["value"] = "tampered"
         ledger.write_text(json.dumps(body, ensure_ascii=False),
                           encoding="utf-8")
-        with pytest.raises(ValueError, match="被改动过"):
+        with pytest.raises(ValueError, match="modified after the run"):
             approve.append_approval(ws, doc_id=DOC, approved_by="alice",
                                     rationale="r", approved_at=APPROVED)
 

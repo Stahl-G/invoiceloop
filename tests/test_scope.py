@@ -24,7 +24,7 @@ def test_scope_requires_exact_membership_and_domain():
     with pytest.raises(ValueError, match="doc_ids_sha256"):
         scope.validate_scope(value, ["a", "c"],
                              required_domain="us_broadcast_ad_billing")
-    with pytest.raises(ValueError, match="不符"):
+    with pytest.raises(ValueError, match="does not match"):
         scope.validate_scope(value, ["a", "b"], required_domain="generic")
 
 

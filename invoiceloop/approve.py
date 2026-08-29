@@ -107,13 +107,16 @@ def append_approval(
     run_dir = Path(run_dir)
     if not (approved_by and str(approved_by).strip()):
         raise ValueError(
-            "approved_by 不能为空 —— 批准是署名行为,系统不替人签字")
+            "approved_by must not be empty — approval is a signed act, "
+            "and the system never signs on your behalf")
     if not (rationale and str(rationale).strip()):
         raise ValueError(
-            "rationale 不能为空 —— 批准理由是审计轨迹的一部分,"
-            "「看过了」也要自己写下来")
+            "rationale must not be empty — the approval rationale is part of "
+            "the audit trail; even 'I looked at it' you must write down yourself")
     if not (approved_at and str(approved_at).strip()):
-        raise ValueError("approved_at 不能为空 —— 时间由人给出,不由系统代填")
+        raise ValueError(
+            "approved_at must not be empty — the time is given by the human, "
+            "never filled in by the system")
     approved_by = str(approved_by).strip()
     rationale = str(rationale).strip()
     approved_at = str(approved_at).strip()
@@ -122,9 +125,10 @@ def append_approval(
 
         if not re.fullmatch(r"[0-9a-f]{64}", str(policy_digest)):
             raise ValueError(
-                f"policy_digest {policy_digest!r} 不是 64 位十六进制 —— "
-                f"实验臂的批准必须钉在真实的策略内容摘要上,"
-                f"账本不收无法对账的摘要")
+                f"policy_digest {policy_digest!r} is not 64 hex characters — "
+                f"an approval in the experimental arm must be pinned to the "
+                f"digest of the real policy content; the ledger accepts no "
+                f"digest it cannot reconcile against")
 
     from datetime import datetime
 
@@ -132,32 +136,37 @@ def append_approval(
         datetime.fromisoformat(approved_at.replace("Z", "+00:00"))
     except ValueError:
         raise ValueError(
-            f"approved_at {approved_at!r} 不是 ISO 8601 时间 —— "
-            f"账本里的时间必须可机读") from None
+            f"approved_at {approved_at!r} is not an ISO 8601 time — "
+            f"timestamps in the ledger must be machine-readable") from None
 
     manifest = json.loads(
         (run_dir / "run_manifest.json").read_text(encoding="utf-8"))
     if doc_id not in set(manifest.get("docs", [])):
         raise ValueError(
-            f"doc {doc_id!r} 不在本次 run 的文档集合里 —— 批准必须指向 run 内文档")
+            f"doc {doc_id!r} is not in this run's document set — an approval "
+            f"must point at a document inside the run")
 
     deliverable = build_deliverable(run_dir)
     doc_entry = deliverable["docs"].get(doc_id)
     if doc_entry is None:
-        raise ValueError(f"doc {doc_id!r} 不在本次交付投影里")
+        raise ValueError(f"doc {doc_id!r} is not in this delivery projection")
     status = doc_entry["status"]
     if status.startswith("approved_for_export"):
         # 已批准且未失效 —— 再批一次没有新信息,但也不是错误;
         # 让调用方决定,这里如实拒绝重复写入。
-        raise ValueError(f"doc {doc_id!r} 已经是 {status},内容未变,无需重批")
+        raise ValueError(
+            f"doc {doc_id!r} is already {status} with unchanged content; "
+            f"no re-approval needed")
     if status not in APPROVABLE:
         if status == "blocked":
             raise ValueError(
-                f"doc {doc_id!r} 是 blocked —— 完整性已经破了,"
-                f"先查清再谈批准;系统不接受在 blocked 单据上签字")
+                f"doc {doc_id!r} is blocked — its integrity is already "
+                f"broken; find out what happened before talking about "
+                f"approval; the system does not accept a signature on a "
+                f"blocked document")
         raise ValueError(
-            f"doc {doc_id!r} 还有槽没处置(status={status})—— "
-            f"先把人工队列走完再批准整单")
+            f"doc {doc_id!r} still has undisposed slots (status={status}) — "
+            f"finish the human queue before approving the whole document")
 
     snapshot_id = load_or_derive_snapshot(run_dir)["review_snapshot_id"]
     # 与 append_adjudication 同一道闸:批准要绑在**没被动过**的证据上。
@@ -168,9 +177,11 @@ def append_approval(
         current = compute_review_snapshot(run_dir)["review_snapshot_id"]
         if current != snapshot_id:
             raise ValueError(
-                "run 目录内工件与 review_snapshot.json 不符 —— 有工件在 run "
-                "之后被改动过。先比对 components 查清哪份被动了,再批准;"
-                "系统不在被动过的证据上记批准")
+                "artifacts inside the run directory do not match "
+                "review_snapshot.json — an artifact was modified after the "
+                "run. Compare components to find out which one was touched "
+                "before approving; the system records no approval on "
+                "evidence that has been touched")
     digest = document_digest(doc_entry)
 
     with _APPEND_LOCK:

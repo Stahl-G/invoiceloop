@@ -123,11 +123,11 @@ def cmd_ingest(
     pdf_dir = workspace / "input" / "pdfs"
     if not pdf_dir.is_dir():
         raise SystemExit(
-            f"输入契约:{pdf_dir} 不存在。把发票 PDF 放进 workspace/input/pdfs/ 再跑 ingest"
-        )
+            f"input contract: {pdf_dir} does not exist. Put invoice PDFs "
+            f"into workspace/input/pdfs/ and run ingest again")
     docs = discover(workspace)
     if not docs:
-        raise SystemExit(f"输入契约:{pdf_dir} 里没有 .pdf 文件")
+        raise SystemExit(f"input contract: no .pdf files in {pdf_dir}")
 
     if adaptive:
         modes = ("understand",)  # agentic 按文档 escalate,不在外层笛卡尔积

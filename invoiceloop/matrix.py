@@ -187,7 +187,9 @@ def derive_document_records(
         if disputed and field_name in ("total_net", "total_gross", "amount_due"):
             applicability = "label_convention_disputed"
             limitations.append(
-                "纸面 Gross=刊例价、Net=扣 15% 佣后实付;EN 16931 方向相反,两种读法都在"
+                "paper Gross = rate-card price, Net = actual payment after "
+                "the 15% commission deduction; EN 16931 runs the other way — "
+                "both readings are in use"
             )
 
         if gate_verdicts.get("visual_corroboration") == "unavailable":
