@@ -1,16 +1,13 @@
-# InvoiceLoop
+# InvoiceLoop · Nutrient DWS evidence and approval
 
-**Verifiable support for invoice extraction — not a claim that the extraction is correct.**
+**Human-controlled review for invoice values extracted by Nutrient DWS.**
 
-[Nutrient DWS](https://www.nutrient.io/) extracts values from a PDF. InvoiceLoop
-is the evidence, review, and approval layer that makes those values operationally
-accountable. It does not decide that an invoice may be posted. It decides what
-the machine has finished, what it still does not know, and it leaves posting
-authority with a named human.
+[Nutrient DWS](https://www.nutrient.io/) performs the core document operation:
+PDF parsing, field extraction, structured output, and page grounding. InvoiceLoop
+freezes that response, checks each field's supporting evidence, routes uncertainty
+to review, and records the named human who authorizes export.
 
-**The deliverable is a support matrix, not a verdict.**
-
-## For judges — three commands, zero API cost
+## For Nutrient judges — three-command replay
 
 Everything below runs on the sample documents vendored in this repository.
 No API key, nothing billed, no external dataset.
@@ -32,13 +29,27 @@ python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
 Step 2 is interactive: review the result in the browser, then stop it with
 Ctrl-C before step 3 (or run step 3 in a second terminal).
 
-**What step 3 does and does not cover.** The suite runs green on a clean clone,
+Scope of step 3. The suite runs green on a clean clone,
 but the tests that recompute the research numbers are skipped there: they need
 the DocILE calibration archive, which is not distributed with this repository
 (see `DISCLOSURE.md`). Pytest prints those as `skipped`. The research figures in
-this README are recomputable from saved responses at zero API cost **by anyone
-holding the archive** — that is a weaker claim than "recomputable from a clean
-clone", and it is the one we make.
+this README are recomputable from saved responses at zero API cost by archive
+holders. A clean clone validates the product path; the calibration archive
+validates the research figures.
+
+### Run a live Nutrient DWS extraction
+
+The replay above is the fastest way to inspect the product. This path calls the
+live DWS extraction API on the three vendored invoices and then runs the same
+freeze, six-gate, review, bundle, and offline-verification path:
+
+```bash
+export DWS_API_KEY=<your-key>
+bash scripts/live_dws_demo.sh --non-interactive /tmp/invoiceloop-live
+```
+
+Remove `--non-interactive` to pause at the Workbench for signed human review.
+The API key is read from the environment and is never written to a run artifact.
 
 <p align="center">
   <a href="docs/architecture.html">Architecture diagram</a> ·
@@ -47,19 +58,20 @@ clone", and it is the one we make.
   <a href="docs/CLOUD_RUN.md">Deployment</a>
 </p>
 
-## What is broken
+## Why InvoiceLoop exists
 
-DWS can return a value and ground it to a page region. Grounding answers "this
-string was found somewhere." It does not answer whether that field should be
-trusted, posted, or paid.
+DWS can return a value and ground it to a page region. Grounding establishes
+where the string appeared. Trust, posting, and payment require field-level
+support plus an explicit approval boundary.
 
 Vendor confidence on `/extraction/extract` is grounding-only (Nutrient confirmed:
 logprobs are off for the current model). Six pre-registered rounds found that
 **no single tested signal** — confidence, arithmetic checks, dual-mode
 disagreement, independent OCR, or a frontier model reading the page — flags every
-consequential extraction error. Signals help. None of them is a verdict.
+consequential extraction error. Together these signals establish support strength
+and routing priority; consequential decisions stay behind human approval.
 
-## What InvoiceLoop adds
+### Control, review, and approval
 
 Independent OCR against the cited region, six deterministic gates, a frozen
 claim ledger the model cannot write, routing into auto-accept / auto-absent /
@@ -68,17 +80,18 @@ the machine may never perform. Automation stops at `ready_for_approval`. Only a
 signed human approval reaches `approved_for_export`.
 
 An optional AI advisory loop may propose a tighter routing policy from review
-history. The Workbench exposes one **Ask AI** action and shows the exact model it
+history. The Workbench exposes one `Ask AI` action and shows the exact model it
 will call. The configured backend may be an Anthropic Messages-compatible API
 (including a compatible MiMo endpoint) or [Google ADK](docs/ADK_INTEGRATION.md).
-Both assign no IDs, write no ledger, and cannot promote themselves.
+The model remains advisory: Python assigns IDs and writes the ledger, while
+promotion requires deterministic evaluation and a human signature.
 
 Support relations on an invoice are geometric — a bounding box against a page
 region, verifiable word by word with independent OCR. That argument does not
 apply where invoicing has moved to structured XML (mainland China, Italy's
 FatturaPA). **This project targets US-style PDF invoices.**
 
-## Try it — zero API calls, no external data
+## Run the product
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
@@ -95,15 +108,15 @@ signed `demo-fixture (not a human review)` — no person looked at those rows.
 
 One sample (`046e0c49`) is a degraded scan. Most poppler builds cannot pull a
 text layer from it, so OCR blocks and the document carries that caveat into
-export; some builds recover text and it flows normally. **Both outcomes are
-legal.** What is pinned is the invariant: unavailable evidence is never treated
+export; some builds recover text and it flows normally. Both outcomes are legal.
+What is pinned is the invariant: unavailable evidence is never treated
 as a silent pass.
 
 System dependency: poppler (`brew install poppler`). tesseract is optional —
 without it, scanned pages block rather than pass silently.
 
-The AI button is backend-configurable; it is not a separate MiMo or Gemini
-workflow. Put one of these shapes in the workspace/project `.env`:
+The AI button exposes one backend-configurable advisory workflow. Put one of
+these shapes in the workspace/project `.env`:
 
 ```dotenv
 # Anthropic Messages-compatible endpoint (core install; MiMo is one example)
@@ -124,11 +137,11 @@ button is the model passed to the API and recorded in the advisory artifact.
 `pip install -e ".[dev,gemini]"` is needed only for the optional Google ADK
 backend and its tests.
 
-## Who this is for, and what a wrong field costs
+## Operational contract
 
-The first user is an **accounts-payable clerk** who today eyeballs each key field
-before it goes into the ERP. InvoiceLoop does not replace reading the invoice; it
-replaces **confirming the fields the machine can already vouch for**.
+The first user is an accounts-payable clerk who today eyeballs each key field
+before it goes into the ERP. InvoiceLoop concentrates that review on fields with
+unresolved or conflicting support.
 
 | Wrong field | Consequence |
 |---|---|
@@ -137,51 +150,51 @@ replaces **confirming the fields the machine can already vouch for**.
 | `seller_vat_id` | Tax filing exposure; an audit sends the batch back |
 | `seller_name` / `buyer_name` swapped | Payment to the wrong party. Observed in practice: an ad agency extracted where the broadcast station was the seller |
 
-The second user is an **auditor**: every value in the delivery answers "why should
+The second user is an auditor: every value in the delivery answers "why should
 I believe this", and the answer recomputes offline.
 
-## What leaves the system
+### Delivery and approval
 
 Every run writes `deliverable.json` — one row per field as
 `{value, status, source}`, and a per-document status:
 
-- **`approved_for_export` / `approved_for_export_with_caveats`** → downstream
+- `approved_for_export` / `approved_for_export_with_caveats` → downstream
   AP/ERP can post it. **Only a signed human approval reaches this status.**
-- **`ready_for_approval` / `ready_for_approval_with_caveats`** → every gating
+- `ready_for_approval` / `ready_for_approval_with_caveats` → every gating
   slot has been dealt with. This is where automation stops. No status a machine
   can reach on its own carries posting authority.
-- **`pending` / `blocked`** → stays in the queue, never reaches downstream
+- `pending` / `blocked` → stays in the queue, never reaches downstream
 - `source` traces each value back to a frozen claim, a human decision, or a
   named policy version
 
 Approval is per document. The record in `approve_ledger.jsonl` carries the
-signature, the reason, the digest of the values at that moment, and **the list of
-fields the routing policy released without anyone reading them**. Change a value
+signature, the reason, the digest of the values at that moment, and the list of
+fields the routing policy released without anyone reading them. Change a value
 afterwards and the approval goes stale — the document drops back to
 `ready_for_approval` and someone has to sign again. The stale approval stays in
-the ledger; who approved what is audit trail, not clutter.
+the ledger as a permanent record of who approved what.
 
-Values come only from the frozen ledger and the adjudication ledger. **The support
-matrix is never the value source.**
+The frozen claim ledger and adjudication ledger are the sole value sources. The
+support matrix carries evidence and routing status.
 
-## Posting is not a ten-field census
+### Posting profiles and qualification
 
-A routing policy with no `release_profile` is **census**: every scored field
+The default harness uses census routing: every scored field
 still `pending`, `pending_tier1`, or `abstained` keeps the document from
-`ready_for_approval`. That is still the **default harness**. Packaged HAR-0001
+`ready_for_approval`. Packaged HAR-0001
 and the product-active HAR-0021 stay that way so sealed replay does not drift.
 
-`payment_required_v1` is an **optional posting profile**, not the default
-harness, and it has not been promoted. Under that profile, posting waits on
+`payment_required_v1` is an optional, unpromoted posting profile. Under that
+profile, posting waits on
 `invoice_number`, `seller_name`, and `amount_due`. Other scored fields stay on
 the support matrix, labelled unreviewed. A named human still has to approve
-the document. The machine still cannot export. Design:
+the document, and export remains human-authorized. Design:
 [`docs/RELEASE_PROFILE_DESIGN_2026-08-14.md`](docs/RELEASE_PROFILE_DESIGN_2026-08-14.md).
 
 On the 2026-08-18 zero-API development run (n=660, all previously exposed; not
-a qualification result), HAR-0023 left **10.8%** of documents untouched; about
-89% still required opening. That is a dated observation, not a product
-capability. Record:
+a qualification result), HAR-0023 left 10.8% of documents untouched; about
+89% still required opening. This dated observation describes that development
+run only. Record:
 [`docs/DOCTOUCH_RESULTS_2026-08-18.md`](docs/DOCTOUCH_RESULTS_2026-08-18.md).
 
 A clean recovery qualification then used 200 newly sampled, registry-excluded
@@ -189,24 +202,24 @@ DocILE documents. HAR-0023 reproduced the workflow effect at **10.5%** routing-t
 zero-touch (95% Wilson CI 7.0–15.5), but safety qualification **failed**: among
 the 63 payment-gate slots on the 21 unopened documents, six comparable values
 were wrong and three auto-accept slots could not be scored. The deterministic
-decision denied promotion; the default remains census. This is not an extraction
-accuracy or human-time-savings claim. Record:
+decision denied promotion; the default remains census. Its scope is routing-time
+zero-touch, with no extraction-accuracy or human-time-savings estimate. Record:
 [`docs/QUALIFICATION_NARROW_V2_RESULTS_2026-08-23.md`](docs/QUALIFICATION_NARROW_V2_RESULTS_2026-08-23.md).
 
 HITL round 1 tested the older census walk — AI pre-read plus a ten-field queue —
 on a development set of 20 documents. All 20 opened; median time 52 seconds per
 slot; the pre-registered time estimate was off by about five times. The round
-was **pre-registered terminated** before S2's first adjudication. S2–S5 were
-not spliced onto the S1 curve. Record:
+was **pre-registered terminated** before S2's first adjudication. The S1 curve
+therefore remains standalone. Record:
 [`docs/HITL_R1_TERMINATION_2026-08-14.md`](docs/HITL_R1_TERMINATION_2026-08-14.md).
 
 The follow-up walk used the optional payment profile, on a separate
 20-document development set: 4/20 documents never entered the walk, the three
 payment fields had 0 unresolved slots, and 0 QA probes reversed an auto-accept
-or auto-absent. Unopened is not correct — residual error still carries the
-ARCHITECTURE §8 qualifiers. The arm had confounders (mid-round ADK inject,
-protocol edits after the first decision) and is not a qualification result.
-It is not the same measurement as the 660-document run. Record:
+or auto-absent. Unopened records a routing outcome; correctness remains subject
+to the ARCHITECTURE §8 qualifiers. The arm had confounders (mid-round ADK inject,
+protocol edits after the first decision), so it remains development evidence.
+Its measurement is separate from the 660-document run. Record:
 [`docs/HITL_NARROW_2026-08-14.md`](docs/HITL_NARROW_2026-08-14.md).
 
 ## Evidence
@@ -216,11 +229,11 @@ Protocols and dated logs live under [`docs/`](docs/README.md).
 
 | | |
 |---|---|
-| Triage lift, SEALED-4 (broadcast unseen subset) | Human queue **63.7% → 47.2%** for HAR-0001 → HAR-0021; both silent-error classes did not rise. Qualification **passed** on that broadcast pool only — [`docs/SEALED4_RESULTS.md`](docs/SEALED4_RESULTS.md) |
-| Triage lift, SEALED-3 (100 sealed unseen documents) | **3.75x**; H1 passed, but qualification **failed** because one annotated `seller_vat_id` was silently auto-absented |
-| Human queue, paired SEALED-3 replay | **62.4% → 52.7%** for HAR-0001 → HAR-0004, silent-absence count **0 → 1** |
-| Triage lift, SEALED-1 (100 sealed unseen invoices) | **4.03×** against pre-registered thresholds |
-| TIER1 silent-error rate vs a confidence-threshold baseline | **9.62%** vs **21.91%** at a fixed operating point |
+| Triage lift, SEALED-4 (broadcast unseen subset) | Human queue 63.7% → 47.2% for HAR-0001 → HAR-0021; both silent-error classes did not rise. Qualification passed on that broadcast pool only — [`docs/SEALED4_RESULTS.md`](docs/SEALED4_RESULTS.md) |
+| Triage lift, SEALED-3 (100 sealed unseen documents) | 3.75x; H1 passed, but qualification failed because one annotated `seller_vat_id` was silently auto-absented |
+| Human queue, paired SEALED-3 replay | 62.4% → 52.7% for HAR-0001 → HAR-0004, silent-absence count 0 → 1 |
+| Triage lift, SEALED-1 (100 sealed unseen invoices) | 4.03× against pre-registered thresholds |
+| TIER1 silent-error rate vs a confidence-threshold baseline | 9.62% vs 21.91% at a fixed operating point |
 
 > **SEALED-3 — valid unseen measurement, qualification failed.** The primary
 > HAR-0004 arm reduced the human queue by 9.7 points and reproduced triage lift,
@@ -229,13 +242,13 @@ Protocols and dated logs live under [`docs/`](docs/README.md).
 >
 > **SEALED-2 — held-out status revoked 2026-08-07.** The numbers are real; the
 > batch was later used during development. Revocation is enforced in
-> `improve.SEALED_SET_REVOCATIONS`, not by deleting marker files.
+> `improve.SEALED_SET_REVOCATIONS`; the marker files remain intact.
 >
-> **SEALED-1** remains a past result (measured 2026-08-03). It is spent for *new*
-> held-out measurements. **SEALED-4** is the current unseen qualification, and
+> SEALED-1 remains a past result (measured 2026-08-03). It is spent for *new*
+> held-out measurements. SEALED-4 is the current unseen qualification, and
 > only for the broadcast-scoped pool named in that protocol.
 
-## Everyday commands
+## Commands, repository, and lineage
 
 ```bash
 # Your own invoices: drop PDFs into workspace/input/pdfs/
@@ -260,7 +273,7 @@ python3 -m pytest tests/test_agents_*.py              # needs pip install -e ".[
 
 Open `demo-ws/runs/run-0001/support_panel.html` — static, offline, no server.
 
-## Repository layout
+### Repository layout
 
 | | |
 |---|---|
@@ -272,11 +285,11 @@ Open `demo-ws/runs/run-0001/support_panel.html` — static, offline, no server.
 | [`docs/CLOUD_RUN.md`](docs/CLOUD_RUN.md) | Deployment, and why the public instance is read-only |
 | `docs/*_2026-*.md` | Dated research records — experiment logs, mostly Chinese. See [`docs/README.md`](docs/README.md) for an English index |
 
-**A note on language.** Reader-facing documentation is English. The dated research
+A note on language: reader-facing documentation is English. The dated research
 records and most code comments are in Chinese, because they are a working
 laboratory notebook. `docs/README.md` says in English what each one contains.
 
-## Lineage
+### Lineage
 
 The support-sufficiency stack is adapted from BriefLoop architecture reference
 v0.6.1 §3.6, where it is marked experimental and its semantic gate is explicitly
@@ -285,6 +298,6 @@ is mechanically checkable.
 
 The calibration corpus and six rounds of experiment evidence live in a sibling
 archive, `~/Developer/dws-derisk/` — 5,680 DocILE PDFs (Rossum's public invoice
-set, MIT-licensed) and 321 stored DWS responses. It is **not required** for the
-product path: demo, workbench, run, bundle and verify are all self-contained.
-Research tests skip cleanly when it is absent.
+set, MIT-licensed) and 321 stored DWS responses. It is not required for the product
+path: demo, workbench, run, bundle and verify are self-contained. Research tests
+skip cleanly when the archive is absent.
